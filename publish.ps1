@@ -16,10 +16,15 @@ Set-Location $PSScriptRoot
 $gh = "gh"
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   $candidates = @(
+    "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\GitHub.cli_Microsoft.Winget.Source_8wekyb3d8bbwe\bin\gh.exe",
     "$env:LOCALAPPDATA\Microsoft\WinGet\Links\gh.exe",
     "$env:ProgramFiles\GitHub CLI\gh.exe"
   )
   $found = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+  if (-not $found) {
+    $pkg = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter gh.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pkg) { $found = $pkg.FullName }
+  }
   if ($found) { $gh = $found } else { Write-Error "GitHub CLI not found. Install: winget install GitHub.cli"; exit 1 }
 }
 
