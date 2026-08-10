@@ -327,7 +327,7 @@ export async function buildProcedural(scene, env, opts) {
       const pineMat = track(new THREE.MeshStandardMaterial({ color: 0x24513a, roughness: 0.95 }));
       scatterInstanced(
         [{ geo: trunk, mat: trunkMat }, { geo: cone1, mat: pineMat }, { geo: cone2, mat: pineMat }],
-        340, 0.62, -1e9, Math.min(half * 0.85, 900), 30, 7
+        340, 0.62, -1e9, Math.min(half * 0.85, 900), 130, 7
       );
     } else if (o.terrain === 'desert') {
       const body = new THREE.CylinderGeometry(0.45, 0.55, 4, 7); body.translate(0, 2, 0);
@@ -337,7 +337,7 @@ export async function buildProcedural(scene, env, opts) {
       armGeo.dispose();
       const cacMat = track(new THREE.MeshStandardMaterial({ color: 0x4e7d43, roughness: 0.9 }));
       scatterInstanced([{ geo: body, mat: cacMat }, { geo: armL, mat: cacMat }, { geo: armR, mat: cacMat }],
-        150, 0.5, -1e9, Math.min(half * 0.8, 800), 20, 4.5);
+        150, 0.5, -1e9, Math.min(half * 0.8, 800), 60, 4.5);
       const rock = new THREE.DodecahedronGeometry(1.3, 0);
       const rockMat = track(new THREE.MeshStandardMaterial({ color: 0x8d7a63, roughness: 1 }));
       scatterInstanced([{ geo: rock, mat: rockMat }], 110, 0.8, -1e9, Math.min(half * 0.85, 900), 0, 0);
@@ -346,7 +346,7 @@ export async function buildProcedural(scene, env, opts) {
       const crown = new THREE.ConeGeometry(2.1, 1.5, 7); crown.translate(0, 6.4, 0);
       const palmMat = track(new THREE.MeshStandardMaterial({ color: 0x2c7a3c, roughness: 0.9, side: THREE.DoubleSide }));
       scatterInstanced([{ geo: trunk, mat: trunkMat }, { geo: crown, mat: palmMat }],
-        260, 0.5, waterLevel > -1e8 ? waterLevel + 0.7 : -1e9, Math.min(half * 0.8, 850), 30, 6.5);
+        260, 0.5, waterLevel > -1e8 ? waterLevel + 0.7 : -1e9, Math.min(half * 0.8, 850), 110, 6.5);
       const bush = new THREE.SphereGeometry(1, 7, 5); bush.scale(1, 0.65, 1); bush.translate(0, 0.5, 0);
       scatterInstanced([{ geo: bush, mat: treeMat }], 140, 0.6, -1e9, Math.min(half * 0.8, 850), 0, 0);
     }

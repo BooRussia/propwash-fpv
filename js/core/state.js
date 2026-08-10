@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS = {
     bloom: true,
     shadows: true,
   },
+  osd: { showSticks: true },      // on-screen stick position overlay
   audio: { master: 0.3 },
   controller: {
     deviceId: null,             // gamepad.id string of chosen radio

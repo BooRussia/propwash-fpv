@@ -289,7 +289,7 @@ export async function buildMiami(scene, env) {
       m4.compose(p, q, s);
       trunks.setMatrixAt(placed, m4);
       crowns.setMatrixAt(placed, m4);
-      if (placed < 26) addCollider(x, y, z, 0.5, 6.5 * sc, 0.5);
+      addCollider(x, y, z, 0.5, 6.5 * sc, 0.5);   // every trunk is solid
       placed++;
     }
     trunks.castShadow = true; crowns.castShadow = true;
@@ -366,6 +366,7 @@ export async function buildMiami(scene, env) {
       m4.makeTranslation(x, CITY_Y, z);
       lp.setMatrixAt(i, m4);
       lh.setMatrixAt(i, m4);
+      addCollider(x, CITY_Y, z, 0.35, 6.4, 0.35);
     }
     root.add(lp); root.add(lh);
 
@@ -389,6 +390,7 @@ export async function buildMiami(scene, env) {
       cars.setMatrixAt(i, m4b);
       cabs.setMatrixAt(i, m4b);
       cars.setColorAt(i, col.setHex(carCols[(rng() * carCols.length) | 0]));
+      addCollider(x, CITY_Y, z, 4.2, 2.1, 1.9);
     }
     cars.castShadow = true;
     root.add(cars); root.add(cabs);

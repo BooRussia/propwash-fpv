@@ -984,6 +984,12 @@ export class Menu {
       display: () => `${Math.round(settings.camera.staticIntensity * 100)}%`,
     });
     this._toggleRow(sec, {
+      label: 'Stick overlay',
+      get: () => settings.osd.showSticks,
+      set: (v) => { settings.osd.showSticks = v; this._commit('osd'); },
+      note: 'Show live stick positions at the bottom of the screen.',
+    });
+    this._toggleRow(sec, {
       label: 'Signal loss',
       get: () => settings.camera.signalLoss,
       set: (v) => { settings.camera.signalLoss = v; this._commit('camera'); },

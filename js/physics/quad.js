@@ -177,6 +177,7 @@ export class Quad {
     if (!(dt > 0) || !Number.isFinite(dt)) return;
     const spec = this.spec;
     const armed = !!(env && env.armed) && !this.crashed;
+    this._armedNow = armed;               // read by _impact for prop-strike response
     const wind = (env && env.wind) ? env.wind : ZERO_VEC;
     const getH = (env && typeof env.getGroundHeight === 'function') ? env.getGroundHeight : null;
 
@@ -422,7 +423,19 @@ export class Quad {
     v.copy(this._vt).addScaledVector(n, -vn * RESTITUTION);
     this.angularVelocity.multiplyScalar(keepW);
 
-    const impact = -vn + 0.25 * tSpeed;
+    // Prop strike: spinning props catching a surface kick the quad violently.
+    // A slow bump is survivable; a fast scrape while armed whips it around.
+    if (this._armedNow && !this.crashed && hard && tSpeed > 1.5) {
+      const k = Math.min(tSpeed * 0.35, 6);
+      this.angularVelocity.x += (Math.random() - 0.5) * k;
+      this.angularVelocity.y += (Math.random() - 0.5) * k * 1.3; // yaw kick dominates
+      this.angularVelocity.z += (Math.random() - 0.5) * k;
+      v.multiplyScalar(0.93); // props eating energy
+    }
+
+    // Armed scrapes count tangential speed harder — glancing a wall at speed
+    // with spinning props is usually a crash in the real world.
+    const impact = -vn + (this._armedNow ? 0.4 : 0.25) * tSpeed;
     const threshold = spec.massKg < 0.1 ? 10 : 7; // whoops bounce off everything
     if (impact > threshold && !this.crashed) {
       this.crashed = true;

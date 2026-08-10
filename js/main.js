@@ -16,6 +16,7 @@ import { KeyboardInput } from './input/keyboard.js';
 import { Menu } from './ui/menu.js';
 import { CalibrationUI } from './ui/calibration.js';
 import { OSD } from './ui/osd.js';
+import { StickOverlay } from './ui/sticks.js';
 import { StaticFX } from './fx/staticfx.js';
 import { Environment } from './world/environment.js';
 import { buildMiami } from './world/miami.js';
@@ -103,6 +104,7 @@ loadStatus('Loading subsystems…', 0.35);
 const radio = new RadioManager();
 const keyboard = new KeyboardInput();
 const osd = new OSD(document.getElementById('osd-root'));
+const sticks = new StickOverlay(document.getElementById('osd-root'));
 const staticFX = new StaticFX(document.getElementById('fx-root'));
 const menu = new Menu();
 const calibUI = new CalibrationUI(radio);
@@ -321,7 +323,7 @@ function updateSignal(dt) {
     }
     const cols = mapHandle.colliders;
     if (cols) {
-      const n = Math.min(cols.length, 250);
+      const n = cols.length;
       for (let i = 0; i < n; i++) {
         if (aabbBlocksRay(cols[i], pilotPos, rayDir, len)) { loss = Math.min(1, loss + 0.35); break; }
       }
@@ -458,6 +460,10 @@ renderer.setAnimationLoop(() => {
     radioConnected: radio.connected,
     calibrated: !!settings.controller.calibration,
   });
+
+  const showSticks = settings.osd.showSticks && !menu.isOpen && !calibUI.isOpen;
+  sticks.setVisible(showSticks);
+  if (showSticks) sticks.update(currentControls);
 
   motorAudio.update(dt, {
     motorOutput: armed && quad ? quad.motorOutput : 0,
