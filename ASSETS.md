@@ -474,169 +474,321 @@ Use THREE.InstancedMesh for all scattered rocks/shells (one draw call per specie
 
 ## People & Characters
 
-_Research pending (agent hit session limit); will be filled in on the next pass._
+- **[Nathan Animated 003 - Walking 3D Man (Renderpeople official)](https://sketchfab.com/3d-models/nathan-animated-003-walking-3d-man-143a2b1ea5eb4385ae90a73657aca3bc)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API, slug 'by'; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX
+  - Quality: Photoscanned real human, 21,506 tris, 8K diffuse/normal/alpha (downscale to 2K), baked loopable 30fps mocap walk cycle
+  - Use: The workhorse ambient pedestrian — walking loops along boardwalks, sidewalks, park paths; duplicate with tinted albedo for variety
+- **[Sophia Animated 003 - Animated 3D Woman (Renderpeople official)](https://sketchfab.com/3d-models/sophia-animated-003-animated-3d-woman-dc448c3be0e74f96a55fb475a13433cf)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX
+  - Quality: Photoscanned woman, 16,475 tris, 8K textures, baked loopable animation, no rig needed
+  - Use: Female ambient pedestrian to pair with Nathan; Manuel Animated 001 (dancing man, 23k tris, same account/license) adds a third animated variant
+- **[Eric Rigged 001 - Rigged 3D Business Man (Renderpeople official)](https://sketchfab.com/3d-models/eric-rigged-001-rigged-3d-business-man-a46bc9f67aaa415bb4f3241eef900e7f)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX with skeleton
+  - Quality: Photoscanned, 20,542 tris, full skinned skeleton, 8K diffuse/normal/alpha
+  - Use: Retarget any Mixamo/Rokoko/CMU clip onto him — sitting spectators, phone-checkers, waving bystanders near launch pads
+- **[Carla Rigged 001 - Rigged 3D Business Woman (Renderpeople official)](https://sketchfab.com/3d-models/carla-rigged-001-rigged-3d-business-women-acf520f450d14dd799f98a6fede3edf5)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API, slug 'by'; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX with skeleton
+  - Quality: Photoscanned, 19,988 tris, skinned rig, 8K textures; Claudia Rigged 002 (21.5k tris) is a third rigged variant on the same account
+  - Use: Second retarget target for custom animations; mix-and-match with Eric for varied ambient NPC behaviors
+- **[Dennis Posed 004 - Standing Man (Renderpeople official)](https://sketchfab.com/3d-models/dennis-posed-004-male-standing-business-model-e211ffd52a96416e89c0cc415a388d61)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX
+  - Quality: Static posed photoscan, 99,964 tris as shipped — decimate to ~10k for background use; photoreal
+  - Use: Zero-animation-cost static bystander; Mei Posed 001 (walking pose, 100k tris, same account) is the female counterpart
+- **[Fabienne & Percy 001 - Mother and Child (Renderpeople official)](https://sketchfab.com/3d-models/fabienne-percy-001-mother-and-child-8c9bfd4fb8a444b3a42a4fc31935a2fb)** — Sketchfab (Renderpeople official account) · **CC-BY 4.0 (verified via Sketchfab API account listing; credit 'Renderpeople')** · model
+  - Format: glTF (Sketchfab auto-convert) + source FBX
+  - Quality: Static posed photoscan pair, 199,850 tris — decimate hard (to ~15k combined) for background
+  - Use: Adds rare child/family variety to park and beach scenes; the only free photoreal child asset found
+- **[Lowpoly People + Waldo (282 remeshed body scans)](https://sketchfab.com/3d-models/lowpoly-people-waldo-9ec7a14729aa490fa712e51c217db0f5)** — Sketchfab (Loic Norgeot) · **CC-BY 4.0 (verified via Sketchfab API; credit 'Loic Norgeot')** · model
+  - Format: glTF (Sketchfab auto-convert) + source
+  - Quality: 282 distinct people, 140,943 tris TOTAL (~500 tris each), scan-derived silhouettes with baked color, foot-level origins
+  - Use: The crowd goldmine — InstancedMesh/BatchedMesh beach crowds, race spectators, distant boardwalk fillers at near-zero GPU cost
+- **[Human 3D model scanned with iPhone X (in3D)](https://sketchfab.com/3d-models/human-3d-model-scanned-with-iphone-x-73e467dfc8a04914bb314a9410077858)** — Sketchfab (in3D_io) · **CC-BY 4.0 (verified via Sketchfab API; credit 'in3D')** · model
+  - Format: glTF (Sketchfab auto-convert) + source
+  - Quality: Casual-clothed real-person scan, 37,210 tris, auto-rigged with 1 animation, phone-scan texture quality (good at 5m+ distance)
+  - Use: Casually dressed pedestrian (the RP freebies are all business attire); in3D_io account has further scan variants
+- **[Full Body Scan - Clean Pose (hoodie/jeans/cap man)](https://sketchfab.com/3d-models/full-body-scan-clean-pose-ae9559912f6240a8a87057911b69edd0)** — Sketchfab (OverseerThuror) · **CC-BY 4.0 (verified via Sketchfab API, slug 'by'; credit 'OverseerThuror')** · model
+  - Format: glTF (Sketchfab auto-convert) + source
+  - Quality: Cleaned photogrammetry, 153,880 tris (decimate to ~8k), single material/one texture, streetwear look
+  - Use: Static casual bystander for urban map corners; author also has a 'Seahawks Football Fan' scan (528k tris) for a stadium-adjacent scene
+- **[Mixamo (characters + animation library + auto-rigger)](https://www.mixamo.com/)** — Adobe Mixamo · **Adobe free license: royalty-free unlimited commercial use incl. games, no attribution; may NOT be redistributed/sold as standalone asset packs (verified via Adobe staff answer at community.adobe.com/t5/mixamo-discussions/the-license-to-use-mixamo/m-p/13228937; helpx FAQ page timed out on fetch and mixamo.com is a JS app — medium-high confidence, terms are Adobe-official)** · tool
+  - Format: FBX (convert to glTF via Blender or FBX2glTF)
+  - Quality: ~2,500 pro mocap animations (walk, sit, wave, jog, idle, cheer) + ~120 rigged characters of mid realism; free Adobe account required
+  - Use: Primary animation source — upload Eric/Carla for auto-rig + apply idles/walks; also the fastest route to a posed pilot avatar (character + 'gaming idle' clip)
+- **[CMU Motion Capture Database (cgspeed BVH conversion, 2,548 clips)](https://sites.google.com/a/cgspeed.com/cgspeed/motion-capture/the-motionbuilder-friendly-bvh-conversion-release-of-cmus-motion-capture-database)** — cgspeed / CMU Graphics Lab · **Free for any purpose, worldwide ('The files are free to use worldwide for any purpose' — CMU's canonical statement permits commercial use; may not be resold as data)** · animation
+  - Format: BVH (retarget in Blender, export glTF)
+  - Quality: 2,548 real human mocap sequences — walking, running, sitting, sports, idling; raw capture, needs cleanup/loop trimming
+  - Use: Deep bench of natural ambient motion (loitering, looking around, jogging) beyond Mixamo's set; retarget onto the Renderpeople rigged pair
+- **[Rokoko 263 free mocap assets](https://www.rokoko.com/resources/download-263-rokoko-motion-capture-assets)** — Rokoko · **Rokoko free-asset license: 'use them in any animation, VFX, game... including for commercial use' (page-verified; exact EULA ships with the Google Drive download — email signup required)** · animation
+  - Format: FBX at 30fps, pre-exported for Mixamo / UE / HumanIK skeletons
+  - Quality: 263 clean studio mocap clips incl. everyday idles, walks, sports; Mixamo-skeleton export retargets directly onto Mixamo-rigged characters
+  - Use: Higher-fidelity idle/everyday loops for near-camera NPCs (spectators at the pilot spawn point)
+- **[MakeHuman / MPFB 2 (CC0 character generator)](https://static.makehumancommunity.org/mpfb/faq/use_in_closed_source.html)** — MakeHuman Community · **Exported characters CC0 ('All core assets... are shared under CC0'; GPL applies only to the software, verified on FAQ); third-party clothing assets may differ — check each** · tool
+  - Format: Exports OBJ/FBX/glTF from Blender via MPFB
+  - Quality: Parametric realistic humans, poly count you choose, incl. swimwear/casual body types impossible to find as free scans
+  - Use: Fabricate the gaps: beachgoers in swimwear, sunbathers, and a custom FPV pilot avatar — all CC0, no attribution burden
+- **[Quaternius Ultimate Modular Men Pack (stylized fallback)](https://quaternius.com/packs/ultimatemodularcharacters.html)** — Quaternius · **CC0 (verified on page)** · model
+  - Format: glTF, FBX, OBJ, Blend
+  - Quality: 11 modular rigged characters x 24 animations, low-poly stylized — does NOT meet the photoreal bar
+  - Use: Emergency-only fallback if photoreal crowd perf is untenable on low-end devices; listed because it is the only CC0 rigged+animated character set found
+
+### Not found free: we will author these ourselves
+- **Photoreal rigged humans under true CC0** — None found anywhere (Poly Haven has no humans; ambientCG none). Best available is CC-BY 4.0 (Renderpeople Sketchfab freebies) — acceptable, but every shipped person needs a credits entry.
+- **FPV pilot avatar (person holding RC transmitter, goggles on head)** — Sketchfab search found only drones, no pilot. Build ourselves: MakeHuman/Mixamo character + Mixamo idle pose + a simple modeled transmitter prop.
+- **Beach-specific people (swimwear, sunbathers lying down, kids playing)** — All free photoreal scans found wear business/street clothes. Generate in MakeHuman (CC0) or repose rigged CC-BY models with CMU 'lying/sitting' clips.
+- **CC0 billboard/cutout crowd texture library** — Skalgubbar verified and REJECTED (license limits use to architecture visualization; games not permitted). MrCutout/CutoutPeople forbid redistribution — fails the browser-ships-the-file test. Instead render our own impostor sprite sheets from the CC-BY 3D people (derivative use is fine under CC-BY with credit).
+- **Renderpeople.com's 40+ free web-store models (posed/rigged/animated variety)** — REJECTED for this project despite 'free commercial use': their T&C section 4.3(b) forbids making 3D data extractable by third parties, and a GitHub Pages app serves raw GLBs. Only their 9 Sketchfab CC-BY uploads are safe for us.
+- **Large animated-crowd variety (10+ distinct clothed photoreal walkers)** — Only ~3 free animated photoreal people exist (Nathan/Sophia/Manuel). Stretch variety via albedo hue-shifts, texture swaps, and retargeting different clips onto Eric/Carla.
+
+### Integration notes
+Retarget everything onto the two Renderpeople rigged bodies (Eric/Carla) rather than shipping many unique skinned meshes: run Mixamo/Rokoko/CMU clips through Blender or three.js SkeletonUtils.retargetClip, and ship one shared clip library. For crowds, use the 282-person Lowpoly People set in an InstancedMesh/BatchedMesh (static poses are fine beyond ~30m), and bake 2-4 frame impostor sprite sheets rendered from the CC-BY models for the farthest ring — this replaces the missing cutout-people library license-cleanly. Compress aggressively with gltf-transform (meshopt + KTX2): downscale the 8K Renderpeople textures to 1K-2K (they compress to ~2-4MB each), decimate the 100-200k-tri posed scans to under 10k, and budget roughly 25-35MB for the entire character layer. Ship a CREDITS.md (and in-app credits screen) listing Renderpeople, Loic Norgeot, in3D, and OverseerThuror for the CC-BY assets; Mixamo/CMU/Rokoko/MakeHuman need no attribution.
 
 ## Sky & Lighting (HDRIs)
 
-- **[Spiaggia di Mondello (beach day HDRI)](https://polyhaven.com/a/spiaggia_di_mondello)** — Poly Haven · **CC0** · hdri
+- **[Spiaggia di Mondello](https://polyhaven.com/a/spiaggia_di_mondello)** — Poly Haven · **CC0** · hdri
   - Format: EXR/HDR equirect (1K-20K) + 8K tonemapped JPG
-  - Quality: Photoreal bright midday Sicilian beach, hard sun, deep blue sky, 25 EVs unclipped, up to 20K
-  - Use: Tropical beach map: skybox + IBL for sunny daytime flying
-- **[Kloofendal 48d Partly Cloudy (Pure Sky)](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky)** — Poly Haven · **CC0** · hdri
-  - Format: EXR/HDR equirect (4K/8K/16K) + 8K tonemapped JPG
-  - Quality: Photoreal midday partly-cloudy pure sky, crisp clouds, 21 EVs unclipped sun for sharp shadows
-  - Use: Default clear-day sky for park/field/mountain maps (sky-only, no ground baked in)
-- **[Venice Sunset (golden hour HDRI)](https://polyhaven.com/a/venice_sunset)** — Poly Haven · **CC0** · hdri
+  - Quality: Verified free (not vaulted); bright afternoon sun over sandy Sicilian beach, deep blue sky, high contrast; 4K EXR ~19.5MB
+  - Use: Primary sky+environment for the tropical beach day map (sun angle ~afternoon, crisp shadows)
+- **[Qwantani (Pure Sky)](https://polyhaven.com/a/qwantani_puresky)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (1K-16K)
+  - Quality: Clean clear-day pure sky (no ground), bright sun, deep blue gradient; ideal skydome since our maps supply their own terrain
+  - Use: Generic clear-day sky for any map where we render our own ground/ocean; best IBL source for midday
+- **[Venice Sunset](https://polyhaven.com/a/venice_sunset)** — Poly Haven · **CC0** · hdri
   - Format: EXR/HDR equirect (1K-16K) + 8K tonemapped JPG
-  - Quality: Photoreal golden-hour horizon, warm low sun, unclipped 19 EVs, 16K
-  - Use: Golden hour variant on any map: warm skybox + low-angle sun IBL
-- **[The Sky Is On Fire (dusk HDRI)](https://polyhaven.com/a/the_sky_is_on_fire)** — Poly Haven · **CC0** · hdri
-  - Format: EXR equirect (4K/8K/16K) + 8K tonemapped JPG + backplates
-  - Quality: Photoreal fiery twilight over ocean, orange-magenta gradient, 16K
-  - Use: Dusk/twilight scenario, especially the beach and coastal maps
-- **[Qwantani Night (Pure Sky) — clear night with stars](https://polyhaven.com/a/qwantani_night_puresky)** — Poly Haven · **CC0** · hdri
-  - Format: EXR/HDR equirect (4K/8K/16K/24K) + 8K tonemapped JPG
-  - Quality: Photoreal clear night pure sky with visible Milky Way and stars, low contrast, up to 24K
-  - Use: Night-flying scenario base sky + dim ambient IBL (layer NASA star map + moon on top)
-- **[Overcast Soil (Pure Sky)](https://polyhaven.com/a/overcast_soil_puresky)** — Poly Haven · **CC0** · hdri
+  - Quality: Photoreal golden-hour: warm golden horizon, calm water reflections, medium contrast; 4K EXR ~18.5MB
+  - Use: Golden hour variant for beach/coastal maps; low warm sun for long-shadow FPV cruising
+- **[The Sky Is On Fire](https://polyhaven.com/a/the_sky_is_on_fire)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (1K-16K) + tonemapped JPG
+  - Quality: Fiery dusk/twilight seaside sky, partly cloudy, orange-magenta tones, unclipped 16K
+  - Use: Dusk lighting preset; dramatic sunset freestyle sessions
+- **[Rogland Clear Night](https://polyhaven.com/a/rogland_clear_night)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (1K-24K) + 8K tonemapped JPG
+  - Quality: Unclipped clear desert night with Milky Way and stars, soft natural starlight, minimal light pollution
+  - Use: Clear-night map sky; pairs with LED-prop night flying and moon quad
+- **[Satara Night](https://polyhaven.com/a/satara_night)** — Poly Haven · **CC0** · hdri
   - Format: EXR/HDR equirect (1K-16K) + 8K tonemapped JPG
-  - Quality: Photoreal soft flat overcast, diffuse shadowless light, warm horizon glow, 16K
-  - Use: Overcast weather preset on all maps; flattest lighting, cheapest to match with fog
-- **[Approaching Storm (stormy HDRI)](https://polyhaven.com/a/approaching_storm)** — Poly Haven · **CC0** · hdri
-  - Format: EXR/HDR equirect (1K-16K) + 8K tonemapped JPG
-  - Quality: Photoreal pre-storm mood, veiled sun, brooding low-contrast sky, 13 EVs, 16K
-  - Use: Storm scenario base sky; darken via exposure + add lightning sprites and rain
-- **[Clouds with Transparency (billboard cloud atlas)](https://opengameart.org/content/clouds-with-transparency)** — OpenGameArt · **CC0 (explicit public-domain statement by author)** · texture
-  - Format: 10x 2048x2048 PNG with alpha (+ JPG variants), 28.5 MB zip
-  - Quality: Semi-realistic Blender-rendered volumetric-look cloud puffs; good at distance as billboards
-  - Use: Instanced billboard cloud layer between drone and skybox for parallax depth on all day maps
-- **[Lens-Flares and Particles (flare element pack)](https://opengameart.org/content/lens-flares-and-particles)** — OpenGameArt · **Dual CC0 / CC-BY 3.0 — choose CC0** · texture
-  - Format: Grayscale/alpha PNG elements in 3 zips (~1.2 MB total)
-  - Quality: Clean greyscale coronas, iris ghosts, hexagons, streaks; tintable, resolution modest but flares are soft so it holds up
-  - Use: Custom textures for three.js Lensflare addon on the sun in every daytime map
-- **[Lens Dirt Texture Pack](https://opengameart.org/content/lens-dirt-texture-pack-1png)** — OpenGameArt · **CC0** · texture
-  - Format: PNG, 3870x2177, 9 dirt patterns
-  - Quality: High-res photographic-style lens dirt/bokeh smudge overlays for post-processing
-  - Use: FPV camera lens-dirt overlay that lights up when facing the sun (very FPV-authentic)
-- **[Lightning Sprite Texture (8-frame sheet)](https://opengameart.org/content/lightning-sprite-texture)** — OpenGameArt · **CC0** · texture
-  - Format: PNG sprite sheet, 8x1 frames, 337 KB
-  - Quality: Stylized procedural bolts — usable additively at distance, not photoreal close-up
-  - Use: Distant animated lightning flashes behind clouds in the storm scenario
-- **[Lightning in Dark Storm Sky (photo, Anton Kudryashov)](https://www.pexels.com/photo/lightning-in-dark-storm-sky-9837044/)** — Pexels · **Pexels License (free commercial use, modification allowed, no attribution required)** · texture
-  - Format: Full-resolution JPG
-  - Quality: Photoreal branched bolt against near-black sky — ideal for luminance-keyed extraction
-  - Use: Extract bolt via luminance threshold into an additive billboard for hero lightning strikes
-- **[NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720)** — NASA SVS · **Public domain (NASA media guidelines; credit 'NASA's Scientific Visualization Studio' requested)** · texture
-  - Format: Color: TIFF/JPG 2K-16K (+EXR); displacement: TIFF up to 23040x11520
-  - Quality: LRO-derived, scientifically accurate photoreal lunar surface; 2K JPG is only 447 KB
-  - Use: Textured moon billboard/sphere in the night scenario (2K color map is plenty at sky distance)
-- **[Deep Star Maps 2020 (all-sky star map)](https://svs.gsfc.nasa.gov/4851)** — NASA SVS · **Public domain (NASA media guidelines; credit 'NASA/GSFC SVS; Gaia DR2: ESA/Gaia/DPAC')** · hdri
-  - Format: Equirect (plate carree) EXR up to 65536x32768; smaller TIFF/JPG versions
-  - Quality: 1.7 billion real stars from Gaia/Hipparcos catalogs; correct Milky Way; downscale to 4K-8K
-  - Use: Additive celestial sphere for the night map so stars stay pin-sharp above the HDRI's ambient
+  - Quality: Starry night with Milky Way plus warm village lamps and silhouetted trees; high contrast, atmospheric
+  - Use: Alternate inhabited-night sky (campground/village night map) with warm practical lights baked in
+- **[Kloofendal Overcast (Pure Sky)](https://polyhaven.com/a/kloofendal_overcast_puresky)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (1K-24K) + 8K tonemapped JPG
+  - Quality: Soft low-contrast overcast pure sky (ground removed), cool diffuse light with subtle sun glow
+  - Use: Overcast weather preset for any map; flat diffuse IBL, no hard sun shadow
+- **[Approaching Storm](https://polyhaven.com/a/approaching_storm)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (4K/8K/16K)
+  - Quality: Pre-storm mood: veiled sun, broad heavy cloud deck over grassland, low contrast; 4K EXR ~21MB
+  - Use: Brighter early-storm variant; base lighting before lightning kicks in
+- **[Quarry Cloudy](https://polyhaven.com/a/quarry_cloudy)** — Poly Haven · **CC0** · hdri
+  - Format: EXR/HDR equirect (4K-20K)
+  - Quality: Gloomy dark looming-storm sky, dramatic partly-cloudy, tagged storm/gloomy; verified free download
+  - Use: Dark stormy map sky; grade slightly darker + add lightning billboards for full thunderstorm
+- **[NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720)** — NASA SVS · **Public domain (NASA); credit 'NASA's Scientific Visualization Studio' requested** · texture
+  - Format: TIFF/EXR cylindrical maps: color 2K-16K, displacement 4-64 px/deg
+  - Quality: Photoreal LRO-derived moon color + elevation maps; 2K color is plenty for a sky moon
+  - Use: Textured moon sphere/quad in night skies (2K color + optional displacement-baked normal)
+- **[Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851)** — NASA SVS · **Public domain (NASA); credit 'NASA/GSFC SVS; Gaia DR2: ESA/Gaia/DPAC'** · texture
+  - Format: Equirect (plate carree) OpenEXR half-float + TIFF, 4K-64K
+  - Quality: 1.7 billion real stars from Gaia/Hipparcos/Tycho; the definitive photoreal celestial sphere, HDR so bright stars survive tonemapping
+  - Use: Star dome for clear-night map (4K EXR downscaled, additive on inner skysphere, rotated for time-of-night)
+- **[Solar System Scope textures (moon + Milky Way)](https://www.solarsystemscope.com/textures/)** — Solar System Scope · **CC-BY 4.0 (attribution: 'Textures: Solar System Scope, CC BY 4.0')** · texture
+  - Format: Equirect JPG/PNG, 2K and 8K (moon, stars, stars+Milky Way)
+  - Quality: Ready-to-use LDR 8K Milky Way panorama and 8K moon color; easier drop-in than the NASA EXRs
+  - Use: Lightweight LDR alternative star/moon maps if we skip HDR star rendering
+- **[Clouds with Transparency](https://opengameart.org/content/clouds-with-transparency)** — OpenGameArt · **CC0** · texture
+  - Format: 10x 2K PNG with alpha (+ JPG mattes), 28.5MB zip
+  - Quality: Naturalistic Blender-generated volumetric-look cloud cutouts, clean alpha edges
+  - Use: Instanced billboard clouds layered above beach/valley maps; distant cumulus cards
+- **[Realistic transparent clouds (41)](https://olegvegan.itch.io/realistic-transparent-clouds)** — itch.io (olegvegan) · **CC0 (stated: 'cc0, free to use for any purpose')** · texture
+  - Format: 41x PNG with transparency, 20MB zip
+  - Quality: Photographic real-cloud cutouts (no AI), good variety for atlasing; resolution unstated per image (verify on download)
+  - Use: Photoreal cloud billboard atlas — pack best 8-12 into one 2K atlas for instanced sky cards
+- **[Lens-Flares and Particles (hackcraft.de)](https://opengameart.org/content/lens-flares-and-particles)** — OpenGameArt · **Dual CC0 / CC-BY 3.0 (use under CC0)** · texture
+  - Format: Greyscale/alpha PNG elements (corona, iris, hexagon, aura, nova...), zips 245KB-614KB
+  - Quality: Clean flare building blocks; tint at runtime, composes into convincing photographic flares
+  - Use: Feed THREE.Lensflare addon: sun corona + hexagon ghost chain for beach/golden-hour maps (three.js's own bundled lensflare PNGs are CC-BY-NC-SA — do NOT ship those)
+- **[Lens dirt texture Pack (9 textures)](https://opengameart.org/content/lens-dirt-texture-pack-1png)** — OpenGameArt · **CC0** · texture
+  - Format: 9x PNG, 3870x2177 (~8.5MB each; one per page, packs 1-9 linked from this page)
+  - Quality: High-res photographic lens dirt/bokeh smudge plates for post-processing
+  - Use: FPV camera lens-dirt overlay that lights up when facing the sun (classic GoPro look); downscale to 1080p
+- **[Lightning (electrical arcs)](https://opengameart.org/content/lightning)** — OpenGameArt · **CC0** · texture
+  - Format: 8x 2048x512 PNG (4 purple, 4 blue), seamless-repeating
+  - Quality: Procedural difference-cloud arcs; convincing at distance with additive blend, not photo-real close up
+  - Use: Storm map lightning: additive billboard strikes synced with a white point-light flash and thunder SFX
+- **[Kenney Particle Pack](https://kenney.nl/assets/particle-pack)** — Kenney · **CC0** · texture
+  - Format: 80x 512x512 PNG sprites (smoke, flare, spark, light, dirt)
+  - Quality: Soft generic particle sprites — stylized but reads realistic under additive/alpha blending at small sizes
+  - Use: Utility sprites: prop-wash dust puffs, crash sparks, small sun-glint flares, cloud filler particles
 
 ### Not found free: we will author these ourselves
-- **Truly violent dark thunderstorm HDRI (towering black cumulonimbus, rain shafts)** — Poly Haven's free storm options are 'approaching storm' mood only; nothing free/CC0 with genuinely menacing skies found. Workaround: darken Approaching Storm via exposure/tint + fog + lightning sprites, or bake our own sky in Blender (Nishita sky + volumetrics) and export as EXR.
-- **Tropical beach sunny HDRIs (Blue Lagoon Sunny, Ingwe Beach Sunny, Secluded Beach)** — Exist on Poly Haven at 24K, CC0, but currently patron-vault-locked (early access). They unlock to free over time — recheck in a few months; Spiaggia di Mondello covers the slot meanwhile.
-- **Photoreal high-res cloud billboard atlas / flipbook (raymarched or photo-scanned look)** — OGA pack is semi-realistic only. Free VDB clouds exist but are unusable in a lightweight three.js web build. Plan: render our own billboard atlas from Blender volumetrics (a one-evening bake) for CC0-clean photoreal clouds.
-- **Complete ready-made sun lens-flare ghost-chain textures** — The official three.js examples/textures/lensflare set is CC-BY-NC-SA 3.0 (NonCommercial) — REJECTED, do not ship it. We must compose our own flare chain from the CC0 OGA greyscale elements (tint + arrange in the Lensflare addon).
-- **Animated photoreal lightning flipbook (frame sequence of a strike)** — Only stylized CC0 sprite sheets found. Workaround: build 3-4 still bolt masks from Pexels lightning photos and flash/crossfade them in shader with a point-light pulse.
+- **True thunderstorm HDRI (near-black cumulonimbus, rain shafts)** — Poly Haven's best free options are pre-storm (Approaching Storm) or gloomy (Quarry Cloudy). No CC0 full-blown thunderstorm HDRI found at acceptable quality. Plan: darken/grade Quarry Cloudy in-engine (exposure/tint) and layer dark cloud billboards.
+- **Tropical beach day HDRIs at Poly Haven's newest quality tier** — The flagship beach HDRIs (Blue Lagoon Sunny, Ingwe Beach Sunny) are currently vaulted/patron-only — verified locked. Spiaggia di Mondello (CC0, free) is the best available substitute and is excellent; revisit the vault later as Poly Haven unlocks vaults over time.
+- **Color anamorphic lens-flare ghost/streak sprite sheet (photographic)** — three.js's stock lensflare textures are CC-BY-NC-SA (commercial-unfriendly, cannot ship). CC0 options are greyscale elements only — we tint/compose our own flare chain, or bake one in Blender ourselves.
+- **Photographic lightning bolt strike textures (high-res, licensed CC0)** — Only procedural arc textures found under CC0. For hero strikes, generate bolts procedurally (jittered polyline + emissive shader + bloom) which also animates better than static photos.
+- **Relightable cloud impostor atlas (billboards with baked normals/scattering)** — Only flat RGBA cutouts exist for free. For sunset maps the flat cards won't take rim light; either tint per-time-of-day in the shader or bake our own octahedral impostors from a Blender volumetric later.
+- **3D noise volume data for raymarched volumetric clouds** — Not found as a downloadable free asset; standard practice is generating Perlin-Worley 3D textures procedurally at load (cheap, ~few MB), so no asset needed if we go volumetric.
 
 ### Integration notes
-Never ship 16K sources: use a 2K .hdr per scenario for IBL (run through PMREMGenerator once, share the resulting environment texture across all materials) and the 4K tonemapped JPG on a background sphere or scene.background — that keeps each sky under ~10 MB versus 100+ MB for raw EXRs. For night, layer three spheres: Qwantani puresky for ambient IBL, the NASA star map (downscaled to 4K, additive, slowly rotating) for crisp stars, and a moon billboard using the 2K CGI Moon Kit color map with an emissive material. Pack the 10 cloud PNGs into one 4K atlas and render clouds as instanced billboards (InstancedMesh + depthWrite:false, sorted back-to-front, camera-facing in vertex shader) so hundreds of clouds cost one draw call; fade them near the far plane to hide the skybox seam. Drive the sun flare with three.js's Lensflare addon fed the CC0 OGA elements (not the NC-licensed three.js example textures), gate it with an occlusion raycast, and modulate the CC0 lens-dirt overlay by dot(cameraForward, sunDir) for the classic FPV sun-smear; lightning is an additive bolt billboard plus a 2-frame PointLight intensity spike and a delayed thunder sample.
+Ship each map's sky as a 2K .hdr (1-6MB) loaded via RGBELoader, run it through PMREMGenerator once, and set it as both scene.background and scene.environment so PBR materials get matching IBL; place a single DirectionalLight manually aligned to the HDRI's sun for real shadows (Poly Haven pages list sun position/EV to match intensity). Prefer the "Pure Sky" variants for maps with our own terrain so the HDRI horizon doesn't fight the geometry, and lazy-load only the active map's HDRI to stay far under budget (all six weather presets at 2K ≈ 15-25MB total). For night, layer an additive inner skysphere using a 4K PNG downscale of the NASA/SolarSystemScope star map plus a small moon sprite using the 2K CGI Moon Kit color map — keep stars LDR and fake HDR pop with bloom on the brightest pixels. Clouds and lightning should be instanced camera-facing quads (InstancedMesh + depthWrite:false, soft-particle depth fade) drawn from a single packed 2K atlas, and the lens flare should use the three.js Lensflare addon but with the CC0 hackcraft/OpenGameArt sprites — never the repo's bundled CC-BY-NC-SA textures — plus a screen-space lens-dirt overlay whose opacity is driven by sun-to-camera dot product.
 
 ## Props & World Clutter
 
-- **[Lifeguard Tower (exiS7-Gs)](https://sketchfab.com/3d-models/lifeguard-tower-8707a73922004d5f8b67088b91a7a393)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API; credit exiS7-Gs)** · model
-  - Format: glTF (Sketchfab auto-convert) + source
-  - Quality: 22,286 faces, 4K PBR textures (downscale to 2K), realistic weathered wood
-  - Use: Beach map hero landmark; natural FPV orbit/dive target on the sand line
-- **[Deck Chair & Parasol Low Poly FREE (Lady Lion Studios)](https://sketchfab.com/models/b396d4de963e49f68692d53d236bfe57)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab search API)** · model
-  - Format: FBX + glTF auto-convert
-  - Quality: 4,290 faces, textured realistic wood lounger + parasol, ideal instancing budget
-  - Use: Instanced rows of loungers+umbrellas along the beach map shoreline
-- **[Patio Set - table, 2 chairs, umbrella (zhixson)](https://sketchfab.com/models/37c3f6ee451f495ba183427a38a804b4)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 9,620 faces, clean stylized-realistic outdoor furniture
-  - Use: Boardwalk cafe seating clusters and rooftop patio clutter
-- **[Game Ready | Free Surfboards (Saritasa)](https://sketchfab.com/models/e79d7347ea4e4d6fbb649200d4911592)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API; credit Saritasa/Anna Denisova)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 3,220 tris, 2K PBR PNG set, game-ready realism
-  - Use: Leaning against lifeguard tower, stuck in sand, marina rack clutter
-- **[Cooler Box (Guy in a Poncho)](https://sketchfab.com/models/2d02192c6be8434f9bb74de4e8a67ca4)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 2,778 faces, full 1K PBR set (AO/base/metal/normal/rough), simple but coolers are simple
-  - Use: Scattered beach/pier picnic clutter next to loungers and towels
-- **[Ferris Wheel (David Aganov)](https://sketchfab.com/models/675ab80b477b40f280b7311f81fee730)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 34,522 faces, 11 textures, realistic fairground wheel
-  - Use: Pier map centerpiece; rotate slowly and use gondola gaps as FPV gates
-- **[Vintage Lamp Post (dasmodal)](https://sketchfab.com/models/56f6dcb3865144cd84e049ca6a736fae)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 8,170 faces, PBR, game-engine-ready classic lamp
-  - Use: Instanced along boardwalk/pier edge; emissive globe at dusk
-- **[Harbor Navigation Buoy (MisterH)](https://sketchfab.com/models/62f7c151f4c048508b8cf5526f8588f9)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 15,486 faces, 9 textures, realistic weathered navigation buoy
-  - Use: Marina map water markers; bobbing slalom course for low passes
-- **[Overhead Water Tank (Nodeaxis Interactive)](https://sketchfab.com/models/1745c92e50b441c6bf6588e11cdba538)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 508 faces with 4K PBR textures (downscale to 1K) - extreme value
-  - Use: Rooftop map clutter; scatter several per building at near-zero cost
-- **[Rusty House Satellite Dish (TomasKiniulis)](https://sketchfab.com/models/929f056abe02416da19d7b1aa805d235)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 3,176 faces, weathered PBR, apartment-style dish
-  - Use: Rooftop clutter on parapets and walls, instanced with random rotation
-- **[Industrial Asset Pack (vmatthew) - barrels/pallet/crate/gas cylinders](https://sketchfab.com/models/0edba07309ef4ff98e5bb4d0b858952c)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 15 props / 22,658 faces total, 2K Substance PBR, realistic wear
-  - Use: Warehouse and marina dock clutter: oil drums, pallet, wooden box, cylinders
-- **[Free CC0 Industrial 3D Models (IndustrialPack)](https://3dmodelscc0.itch.io/free-cc0-industrial-3d-models)** — itch.io (3DModelsCC0) · **CC0 (verified on page)** · model
-  - Format: RAR containing FBX/OBJ + textures (64 MB, convert to glTF)
-  - Quality: 12 realistic props: cable drum, pallet truck, trolley, work lights, barrels, electrical boxes, gas cans
-  - Use: Warehouse interior + construction site filler; work lights are great night-map props
-- **[Wooden Pallets (YadroGames)](https://sketchfab.com/models/dba5c00928cd400796d9f6fffdd724b3)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab search API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 384 faces, textured, perfect instancing budget
-  - Use: InstancedMesh pallet stacks in warehouse, loading dock, and pier service areas
-- **[Warehouse Shelving Unit (jimbogies)](https://sketchfab.com/models/788cc9b477684951934ff8b1ebb978e1)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab search API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 424 faces, metal shelving, extremely cheap; pair with Rusty Metal Warehouse Shelving (ccc250d7) for hero shots
-  - Use: Long pallet-rack aisles inside warehouse map - the classic FPV corridor
-- **[Forklift Truck (louis-muir)](https://sketchfab.com/models/060f3f8bc7de4e6ca2f348d414702e9d)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 9,645 faces, 11 PBR textures, realistic
-  - Use: Warehouse floor hero prop; park mid-aisle as an obstacle
-- **[Realistic Metal Scaffolding (Jungle Jim)](https://sketchfab.com/models/c1f03864ec72449c8968f0630c287c8d)** — Sketchfab · **CC-BY 4.0 (verified via Sketchfab API)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 28,028 faces, metal + wooden planks, modular-looking
-  - Use: Construction site map: wrap building faces, fly through the frame gaps
-- **[Tower Crane (Chamod1999)](https://sketchfab.com/models/49851dc7a51b43bda6aea06856c26a85)** — Sketchfab · **CC-BY 4.0 (from Sketchfab search API; model page fetch rate-limited - re-verify at download, confidence medium-high)** · model
-  - Format: glTF (Sketchfab auto-convert)
-  - Quality: 32,308 faces, game-ready detail
-  - Use: Construction/skyline landmark; the jib is a natural high-altitude FPV line
-- **[Poly Haven scanned props (Barrel_01/02/03, cardboard_box_01, Shelf_01, CoffeeCart_01)](https://polyhaven.com/a/Barrel_01)** — Poly Haven · **CC0 (site-wide, confirmed via polyhaven.com/license and API listing)** · model
-  - Format: glTF/GLB + Blend, 1K-4K PBR selectable at download
-  - Quality: Photoscanned-grade realism, game-ready topology; the best free realism available
-  - Use: Warehouse/dock barrels and boxes everywhere; CoffeeCart_01 doubles as a boardwalk vendor cart
+- **[Ocean Buoy](https://polyhaven.com/a/ocean_buoy)** — Poly Haven · **CC0** · model
+  - Format: glTF/GLB (also FBX, blend)
+  - Quality: 12,240 polys, up to 8K PBR textures (downscale to 1-2K), photoreal weathered red buoy with cage light and rust
+  - Use: Marina/harbor water — scatter 2-3 instances as floating race markers; sibling asset lateral_sea_marker (red channel marker) on same site
+- **[Coffee Cart 01](https://polyhaven.com/a/CoffeeCart_01)** — Poly Haven · **CC0** · model
+  - Format: glTF/GLB (also FBX, blend)
+  - Quality: 27,659 polys, 4K PBR, photoreal industrial metal cart with brewer and caster wheels
+  - Use: Boardwalk/pier food vendor spot; doubles as street-corner kiosk in urban map
+- **[Plastic Monobloc Chair 01](https://polyhaven.com/a/plastic_monobloc_chair_01)** — Poly Haven · **CC0** · model
+  - Format: glTF/GLB (also FBX, blend)
+  - Quality: 3,356 polys, 4K PBR, photoreal weathered white plastic chair with scuffs and dirt
+  - Use: Instanced beach/cafe/rooftop scatter clutter — cheap enough to place dozens
+- **[Wooden Crate 02 (+ Poly Haven props family: wooden_barrels_01, Barrel_01/02, old_military_crate, hand_truck, old_tyre, metal_jerrycan, WetFloorSign_01)](https://polyhaven.com/a/wooden_crate_02)** — Poly Haven · **CC0** · model
+  - Format: glTF/GLB (also FBX, blend)
+  - Quality: 5,176 polys, up to 8K PBR (downscale), photoreal worn planks/brass corners; siblings similar game-ready weights
+  - Use: Warehouse interiors, dock stacks, alley clutter — instance in stacks with random yaw
+- **[Street Lamp 01 / Street Lamp 02](https://polyhaven.com/a/street_lamp_01)** — Poly Haven · **CC0** · model
+  - Format: glTF/GLB (also FBX, blend)
+  - Quality: 31K tris (01, 3.9m tall) / 20K tris (02, 1.7m) — photoreal but heavy; decimate or LOD for rows
+  - Use: Pier/boardwalk and street lamp rows; emissive material for night flying
+- **[Lifeguard Tower](https://sketchfab.com/3d-models/lifeguard-tower-2f147eeb428847f7b06244026db6c07e)** — Sketchfab · **CC-BY 4.0 (credit: Sololopenko)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 6K tris, game-ready, tileable-texture realistic style
+  - Use: Hero landmark on beach map — classic FPV gap/orbit subject
+- **[Game Ready | Free Surfboards](https://sketchfab.com/3d-models/game-ready-free-surfboards-e79d7347ea4e4d6fbb649200d4911592)** — Sketchfab · **CC-BY 4.0 (credit: Saritasa / artist Anna Denisova)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 3,220 tris per board, 2048px PNG PBR textures, realistic
+  - Use: Lean against lifeguard tower, stick upright in sand, rooftop of surf shack
+- **[Deck Chair & Parasol FBX Low Poly FREE](https://sketchfab.com/3d-models/deck-chair-parasol-fbx-low-poly-free-b396d4de963e49f68692d53d236bfe57)** — Sketchfab · **CC-BY 4.0 (credit: Lady Lion Studios)** · model
+  - Format: FBX + Sketchfab auto glTF/GLB
+  - Quality: 4,290 faces, 4K PBR maps (normal/diffuse/roughness) sourced from CC0 textures — downscale to 1K
+  - Use: Beach lounge rows — instance chair+umbrella pairs along the sand
+- **[Beach table (table + chair + umbrella set)](https://sketchfab.com/3d-models/beach-table-e559392994e04527b3f5ee35a8c3c418)** — Sketchfab · **CC-BY 4.0 (credit: Jayson Stauffer)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 3,376 faces, 10 textures, realistic beachfront-restaurant set
+  - Use: Boardwalk cafe seating clusters and pier-side restaurant patio
+- **[Cooler Box](https://sketchfab.com/3d-models/cooler-box-2d02192c6be8434f9bb74de4e8a67ca4)** — Sketchfab · **CC-BY 4.0 (credit: Guy in a Poncho)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 2,778 faces, full 1024px PBR set (AO/basecolor/metallic/normal/roughness), realistic plastic cooler
+  - Use: Beach blankets, boat decks, tailgate clutter near marina
+- **[Rooftop Ventilations, Air Conditioning Units](https://sketchfab.com/3d-models/rooftop-ventilations-air-conditioning-units-6dfa32e7ec614362a29fd950b87212ca)** — Sketchfab · **CC-BY 4.0 (credit: Oskar3D_)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 3,480 faces total, modular AC/vent units, game-ready simple UVs
+  - Use: Rooftop clutter across the whole city map — instance heavily, key for FPV rooftop lines
+- **[CC0 - Antenna](https://sketchfab.com/3d-models/cc0-antenna-6bc0ff4565db46ab8f7d229a5d272c12)** — Sketchfab · **CC0 (declared in description; Sketchfab metadata shows CC-BY — attributing plaggy anyway is zero-cost)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 446 faces, 2048px PBR baked from high poly — ideal instanced rooftop prop
+  - Use: TV antennas on every rooftop; pairs with the AC units for skyline detail
+- **[Warehouse Assets (pack: pallets, barrels, shelves, racks, toolboxes, gas tanks)](https://sketchfab.com/3d-models/warehouse-assets-ed3f44d6395a4abcab43e6c402c2dd04)** — Sketchfab · **CC-BY 4.0 (credit: Big guy / andrej.lit)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 95K faces for the whole pack (split into individual props), Substance-textured realistic
+  - Use: Primary dressing for warehouse map interior; split pack and instance pieces
+- **[Pallet Racking](https://sketchfab.com/3d-models/pallet-racking-593e7d15f27346efa2dcc0149edb6ef2)** — Sketchfab · **CC-BY 4.0 (credit: YadroGames)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 1,296 faces, 2048px baked PBR in 4 variants, game-ready
+  - Use: Long instanced shelving aisles in warehouse — the racing corridors
+- **[Warehouse Forklift Gameready](https://sketchfab.com/3d-models/warehouse-forklift-gameready-94e21059f00c4e989c6403ada034516e)** — Sketchfab · **CC-BY 4.0 (credit: Kamran Mughal)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 7.8K tris, optimized for real-time, realistic
+  - Use: Parked in warehouse aisles and loading dock; obstacle to slalom around
+- **[Tower Crane](https://sketchfab.com/3d-models/tower-crane-49851dc7a51b43bda6aea06856c26a85)** — Sketchfab · **CC-BY 4.0 (credit: Chamod1999)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 32,308 faces, 2K Substance PBR, tagged game-ready
+  - Use: Construction-site landmark — jib is a natural FPV flight line and perch point
+- **[Modular Scaffolding Pack](https://sketchfab.com/3d-models/modular-scaffolding-pack-8a072763269f4fdc95eb283a9bc7a88f)** — Sketchfab · **CC-BY 4.0 (credit: Arsen Ismailov)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 294K faces for FULL pack — modular pieces; import only the 3-4 modules needed (each far smaller), 4K tarp/trim textures to downscale
+  - Use: Wrap one construction building facade; tarps make readable wind-gap obstacles
+- **[Ferris Wheel (WIP-1)](https://sketchfab.com/3d-models/ferris-wheel-wip-1-98e95a8d47c04d06a3c8543f09bd744a)** — Sketchfab · **CC-BY 4.0 (credit: 3DHaupt / Dennis H.)** · model
+  - Format: glTF/GLB auto-converted (Sketchfab download)
+  - Quality: 247K tris — over budget as-is; PBR textured, rigged and animated (rotating). Decimate to ~60-80K with gltf-transform simplify for use
+  - Use: Pier-end fair landmark, slowly rotating; the signature orbit subject of the beach map
 
 ### Not found free: we will author these ourselves
-- **Beach towels** — No quality free models found; trivial to make as textured planes with slight vertex-noise displacement - do ourselves.
-- **Realistic boardwalk food kiosk / snack stand** — Only a cyberpunk-styled kiosk (CC-BY, 498k faces) found. Poly Haven CoffeeCart_01 (CC0) is a partial stand-in; build a simple plank kiosk from CC0 PBR textures ourselves.
-- **Dock cleats, coiled ropes, dock boxes** — No acceptable dedicated models found. Cleats are a 5-min model; ropes = THREE.TubeGeometry along a spline with a CC0 rope texture.
-- **Rooftop HVAC / AC condenser unit (realistic)** — Best hit was AI-generated (Rodin Gen-1, 60k faces, CC-BY) - questionable quality and provenance. Model a simple finned box + fan ourselves; kitbash grilles from the CC0 industrial pack electrical boxes.
-- **Roof vents / exhaust stacks / whirlybirds** — Nothing good found; simple cylinders + CC0 galvanized-metal PBR texture will read perfectly at drone speeds.
-- **Flags and bunting** — Static meshes look wrong anyway; implement as small cloth-sim or vertex-shader-waved planes with flag textures.
-- **Additional fair rides (carousel, drop tower)** — Candidates exist only under Sketchfab 'Standard' license (assetfactory's Amusement park pack, 79k faces) - permitted in games but weaker redistribution clarity than CC; flagging rather than recommending.
+- **Beach towels** — No quality free 3D model worth shipping — author as flat subdivided quads with a CC0 fabric texture (ambientCG) and slight vertex ripple; 10 minutes of work.
+- **Dock cleats, mooring ropes, dock boxes** — Only photogrammetry bollards found (~1M faces each, CC-BY, artfletch) — unusable without heavy retopo. Model simple cleats/rope coils ourselves (<500 tris) with a CC0 rope texture.
+- **Game-optimized realistic ferris wheel** — Best free realistic option is 247K tris (listed, needs decimation); the only light ones are stylized neon low-poly (David Aganov, 34K, CC-BY) — acceptable fallback for night scenes.
+- **Residential satellite dish** — Only sci-fi-styled dishes found at game weight (CGKnuenz, CC-BY 5.5K). A simple parabolic dish is trivial to model; plaggy CC0 antenna covers most rooftop silhouette needs.
+- **Flags and flag poles (animated)** — Static flag models are trivial; do it in-engine — cylinder pole + plane with a vertex-shader wave, reusing wind direction from the sim for coherence.
+- **Full boardwalk food kiosk building** — Free kiosk models found are 230K-3M faces (fasih.lisan, Kirillwq). Stopgap: Poly Haven Coffee Cart (listed) or Stand_RS01 on Sketchfab (CC-BY, 9.3K faces, uid c5e026fa607c4a60b93140edf4d11a92); otherwise kit-bash a box + awning from CC0 textures.
+- **Fair rides beyond ferris wheel (carousel, drop tower)** — Nothing found at realistic quality + free license + game weight; suggest skipping or silhouette-only background geometry.
 
 ### Integration notes
-Almost everything here is Sketchfab CC-BY: Sketchfab serves an auto-converted glTF for every downloadable model, so pipe each one through gltf-transform (meshopt or Draco + KTX2/BasisU texture compression, resize to 1K-2K) - expect 10-20x size reduction, which keeps this whole category under ~40MB of the 300MB budget. Build one attribution/credits screen now and append author + model URL + "CC-BY 4.0" as you download; it is the only license obligation. Use THREE.InstancedMesh for all repeated clutter (loungers, pallets, shelving, lamp posts, buoys, dishes, water tanks) and merge remaining static props per-zone to keep draw calls low; give big landmarks (ferris wheel, crane, lifeguard tower) a 2-level LOD or a baked impostor beyond ~250-300m since FPV speeds make pop-in obvious. Strip or decimate interior-facing detail on hero models (the 4K-textured lifeguard tower and water tank ship far bigger textures than a drone flyby needs - 1K is plenty for anything under 2m).
+Use THREE.InstancedMesh (or BatchedMesh) for everything placed more than ~5 times — monobloc chairs, deck-chair/parasol pairs, pallets, rack aisles, AC units, antennas, lamp posts — one draw call per prop type transforms this category from a draw-call bomb into nearly free. Run every download through gltf-transform: `resize` textures to 1K (2K only for hero props like the crane/lifeguard tower), `simplify` (meshopt) for the ferris wheel and street lamps, then `etc1s`/`uastc` KTX2 + meshopt compression — the whole props set should land under 40MB. Sketchfab's auto-converted glTF sometimes ships unlit or specular-gloss materials — normalize to MeshStandardMaterial metal/rough and strip embedded lights/cameras on import. Keep one CREDITS.md/in-game credits screen listing every CC-BY author verbatim (author + model URL + license link) — that fully satisfies CC-BY 4.0 for the 12 attributed models; the Poly Haven and plaggy items are CC0 and need nothing.
 
 ## FPV Gear, Audio & UI
 
-_Research pending (agent hit session limit); will be filled in on the next pass._
+- **[FPV-dron_NonStop (freestyle FPV quad)](https://sketchfab.com/models/c75dea6e3ae441ac87f292efb17f5bae)** — Sketchfab · **CC-BY 4.0 (credit: Viktor_ / Viktor Zhuravlev)** · model
+  - Format: glTF (Sketchfab auto-convert) + source
+  - Quality: 24.7k faces, handcrafted 4K PBR textures, realistic game-ready FPV quad
+  - Use: Hero/player drone for 3rd-person view, menu hangar, and spectator drones; carries Ukrainian/energy-drink livery so plan a quick retexture of the albedo
+- **[DJI FPV drone](https://sketchfab.com/models/28321515f60346c0becb244ed094c1f8)** — Sketchfab · **CC-BY 4.0 (credit: Vitalii Sushko)** · model
+  - Format: glTF (Sketchfab auto-convert)
+  - Quality: 42.2k faces, professional portfolio-grade PBR model of the DJI FPV
+  - Use: Second selectable craft (cinewhoop-class handling profile) and photogenic menu model
+- **[5-inch Tri-Blade Propeller](https://sketchfab.com/models/29c041703a6d49ecb08bc2427d71851a)** — Sketchfab · **CC-BY 4.0 (credit: The Van)** · model
+  - Format: glTF (Sketchfab auto-convert)
+  - Quality: 3.3k faces, accurate 5" tri-blade prop geometry
+  - Use: Attach 4x to any frame; swap to a textured blur-disc quad above ~30% throttle
+- **[DJI Avata photogrammetry scan (cinewhoop)](https://sketchfab.com/models/49110a425abd4c4688cf35dd8bcd06fe)** — Sketchfab · **CC-BY 4.0 (credit: nugget)** · model
+  - Format: glTF (Sketchfab auto-convert)
+  - Quality: 659k faces RealityScan photogrammetry - photoreal but MUST be decimated to ~40k in Blender before use
+  - Use: Only real ducted cinewhoop found; decimate + bake for the cinewhoop craft option
+- **[Whooper's Garage Aichi - Tiny Whoop Circuit](https://sketchfab.com/models/e3ce3c96f57a498e81c09dffc07976cd)** — Sketchfab · **CC-BY 4.0 (credit: Miyai)** · model
+  - Format: glTF (Sketchfab auto-convert)
+  - Quality: 169k faces, scan/model of a real indoor tiny-whoop racing venue in Japan
+  - Use: Drop-in indoor micro-flying map with authentic whoop-track layout (split into chunks + frustum cull)
+- **[Helipad (game-ready)](https://sketchfab.com/models/bc2b0be44c954fa59f0376eb8b36b59e)** — Sketchfab · **CC-BY 4.0 (credit: Veterock)** · model
+  - Format: glTF (Sketchfab auto-convert)
+  - Quality: 48.5k faces, 10 PBR textures / 7 materials, explicitly game-ready
+  - Use: Launch/landing pad at spawn points on rooftop and airfield maps
+- **[FPV Drone Flight 3 (real FPV motor audio)](https://freesound.org/people/qubodup/sounds/854466/)** — Freesound · **CC0** · audio
+  - Format: WAV 48kHz 16-bit mono, 13.5s
+  - Quality: Genuine first-person FPV flight audio, clean motor/prop tone
+  - Use: Primary source for the throttle-mapped motor loop (slice a clean sustain section, loop via Web Audio)
+- **[Tiny Hawk 2 short flight (micro quad)](https://freesound.org/people/Sadiquecat/sounds/677833/)** — Freesound · **CC0** · audio
+  - Format: WAV 96kHz 16-bit stereo, 45s
+  - Quality: Real EMAX TinyHawk 2 whoop hovering/flying, close-mic Zoom H5
+  - Use: Motor sound layer for the tiny-whoop craft and indoor maps
+- **[Wind howling in Atacama salt desert](https://freesound.org/people/felix.blume/sounds/142335/)** — Freesound · **CC0** · audio
+  - Format: WAV 48kHz 24-bit stereo, 2:00
+  - Quality: Professional field recording (Schoeps MS rig), dramatic gusting wind
+  - Use: Altitude/speed-scaled wind bed for mountain and open-field maps
+- **[Wind Ambience (Looping)](https://freesound.org/people/jackyyang09/sounds/476849/)** — Freesound · **CC-BY 4.0 (credit: jackyyang09)** · audio
+  - Format: WAV 48kHz 16-bit stereo, 52s seamless loop
+  - Quality: Purpose-made seamless game wind loop
+  - Use: Default outdoor ambient wind loop (lower-effort alternative to slicing the Atacama recording)
+- **[Slowly Raining Loop](https://freesound.org/people/unfa/sounds/177479/)** — Freesound · **CC0 (via Freesound CC0 search filter)** · audio
+  - Format: WAV loop
+  - Quality: Clean steady rain recorded on a balcony, made to loop
+  - Use: Rain weather setting on any map
+- **[Ambiance_Ocean_Ribeira_Grande_Loop_Stereo_02](https://freesound.org/people/Nox_Sound/sounds/829629/)** — Freesound · **CC0** · audio
+  - Format: WAV 96kHz 24-bit stereo, 1:00 seamless loop
+  - Quality: Professional ocean shoreline field recording (Sony PCM D100), loop-ready
+  - Use: Coastal/beach map ambience near the waterline (distance-attenuated)
+- **[AMBTraf bus stop city ambience](https://freesound.org/people/SFXAFRIK/sounds/582935/)** — Freesound · **CC0** · audio
+  - Format: WAV 96kHz 24-bit stereo, 2:42
+  - Quality: Busy city traffic/street ambience, professional recording
+  - Use: City/rooftop map background ambience (loop with crossfade)
+- **[Fall debris (crash)](https://freesound.org/people/xkeril/sounds/703248/)** — Freesound · **CC0** · audio
+  - Format: WAV 48kHz 16-bit stereo, 3.9s
+  - Quality: Tiles/stone/metal impact on hard floor - punchy crash transient
+  - Use: Drone crash impact SFX; pitch/gain-randomize per collision energy
+- **[B612 Mono (Airbus cockpit display font)](https://fonts.google.com/specimen/B612+Mono)** — Google Fonts · **SIL OFL 1.1 (also EPL-2.0/EDL-1.0; verified at github.com/polarsys/b612)** · font
+  - Format: TTF/WOFF2, 4 styles
+  - Quality: Designed by Airbus+ENAC specifically for aircraft cockpit screen legibility
+  - Use: Betaflight-style OSD/HUD text (altitude, voltage, timer, crosshair labels) - self-host the woff2
+
+### Not found free: we will author these ourselves
+- **Authentic Betaflight OSD bitmap font (.mcm)** — All real ones are license-incompatible: betaflight-configurator resources/osd, tigert/betaflight-fonts (Clarity) and Knifa/material-osd are GPL-3.0 copyleft; SNEAKY_FPV fonts are personal-use only. Recreate a 12x18 OSD glyph atlas ourselves (canvas-drawn) styled after it, or just use B612 Mono.
+- **Textured race gates / flags / start arches (game models)** — Only 3D-print STLs exist (Cults/Printables/MakerWorld - untextured, often personal-use licenses); nothing suitable on Sketchfab. Trivial to model in-house: torus + truss + emissive fabric plane with checkered texture.
+- **Neutral/unbranded 5-inch freestyle quad, CC0** — Best find (FPV-dron_NonStop) is CC-BY with distinctive livery; no CC0 FPV quad exists at quality. Retexture the CC-BY one or model a generic frame ourselves.
+- **Tiny whoop drone model (game-ready)** — Sketchfab only has an untextured whoop frame; no complete downloadable whoop at acceptable quality. Model in-house (ducted frame is simple geometry) or scale/kitbash the 5-inch quad.
+- **Throttle-sweep FPV motor recording (idle-to-punch RPM ramp)** — CC0 clips found are constant-RPM flight/hover; a clean sweep would let us pitch-map RPM directly. Slice multi-RPM grains from the qubodup/Sadiquecat clips or record one ourselves.
+
+### Integration notes
+Download the Sketchfab models as glTF, then run everything through gltf-transform (Draco or Meshopt + KTX2/BasisU textures downscaled to 1-2K) — the Avata scan additionally needs Blender decimation to ~40k tris; since the player mostly sees their own drone only in menus/prop-tips, one aggressive LOD is enough, and props should swap to a blur-disc texture above ~30% throttle. For audio, transcode all WAVs to ~96-128kbps OGG/Opus, drive the motor loop with Web Audio playbackRate + gain mapped to throttle (crossfade a hover layer and a full-throttle layer to avoid chipmunk pitch artifacts), and randomize pitch on the crash impact. Render the OSD with self-hosted B612 Mono into a canvas texture or DOM overlay rather than shipping GPL .mcm fonts. All Sketchfab models and the jackyyang09 wind loop are CC-BY 4.0, so add a credits screen listing each author (Viktor_, Vitalii Sushko, The Van, nugget, Miyai, Veterock, jackyyang09); everything else listed is CC0.
 
 ---
-**Totals:** 129 verified free assets cataloged, 44 items on the to-create list.
+**Totals:** 162 verified free assets cataloged, 56 items on the to-create list.
 
 CC-BY assets require attribution â€” collect credits into an in-game CREDITS screen before shipping any of them.
