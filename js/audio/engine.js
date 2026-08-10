@@ -32,13 +32,14 @@ export class MotorAudio {
       this.lowpass.frequency.value = 12000;
       this.master.connect(this.lowpass).connect(ctx.destination);
 
+      // soft voicing: triangles + a sine sub an octave down — a hum, not a rasp
       this.oscs = [];
-      for (const [type, detune] of [['sawtooth', 0], ['sawtooth', 14], ['square', -9]]) {
+      for (const [type, detune, gain] of [['triangle', 0, 0.26], ['triangle', 9, 0.14], ['sine', 0, 0.32]]) {
         const o = ctx.createOscillator();
         o.type = type;
         o.detune.value = detune * 3;
         const g = ctx.createGain();
-        g.gain.value = type === 'square' ? 0.12 : 0.3;
+        g.gain.value = gain;
         o.connect(g).connect(this.master);
         o.start();
         this.oscs.push(o);
@@ -53,10 +54,10 @@ export class MotorAudio {
       noise.buffer = buf; noise.loop = true;
       this.noiseFilter = ctx.createBiquadFilter();
       this.noiseFilter.type = 'bandpass';
-      this.noiseFilter.frequency.value = 900;
-      this.noiseFilter.Q.value = 0.8;
+      this.noiseFilter.frequency.value = 700;
+      this.noiseFilter.Q.value = 0.6;
       this.noiseGain = ctx.createGain();
-      this.noiseGain.gain.value = 0.16;
+      this.noiseGain.gain.value = 0.055;
       noise.connect(this.noiseFilter).connect(this.noiseGain).connect(this.master);
       noise.start();
 
@@ -76,16 +77,17 @@ export class MotorAudio {
     for (let i = 0; i < this.oscs.length; i++) {
       this.oscs[i].frequency.setTargetAtTime(freq * (i === 2 ? 0.5 : 1), t, 0.02);
     }
-    this.noiseFilter.frequency.setTargetAtTime(500 + m * 2600, t, 0.03);
+    this.noiseFilter.frequency.setTargetAtTime(450 + m * 1800, t, 0.04);
 
-    let vol = settings.audio.master * (m > 0.005 ? 0.10 + m * 0.5 : 0);
+    let vol = settings.audio.master * (m > 0.005 ? 0.04 + m * 0.24 : 0);
     if (los) {
       const att = 1 / (1 + Math.max(0, distance - 4) * 0.12);
       vol *= att;
-      this.lowpass.frequency.setTargetAtTime(1200 + 8000 * att, t, 0.05);
+      this.lowpass.frequency.setTargetAtTime(900 + 3200 * att, t, 0.06);
     } else {
-      this.lowpass.frequency.setTargetAtTime(12000, t, 0.05);
+      // keep the top end rolled off — screaming highs are what grate
+      this.lowpass.frequency.setTargetAtTime(2400 + m * 2800, t, 0.06);
     }
-    this.master.gain.setTargetAtTime(vol, t, 0.03);
+    this.master.gain.setTargetAtTime(vol, t, 0.05);
   }
 }

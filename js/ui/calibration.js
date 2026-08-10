@@ -587,7 +587,18 @@ export class CalibrationUI {
       thrRow.appendChild(thr);
       w.ui.thrVal = el('span', 'pwc-axval pw-mono', '0.00');
       thrRow.appendChild(w.ui.thrVal);
+      const flip = el('button', 'pw-btn', 'FLIP DIR');
+      flip.title = 'Reverse throttle direction (use if the bar reads high with the stick down)';
+      flip.addEventListener('click', () => {
+        const tc = w.pending && w.pending.axes[w.pending.map.throttle];
+        if (tc) { tc.invert = !tc.invert; w.thrLowSeen = false; }
+      });
+      thrRow.appendChild(flip);
       host.appendChild(thrRow);
+      w.ui.thrHint = el('div', 'pwc-sub', 'Pull the throttle stick all the way DOWN — it must read 0.00 before you can save. Reads high with the stick down? Hit FLIP DIR.');
+      w.ui.thrHint.style.color = 'var(--pw-warn)';
+      host.appendChild(w.ui.thrHint);
+      w.thrLowSeen = false;
 
       const armRow = el('div', 'pwc-vrow');
       armRow.appendChild(el('div', 'pwc-vlab', 'ARM'));
@@ -601,6 +612,7 @@ export class CalibrationUI {
     const save = el('button', 'pw-btn primary', 'LOOKS GOOD — SAVE');
     const redo = el('button', 'pw-btn', 'REDO');
     const cancel = el('button', 'pw-btn danger', 'CANCEL');
+    w.ui.saveBtn = save;
     save.disabled = !ok;
     save.addEventListener('click', () => this._saveWizard());
     redo.addEventListener('click', () => this._wizGoto(1));
@@ -888,6 +900,17 @@ export class CalibrationUI {
     const tv = out.throttle.toFixed(2);
     if (w.ui.thrVal.textContent !== tv) w.ui.thrVal.textContent = tv;
 
+    // gate SAVE on a confirmed throttle-zero so an inverted throttle can never
+    // be saved (it silently blocks arming later)
+    if (!w.thrLowSeen && out.throttle < 0.06) {
+      w.thrLowSeen = true;
+      if (w.ui.thrHint) {
+        w.ui.thrHint.textContent = '✓ Throttle zero confirmed';
+        w.ui.thrHint.style.color = 'var(--pw-ok)';
+      }
+    }
+    if (w.ui.saveBtn) w.ui.saveBtn.disabled = !w.thrLowSeen;
+
     const armCfg = w.pending.map.arm;
     if (armCfg && w.ui.armPill) {
       let armed = false;
@@ -1033,7 +1056,7 @@ export class CalibrationUI {
         roll: a.roll.index,
         pitch: a.pitch.index,
         yaw: a.yaw.index,
-        arm: w.arm ? { type: w.arm.type, index: w.arm.index, threshold: w.arm.threshold } : null,
+        arm: w.arm ? { type: w.arm.type, index: w.arm.index, threshold: w.arm.threshold, direction: w.armDir || 1 } : null,
       },
     };
   }

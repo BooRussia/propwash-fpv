@@ -376,7 +376,7 @@ export class OSD {
     if (c.rssiPct !== pct) { c.rssiPct = pct; this.rssiValEl.textContent = 'RSSI ' + pct; }
 
     // ---- persistent hints ----
-    const hint = !t.radioConnected ? 1 : (!t.calibrated ? 2 : 0);
+    const hint = !t.radioConnected ? 1 : (!t.calibrated ? 2 : (!t.armed && !t.crashed ? 3 : 0));
     if (c.hint !== hint) {
       c.hint = hint;
       if (hint === 1) {
@@ -384,6 +384,9 @@ export class OSD {
         this.hintEl.style.display = '';
       } else if (hint === 2) {
         this.hintEl.textContent = 'RADIO DETECTED — CALIBRATE IN ESC MENU';
+        this.hintEl.style.display = '';
+      } else if (hint === 3) {
+        this.hintEl.textContent = 'ARM TO FLY: throttle all the way down, then SPACE or your arm switch';
         this.hintEl.style.display = '';
       } else {
         this.hintEl.style.display = 'none';

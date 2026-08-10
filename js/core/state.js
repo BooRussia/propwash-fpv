@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS = {
     bloom: true,
     shadows: true,
   },
-  audio: { master: 0.5 },
+  audio: { master: 0.3 },
   controller: {
     deviceId: null,             // gamepad.id string of chosen radio
     // mapping + calibration written by the calibration wizard:

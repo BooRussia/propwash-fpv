@@ -173,7 +173,13 @@ function tryArm(want) {
   if (want) {
     if (quad.crashed) { emit('osd:flash', { text: 'RESET FIRST (R)', ms: 1200 }); return; }
     const t = currentControls.throttle;
-    if (t > 0.08) { emit('osd:flash', { text: 'THROTTLE TOO HIGH TO ARM', ms: 1500 }); return; }
+    if (t > 0.08) {
+      emit('osd:flash', {
+        text: `THROTTLE TOO HIGH TO ARM (${Math.round(t * 100)}%) — LOWER STICK, OR FIX DIRECTION IN ESC → CONTROLLER → FINE-TUNE`,
+        ms: 3000,
+      });
+      return;
+    }
     armed = true;
     flightTimer = 0;
     motorAudio.start();

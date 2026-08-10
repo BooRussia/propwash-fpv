@@ -219,7 +219,8 @@ export class RadioManager {
       const v = this._axisValue(arm.index);
       if (v === null) return false;
       const threshold = Number.isFinite(Number(arm.threshold)) ? Number(arm.threshold) : 0;
-      return v > threshold;
+      // direction records which way the switch deflected during calibration
+      return (Number(arm.direction) || 1) < 0 ? v < threshold : v > threshold;
     }
     if (arm.type === 'button') {
       const i = Number(arm.index);
