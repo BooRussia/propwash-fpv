@@ -1,10 +1,12 @@
 // ============================================================
 // PropWash FPV — atmosphere: sky, sun/moon, stars, fog, wind, rain
+// + photoreal HDRI image-based lighting (assets/hdri/*, optional)
 // ============================================================
-// Owns: scene.fog, scene.environment, renderer.toneMappingExposure
-// (after boot), the sun/moon/hemisphere lights and the rain field.
+// Owns: scene.background, scene.environment, scene.fog,
+// renderer.toneMappingExposure (after boot), the sun/moon/hemisphere
+// lights and the rain field.
 //
-// Public API (consumed by main.js):
+// Public API (consumed by main.js / maps):
 //   constructor(scene, renderer)
 //   async init()
 //   setTimeOfDay(hours)            0..24
@@ -12,13 +14,24 @@
 //   setRenderDistance(meters)
 //   setQuality(shadowMapRes)
 //   setIndoor(bool)
+//   setHDRIBands({day, sunset, night, overcast})  assetLib.hdri keys | null
 //   update(dt, camera)             camera = ACTIVE camera
 //   getWind(posVector3, outVector3) -> outVector3   (allocation-free)
+//   dispose()                      frees PMREM render targets (optional)
+//
+// HDRI banding: a band is derived from rain + sun elevation
+// (rain >= 0.5 -> overcast; el < -6 -> night; el < 10 -> sunset; else day)
+// and re-evaluated on setTimeOfDay / setWeather. If the band's HDRI file
+// loads (lazy, swaps throttled to <= 1/s), it replaces the procedural Sky
+// as scene.background and, PMREM-processed, as scene.environment. If the
+// file is missing (assets/ empty) or fails, the procedural Sky + PMREM
+// path below keeps working exactly as before — zero HDRI requirements.
 // ============================================================
 
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { settings, clamp } from '../core/state.js';
+import { assetLib } from '../core/assets.js';
 
 // ---------------- solar model constants ----------------
 const DEG2RAD = Math.PI / 180;
@@ -78,6 +91,48 @@ const FOG_COLOR = [
 const RAIN_FOG_GRAY = C(0x6f767e);
 const INDOOR_FOG = C(0x14171c);
 
+// ---------------- HDRI band constants ----------------
+const DEFAULT_HDRI_BANDS = {
+  day: 'day_clear',
+  sunset: 'sunset',
+  night: 'night',
+  overcast: 'overcast',
+};
+
+// Approximate azimuth (world compass deg) at which each HDRI's sun/brightest
+// area is baked, used so backgroundRotation roughly tracks the computed sun.
+// 0 means "unknown / don't care" — tune per asset if the sun visibly fights
+// the shadow direction.
+const HDRI_BAKED_SUN_AZ_DEG = {
+  beach_day: 0, day_clear: 0, sunset: 0, night: 0, overcast: 0,
+};
+
+// Directional sun retune while an HDRI band is active (the HDRI supplies
+// sky + ambient; the DirectionalLight remains the shadow caster).
+const HDRI_SUN = {
+  day:      { intensity: 2.5, color: 0xfff1dc },  // warm white
+  sunset:   { intensity: 1.8, color: 0xff9440 },  // orange
+  night:    { intensity: 0.0, color: 0xfff1dc },  // sun off; moonlight only
+  overcast: { intensity: 0.6, color: 0xe8ecef },  // weak, near-neutral
+};
+
+// Fog colors while an HDRI band is active (rain still greys/thickens in
+// _applyFog, and overcast additionally darkens with daylight below).
+const HDRI_FOG = {
+  day: C(0xa9bccb),        // light blue-grey
+  sunset: C(0xc79b6e),     // warm haze
+  night: C(0x05070d),      // near-black
+  overcast: C(0x8d949c),   // flat grey
+};
+
+// Tone-mapping exposure over sun elevation for HDRI day/sunset/night bands
+// (targets: night ~0.5, sunset ~0.8, day ~0.75; ACES).
+const HDRI_EXPOSURE = [
+  [-12, 0.50], [-6, 0.66], [-2, 0.76], [2, 0.80], [10, 0.80], [24, 0.75], [70, 0.74],
+];
+
+const HDRI_SWAP_MIN_MS = 1000;     // never swap backgrounds more than 1/s
+
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
 // Piecewise-linear scalar ramp over sorted [x, value] stops.
@@ -115,6 +170,10 @@ function finite(v, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function nowMs() {
+  return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
 // ============================================================
 export class Environment {
   constructor(scene, renderer) {
@@ -135,6 +194,7 @@ export class Environment {
 
     // ---- sun/moon state ----
     this._sunElDeg = 45;
+    this._sunAzDeg = 90;
     this._sunDir = new THREE.Vector3(0, 1, 0);
     this._moonDir = new THREE.Vector3(0, -1, 0);
 
@@ -151,9 +211,21 @@ export class Environment {
     // ---- stars ----
     this._starTarget = 0;
 
-    // ---- env map bookkeeping ----
+    // ---- procedural env map bookkeeping ----
     this._envRT = null;
     this._envBuiltAt = null;
+
+    // ---- HDRI IBL state ----
+    this._hdriBands = { ...DEFAULT_HDRI_BANDS };
+    this._band = 'day';
+    this._hdriKey = null;         // last key attempted (null = procedural only)
+    this._hdriDesiredKey = null;  // latest wanted key (null = procedural)
+    this._hdriTex = null;         // applied equirect texture (shared, assetLib-owned)
+    this._hdriApplied = false;    // true only when a texture actually loaded
+    this._hdriEnvRTs = new Map(); // key -> PMREM RenderTarget (cached per key)
+    this._hdriToken = 0;          // async race guard
+    this._hdriLastSwap = -Infinity;
+    this._hdriTimer = null;       // pending throttled swap
 
     // ---- reusable temps (no per-frame allocations) ----
     this._tmpA = new THREE.Vector3();
@@ -235,7 +307,7 @@ export class Environment {
       windDirDeg: this._windDirDeg,
       gustiness: this._gustiness,
       rain: this._rain,
-    }); // -> _applyAtmosphere() -> first PMREM build
+    }); // -> _applyAtmosphere() -> first PMREM build + first HDRI request
   }
 
   // ----------------------------------------------------------
@@ -263,7 +335,24 @@ export class Environment {
     this._rainGeo.setDrawRange(0, this._rainActive * 2);
     this._rainObj.visible = !this._indoor && this._rainActive > 0;
 
-    this._applyAtmosphere(); // rain also affects fog / light / exposure / stars
+    this._applyAtmosphere(); // rain also affects fog / light / exposure / stars / band
+  }
+
+  // ----------------------------------------------------------
+  // Map hook: choose which HDRI key backs each band. Partial objects are
+  // merged over the defaults (NOT over a previous custom set, so every map
+  // states its full intent). Pass a null/undefined value to force the
+  // procedural Sky for that band. e.g. Miami: setHDRIBands({ day: 'beach_day' })
+  setHDRIBands(bands = {}) {
+    const b = bands || {};
+    this._hdriBands = {
+      day:      b.day !== undefined ? b.day : DEFAULT_HDRI_BANDS.day,
+      sunset:   b.sunset !== undefined ? b.sunset : DEFAULT_HDRI_BANDS.sunset,
+      night:    b.night !== undefined ? b.night : DEFAULT_HDRI_BANDS.night,
+      overcast: b.overcast !== undefined ? b.overcast : DEFAULT_HDRI_BANDS.overcast,
+    };
+    if (!this._ready) return;
+    this._applyAtmosphere(); // re-evaluates the band -> schedules a swap if needed
   }
 
   // ----------------------------------------------------------
@@ -300,7 +389,7 @@ export class Environment {
     if (!this._ready) return;
 
     if (flag) {
-      // hide the outside world
+      // hide the outside world (including any HDRI background/IBL)
       this.sky.visible = false;
       this._celestial.visible = false;
       this._rainObj.visible = false;
@@ -312,13 +401,16 @@ export class Environment {
       this.hemi.intensity = 0.85;
       this.renderer.toneMappingExposure = 0.8;
       this.scene.environment = null;
+      this.scene.background = null;
+      try {
+        if ('environmentIntensity' in this.scene) this.scene.environmentIntensity = 0.5;
+        if ('backgroundIntensity' in this.scene) this.scene.backgroundIntensity = 1;
+      } catch (e) { /* noop */ }
       this._applyFog();
     } else {
-      this.sky.visible = true;
       this._celestial.visible = true;
       this._rainObj.visible = this._rainActive > 0;
-      this.scene.environment = this._envRT ? this._envRT.texture : null;
-      this._applyAtmosphere(); // restores lights, fog, exposure, stars
+      this._applyAtmosphere(); // restores lights, fog, exposure, stars, HDRI/sky
     }
   }
 
@@ -368,7 +460,8 @@ export class Environment {
 
       if (this.sunLight.visible) this._snapShadow(camera);
 
-      // stars ease in/out through dawn and dusk
+      // stars ease in/out through dawn and dusk (target is 0 while an HDRI
+      // background is active — the night HDRI has real stars baked in)
       const k = Math.min(1, dt * 1.6);
       const mats = this._starMats;
       for (let i = 0; i < mats.length; i++) {
@@ -380,6 +473,27 @@ export class Environment {
     }
 
     if (this._rainObj.visible) this._updateRain(dt, camera);
+  }
+
+  // ----------------------------------------------------------
+  // Optional cleanup (not called by main.js today; safe to call anytime).
+  dispose() {
+    if (this._hdriTimer !== null) {
+      clearTimeout(this._hdriTimer);
+      this._hdriTimer = null;
+    }
+    this._hdriToken++; // invalidate any in-flight load
+    for (const rt of this._hdriEnvRTs.values()) {
+      try { rt.dispose(); } catch (e) { /* noop */ }
+    }
+    this._hdriEnvRTs.clear();
+    this._hdriTex = null;
+    this._hdriApplied = false;
+    this._hdriKey = null;
+    if (this._envRT) {
+      try { this._envRT.dispose(); } catch (e) { /* noop */ }
+      this._envRT = null;
+    }
   }
 
   // ==========================================================
@@ -409,11 +523,107 @@ export class Environment {
       azDeg = 270 + 180 * f;
     }
     this._sunElDeg = elDeg;
+    this._sunAzDeg = azDeg;
     const el = elDeg * DEG2RAD, az = azDeg * DEG2RAD;
     const ce = Math.cos(el);
     this._sunDir.set(ce * Math.sin(az), Math.sin(el), -ce * Math.cos(az));
     this._moonDir.copy(this._sunDir).negate();
   }
+
+  // ---------------- HDRI band machinery ----------------
+
+  // Which lighting band does the current sim state fall into?
+  // (Order matters and matches the spec: heavy rain always reads overcast.)
+  _evaluateBand() {
+    if (this._rain >= 0.5) return 'overcast';
+    const el = this._sunElDeg;
+    if (el < -6) return 'night';
+    if (el < 10) return 'sunset';
+    return 'day';
+  }
+
+  // Request that the background match the current band. Lazy + throttled:
+  // the actual load/swap never happens more than once per second, and only
+  // when the desired key actually differs from what is applied/attempted.
+  _scheduleHDRISwap() {
+    const key = (this._hdriBands && this._hdriBands[this._band]) || null;
+    this._hdriDesiredKey = key;
+    if (key === this._hdriKey) return;         // settled (incl. recorded misses)
+    if (this._hdriTimer !== null) return;      // pending swap will read the latest desire
+    const wait = HDRI_SWAP_MIN_MS - (nowMs() - this._hdriLastSwap);
+    if (wait <= 0) {
+      this._beginHDRISwap();
+    } else {
+      this._hdriTimer = setTimeout(() => {
+        this._hdriTimer = null;
+        this._beginHDRISwap();
+      }, wait);
+    }
+  }
+
+  async _beginHDRISwap() {
+    const key = this._hdriDesiredKey;
+    if (key === this._hdriKey) return;         // desire settled while queued
+    this._hdriLastSwap = nowMs();
+    const token = ++this._hdriToken;
+    let tex = null;
+    if (key) {
+      try {
+        tex = (assetLib && assetLib.hdri) ? await assetLib.hdri(key) : null;
+      } catch (e) {
+        tex = null;
+      }
+    }
+    if (token !== this._hdriToken) return;     // superseded by a newer swap
+    if (key !== this._hdriDesiredKey) {        // desire moved while loading
+      this._scheduleHDRISwap();
+      return;
+    }
+    this._applyHDRI(key, tex);
+  }
+
+  // Record the outcome of a swap and retune the whole atmosphere.
+  // tex === null records a miss (missing file / no assets): procedural path.
+  // The HDRI texture itself is owned & cached by assetLib — never disposed
+  // here. PMREM render targets are cached per key; replaced entries are
+  // disposed, and dispose() releases them all.
+  _applyHDRI(key, tex) {
+    this._hdriKey = key;
+    this._hdriTex = tex || null;
+    this._hdriApplied = !!tex;
+    if (tex && this._pmrem && !this._hdriEnvRTs.has(key)) {
+      try {
+        const rt = this._pmrem.fromEquirectangular(tex);
+        const old = this._hdriEnvRTs.get(key);
+        if (old && old !== rt) { try { old.dispose(); } catch (e) { /* noop */ } }
+        this._hdriEnvRTs.set(key, rt);
+      } catch (e) {
+        console.warn('[Environment] HDRI PMREM failed for', key, e);
+        // background still usable; scene.environment falls back to procedural RT
+      }
+    }
+    this._applyAtmosphere(); // no-op while indoor; state restores on setIndoor(false)
+  }
+
+  // Background brightness within the active band (~1, dimming toward band
+  // edges; overcast additionally follows daylight so rainy nights stay dark).
+  _hdriBackgroundIntensity(band, el, rain) {
+    if (band === 'day')    return 0.85 + 0.15 * smoothstep(10, 26, el);
+    if (band === 'sunset') return 0.88 + 0.12 * smoothstep(-6, 2, el);
+    if (band === 'night')  return 1.0;
+    const dayl = smoothstep(-8, 5, el);        // overcast
+    return (0.08 + 0.92 * dayl) * (1 - 0.2 * rain);
+  }
+
+  // IBL ambient strength from the PMREM'd HDRI.
+  _hdriEnvIntensity(band, el) {
+    if (band === 'day')    return 0.9;
+    if (band === 'sunset') return 0.8;
+    if (band === 'night')  return 0.35;
+    return 0.8 * (0.15 + 0.85 * smoothstep(-8, 5, el)); // overcast
+  }
+
+  // ---------------- master atmosphere pass ----------------
 
   _applyAtmosphere() {
     if (!this._ready || this._indoor) return;
@@ -422,8 +632,16 @@ export class Environment {
     const el = this._sunElDeg;
     const rain = this._rain;
     const dim = 1 - 0.45 * rain;
+    const scene = this.scene;
 
-    // ---------- sky shader ----------
+    // ---------- band selection + lazy HDRI swap ----------
+    this._band = this._evaluateBand();
+    this._scheduleHDRISwap();                       // throttled; async; cheap no-op when settled
+    const band = this._band;
+    const ibl = this._hdriApplied && !!this._hdriTex;
+    const dayl = smoothstep(-8, 5, el);             // shared daylight factor
+
+    // ---------- sky shader (procedural path; harmless while hidden) ----------
     const u = this.sky.material.uniforms;
     u.sunPosition.value.copy(this._sunDir);
     u.turbidity.value = ramp(SKY_TURBIDITY, el) + rain * 4;
@@ -431,10 +649,48 @@ export class Environment {
     u.mieCoefficient.value = ramp(SKY_MIE_COEFF, el) + rain * 0.01;
     u.mieDirectionalG.value = ramp(SKY_MIE_G, el);
 
-    // ---------- sun light ----------
-    const sunI = ramp(SUN_INTENSITY, el) * dim;
+    // ---------- background & environment (HDRI vs procedural) ----------
+    if (ibl) {
+      this.sky.visible = false;                     // real sky photo replaces the dome
+      scene.background = this._hdriTex;
+      const rt = this._hdriEnvRTs.get(this._hdriKey);
+      scene.environment = rt ? rt.texture : (this._envRT ? this._envRT.texture : null);
+      // rotate the panorama so its baked sun roughly tracks the computed one
+      const rotY = (this._sunAzDeg - 90 - (HDRI_BAKED_SUN_AZ_DEG[this._hdriKey] || 0)) * DEG2RAD;
+      try {
+        if ('backgroundRotation' in scene) scene.backgroundRotation.set(0, rotY, 0);
+        if ('environmentRotation' in scene) scene.environmentRotation.set(0, rotY, 0);
+        if ('backgroundIntensity' in scene) {
+          scene.backgroundIntensity = this._hdriBackgroundIntensity(band, el, rain);
+        }
+        if ('environmentIntensity' in scene) {
+          scene.environmentIntensity = this._hdriEnvIntensity(band, el);
+        }
+      } catch (e) { /* older three — background still works unrotated */ }
+    } else {
+      this.sky.visible = true;
+      scene.background = null;                      // sky dome draws the backdrop
+      scene.environment = this._envRT ? this._envRT.texture : null;
+      try {
+        if ('backgroundRotation' in scene) scene.backgroundRotation.set(0, 0, 0);
+        if ('environmentRotation' in scene) scene.environmentRotation.set(0, 0, 0);
+        if ('backgroundIntensity' in scene) scene.backgroundIntensity = 1;
+        if ('environmentIntensity' in scene) scene.environmentIntensity = 0.5;
+      } catch (e) { /* noop */ }
+    }
+
+    // ---------- sun light (always the shadow caster) ----------
+    let sunI;
+    if (ibl) {
+      const tune = HDRI_SUN[band] || HDRI_SUN.day;
+      sunI = tune.intensity * dim;
+      if (band === 'overcast') sunI *= dayl;        // rainy night stays dark
+      this.sunLight.color.setHex(tune.color);
+    } else {
+      sunI = ramp(SUN_INTENSITY, el) * dim;
+      rampColor(SUN_COLOR, el, this.sunLight.color);
+    }
     this.sunLight.intensity = sunI;
-    rampColor(SUN_COLOR, el, this.sunLight.color);
     this.sunLight.visible = sunI > 0.01;
     // sensible pose before the first per-frame shadow snap
     this.sunLight.position.copy(this._sunDir).multiplyScalar(SHADOW_DIST);
@@ -442,42 +698,65 @@ export class Environment {
 
     // ---------- moon light ----------
     const moonEl = -el;
-    const moonI = 0.5 * clamp((moonEl - 1) / 7, 0, 1) * dim;
+    const moonPeak = (ibl && band === 'night') ? 0.25 : 0.5;
+    const moonI = moonPeak * clamp((moonEl - 1) / 7, 0, 1) * dim;
     this.moonLight.intensity = moonI;
     this.moonLight.visible = moonI > 0.01;
     this.moonLight.position.copy(this._moonDir).multiplyScalar(300);
 
-    // ---------- moon disc ----------
+    // ---------- moon disc (hidden over HDRI skies — they're photographs) ----------
     this._moonDisc.position.copy(this._moonDir);
     this._tmpA.copy(this._moonDir).negate();
     this._moonDisc.quaternion.setFromUnitVectors(Z_AXIS, this._tmpA);
-    const moonOp = clamp((moonEl - 0.5) / 6, 0, 1) * (1 - 0.65 * rain);
+    const moonOp = ibl ? 0 : clamp((moonEl - 0.5) / 6, 0, 1) * (1 - 0.65 * rain);
     this._moonMat.opacity = moonOp * 0.95;
     this._moonDisc.visible = moonOp > 0.02;
 
     // ---------- hemisphere ambient ----------
-    this.hemi.intensity = ramp(HEMI_INTENSITY, el) * (1 - 0.25 * rain);
+    let hemiI = ramp(HEMI_INTENSITY, el) * (1 - 0.25 * rain);
     rampColor(HEMI_SKY_COLOR, el, this.hemi.color);
     rampColor(HEMI_GROUND_COLOR, el, this.hemi.groundColor);
+    if (ibl) {
+      hemiI *= 0.5;                                 // PMREM IBL now supplies most ambient
+      if (band === 'overcast') {
+        // soft shadowless look: lift ambient during overcast daylight
+        hemiI = Math.max(hemiI, 0.62 * dayl * (1 - 0.15 * rain));
+      }
+    }
+    this.hemi.intensity = hemiI;
 
     // ---------- fog ----------
-    rampColor(FOG_COLOR, el, this._fogBase);
+    if (ibl) {
+      this._fogBase.copy(HDRI_FOG[band] || HDRI_FOG.day);
+      if (band === 'overcast') this._fogBase.multiplyScalar(0.15 + 0.85 * dayl);
+    } else {
+      rampColor(FOG_COLOR, el, this._fogBase);
+    }
     this._applyFog();
 
-    // ---------- exposure (0.85 day -> 0.45 deep night) ----------
-    const ex = 0.45 + 0.40 * smoothstep(-12, 10, el);
-    this.renderer.toneMappingExposure = ex * (1 - 0.08 * rain);
-
-    // ---------- stars (faded in update()) ----------
-    this._starTarget = clamp((-el - 0.5) / 9, 0, 1) * (1 - 0.75 * rain);
-
-    // ---------- environment reflections (expensive — throttled) ----------
-    let need = this._envBuiltAt === null;
-    if (!need) {
-      const d = Math.abs(h - this._envBuiltAt);
-      need = Math.min(d, 24 - d) > 0.25;
+    // ---------- exposure (ACES) ----------
+    if (ibl) {
+      // recalibrated for HDRI backdrops: day ~0.75, sunset ~0.8, night ~0.5, overcast ~0.7
+      const ex = (band === 'overcast') ? (0.5 + 0.2 * dayl) : ramp(HDRI_EXPOSURE, el);
+      this.renderer.toneMappingExposure = ex * (1 - 0.08 * rain);
+    } else {
+      // original procedural calibration (0.85 day -> 0.45 deep night)
+      const ex = 0.45 + 0.40 * smoothstep(-12, 10, el);
+      this.renderer.toneMappingExposure = ex * (1 - 0.08 * rain);
     }
-    if (need) this._rebuildEnvMap();
+
+    // ---------- stars (faded in update(); HDRI skies have real stars baked) ----------
+    this._starTarget = ibl ? 0 : clamp((-el - 0.5) / 9, 0, 1) * (1 - 0.75 * rain);
+
+    // ---------- procedural environment reflections (skipped while HDRI IBL is live) ----------
+    if (!ibl) {
+      let need = this._envBuiltAt === null;
+      if (!need) {
+        const d = Math.abs(h - this._envBuiltAt);
+        need = Math.min(d, 24 - d) > 0.25;
+      }
+      if (need) this._rebuildEnvMap();
+    }
   }
 
   _applyFog() {
@@ -506,9 +785,9 @@ export class Environment {
       this.scene.add(sky);                     // reparent back
       sky.position.set(px, py, pz);
       sky.visible = wasVisible;
-      if (this._envRT) this._envRT.dispose();
+      if (this._envRT) this._envRT.dispose();  // dispose the replaced target
       this._envRT = rt;
-      if (!this._indoor) this.scene.environment = rt.texture;
+      if (!this._indoor && !this._hdriApplied) this.scene.environment = rt.texture;
       this._envBuiltAt = this._hours;
     } catch (e) {
       console.warn('[Environment] env map rebuild failed', e);

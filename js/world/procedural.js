@@ -4,9 +4,17 @@
 // city or country locale layers. Indoor: warehouse complex.
 // Everything derives from a seed; physics height queries use the
 // SAME analytic height function as the visual mesh.
+//
+// Photoreal pass: terrain multiplies biome PBR texture sets over
+// the vertex-color tint, water gets scrolling-free normal detail,
+// and biomes are dressed with photoscanned props via the
+// vegetation module (js/world/vegetation.js). EVERYTHING degrades
+// gracefully: with an empty assets/ folder the map looks exactly
+// like the original procedural version.
 // ============================================================
 import * as THREE from 'three';
 import { settings, clamp } from '../core/state.js';
+import { assetLib } from '../core/assets.js';
 
 // ---------------- seeded noise ----------------
 function mulberry32(a) {
@@ -95,6 +103,23 @@ function concreteTexture() {
   return tex;
 }
 
+// Standalone normal map for the water planes (not part of a texture set).
+function loadWaterNormals() {
+  return new Promise((resolve) => {
+    new THREE.TextureLoader().load(
+      'assets/textures/waternormals.jpg',
+      (t) => {
+        t.colorSpace = THREE.NoColorSpace;
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(40, 40);
+        resolve(t);
+      },
+      undefined,
+      () => resolve(null)
+    );
+  });
+}
+
 // ============================================================
 export async function buildProcedural(scene, env, opts) {
   const o = Object.assign({ setting: 'outdoor', locale: 'country', terrain: 'mountains', seed: 1337 }, opts);
@@ -116,6 +141,21 @@ export async function buildProcedural(scene, env, opts) {
     });
   };
 
+  // ---- asset helpers (all null-safe: empty assets/ keeps the classic look) ----
+  async function texSet(key) {
+    if (!assetLib) return null;
+    try { return await assetLib.textureSet(key); } catch (e) { return null; }
+  }
+  // Clone a shared cache texture so per-map repeat never leaks into other users.
+  const cloneTex = (t, rx, ry) => {
+    if (!t) return null;
+    const c2 = t.clone();
+    c2.repeat.set(rx, ry);
+    c2.needsUpdate = true;
+    track(c2);
+    return c2;
+  };
+
   const handle = {
     name: '',
     spawn: { position: new THREE.Vector3(), yawRad: 0 },
@@ -131,14 +171,18 @@ export async function buildProcedural(scene, env, opts) {
     },
   };
 
-  if (o.setting === 'indoor') buildIndoor();
-  else buildOutdoor();
+  // reset HDRI bands to defaults (Miami sets its own beach panorama;
+  // procedural maps want the neutral pure-sky set)
+  if (env && env.setHDRIBands) env.setHDRIBands({});
+
+  if (o.setting === 'indoor') await buildIndoor();
+  else await buildOutdoor();
   return handle;
 
   // ============================================================
   // OUTDOOR
   // ============================================================
-  function buildOutdoor() {
+  async function buildOutdoor() {
     const half = clamp(settings.graphics.renderDistance, 600, 2000);
     const isCity = o.locale === 'city';
     const CITY_R = 460;
@@ -196,6 +240,22 @@ export async function buildProcedural(scene, env, opts) {
     };
     handle.getGroundHeight = (x, z) => Math.max(height(x, z), waterLevel === -Infinity ? -1e9 : waterLevel);
 
+    // ----- photoreal loads (NO rng is consumed while awaiting: determinism safe) -----
+    const TERRAIN_TEX = {
+      tropical:  { key: 'grass_wild', tile: 2,   normalScale: 1 },
+      desert:    { key: 'sand_dunes', tile: 2.5, normalScale: 1 },
+      mountains: { key: 'rock_macro', tile: 50,  normalScale: 1.3 },   // 50m aerial scan
+      island:    { key: 'sand_beach', tile: 30,  normalScale: 1 },     // 30m beach scan
+    };
+    const tt = TERRAIN_TEX[o.terrain] || TERRAIN_TEX.mountains;
+    const waterNormPromise = waterLevel > -1e8 ? loadWaterNormals() : Promise.resolve(null);
+    const groundSet = await texSet(tt.key);
+    const groundTexOk = !!(groundSet && (groundSet.map || groundSet.normalMap || groundSet.roughnessMap || groundSet.aoMap));
+
+    // vegetation module — written in parallel with this file; optional at runtime
+    let veg = null;
+    try { veg = await import('./vegetation.js'); } catch (e) { veg = null; }
+
     // ----- terrain mesh with biome vertex colors -----
     const segs = half <= 800 ? 170 : half <= 1400 ? 210 : 250;
     const geo = track(new THREE.PlaneGeometry(half * 2, half * 2, segs, segs));
@@ -215,6 +275,7 @@ export async function buildProcedural(scene, env, opts) {
     const cAcc = new THREE.Color(pal.accent), cRock = new THREE.Color(pal.rock);
     const cSnow = new THREE.Color('#eef3f6'), cSand = new THREE.Color('#e6d3a0');
     const cRoad = new THREE.Color('#3c3f42');
+    const cWhite = new THREE.Color('#ffffff');
     const fieldCols = ['#c9b458', '#6da44b', '#4c7d3a', '#8a6f45', '#9fb85b'].map(x => new THREE.Color(x));
 
     const eps = 2.5;
@@ -249,11 +310,31 @@ export async function buildProcedural(scene, env, opts) {
         }
       }
       c.offsetHSL(0, 0, (nz.hash(i, i * 7 + 1) - 0.5) * 0.03);
+      // Multiply blending with a real albedo map darkens: push the tint toward
+      // white so the texture carries detail and the vertex color carries hue.
+      if (groundTexOk) c.lerp(cWhite, 0.55);
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     const terrainMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
+    if (groundTexOk) {
+      const rep = (half * 2) / tt.tile;              // world-space tile size = physical scan size
+      if (groundSet.map) terrainMat.map = cloneTex(groundSet.map, rep, rep);
+      if (groundSet.normalMap) {
+        terrainMat.normalMap = cloneTex(groundSet.normalMap, rep, rep);
+        terrainMat.normalScale.set(tt.normalScale, tt.normalScale);
+      }
+      if (groundSet.roughnessMap) {
+        terrainMat.roughnessMap = cloneTex(groundSet.roughnessMap, rep, rep);
+        terrainMat.roughness = 1;
+      }
+      if (groundSet.aoMap) {
+        terrainMat.aoMap = cloneTex(groundSet.aoMap, rep, rep);
+        geo.setAttribute('uv2', geo.attributes.uv);
+      }
+      terrainMat.needsUpdate = true;
+    }
     const terrain = new THREE.Mesh(geo, terrainMat);
     terrain.receiveShadow = true;
     root.add(terrain);
@@ -265,10 +346,19 @@ export async function buildProcedural(scene, env, opts) {
         color: o.terrain === 'island' ? 0x0d5468 : 0x1a6b5a,
         roughness: 0.12, metalness: 0.65, transparent: true, opacity: 0.92,
       }));
+      const waterNorm = await waterNormPromise;
+      if (waterNorm) {
+        track(waterNorm);
+        wMat.normalMap = waterNorm;                  // repeat 40x40 set at load
+        wMat.normalScale.set(0.4, 0.4);              // subtle ripple detail
+        wMat.needsUpdate = true;
+      }
       const w = new THREE.Mesh(wGeo, wMat);
       w.rotation.x = -Math.PI / 2;
       w.position.y = waterLevel - 0.04;
       root.add(w);
+    } else {
+      await waterNormPromise;                        // no-op (resolved null)
     }
 
     // ----- vegetation & props -----
@@ -317,10 +407,133 @@ export async function buildProcedural(scene, env, opts) {
       return placed;
     }
 
+    // Placement collector for photoscanned props: same rejection-sampling rules
+    // as scatterInstanced (deterministic rng consumption independent of whether
+    // the assets/vegetation module actually loaded).
+    function collectPlacements(count, opt) {
+      const maxSlope = opt.maxSlope !== undefined ? opt.maxSlope : 0.6;
+      const minY = opt.minY !== undefined ? opt.minY : -1e9;
+      const maxY = opt.maxY !== undefined ? opt.maxY : 1e9;
+      const minR = opt.minR !== undefined ? opt.minR : 30;
+      const maxR = opt.maxR;
+      const sMin = opt.scaleMin !== undefined ? opt.scaleMin : 0.8;
+      const sMax = opt.scaleMax !== undefined ? opt.scaleMax : 1.3;
+      const yOff = opt.yOffset !== undefined ? opt.yOffset : -0.08;   // multiplied by scale (sink/burial)
+      const bias = opt.ringBias !== undefined ? opt.ringBias : 0.7;
+      const tryMult = opt.tryMult !== undefined ? opt.tryMult : 14;
+      const out = [];
+      let tries = 0;
+      while (out.length < count && tries < count * tryMult) {
+        tries++;
+        const a = rng() * Math.PI * 2;
+        const r = minR + Math.pow(rng(), bias) * (maxR - minR);
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
+        if (!placeable(x, z)) continue;
+        if (slopeAt(x, z) > maxSlope) continue;
+        const y = height(x, z);
+        if (y < minY || y > maxY) continue;
+        const sc = sMin + rng() * (sMax - sMin);
+        out.push({ x, y: y + yOff * sc, z, scale: sc, rotY: rng() * Math.PI * 2 });
+      }
+      return out;
+    }
+
+    // Photoscan scatter through the vegetation module. Colliders are added HERE
+    // (known AABB shape, controlled budget) — the module's collider list gets a
+    // throwaway array so its own collider policy can't double up or diverge.
+    const NEW_COLLIDER_BUDGET = 60;
+    let newPropColliders = 0;
+    async function scatterProps(slug, placements, copt = {}) {
+      if (!placements.length || !veg || typeof veg.scatterModels !== 'function') return;
+      try {
+        const res = await veg.scatterModels(root, slug, placements, [], copt.footprint || 1.2);
+        if (!res) return;                            // model missing → no visuals, no colliders
+        if (res.group && !res.group.parent) root.add(res.group);
+        if (res.dispose) track({ dispose: () => { try { res.dispose(); } catch (e) { /* noop */ } } });
+        if (copt.collide) {
+          for (const p of placements) {
+            if (newPropColliders >= NEW_COLLIDER_BUDGET) break;
+            if (!copt.collide(p)) continue;
+            const fw = (copt.footprint || 1.2) * p.scale;
+            addCollider(p.x, p.y, p.z, fw, (copt.height || 1.5) * p.scale, fw);
+            newPropColliders++;
+          }
+        }
+      } catch (e) {
+        console.warn('[procedural] scatterModels(' + slug + ') failed:', e);
+      }
+    }
+
+    // Photoreal palms with cone-palm fallback. Collider behavior matches the old
+    // cone palms: first N placements get trunk colliders.
+    const palmSystems = [];
+    function buildFallbackPalms(placements) {
+      if (!placements.length) return;
+      const trunk = track(new THREE.CylinderGeometry(0.13, 0.2, 6, 6)); trunk.translate(0, 3, 0);
+      const crown = track(new THREE.ConeGeometry(2.1, 1.5, 7)); crown.translate(0, 6.4, 0);
+      const palmMat = track(new THREE.MeshStandardMaterial({ color: 0x2c7a3c, roughness: 0.9, side: THREE.DoubleSide }));
+      const ims = [
+        new THREE.InstancedMesh(trunk, trunkMat, placements.length),
+        new THREE.InstancedMesh(crown, palmMat, placements.length),
+      ];
+      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+      const s = new THREE.Vector3(), pv = new THREE.Vector3();
+      for (let i = 0; i < placements.length; i++) {
+        const p = placements[i];
+        e.set(0, p.rotY, 0); q.setFromEuler(e);
+        s.set(p.scale, p.scale, p.scale);
+        pv.set(p.x, p.y, p.z);
+        m4.compose(pv, q, s);
+        for (const im of ims) im.setMatrixAt(i, m4);
+      }
+      for (const im of ims) {
+        im.castShadow = true;
+        im.instanceMatrix.needsUpdate = true;
+        root.add(im);
+      }
+    }
+    async function placePalms(placements, collideFirstN, colH) {
+      for (let i = 0; i < placements.length && i < collideFirstN; i++) {
+        const p = placements[i];
+        addCollider(p.x, p.y, p.z, 1.2 * p.scale, colH * p.scale, 1.2 * p.scale);
+      }
+      let done = false;
+      if (veg && typeof veg.createPalms === 'function' && placements.length) {
+        try {
+          const palms = await veg.createPalms(placements.length);
+          if (palms && palms.group) {
+            for (let i = 0; i < placements.length; i++) {
+              const p = placements[i];
+              palms.placeAt(i, p.x, p.y, p.z, p.scale, p.rotY);
+            }
+            palms.finalize?.(placements.length);
+            if (!palms.group.parent) root.add(palms.group);
+            if (typeof palms.update === 'function') palmSystems.push(palms);
+            if (typeof palms.dispose === 'function') {
+              track({ dispose: () => { try { palms.dispose(); } catch (e) { /* noop */ } } });
+            }
+            done = true;
+          }
+        } catch (e) {
+          console.warn('[procedural] createPalms failed, using fallback palms:', e);
+        }
+      }
+      if (!done) buildFallbackPalms(placements);
+    }
+
     const treeMat = track(new THREE.MeshStandardMaterial({ color: 0x2e6b34, roughness: 0.9 }));
     const trunkMat = track(new THREE.MeshStandardMaterial({ color: 0x795c3e, roughness: 1 }));
 
     if (o.terrain === 'mountains') {
+      // re-texture pine trunks with real bark when available (generic bark set)
+      const barkSet = await texSet('bark_palm');
+      if (barkSet && barkSet.map) {
+        trunkMat.color.set(0xffffff);
+        trunkMat.map = cloneTex(barkSet.map, 1, 2);
+        if (barkSet.normalMap) trunkMat.normalMap = cloneTex(barkSet.normalMap, 1, 2);
+        if (barkSet.roughnessMap) trunkMat.roughnessMap = cloneTex(barkSet.roughnessMap, 1, 2);
+        trunkMat.needsUpdate = true;
+      }
       const trunk = new THREE.CylinderGeometry(0.18, 0.28, 2.4, 5); trunk.translate(0, 1.2, 0);
       const cone1 = new THREE.ConeGeometry(2.2, 5, 7); cone1.translate(0, 4.4, 0);
       const cone2 = new THREE.ConeGeometry(1.5, 3.6, 7); cone2.translate(0, 6.6, 0);
@@ -341,12 +554,31 @@ export async function buildProcedural(scene, env, opts) {
       const rock = new THREE.DodecahedronGeometry(1.3, 0);
       const rockMat = track(new THREE.MeshStandardMaterial({ color: 0x8d7a63, roughness: 1 }));
       scatterInstanced([{ geo: rock, mat: rockMat }], 110, 0.8, -1e9, Math.min(half * 0.85, 900), 0, 0);
+    } else if (o.terrain === 'tropical') {
+      // photoreal palms replace the old cone palms (same rejection rules,
+      // same slot in the rng stream, same collider behavior)
+      const palmMaxR = Math.min(half * 0.8, 850);
+      const palmPlaces = collectPlacements(160, {
+        maxSlope: 0.5,
+        minY: waterLevel > -1e8 ? waterLevel + 0.7 : -1e9,
+        maxR: palmMaxR,
+        scaleMin: 0.72, scaleMax: 1.35,
+        yOffset: -0.1,
+      });
+      await placePalms(palmPlaces, 110, 6.5);
+      const bush = new THREE.SphereGeometry(1, 7, 5); bush.scale(1, 0.65, 1); bush.translate(0, 0.5, 0);
+      scatterInstanced([{ geo: bush, mat: treeMat }], 140, 0.6, -1e9, palmMaxR, 0, 0);
     } else {
-      const trunk = new THREE.CylinderGeometry(0.13, 0.2, 6, 6); trunk.translate(0, 3, 0);
-      const crown = new THREE.ConeGeometry(2.1, 1.5, 7); crown.translate(0, 6.4, 0);
-      const palmMat = track(new THREE.MeshStandardMaterial({ color: 0x2c7a3c, roughness: 0.9, side: THREE.DoubleSide }));
-      scatterInstanced([{ geo: trunk, mat: trunkMat }, { geo: crown, mat: palmMat }],
-        260, 0.5, waterLevel > -1e8 ? waterLevel + 0.7 : -1e9, Math.min(half * 0.8, 850), 110, 6.5);
+      // island: palms hug the beach ring just above the waterline
+      const palmPlaces = collectPlacements(140, {
+        maxSlope: 0.5,
+        minY: waterLevel + 1, maxY: waterLevel + 3,
+        minR: half * 0.28, maxR: half * 0.55,   // narrow ring around the coast
+        ringBias: 1, tryMult: 30,               // beach band is thin — search harder
+        scaleMin: 0.72, scaleMax: 1.35,
+        yOffset: -0.1,
+      });
+      await placePalms(palmPlaces, 110, 6.5);
       const bush = new THREE.SphereGeometry(1, 7, 5); bush.scale(1, 0.65, 1); bush.translate(0, 0.5, 0);
       scatterInstanced([{ geo: bush, mat: treeMat }], 140, 0.6, -1e9, Math.min(half * 0.8, 850), 0, 0);
     }
@@ -354,14 +586,24 @@ export async function buildProcedural(scene, env, opts) {
     // ----- locale content -----
     const windmillRotors = [];
     if (isCity) {
-      // roads
-      const roadMat = track(new THREE.MeshStandardMaterial({ color: 0x27292c, roughness: 0.95 }));
+      // roads — real asphalt when the set is present (H/V variants for UV flow)
+      const asphSet = await texSet('asphalt');
+      let roadMatH, roadMatV;
+      const asphOk = !!(asphSet && asphSet.map);
+      if (asphOk) {
+        const roadRough = asphSet.roughnessMap ? 1 : 0.95;
+        roadMatH = await assetLib.pbrMaterial('asphalt', { repeat: [(CITY_R * 2) / 3, 14 / 3], roughness: roadRough });
+        roadMatV = await assetLib.pbrMaterial('asphalt', { repeat: [14 / 3, (CITY_R * 2) / 3], roughness: roadRough });
+      } else {
+        roadMatH = roadMatV = track(new THREE.MeshStandardMaterial({ color: 0x27292c, roughness: 0.95 }));
+      }
       const lineMat = track(new THREE.MeshStandardMaterial({ color: 0xd9c469, emissive: 0x8a7328, emissiveIntensity: 0.3 }));
       for (let k = -2; k <= 2; k++) {
         for (const horiz of [true, false]) {
           const rGeo = track(new THREE.PlaneGeometry(horiz ? CITY_R * 2 : 14, horiz ? 14 : CITY_R * 2));
           rGeo.rotateX(-Math.PI / 2);
-          const road = new THREE.Mesh(rGeo, roadMat);
+          if (asphOk) rGeo.setAttribute('uv2', rGeo.attributes.uv);
+          const road = new THREE.Mesh(rGeo, horiz ? roadMatH : roadMatV);
           road.position.set(horiz ? 0 : k * 180, cityLevel + 0.04, horiz ? k * 180 : 0);
           root.add(road);
           const lGeo = track(new THREE.PlaneGeometry(horiz ? CITY_R * 2 : 0.5, horiz ? 0.5 : CITY_R * 2));
@@ -375,10 +617,24 @@ export async function buildProcedural(scene, env, opts) {
       const winTex = track(cityWindowTexture());
       const unitBox = track(new THREE.BoxGeometry(1, 1, 1));
       unitBox.translate(0, 0.5, 0);
-      const bMatGlass = track(new THREE.MeshStandardMaterial({
-        color: 0x9fb6c4, roughness: 0.15, metalness: 0.85,
-        emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: 0.8,
-      }));
+      // glass towers: real curtain-wall facade with night-window emissive (like miami)
+      const fgSet = await texSet('facade_glass');
+      let bMatGlass;
+      if (fgSet && fgSet.map) {
+        bMatGlass = await assetLib.pbrMaterial('facade_glass', {
+          repeat: [3, 6],
+          roughness: fgSet.roughnessMap ? 1 : 0.18,
+          metalness: 0.65,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.85,
+        });
+        unitBox.setAttribute('uv2', unitBox.attributes.uv);
+      } else {
+        bMatGlass = track(new THREE.MeshStandardMaterial({
+          color: 0x9fb6c4, roughness: 0.15, metalness: 0.85,
+          emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: 0.8,
+        }));
+      }
       const bMatConc = track(new THREE.MeshStandardMaterial({
         color: 0xb9aFa0, roughness: 0.8,
         emissiveMap: winTex, emissive: 0xffffff, emissiveIntensity: 0.5,
@@ -426,9 +682,16 @@ export async function buildProcedural(scene, env, opts) {
       }
       sl.count = si;
       root.add(sl);
-      // plaza
+      // plaza — real sidewalk pavers when the set is present (2m tile)
       const plGeo = track(new THREE.CircleGeometry(34, 30));
-      const plMat = track(new THREE.MeshStandardMaterial({ color: 0x5f6a72, roughness: 0.85 }));
+      const swSet = await texSet('sidewalk');
+      let plMat;
+      if (swSet && swSet.map) {
+        plMat = await assetLib.pbrMaterial('sidewalk', { repeat: [34, 34], roughness: swSet.roughnessMap ? 1 : 0.85 });
+        plGeo.setAttribute('uv2', plGeo.attributes.uv);
+      } else {
+        plMat = track(new THREE.MeshStandardMaterial({ color: 0x5f6a72, roughness: 0.85 }));
+      }
       const plaza = new THREE.Mesh(plGeo, plMat);
       plaza.rotation.x = -Math.PI / 2;
       plaza.position.set(0, cityLevel + 0.05, 0);
@@ -550,30 +813,139 @@ export async function buildProcedural(scene, env, opts) {
       handle.retrievalPoints.push(new THREE.Vector3(x, handle.getGroundHeight(x, z) + 1.2, z));
     }
 
+    // ----- photoscanned biome props -----
+    // NEW rng consumers, deliberately APPENDED after every pre-existing rng
+    // consumer so the classic layout (trees, farms, buildings, retrieval
+    // points) is untouched for a given seed. Placements are always collected
+    // (pure rng+math, deterministic); visuals+colliders only materialize when
+    // the model actually loads — no invisible walls with an empty assets/.
+    const propMaxR = Math.min(half * 0.85, 900);
+    if (o.terrain === 'desert') {
+      const quiver = collectPlacements(8 + ((rng() * 7) | 0), {   // 8..14 quiver trees
+        maxSlope: 0.5, maxR: Math.min(half * 0.75, 700),
+        scaleMin: 0.8, scaleMax: 1.4, yOffset: -0.08,
+      });
+      const bigRocks = collectPlacements(20, {
+        maxSlope: 0.75, maxR: propMaxR,
+        scaleMin: 0.9, scaleMax: 2.6, yOffset: -0.22,
+      });
+      const moonRocks = collectPlacements(15, {
+        maxSlope: 0.75, maxR: propMaxR,
+        scaleMin: 0.7, scaleMax: 2.0, yOffset: -0.18,
+      });
+      await Promise.all([
+        scatterProps('quiver_tree_02', quiver, { collide: () => true, footprint: 0.9, height: 4.5 }),
+        scatterProps('namaqualand_boulder_04', bigRocks, { collide: (p) => p.scale > 1.8, footprint: 1.6, height: 1.3 }),
+        scatterProps('moon_rock_02', moonRocks, { collide: (p) => p.scale > 1.5, footprint: 1.4, height: 1.1 }),
+      ]);
+    } else if (o.terrain === 'mountains') {
+      const outcropA = collectPlacements(13, {
+        maxSlope: 0.9, maxR: propMaxR,
+        scaleMin: 1, scaleMax: 4, yOffset: -0.3,
+      });
+      const outcropB = collectPlacements(12, {
+        maxSlope: 0.9, maxR: propMaxR,
+        scaleMin: 1, scaleMax: 4, yOffset: -0.35,
+      });
+      const stumps = collectPlacements(10, {                      // near treeline
+        maxSlope: 0.5, minY: 55, maxY: 95, maxR: propMaxR,
+        scaleMin: 0.9, scaleMax: 1.3, yOffset: -0.1,
+      });
+      await Promise.all([
+        scatterProps('boulder_01', outcropA, { collide: (p) => p.scale > 2.2, footprint: 1.8, height: 1.5 }),
+        scatterProps('rock_face_01', outcropB, { collide: (p) => p.scale > 2.2, footprint: 2.2, height: 1.8 }),
+        scatterProps('tree_stump_01', stumps, {}),
+      ]);
+    } else if (o.terrain === 'tropical') {
+      const shrubsA = collectPlacements(15, {
+        maxSlope: 0.55, minY: waterLevel + 0.7, maxR: Math.min(half * 0.7, 700),
+        scaleMin: 0.8, scaleMax: 1.4, yOffset: -0.1,
+      });
+      const shrubsB = collectPlacements(15, {
+        maxSlope: 0.55, minY: waterLevel + 0.7, maxR: Math.min(half * 0.7, 700),
+        scaleMin: 0.8, scaleMax: 1.4, yOffset: -0.1,
+      });
+      const ferns = collectPlacements(13, {                        // accents near spawn
+        maxSlope: 0.5, minY: waterLevel + 0.7, minR: 28, maxR: 95,
+        scaleMin: 0.8, scaleMax: 1.3, yOffset: -0.06,
+      });
+      const anthuriums = collectPlacements(12, {
+        maxSlope: 0.5, minY: waterLevel + 0.7, minR: 28, maxR: 95,
+        scaleMin: 0.8, scaleMax: 1.3, yOffset: -0.06,
+      });
+      await Promise.all([
+        scatterProps('shrub_02', shrubsA, {}),
+        scatterProps('shrub_03', shrubsB, {}),
+        scatterProps('fern_02', ferns, {}),
+        scatterProps('anthurium_botany_01', anthuriums, {}),
+      ]);
+    } else {
+      // island: half-buried beach boulders (colliders) + shrubs inland
+      const beachBoulders = collectPlacements(12, {
+        maxSlope: 0.6, minY: waterLevel + 0.6, maxY: waterLevel + 2.5,
+        minR: half * 0.28, maxR: half * 0.55, ringBias: 1, tryMult: 25,
+        scaleMin: 1.2, scaleMax: 2.4, yOffset: -0.5,               // half-buried
+      });
+      const shrubsA = collectPlacements(12, {
+        maxSlope: 0.55, minY: waterLevel + 3, maxR: half * 0.45,
+        scaleMin: 0.8, scaleMax: 1.4, yOffset: -0.1,
+      });
+      const shrubsB = collectPlacements(12, {
+        maxSlope: 0.55, minY: waterLevel + 3, maxR: half * 0.45,
+        scaleMin: 0.8, scaleMax: 1.4, yOffset: -0.1,
+      });
+      await Promise.all([
+        scatterProps('boulder_01', beachBoulders, { collide: () => true, footprint: 1.6, height: 1.1 }),
+        scatterProps('shrub_02', shrubsA, {}),
+        scatterProps('shrub_03', shrubsB, {}),
+      ]);
+    }
+
     handle.name = 'Procedural ' + (isCity ? 'City' : 'Country') + ' — ' +
       o.terrain.charAt(0).toUpperCase() + o.terrain.slice(1) + ' #' + seed;
 
     handle.update = (dt) => {
       for (const r of windmillRotors) r.rotation.z += dt * 1.2;
+      for (const p of palmSystems) p.update(dt);
     };
   }
 
   // ============================================================
   // INDOOR — warehouse complex
   // ============================================================
-  function buildIndoor() {
+  async function buildIndoor() {
     handle.name = 'Procedural Indoor — Warehouse #' + seed;
     handle.getGroundHeight = () => 0;
 
     const wallMat = track(new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.9 }));
-    const floorTex = track(concreteTexture());
-    floorTex.repeat.set(18, 12);
-    const floorMat = track(new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.85 }));
+    // floor: real asphalt/sidewalk set as worn polished concrete when present,
+    // otherwise the classic canvas concrete
+    let floorMat = null;
+    let floorTexOk = false;
+    {
+      let fSet = await texSet('asphalt');
+      let fKey = 'asphalt';
+      if (!(fSet && fSet.map)) { fSet = await texSet('sidewalk'); fKey = 'sidewalk'; }
+      if (fSet && fSet.map && assetLib) {
+        floorMat = await assetLib.pbrMaterial(fKey, {
+          repeat: [120, 60],                       // 240x120m floor, 2m tile
+          roughness: 0.9,
+          color: 0xaeb2b5,                         // lift dark asphalt toward concrete
+        });
+        floorTexOk = true;
+      }
+    }
+    if (!floorMat) {
+      const floorTex = track(concreteTexture());
+      floorTex.repeat.set(18, 12);
+      floorMat = track(new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.85 }));
+    }
     const ceilMat = track(new THREE.MeshStandardMaterial({ color: 0x4c5257, roughness: 0.95 }));
 
     // main hall: x -80..80, z -50..50, h 22; annex: x 80..140, z -30..30, h 12
     const floorGeo = track(new THREE.PlaneGeometry(240, 120));
     floorGeo.rotateX(-Math.PI / 2);
+    if (floorTexOk) floorGeo.setAttribute('uv2', floorGeo.attributes.uv);
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.position.set(20, 0, 0);
     floor.receiveShadow = true;

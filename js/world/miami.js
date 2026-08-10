@@ -2,13 +2,17 @@
 // PropWash FPV — Miami Skyline map
 // Tropical high-rise beach city: ocean, beach, boardwalk, pier,
 // Ocean Drive, art-deco + glass skyline, ferris wheel, marina.
-// Pure procedural geometry; only the water-normals texture is
-// fetched from the three.js CDN (with an offline fallback).
+// Photoreal pass: CC0 PBR ground/road/facades via AssetLibrary,
+// photoscan rocks + tropical vegetation via vegetation.js.
+// Every asset degrades gracefully — with an empty assets/ folder
+// the map still builds with the original procedural look.
 // ============================================================
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { settings, clamp } from '../core/state.js';
+import { assetLib } from '../core/assets.js';
+import { buildPalm, createPalms, scatterModels } from './vegetation.js';
 
 // deterministic layout
 function mulberry32(a) {
@@ -44,7 +48,12 @@ function groundHeight(x, z) {
   return g < 0.02 && z < 8 ? 0 : g;                       // water surface counts as ground
 }
 
-// ---------- canvas textures ----------
+// mesh displacement — same formula the physics-adjacent vertex loop always used
+function meshHeight(x, z) {
+  return baseProfile(z) + (z < CITY_Z - 2 ? sandNoise(x, z) * Math.max(0, 1 - Math.abs(z) / 60) : 0);
+}
+
+// ---------- canvas textures (procedural fallbacks + deco windows) ----------
 function windowTexture(rng, lit = 0.55, warmBias = 0.7) {
   const c = document.createElement('canvas');
   c.width = 128; c.height = 256;
@@ -101,15 +110,28 @@ function roadTexture() {
   return tex;
 }
 
+// aoMap UVs: three r180 samples aoMap through texture.channel (default 0 → 'uv'),
+// but we alias uv1/uv2 too so any channel choice — and older code paths — resolve.
+function setAoUVs(geo) {
+  if (!geo.attributes.uv) return;
+  geo.setAttribute('uv1', geo.attributes.uv);
+  geo.setAttribute('uv2', geo.attributes.uv);
+}
+
 // ============================================================
 export async function buildMiami(scene, env) {
   const rng = mulberry32(20250809);
+  // Second stream for all NEW dressing (rocks, shrubs, hero palms, vertex tint).
+  // The main `rng` stream must keep its exact legacy draw sequence so the
+  // deterministic tower/hut/car layout stays bit-identical to the old build.
+  const rng2 = mulberry32(0x5eaf00d);
   const root = new THREE.Group();
   root.name = 'miami';
   scene.add(root);
 
   const disposables = [];   // geometries/materials/textures
   const colliders = [];
+  const scatterHandles = [];
   const track = (obj) => { disposables.push(obj); return obj; };
   const addCollider = (cx, cy, cz, sx, sy, sz) => {
     colliders.push({
@@ -118,34 +140,92 @@ export async function buildMiami(scene, env) {
     });
   };
 
-  // ---------------- ground ----------------
+  // ---------------- environment HDRIs ----------------
+  if (env.setHDRIBands) {
+    env.setHDRIBands({ day: 'beach_day', sunset: 'sunset', night: 'night', overcast: 'overcast' });
+  }
+
+  // Legacy-stream preservation: the old single ground mesh consumed one rng()
+  // draw per vertex (151 x 77 grid). Burn the same count so every downstream
+  // rng-derived position (palms, huts, towers, cars…) lands exactly where it
+  // always has. DO NOT add or remove main-rng draws before the layout sections.
+  for (let i = 0; i < 151 * 77; i++) rng();
+
+  // ---------------- shared PBR texture sets (each key may be absent) ----------------
+  const [sandSet, sidewalkSet, asphaltSet, roadLinesSet, glassSet, facadeDaySet] = await Promise.all([
+    assetLib.textureSet('sand_beach'),
+    assetLib.textureSet('sidewalk'),
+    assetLib.textureSet('asphalt'),
+    assetLib.textureSet('road_lines'),
+    assetLib.textureSet('facade_glass'),
+    assetLib.textureSet('facade_day'),
+  ]);
+
+  // ---------------- ground: beach mesh + city mesh ----------------
+  // Two meshes share the exact legacy displacement formula (meshHeight), so the
+  // visual surface tracks groundHeight physics exactly as before.
   {
-    const geo = track(new THREE.PlaneGeometry(1500, 760, 150, 76));
+    // (a) beach: z in [-130, CITY_Z + 3], real 30 m sand_beach scan → 1 tile = 30 m
+    const Z0 = -130, Z1 = CITY_Z + 3;
+    const depth = Z1 - Z0;
+    const geo = track(new THREE.PlaneGeometry(1500, depth, 150, 40));
     geo.rotateX(-Math.PI / 2);
+    geo.translate(0, 0, (Z0 + Z1) / 2);
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
-    const sand = new THREE.Color('#e5cf9c');
-    const sandWet = new THREE.Color('#c9b183');
-    const pavement = new THREE.Color('#8f8f8c');
+    const dry = new THREE.Color(0xffffff);                 // near-white multiply tint
+    const wet = new THREE.Color(0x93a189);                 // darker + greener at waterline
     const tmp = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      let z = pos.getZ(i) + 250;                 // shift: plane covers z -130..630
-      pos.setZ(i, z);
-      const y = baseProfile(z) + (z < CITY_Z - 2 ? sandNoise(x, z) * Math.max(0, 1 - Math.abs(z) / 60) : 0);
+      const x = pos.getX(i), z = pos.getZ(i);
+      const y = meshHeight(x, z);
       pos.setY(i, y);
-      if (z >= CITY_Z + 3) tmp.copy(pavement);
-      else if (z >= CITY_Z - 3) tmp.copy(pavement).lerp(sand, (CITY_Z + 3 - z) / 6);
-      else tmp.copy(sand).lerp(sandWet, Math.min(1, Math.max(0, (2 - y) / 2.6)));
-      tmp.offsetHSL(0, 0, (rng() - 0.5) * 0.02);
+      tmp.copy(dry).lerp(wet, Math.min(1, Math.max(0, (2 - y) / 2.6)));  // legacy wet-sand lerp
+      tmp.offsetHSL(0, 0, (rng2() - 0.5) * 0.02);
       colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const mat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 }));
-    const ground = new THREE.Mesh(geo, mat);
-    ground.receiveShadow = true;
-    root.add(ground);
+    setAoUVs(geo);
+    let mat;
+    if (sandSet.map) {
+      mat = await assetLib.pbrMaterial('sand_beach', { repeat: [1500 / 30, depth / 30] });
+    } else {
+      mat = track(new THREE.MeshStandardMaterial({ color: 0xe5cf9c, roughness: 0.95, metalness: 0 }));
+    }
+    mat.vertexColors = true;
+    mat.needsUpdate = true;
+    const beach = new THREE.Mesh(geo, mat);
+    beach.receiveShadow = true;
+    root.add(beach);
+  }
+  {
+    // (b) city: z in [CITY_Z - 3, 630], sidewalk 1 tile = 2 m
+    const Z0 = CITY_Z - 3, Z1 = 630;
+    const depth = Z1 - Z0;
+    const geo = track(new THREE.PlaneGeometry(1500, depth, 150, 60));
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, 0, (Z0 + Z1) / 2);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setY(i, meshHeight(pos.getX(i), pos.getZ(i)));
+    }
+    geo.computeVertexNormals();
+    setAoUVs(geo);
+    let mat;
+    if (sidewalkSet.map) {
+      mat = await assetLib.pbrMaterial('sidewalk', { repeat: [1500 / 2, depth / 2] });
+    } else {
+      mat = track(new THREE.MeshStandardMaterial({ color: 0x8f8f8c, roughness: 0.95, metalness: 0 }));
+    }
+    // beach + city overlap (coplanar) in the seam band — push the city mesh
+    // back in depth so the sand wins there instead of z-fighting
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = 1;
+    mat.polygonOffsetUnits = 1;
+    const city = new THREE.Mesh(geo, mat);
+    city.receiveShadow = true;
+    root.add(city);
   }
 
   // ---------------- ocean ----------------
@@ -153,16 +233,21 @@ export async function buildMiami(scene, env) {
   let waterFallbackMat = null;
   {
     const waterGeo = track(new THREE.PlaneGeometry(5000, 3600));
-    const normals = await new Promise((resolve) => {
+    const loadNormals = (url, timeoutMs) => new Promise((resolve) => {
       const loader = new THREE.TextureLoader();
-      const timer = setTimeout(() => resolve(null), 5000);
+      const timer = setTimeout(() => resolve(null), timeoutMs);
       loader.load(
-        'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/textures/waternormals.jpg',
+        url,
         (t) => { clearTimeout(timer); t.wrapS = t.wrapT = THREE.RepeatWrapping; resolve(t); },
         undefined,
         () => { clearTimeout(timer); resolve(null); }
       );
     });
+    // local copy first, CDN as fallback
+    let normals = await loadNormals('assets/textures/waternormals.jpg', 4000);
+    if (!normals) {
+      normals = await loadNormals('https://cdn.jsdelivr.net/npm/three@0.180.0/examples/textures/waternormals.jpg', 5000);
+    }
     if (normals) {
       track(normals);
       water = new Water(waterGeo, {
@@ -249,32 +334,82 @@ export async function buildMiami(scene, env) {
 
   // ---------------- Ocean Drive road ----------------
   {
-    const roadTex = track(roadTexture());
-    roadTex.repeat.set(90, 1);
     const geo = track(new THREE.PlaneGeometry(1240, 12));
     geo.rotateX(-Math.PI / 2);
-    const mat = track(new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.95 }));
+    setAoUVs(geo);
+    let mat;
+    if (asphaltSet.map) {
+      mat = await assetLib.pbrMaterial('asphalt', { repeat: [1240 / 3, 12 / 3] });  // 1 tile ≈ 3 m
+    } else {
+      const roadTex = track(roadTexture());
+      roadTex.repeat.set(90, 1);
+      mat = track(new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.95 }));
+    }
     const road = new THREE.Mesh(geo, mat);
     road.position.set(0, CITY_Y + 0.06, 44);
     road.receiveShadow = true;
     root.add(road);
+
+    if (asphaltSet.map && roadLinesSet.map && roadLinesSet.alphaMap) {
+      // yellow dashed center line — crop the dashed-strip column out of the
+      // road_lines decal atlas (albedo = paint color, opacity = marking mask)
+      const crop = (t) => {
+        const c = t.clone();
+        c.wrapS = c.wrapT = THREE.ClampToEdgeWrapping;
+        c.offset.set(742 / 1024, 0.355);
+        c.repeat.set(28 / 1024, 0.30);
+        c.needsUpdate = true;
+        return track(c);
+      };
+      const lineMat = track(new THREE.MeshStandardMaterial({
+        map: crop(roadLinesSet.map),
+        alphaMap: crop(roadLinesSet.alphaMap),
+        transparent: true,
+        depthWrite: false,
+        roughness: 0.6,
+        metalness: 0,
+      }));
+      const SEG = 48;                                     // meters of dashes per instance
+      const lineGeo = track(new THREE.PlaneGeometry(0.45, SEG));
+      lineGeo.rotateX(-Math.PI / 2);
+      lineGeo.rotateY(Math.PI / 2);                       // dash direction along X
+      const count = Math.ceil(1240 / SEG);
+      const line = new THREE.InstancedMesh(lineGeo, lineMat, count);
+      const m4 = new THREE.Matrix4();
+      for (let i = 0; i < count; i++) {
+        m4.makeTranslation(-620 + SEG / 2 + i * SEG, CITY_Y + 0.08, 44);   // +0.02 above road
+        line.setMatrixAt(i, m4);
+      }
+      line.instanceMatrix.needsUpdate = true;
+      root.add(line);
+    } else if (asphaltSet.map) {
+      // asphalt present but decal atlas missing → canvas dash strip
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 16;
+      const g = c.getContext('2d');
+      g.clearRect(0, 0, 256, 16);
+      g.fillStyle = '#e8c545';
+      for (let x = 0; x < 256; x += 42) g.fillRect(x, 5, 22, 6);
+      const tex = track(new THREE.CanvasTexture(c));
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(90, 1);
+      const mat2 = track(new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.6 }));
+      const geo2 = track(new THREE.PlaneGeometry(1240, 0.5));
+      geo2.rotateX(-Math.PI / 2);
+      const strip = new THREE.Mesh(geo2, mat2);
+      strip.position.set(0, CITY_Y + 0.08, 44);
+      root.add(strip);
+    }
+    // (canvas roadTexture fallback already carries baked markings)
   }
 
-  // ---------------- palms (instanced trunks + crowns) ----------------
+  // ---------------- palms ----------------
+  // Placement loop kept draw-for-draw identical to the legacy cone-palm build
+  // (x, z, z, sc, tiltX, rotY, tiltZ) so the main rng stream is preserved.
+  const palmPlacements = [];
   {
-    const trunkGeo = track(new THREE.CylinderGeometry(0.14, 0.22, 6.5, 6));
-    trunkGeo.translate(0, 3.25, 0);
-    const trunkMat = track(new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 1 }));
-    const crownGeo = track(new THREE.ConeGeometry(2.2, 1.4, 7));
-    crownGeo.translate(0, 6.9, 0);
-    const crownMat = track(new THREE.MeshStandardMaterial({ color: 0x2c7a3c, roughness: 0.9, side: THREE.DoubleSide }));
     const N = 170;
-    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, N);
-    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, N);
-    const m4 = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const s = new THREE.Vector3();
-    const p = new THREE.Vector3();
     let placed = 0;
     while (placed < N) {
       const x = (rng() - 0.5) * 1200;
@@ -283,17 +418,79 @@ export async function buildMiami(scene, env) {
       const y = groundHeight(x, z);
       if (y < 0.1) continue;
       const sc = 0.8 + rng() * 0.55;
-      q.setFromEuler(new THREE.Euler(( rng() - 0.5) * 0.12, rng() * Math.PI * 2, (rng() - 0.5) * 0.12));
-      s.set(sc, sc, sc);
-      p.set(x, y, z);
-      m4.compose(p, q, s);
-      trunks.setMatrixAt(placed, m4);
-      crowns.setMatrixAt(placed, m4);
-      addCollider(x, y, z, 0.5, 6.5 * sc, 0.5);   // every trunk is solid
+      const legacyTiltX = (rng() - 0.5) * 0.12;   // draws preserved from the old
+      const rotY = rng() * Math.PI * 2;           // Euler(tiltX, yaw, tiltZ) — the
+      const legacyTiltZ = (rng() - 0.5) * 0.12;   // tilts are no longer applied
+      void legacyTiltX; void legacyTiltZ;
+      palmPlacements.push({ x, y, z, sc, rotY });
+      addCollider(x, y, z, 0.5, 6.5 * sc, 0.5);   // every trunk is solid (unchanged)
       placed++;
+    }
+  }
+  let palms = null;
+  try {
+    palms = await createPalms(palmPlacements.length);
+  } catch (e) {
+    console.warn('[miami] createPalms failed — using legacy cone palms:', e);
+    palms = null;
+  }
+  if (palms && palms.group) {
+    for (let i = 0; i < palmPlacements.length; i++) {
+      const p = palmPlacements[i];
+      palms.placeAt(i, p.x, p.y, p.z, p.sc, p.rotY);
+    }
+    palms.finalize(palmPlacements.length);
+    root.add(palms.group);
+  } else {
+    palms = null;
+    // legacy instanced cone palms (colliders above already cover them)
+    const trunkGeo = track(new THREE.CylinderGeometry(0.14, 0.22, 6.5, 6));
+    trunkGeo.translate(0, 3.25, 0);
+    const trunkMat = track(new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 1 }));
+    const crownGeo = track(new THREE.ConeGeometry(2.2, 1.4, 7));
+    crownGeo.translate(0, 6.9, 0);
+    const crownMat = track(new THREE.MeshStandardMaterial({ color: 0x2c7a3c, roughness: 0.9, side: THREE.DoubleSide }));
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, palmPlacements.length);
+    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, palmPlacements.length);
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const eul = new THREE.Euler();
+    const s = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    for (let i = 0; i < palmPlacements.length; i++) {
+      const pl = palmPlacements[i];
+      eul.set(0, pl.rotY, 0);
+      q.setFromEuler(eul);
+      s.set(pl.sc, pl.sc, pl.sc);
+      p.set(pl.x, pl.y, pl.z);
+      m4.compose(p, q, s);
+      trunks.setMatrixAt(i, m4);
+      crowns.setMatrixAt(i, m4);
     }
     trunks.castShadow = true; crowns.castShadow = true;
     root.add(trunks); root.add(crowns);
+  }
+
+  // hero palms — full buildPalm() models clustered by the spawn/boardwalk,
+  // right where the FPV camera starts (the money shot)
+  {
+    const HERO_POS = [
+      [-17, 19.5], [-10, 14], [-4, 22.5], [4, 17],
+      [11, 23], [17, 14.5], [24, 20.5], [30, 16.5],
+    ];
+    for (const [hx, hz] of HERO_POS) {
+      let hero = null;
+      try { hero = await buildPalm(rng2); } catch (e) { hero = null; }
+      if (!hero) break;                       // vegetation absent — instanced palms still cover the area
+      const s = 0.95 + rng2() * 0.35;
+      const hy = groundHeight(hx, hz);
+      hero.scale.multiplyScalar(s);
+      hero.rotation.y = rng2() * Math.PI * 2;
+      hero.position.set(hx, hy, hz);
+      hero.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+      root.add(hero);
+      addCollider(hx, hy, hz, 0.6, 7.5 * s, 0.6);   // thin trunk collider per hero
+    }
   }
 
   // ---------------- beach props: lifeguard huts + umbrellas ----------------
@@ -397,13 +594,35 @@ export async function buildMiami(scene, env) {
   }
 
   // ---------------- skyline ----------------
+  // winTexA/B consume main-rng draws — always create both to preserve the stream
+  // (winTexB is only rendered in the no-facade fallback).
   const winTexA = track(windowTexture(rng, 0.5));
   const winTexB = track(windowTexture(rng, 0.65, 0.4));
   const decoCols = [0xf2b8c6, 0x7fd4c1, 0xf5e9d0, 0xffb385, 0xc3b4e6];
-  const glassMat = track(new THREE.MeshStandardMaterial({
-    color: 0x8fb8c9, roughness: 0.12, metalness: 0.92,
-    emissiveMap: winTexB, emissive: 0xffffff, emissiveIntensity: 0.85,
-  }));
+
+  // facade_glass calibration: albedo holds ~30 window columns per tile → a
+  // 45 m-wide tile gives ~1.5 m windows; v stretched to 90 m for ~2.6 m floors
+  const FACADE_U = 45, FACADE_V = 90;
+  const hasGlassTex = !!glassSet.map;
+  let glassMat;
+  if (hasGlassTex) {
+    glassMat = track(new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 1,                      // rough.jpg governs
+      metalness: 0.12,
+      map: glassSet.map,
+      normalMap: glassSet.normalMap || null,
+      roughnessMap: glassSet.roughnessMap || null,
+      emissive: 0xffffff,
+      emissiveMap: glassSet.emissiveMap || glassSet.map,
+      emissiveIntensity: glassSet.emissiveMap ? 1.1 : 0.6,   // lit night windows
+    }));
+  } else {
+    glassMat = track(new THREE.MeshStandardMaterial({
+      color: 0x8fb8c9, roughness: 0.12, metalness: 0.92,
+      emissiveMap: winTexB, emissive: 0xffffff, emissiveIntensity: 0.85,
+    }));
+  }
   const towerGroup = new THREE.Group();
 
   function addTower(x, z, w, h, d, style) {
@@ -413,6 +632,13 @@ export async function buildMiami(scene, env) {
         color, roughness: 0.75,
         emissiveMap: winTexA, emissive: 0xffffff, emissiveIntensity: 0.55,
       }));
+      // subtle color-tinted facade_day overlay when present (shared textures,
+      // per-geometry UV scaling below handles tiling)
+      if (facadeDaySet.map) {
+        mat.map = facadeDaySet.map;
+        if (facadeDaySet.normalMap) mat.normalMap = facadeDaySet.normalMap;
+        if (facadeDaySet.roughnessMap) mat.roughnessMap = facadeDaySet.roughnessMap;
+      }
       let y = CITY_Y;
       const tiers = 2 + ((rng() * 2) | 0);
       let tw = w, td = d;
@@ -448,7 +674,9 @@ export async function buildMiami(scene, env) {
     } else if (style === 'cyl') {
       const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18));
       const uv = geo.attributes.uv;
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, (Math.PI * w) / 16), uv.getY(i) * Math.max(1, h / 26));
+      const su = hasGlassTex ? (Math.PI * w) / FACADE_U : Math.max(1, (Math.PI * w) / 16);
+      const sv = hasGlassTex ? h / FACADE_V : Math.max(1, h / 26);
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
@@ -457,7 +685,9 @@ export async function buildMiami(scene, env) {
     } else {
       const geo = track(new THREE.BoxGeometry(w, h, d));
       const uv = geo.attributes.uv;
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, w / 14), uv.getY(i) * Math.max(1, h / 26));
+      const su = hasGlassTex ? w / FACADE_U : Math.max(1, w / 14);
+      const sv = hasGlassTex ? h / FACADE_V : Math.max(1, h / 26);
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
@@ -652,7 +882,9 @@ export async function buildMiami(scene, env) {
     const h = 45 + rng() * 20;
     const geo = track(new THREE.BoxGeometry(16, h, 16));
     const uv = geo.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / 26));
+    const su = hasGlassTex ? 16 / FACADE_U : 1;
+    const sv = hasGlassTex ? h / FACADE_V : h / 26;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
     const mesh = new THREE.Mesh(geo, glassMat);
     mesh.position.set(hx, CITY_Y + h / 2, hz);
     mesh.castShadow = true;
@@ -670,6 +902,83 @@ export async function buildMiami(scene, env) {
     root.add(ring);
     addCollider(hx, CITY_Y, hz, 16, h + 1, 16);
     towerData.push({ x: hx, z: hz, w: 16, h, d: 16 });
+  }
+
+  // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------
+  const scatterSafe = async (slug, placements, colliderList, colliderSize) => {
+    if (!placements.length) return;
+    try {
+      const h = await scatterModels(root, slug, placements, colliderList, colliderSize);
+      if (h) scatterHandles.push(h);
+    } catch (e) {
+      console.warn(`[miami] scatter '${slug}' skipped:`, e);
+    }
+  };
+  {
+    // breakwater — half-submerged boulders along the waterline, x 120..260
+    const seabed = (x, z) => baseProfile(z) + sandNoise(x, z) * Math.max(0, 1 - Math.abs(z) / 60);
+    const bwBoulders = [], bwRocks = [];
+    for (let i = 0; i < 14; i++) {
+      const x = 122 + i * 10.3 + (rng2() - 0.5) * 4;
+      const z = -30.5 - rng2() * 6;
+      const sc = 1.5 + rng2() * 1.5;
+      const item = { x, y: seabed(x, z) - 0.12 * sc, z, scale: sc, rotY: rng2() * Math.PI * 2 };
+      (i % 2 ? bwRocks : bwBoulders).push(item);
+    }
+    await scatterSafe('boulder_01', bwBoulders, colliders, 2.2);
+    await scatterSafe('rock_07', bwRocks, colliders, 2.2);
+
+    // small photoscan rocks scattered on the sand (no colliders)
+    const beachRocks = [];
+    let tries = 0;
+    while (beachRocks.length < 10 && tries++ < 60) {
+      const x = -520 + rng2() * 1060;
+      const z = 3 + rng2() * 15;
+      if (Math.abs(x - PIER_X) < 15) continue;                    // pier
+      if (x > 42 && x < 112 && z < 22) continue;                  // MIAMI sign
+      if (Math.abs(x) < 7 && Math.abs(z - 8) < 7) continue;       // spawn pad
+      const y = groundHeight(x, z);
+      if (y < 0.15) continue;
+      beachRocks.push({ x, y: y - 0.05, z, scale: 0.35 + rng2() * 0.45, rotY: rng2() * Math.PI * 2 });
+    }
+    await scatterSafe('rock_07', beachRocks, null, 0);
+  }
+  {
+    // shrubs + broadleafs along boardwalk planters and between road and beach
+    const s02 = [], s03 = [], anth = [];
+    let placedS = 0, tries = 0;
+    while (placedS < 40 && tries++ < 240) {
+      const planter = rng2() < 0.55;
+      const x = -580 + rng2() * 1160;
+      const z = planter ? 31.8 + rng2() * 4.6 : 18 + rng2() * 6;
+      if (Math.abs(x - PIER_X) < 14) continue;
+      if (Math.abs(x - WHEEL_X) < 16 && z > 30) continue;         // ferris wheel base
+      if (x > 42 && x < 112 && z < 26) continue;                  // MIAMI sign
+      const y = groundHeight(x, z);
+      if (y < 0.25) continue;
+      const item = { x, y: y - 0.03, z, scale: 0.8 + rng2() * 0.7, rotY: rng2() * Math.PI * 2 };
+      const pick = placedS % 4;
+      (pick === 3 ? anth : pick === 1 ? s03 : s02).push(item);
+      placedS++;
+    }
+    await scatterSafe('shrub_02', s02, null, 0);
+    await scatterSafe('shrub_03', s03, null, 0);
+    await scatterSafe('anthurium_botany_01', anth, null, 0);
+
+    // fern clusters at the front-row tower bases
+    const ferns = [];
+    for (const t of towerData) {
+      if (ferns.length >= 20) break;
+      if (t.z > 110 || Math.abs(t.x) > 320) continue;
+      const n = 2 + ((rng2() * 2) | 0);
+      for (let k = 0; k < n && ferns.length < 20; k++) {
+        const fx = t.x - t.w / 2 + rng2() * t.w;
+        const fz = t.z - t.d / 2 - 1.2 - rng2() * 1.8;
+        if (fz < 52.5) continue;                                  // keep off the road
+        ferns.push({ x: fx, y: CITY_Y, z: fz, scale: 0.8 + rng2() * 0.6, rotY: rng2() * Math.PI * 2 });
+      }
+    }
+    await scatterSafe('fern_02', ferns, null, 0);
   }
 
   // ---------------- spawn / home pad ----------------
@@ -750,9 +1059,12 @@ export async function buildMiami(scene, env) {
         b.position.y = 0.35 + Math.sin(time * 1.1 + b.userData.phase) * 0.12;
         b.rotation.x = Math.sin(time * 0.9 + b.userData.phase) * 0.03;
       }
+      if (palms) palms.update(dt);
     },
     dispose(sceneRef) {
       sceneRef.remove(root);
+      try { palms?.dispose?.(); } catch (e) { /* noop */ }
+      for (const h of scatterHandles) { try { h.dispose?.(); } catch (e) { /* noop */ } }
       for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
     },
   };

@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { settings, saveSettings, emit, on, clamp } from './core/state.js';
+import { initAssetLibrary } from './core/assets.js';
 import { DRONES } from './physics/drones.js';
 import { Quad } from './physics/quad.js';
 import { buildDroneMesh } from './physics/droneMesh.js';
@@ -42,6 +43,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(window.innerWidth, window.innerHeight);
 appEl.appendChild(renderer.domElement);
+
+initAssetLibrary(renderer);
 
 // GPU sniff for initial auto-quality (runs once)
 function autoDetectQuality() {
