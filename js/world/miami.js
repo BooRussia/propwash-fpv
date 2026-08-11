@@ -119,12 +119,339 @@ function setAoUVs(geo) {
 }
 
 // ============================================================
+// Props-v2 geometry helpers (parasols, lifeguard towers, boats, facades).
+// Builders return BufferGeometries with position/normal/uv (+vertex colors
+// where noted) so they can be freely merged or instanced.
+// ============================================================
+function colorFill(geo, hex) {
+  const c = new THREE.Color(hex);
+  const n = geo.attributes.position.count;
+  const arr = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+  return geo;
+}
+
+function zeroUV(geo) {
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+  return geo;
+}
+
+function cBox(w, h, d, hex, x, y, z, rx = 0, ry = 0, rz = 0) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  if (rz) g.rotateZ(rz);
+  if (rx) g.rotateX(rx);
+  if (ry) g.rotateY(ry);
+  g.translate(x, y, z);
+  return colorFill(g, hex);
+}
+
+function cCyl(r0, r1, h, seg, hex, x, y, z, rx = 0, ry = 0, rz = 0) {
+  const g = new THREE.CylinderGeometry(r0, r1, h, seg);
+  if (rz) g.rotateZ(rz);
+  if (rx) g.rotateX(rx);
+  if (ry) g.rotateY(ry);
+  g.translate(x, y, z);
+  return colorFill(g, hex);
+}
+
+function tubeBetween(p0, p1, r, seg) {
+  const dir = new THREE.Vector3().subVectors(p1, p0);
+  const len = dir.length();
+  const g = new THREE.CylinderGeometry(r, r, len, seg);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
+  g.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
+  return g;
+}
+
+// Physically scaled facade UVs for a BoxGeometry: every face maps the texture
+// at a constant tileU x tileV meters, so window size is identical across all
+// towers regardless of their dimensions. offU/offV decorrelate the pattern
+// between neighbouring buildings.
+function facadeUV(geo, w, h, d, tileU, tileV, offU, offV) {
+  const uv = geo.attributes.uv;
+  if (uv.count === 24) {
+    const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];   // ±x, ±y, ±z faces
+    for (let f = 0; f < 6; f++) {
+      const du = dims[f][0], dv = dims[f][1];
+      for (let k = 0; k < 4; k++) {
+        const i = f * 4 + k;
+        uv.setXY(i, uv.getX(i) * (du / tileU) + offU, uv.getY(i) * (dv / tileV) + offV);
+      }
+    }
+  } else {
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, uv.getX(i) * (w / tileU) + offU, uv.getY(i) * (h / tileV) + offV);
+    }
+  }
+  uv.needsUpdate = true;
+}
+
+// ---------- parasols (beach umbrellas v2) ----------
+const PAR_R = 1.45, PAR_APEX = 0.5, PAR_Y0 = 1.96, PAR_PANELS = 12;
+
+// Scalloped 12-rib canopy; parity picks alternating panels so two
+// InstancedMeshes (fixed white + per-instance tinted) interleave into
+// one two-tone parasol.
+function buildParasolCanopy(parity) {
+  const SUB = 4, ringT = [0.55, 1.0];
+  const pos = [], idx = [];
+  for (let j = 0; j < PAR_PANELS; j++) {
+    if (j % 2 !== parity) continue;
+    const base = pos.length / 3;
+    const midA = ((j + 0.5) / PAR_PANELS) * Math.PI * 2;
+    pos.push(Math.cos(midA) * 0.02, PAR_Y0 + PAR_APEX, Math.sin(midA) * 0.02);
+    for (let r = 0; r < 2; r++) {
+      const t = ringT[r];
+      for (let k = 0; k <= SUB; k++) {
+        const a = ((j + k / SUB) / PAR_PANELS) * Math.PI * 2;
+        const s = Math.sin((k / SUB) * Math.PI);           // 0 at ribs, 1 mid-panel
+        const dipY = (r === 1 ? 0.13 : 0.05) * s;
+        const dipR = (r === 1 ? 0.06 : 0.02) * s;
+        const rad = PAR_R * Math.pow(t, 0.9) - dipR;
+        pos.push(
+          Math.cos(a) * rad,
+          PAR_Y0 + PAR_APEX * (1 - Math.pow(t, 1.55)) - dipY,
+          Math.sin(a) * rad
+        );
+      }
+    }
+    const r0 = base + 1, r1 = base + 2 + SUB;
+    for (let k = 0; k < SUB; k++) {
+      idx.push(base, r0 + k + 1, r0 + k);
+      idx.push(r0 + k, r1 + k + 1, r1 + k);
+      idx.push(r0 + k, r0 + k + 1, r1 + k + 1);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return zeroUV(geo);
+}
+
+// Pole + 12 visible ribs + finial knob, merged → one instanced draw call.
+function buildParasolFrame() {
+  const wood = 0xe8e2d2;
+  const geos = [cCyl(0.032, 0.042, 2.04, 7, wood, 0, 1.02, 0)];
+  const top = new THREE.Vector3(0, PAR_Y0 + PAR_APEX - 0.04, 0);
+  for (let j = 0; j < PAR_PANELS; j++) {
+    const a = (j / PAR_PANELS) * Math.PI * 2;
+    const tip = new THREE.Vector3(Math.cos(a) * (PAR_R - 0.05), PAR_Y0 + 0.02, Math.sin(a) * (PAR_R - 0.05));
+    geos.push(colorFill(tubeBetween(top, tip, 0.016, 5), wood));
+  }
+  geos.push(cCyl(0.05, 0.018, 0.14, 6, 0xcfa96a, 0, PAR_Y0 + PAR_APEX + 0.1, 0));
+  const merged = mergeGeometries(geos);
+  geos.forEach((g) => g.dispose());
+  return merged;
+}
+
+// ---------- lifeguard towers v2 (classic Miami) ----------
+// Raised platform on 4 splayed legs, thin-bar safety railing, access ramp,
+// hut with an open window cutout, mono-pitched overhanging roof, flag.
+// Vertex-colored; all 6 towers merge into a single mesh.
+function buildLifeguardGeo(primary, roofCol) {
+  const trim = 0xf5f1e4, dark = 0x1e252c;
+  const G = [];
+  // 4 splayed legs (base wider than the deck)
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const g = new THREE.BoxGeometry(0.16, 2.62, 0.16);
+      g.translate(0, 1.31, 0);
+      g.rotateZ(sx * 0.13);
+      g.rotateX(-sz * 0.13);
+      g.translate(sx * 1.35, 0, sz * 1.1);
+      G.push(colorFill(g, trim));
+    }
+  }
+  // cross braces
+  G.push(cBox(2.4, 0.09, 0.09, trim, 0, 1.0, -1.22));
+  G.push(cBox(2.4, 0.09, 0.09, trim, 0, 1.0, 1.22));
+  G.push(cBox(0.09, 0.09, 2.2, trim, -1.22, 1.35, 0));
+  G.push(cBox(0.09, 0.09, 2.2, trim, 1.22, 1.35, 0));
+  // platform deck
+  G.push(cBox(3.3, 0.14, 2.9, trim, 0, 2.45, 0));
+  const DT = 2.52;                                    // deck top
+  // railing posts (front gap at x in [-1.05, -0.15] for the ramp)
+  for (const [px, pz] of [[-1.6, -1.4], [1.6, -1.4], [-1.6, 1.4], [1.6, 1.4],
+                          [0, 1.4], [-1.6, 0], [1.6, 0], [-1.05, -1.4], [-0.15, -1.4], [0.72, -1.4]]) {
+    G.push(cBox(0.06, 0.82, 0.06, trim, px, DT + 0.41, pz));
+  }
+  // twin thin rails
+  for (const ry of [0.42, 0.8]) {
+    const t = ry === 0.8 ? 0.055 : 0.04;
+    G.push(cBox(t, t, 2.9, trim, -1.6, DT + ry, 0));
+    G.push(cBox(t, t, 2.9, trim, 1.6, DT + ry, 0));
+    G.push(cBox(3.3, t, t, trim, 0, DT + ry, 1.4));
+    G.push(cBox(0.55, t, t, trim, -1.32, DT + ry, -1.4));
+    G.push(cBox(1.75, t, t, trim, 0.72, DT + ry, -1.4));
+  }
+  // hut — window opening faces the ocean (-z)
+  const HZ = 0.35, HH = 1.75;
+  G.push(cBox(2.4, HH, 0.07, primary, 0, DT + HH / 2, HZ + 0.85));
+  G.push(cBox(0.07, HH, 1.77, primary, -1.165, DT + HH / 2, HZ));
+  G.push(cBox(0.07, HH, 1.77, primary, 1.165, DT + HH / 2, HZ));
+  G.push(cBox(2.4, 0.5, 0.07, primary, 0, DT + 0.25, HZ - 0.85));
+  G.push(cBox(2.4, 0.3, 0.07, primary, 0, DT + HH - 0.15, HZ - 0.85));
+  G.push(cBox(0.38, 0.95, 0.07, primary, -1.01, DT + 0.975, HZ - 0.85));
+  G.push(cBox(0.38, 0.95, 0.07, primary, 1.01, DT + 0.975, HZ - 0.85));
+  G.push(cBox(2.2, 1.55, 1.55, dark, 0, DT + 0.85, HZ + 0.06));       // dark interior
+  G.push(cBox(1.7, 0.06, 0.18, trim, 0, DT + 0.52, HZ - 0.88));       // window sill
+  // mono-pitched roof, overhanging the deck toward the ocean
+  G.push(cBox(2.85, 0.09, 2.65, roofCol, 0, DT + HH + 0.22, HZ - 0.28, -0.14));
+  // access ramp through the railing gap down to the sand
+  const RA = 0.48;
+  G.push(cBox(0.95, 0.08, 5.0, trim, -0.6, 1.28, -3.55, -RA));
+  G.push(cBox(0.05, 0.4, 5.0, primary, -1.04, 1.62, -3.55, -RA));
+  G.push(cBox(0.05, 0.4, 5.0, primary, -0.16, 1.62, -3.55, -RA));
+  // flag on a pole
+  G.push(cCyl(0.025, 0.025, 1.5, 5, trim, 1.15, DT + HH + 0.95, HZ + 0.75));
+  G.push(cBox(0.55, 0.34, 0.02, 0xff5330, 1.45, DT + HH + 1.5, HZ + 0.75));
+  const merged = mergeGeometries(G);
+  G.forEach((g) => g.dispose());
+  return merged;
+}
+
+// ---------- boats v2 ----------
+// Lofted hull with sheer curve + bow taper. Station tables: half-beam,
+// keel depth, sheer height fractions from stern (i=0) to bow.
+const HULL_HB = [0.55, 0.83, 0.96, 1.0, 0.95, 0.80, 0.52, 0.10];
+const HULL_KL = [0.50, 0.82, 0.96, 1.0, 0.96, 0.82, 0.55, 0.22];
+const HULL_SH = [1.12, 1.0, 0.94, 0.92, 0.95, 1.03, 1.16, 1.32];
+
+function hullLerp(arr, t) {
+  const f = t * (arr.length - 1);
+  const i = Math.min(arr.length - 2, f | 0);
+  const u = f - i;
+  return arr[i] * (1 - u) + arr[i + 1] * u;
+}
+
+function buildBoatHull(L, B, D, F, colTop, colBottom, colDeck) {
+  const NS = HULL_HB.length, GIRTH = 7;
+  const pos = [], col = [], idx = [];
+  const c1 = new THREE.Color(colTop), c2 = new THREE.Color(colBottom), c3 = new THREE.Color(colDeck);
+  const V = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); };
+  for (let i = 0; i < NS; i++) {
+    const x = -L / 2 + (i / (NS - 1)) * L;
+    for (let k = 0; k < GIRTH; k++) {
+      const phi = (k / (GIRTH - 1)) * Math.PI;
+      const sheer = F * HULL_SH[i];
+      const y = sheer - (sheer + D * HULL_KL[i]) * Math.pow(Math.sin(phi), 0.85);
+      const z = -(B / 2) * HULL_HB[i] * Math.cos(phi);
+      V(x, y, z, y < -0.3 ? c2 : c1);                  // antifoul below the boot stripe
+    }
+  }
+  for (let i = 0; i < NS - 1; i++) {
+    for (let k = 0; k < GIRTH - 1; k++) {
+      const a = i * GIRTH + k, b = (i + 1) * GIRTH + k;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  // deck strip between the gunwales
+  const d0 = pos.length / 3;
+  for (let i = 0; i < NS; i++) {
+    const x = -L / 2 + (i / (NS - 1)) * L;
+    const sheer = F * HULL_SH[i];
+    const hw = (B / 2) * HULL_HB[i];
+    V(x, sheer - 0.02, -hw + 0.02, c3);
+    V(x, sheer - 0.02, hw - 0.02, c3);
+  }
+  for (let i = 0; i < NS - 1; i++) {
+    const a = d0 + i * 2, b = d0 + (i + 1) * 2;
+    idx.push(a, a + 1, b, b, a + 1, b + 1);
+  }
+  // transom fan
+  const t0 = pos.length / 3;
+  for (let k = 0; k < GIRTH; k++) {
+    pos.push(pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]);
+    col.push(c1.r, c1.g, c1.b);
+  }
+  for (let k = 0; k < GIRTH - 2; k++) idx.push(t0, t0 + k + 1, t0 + k + 2);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return zeroUV(geo);
+}
+
+// Sailboat: proper hull, cabin trunk with ports, mast + boom + furled main,
+// furled jib on the forestay, railing stanchions.
+function buildSailboat(sz, accent) {
+  const L = 6.3 * sz, B = 1.9 * sz, D = 0.6 * sz, F = 0.42 * sz;
+  const white = 0xf4f6f8, cream = 0xe9dfc8, alu = 0xb9c2c9, sailc = 0xf3efe4, dark = 0x18222e;
+  const geos = [buildBoatHull(L, B, D, F, white, 0x8a3a34, cream)];
+  geos.push(cBox(0.34 * L, 0.30 * sz, 0.52 * B, white, -0.02 * L, F + 0.16 * sz, 0));
+  geos.push(cBox(0.34 * L, 0.045 * sz, 0.53 * B, accent, -0.02 * L, F + 0.30 * sz, 0));   // cove stripe
+  for (const s of [-1, 1]) {
+    geos.push(cBox(0.20 * L, 0.10 * sz, 0.02, dark, -0.02 * L, F + 0.17 * sz, s * 0.265 * B));
+  }
+  const mastX = 0.06 * L, mastH = 1.28 * L;
+  geos.push(cCyl(0.030 * sz, 0.040 * sz, mastH, 6, alu, mastX, F + mastH / 2, 0));
+  const boomL = 0.34 * L;
+  geos.push(cCyl(0.028 * sz, 0.028 * sz, boomL, 5, alu, mastX - boomL / 2, F + 0.42 * sz, 0, 0, 0, Math.PI / 2));
+  geos.push(cCyl(0.06 * sz, 0.085 * sz, boomL * 0.94, 6, sailc, mastX - boomL / 2, F + 0.55 * sz, 0, 0, 0, Math.PI / 2));
+  const head = new THREE.Vector3(mastX, F + mastH * 0.97, 0);
+  const bow = new THREE.Vector3(L * 0.485, F * 1.30, 0);
+  geos.push(colorFill(tubeBetween(head, bow, 0.045 * sz, 5), sailc));
+  for (const t of [0.14, 0.28, 0.42, 0.56, 0.70, 0.84]) {
+    const sx2 = -L / 2 + t * L;
+    const hw = (B / 2) * hullLerp(HULL_HB, t) - 0.03;
+    const sy = F * hullLerp(HULL_SH, t);
+    for (const s of [-1, 1]) geos.push(cBox(0.03, 0.30 * sz, 0.03, white, sx2, sy + 0.13 * sz, s * hw));
+  }
+  const merged = mergeGeometries(geos);
+  geos.forEach((g) => g.dispose());
+  return merged;
+}
+
+// Motor yacht: beamy hull, stepped 2-deck superstructure with dark glass
+// bands, raked windshield, radar arch + dome, bow stanchions, swim platform.
+function buildMotorYacht(sz, accent) {
+  const L = 6.9 * sz, B = 2.35 * sz, D = 0.5 * sz, F = 0.55 * sz;
+  const white = 0xf3f5f7, dark = 0x121a24, gry = 0xdfe3e6;
+  const geos = [buildBoatHull(L, B, D, F, white, 0x233246, 0xf0ede4)];
+  geos.push(cBox(0.10 * L, 0.06 * sz, 0.9 * B, accent, 0.1 * L, F * 0.9, 0));            // fore-deck accent
+  const d1w = 0.46 * L, d1h = 0.34 * sz;
+  geos.push(cBox(d1w, d1h, 0.62 * B, white, -0.08 * L, F + d1h / 2 + 0.02, 0));
+  geos.push(cBox(d1w * 0.92, 0.14 * sz, 0.62 * B + 0.03, dark, -0.08 * L, F + d1h * 0.62, 0));
+  const d2w = 0.30 * L, d2h = 0.30 * sz;
+  const d2y = F + d1h + 0.02;
+  geos.push(cBox(d2w, d2h, 0.44 * B, white, -0.10 * L, d2y + d2h / 2, 0));
+  geos.push(cBox(d2w * 0.9, 0.12 * sz, 0.44 * B + 0.03, dark, -0.10 * L, d2y + d2h * 0.6, 0));
+  geos.push(cBox(0.05 * L, 0.20 * sz, 0.40 * B, dark, -0.10 * L + d2w / 2, d2y + d2h * 0.62, 0, 0, 0, 0.38)); // windshield
+  const archY = d2y + d2h;
+  for (const s of [-1, 1]) {
+    geos.push(cBox(0.035 * L, 0.44 * sz, 0.05 * B, white, -0.235 * L, archY + 0.19 * sz, s * 0.18 * B, 0, 0, 0.42));
+  }
+  geos.push(cBox(0.05 * L, 0.06 * sz, 0.42 * B, white, -0.275 * L, archY + 0.40 * sz, 0));
+  const dome = new THREE.SphereGeometry(0.16 * sz, 8, 6);
+  dome.scale(1.2, 0.62, 1);
+  dome.translate(-0.275 * L, archY + 0.50 * sz, 0);
+  geos.push(colorFill(dome, gry));
+  geos.push(cCyl(0.012 * sz, 0.012 * sz, 0.5 * sz, 4, white, -0.25 * L, archY + 0.62 * sz, 0.09 * B));
+  for (const t of [0.68, 0.8, 0.9]) {
+    const sx2 = -L / 2 + t * L;
+    const hw = (B / 2) * hullLerp(HULL_HB, t) - 0.04;
+    const sy = F * hullLerp(HULL_SH, t);
+    for (const s of [-1, 1]) geos.push(cBox(0.03, 0.26 * sz, 0.03, white, sx2, sy + 0.11 * sz, s * hw));
+  }
+  geos.push(cBox(0.08 * L, 0.05 * sz, 0.55 * B, gry, -0.53 * L, F * 0.35, 0));           // swim platform
+  const merged = mergeGeometries(geos);
+  geos.forEach((g) => g.dispose());
+  return merged;
+}
+
+// ============================================================
 export async function buildMiami(scene, env) {
   const rng = mulberry32(20250809);
   // Second stream for all NEW dressing (rocks, shrubs, hero palms, vertex tint).
   // The main `rng` stream must keep its exact legacy draw sequence so the
   // deterministic tower/hut/car layout stays bit-identical to the old build.
   const rng2 = mulberry32(0x5eaf00d);
+  // Third stream for the props-v2 pass (facade UV offsets, parasol tilts,
+  // boat accents…). Never draw from rng or rng2 for new features.
+  const rng3 = mulberry32(0xFACADE5);
   const root = new THREE.Group();
   root.name = 'miami';
   scene.add(root);
@@ -493,64 +820,126 @@ export async function buildMiami(scene, env) {
     }
   }
 
-  // ---------------- beach props: lifeguard huts + umbrellas ----------------
+  // ---------------- beach props: lifeguard towers + parasols + towels ----------------
   {
+    // lifeguard towers v2 — merged vertex-colored geometry, 1 draw call for all 6
     const hutCols = [0xff7fa0, 0x53d6d6, 0xffd166, 0x9b5de5, 0x43d17a, 0xff8c42];
+    const lgGeos = [];
     for (let i = 0; i < 6; i++) {
-      const x = -430 + i * 165 + (rng() - 0.5) * 30;
+      const x = -430 + i * 165 + (rng() - 0.5) * 30;    // legacy rng draws — keep order
       const z = 10 + rng() * 6;
       const y = groundHeight(x, z);
-      const g = new THREE.Group();
-      const bodyGeo = track(new THREE.BoxGeometry(3, 2.4, 3));
-      const bodyMat = track(new THREE.MeshStandardMaterial({ color: hutCols[i % hutCols.length], roughness: 0.7 }));
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 3.2;
-      body.castShadow = true;
-      const legGeo = track(new THREE.BoxGeometry(0.25, 2.2, 0.25));
-      const legMat = track(new THREE.MeshStandardMaterial({ color: 0xf0ead8, roughness: 0.9 }));
-      for (const [lx, lz] of [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]]) {
-        const leg = new THREE.Mesh(legGeo, legMat);
-        leg.position.set(lx, 1.1, lz);
-        g.add(leg);
-      }
-      const roofGeo = track(new THREE.ConeGeometry(2.6, 1.2, 4));
-      const roofMat = track(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
-      const hr = new THREE.Mesh(roofGeo, roofMat);
-      hr.position.y = 5.0; hr.rotation.y = Math.PI / 4;
-      g.add(body, hr);
-      g.position.set(x, y, z);
-      root.add(g);
-      addCollider(x, y, z, 3.4, 5.6, 3.4);
+      const g = buildLifeguardGeo(hutCols[i % hutCols.length], hutCols[(i + 2) % hutCols.length]);
+      g.rotateY((rng3() - 0.5) * 0.24);
+      g.translate(x, y, z);
+      lgGeos.push(g);
+      addCollider(x, y, z, 3.6, 4.8, 3.2);              // silhouette is lower than the old hut
     }
-    // umbrellas
-    const poleGeo = track(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 5));
-    poleGeo.translate(0, 1.1, 0);
-    const canGeo = track(new THREE.ConeGeometry(1.5, 0.55, 8));
-    canGeo.translate(0, 2.2, 0);
-    const poleMat = track(new THREE.MeshStandardMaterial({ color: 0xdddddd }));
-    const canMat = track(new THREE.MeshStandardMaterial({ color: 0xff5c8a, roughness: 0.7, side: THREE.DoubleSide }));
+    const lgGeo = track(mergeGeometries(lgGeos));
+    lgGeos.forEach((g) => g.dispose());
+    const lgMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, side: THREE.DoubleSide }));
+    const lgMesh = new THREE.Mesh(lgGeo, lgMat);
+    lgMesh.castShadow = true;
+    lgMesh.receiveShadow = true;
+    root.add(lgMesh);
+
+    // parasols v2 — scalloped two-tone canopy, visible ribs, tilted poles
+    const canopyGeoA = track(buildParasolCanopy(0));
+    const canopyGeoB = track(buildParasolCanopy(1));
+    const frameGeo = track(buildParasolFrame());
+    const canopyMatWhite = track(new THREE.MeshStandardMaterial({ color: 0xf6f2e7, roughness: 0.85, side: THREE.DoubleSide }));
+    const canopyMatTint = track(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide }));
+    const frameMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }));
     const NU = 60;
-    const poles = new THREE.InstancedMesh(poleGeo, poleMat, NU);
-    const cans = new THREE.InstancedMesh(canGeo, canMat, NU);
+    const canWhite = new THREE.InstancedMesh(canopyGeoA, canopyMatWhite, NU);
+    const canTint = new THREE.InstancedMesh(canopyGeoB, canopyMatTint, NU);
+    const frames = new THREE.InstancedMesh(frameGeo, frameMat, NU);
+    const umbCols = [0xff5c8a, 0x29d3ff, 0xffd166, 0xff8c42, 0x43d17a, 0x9b5de5, 0xe63946];
     const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const qS = new THREE.Quaternion();
+    const eul = new THREE.Euler();
+    const vP = new THREE.Vector3();
+    const vS = new THREE.Vector3();
+    const colU = new THREE.Color();
+    const umbSpots = [];
     for (let i = 0; i < NU; i++) {
-      const x = (rng() - 0.5) * 1100;
+      const x = (rng() - 0.5) * 1100;                   // legacy rng draws — keep order
       const z = 2 + rng() * 16;
       const y = groundHeight(x, z);
-      m4.makeRotationY(rng() * Math.PI);
-      m4.setPosition(x, Math.max(y, 0.1), z);
-      poles.setMatrixAt(i, m4);
-      cans.setMatrixAt(i, m4);
+      const yaw = rng() * Math.PI;                      // legacy rotY draw
+      const tilt = rng3() * 0.31;                       // 0–18°
+      const s = 0.85 + rng3() * 0.35;
+      eul.set(tilt, yaw, 0, 'YXZ');
+      q.setFromEuler(eul);
+      vP.set(x, Math.max(y, 0.1), z);
+      vS.set(s, s, s);
+      m4.compose(vP, q, vS);
+      canWhite.setMatrixAt(i, m4);
+      canTint.setMatrixAt(i, m4);
+      frames.setMatrixAt(i, m4);
+      canTint.setColorAt(i, colU.setHex(umbCols[(rng3() * umbCols.length) | 0]));
+      umbSpots.push(vP.clone());
     }
-    root.add(poles); root.add(cans);
+    canWhite.castShadow = true;
+    canTint.castShadow = true;
+    root.add(canWhite, canTint, frames);
+
+    // beach towels scattered around the parasol clusters, draped to the sand slope
+    const towelGeo = track(new THREE.PlaneGeometry(0.85, 1.75));
+    towelGeo.rotateX(-Math.PI / 2);
+    const towelMat = track(new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 1,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    }));
+    const towelCols = [0xff7096, 0x37c4e0, 0xffe08a, 0x59d98c, 0xb08ae6, 0xf2f2f2, 0xff8c42];
+    const NT = 46;
+    const towels = new THREE.InstancedMesh(towelGeo, towelMat, NT);
+    const up = new THREE.Vector3(0, 1, 0);
+    const nrm = new THREE.Vector3();
+    let ti = 0;
+    for (let i = 0; i < NU && ti < NT; i++) {
+      if (rng3() < 0.35) continue;
+      const u = umbSpots[i];
+      const a = rng3() * Math.PI * 2;
+      const dist = 1.3 + rng3() * 1.7;
+      const x = u.x + Math.cos(a) * dist, z = u.z + Math.sin(a) * dist;
+      const y = groundHeight(x, z);
+      if (y < 0.12) continue;
+      const e = 0.5;
+      nrm.set(
+        (groundHeight(x - e, z) - groundHeight(x + e, z)) / (2 * e), 1,
+        (groundHeight(x, z - e) - groundHeight(x, z + e)) / (2 * e)
+      ).normalize();
+      qS.setFromUnitVectors(up, nrm);
+      eul.set(0, rng3() * Math.PI * 2, 0);
+      q.setFromEuler(eul).premultiply(qS);
+      vP.set(x, y + 0.045, z);
+      vS.set(1, 1, 1);
+      m4.compose(vP, q, vS);
+      towels.setMatrixAt(ti, m4);
+      towels.setColorAt(ti, colU.setHex(towelCols[(rng3() * towelCols.length) | 0]));
+      ti++;
+    }
+    towels.count = ti;
+    towels.receiveShadow = true;
+    root.add(towels);
   }
 
   // ---------------- streetlights + parked cars ----------------
   {
-    const poleGeo = track(new THREE.CylinderGeometry(0.08, 0.1, 6, 6));
-    poleGeo.translate(0, 3, 0);
-    const headGeo = track(new THREE.SphereGeometry(0.22, 8, 6));
-    headGeo.translate(0, 6.1, 0);
+    // curved-arm streetlight: pole + 2-segment gooseneck + fixture, merged;
+    // the lamp head hangs from the arm tip out over the road
+    const poleGeos = [
+      new THREE.CylinderGeometry(0.07, 0.11, 5.7, 7).translate(0, 2.85, 0),
+      tubeBetween(new THREE.Vector3(0, 5.62, 0), new THREE.Vector3(0, 6.32, 0.85), 0.055, 6),
+      tubeBetween(new THREE.Vector3(0, 6.32, 0.85), new THREE.Vector3(0, 6.52, 1.7), 0.05, 6),
+      new THREE.CylinderGeometry(0.16, 0.23, 0.2, 8).translate(0, 6.42, 1.62),
+    ];
+    const poleGeo = track(mergeGeometries(poleGeos));
+    poleGeos.forEach((g) => g.dispose());
+    const headGeo = track(new THREE.SphereGeometry(0.19, 8, 6));
+    headGeo.translate(0, 6.28, 1.62);
     const poleMat = track(new THREE.MeshStandardMaterial({ color: 0x39424c, roughness: 0.6, metalness: 0.6 }));
     const headMat = track(new THREE.MeshStandardMaterial({ color: 0xfff2cc, emissive: 0xffd27a, emissiveIntensity: 2.2 }));
     const NL = 50;
@@ -560,7 +949,8 @@ export async function buildMiami(scene, env) {
     for (let i = 0; i < NL; i++) {
       const x = -600 + i * 24.5;
       const z = i % 2 ? 36.5 : 51.5;
-      m4.makeTranslation(x, CITY_Y, z);
+      m4.makeRotationY(i % 2 ? 0 : Math.PI);            // arm always reaches toward the road
+      m4.setPosition(x, CITY_Y, z);
       lp.setMatrixAt(i, m4);
       lh.setMatrixAt(i, m4);
       addCollider(x, CITY_Y, z, 0.35, 6.4, 0.35);
@@ -571,12 +961,26 @@ export async function buildMiami(scene, env) {
     carGeo.translate(0, 0.75, 0);
     const cabGeo = track(new THREE.BoxGeometry(2.2, 0.75, 1.7));
     cabGeo.translate(-0.2, 1.65, 0);
+    // 4 wheels baked into one merged geometry per instance (1 extra draw call)
+    const wheelParts = [];
+    for (const wx of [-1.35, 1.35]) {
+      for (const wz of [-0.78, 0.78]) {
+        const g = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 10);
+        g.rotateX(Math.PI / 2);
+        g.translate(wx, 0.33, wz);
+        wheelParts.push(g);
+      }
+    }
+    const wheelGeo = track(mergeGeometries(wheelParts));
+    wheelParts.forEach((g) => g.dispose());
     const carCols = [0xff5c8a, 0x29d3ff, 0xf5e9d0, 0x9b5de5, 0x43d17a, 0xffffff, 0x22262e];
     const NC = 34;
     const carMat = track(new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.5 }));
-    const cabMat = track(new THREE.MeshStandardMaterial({ color: 0x1a2129, roughness: 0.15, metalness: 0.8 }));
+    const cabMat = track(new THREE.MeshStandardMaterial({ color: 0x0b1016, roughness: 0.1, metalness: 0.9 }));
+    const wheelMat = track(new THREE.MeshStandardMaterial({ color: 0x14171b, roughness: 0.9, metalness: 0.1 }));
     const cars = new THREE.InstancedMesh(carGeo, carMat, NC);
     const cabs = new THREE.InstancedMesh(cabGeo, cabMat, NC);
+    const wheels = new THREE.InstancedMesh(wheelGeo, wheelMat, NC);
     const col = new THREE.Color();
     const m4b = new THREE.Matrix4();
     for (let i = 0; i < NC; i++) {
@@ -586,11 +990,12 @@ export async function buildMiami(scene, env) {
       m4b.setPosition(x, CITY_Y, z);
       cars.setMatrixAt(i, m4b);
       cabs.setMatrixAt(i, m4b);
+      wheels.setMatrixAt(i, m4b);
       cars.setColorAt(i, col.setHex(carCols[(rng() * carCols.length) | 0]));
       addCollider(x, CITY_Y, z, 4.2, 2.1, 1.9);
     }
     cars.castShadow = true;
-    root.add(cars); root.add(cabs);
+    root.add(cars); root.add(cabs); root.add(wheels);
   }
 
   // ---------------- skyline ----------------
@@ -600,9 +1005,15 @@ export async function buildMiami(scene, env) {
   const winTexB = track(windowTexture(rng, 0.65, 0.4));
   const decoCols = [0xf2b8c6, 0x7fd4c1, 0xf5e9d0, 0xffb385, 0xc3b4e6];
 
-  // facade_glass calibration: albedo holds ~30 window columns per tile → a
-  // 45 m-wide tile gives ~1.5 m windows; v stretched to 90 m for ~2.6 m floors
-  const FACADE_U = 45, FACADE_V = 90;
+  // Facade physical calibration (verified against the albedo images):
+  //   facade_glass = 28 window columns x 18 floor bands per tile
+  //     → at 1.5 m windows / 3.2 m floors one tile spans 42 m x 57.6 m.
+  //   facade_day   = 15 panels x 10 floors, square tile
+  //     → 32 m x 32 m keeps the source aspect exactly (2.13 m panels, 3.2 m floors).
+  // Every tower maps facades at these constant physical scales via facadeUV(),
+  // with a per-tower random UV offset so neighbours never repeat in sync.
+  const GLASS_TILE_U = 28 * 1.5, GLASS_TILE_V = 18 * 3.2;
+  const DAY_TILE_U = 27, DAY_TILE_V = 32;   // 1.8 m panels — reads as windows, not glass blocks
   const hasGlassTex = !!glassSet.map;
   let glassMat;
   if (hasGlassTex) {
@@ -626,18 +1037,27 @@ export async function buildMiami(scene, env) {
   const towerGroup = new THREE.Group();
 
   function addTower(x, z, w, h, d, style) {
+    // per-tower UV offset (rng3 — never the layout stream)
+    const offU = rng3(), offV = rng3();
     if (style === 'deco') {
       const color = decoCols[(rng() * decoCols.length) | 0];
       const mat = track(new THREE.MeshStandardMaterial({
         color, roughness: 0.75,
         emissiveMap: winTexA, emissive: 0xffffff, emissiveIntensity: 0.55,
       }));
-      // subtle color-tinted facade_day overlay when present (shared textures,
-      // per-geometry UV scaling below handles tiling)
+      // pastel-tinted facade_day overlay when present, mapped at true window
+      // scale; emissive follows the same texture so day/night grids agree
       if (facadeDaySet.map) {
+        mat.color.lerp(new THREE.Color(0xffffff), 0.35);   // softer pastel, less "colored glass block"
         mat.map = facadeDaySet.map;
-        if (facadeDaySet.normalMap) mat.normalMap = facadeDaySet.normalMap;
+        if (facadeDaySet.normalMap) {
+          mat.normalMap = facadeDaySet.normalMap;
+          mat.normalScale.set(0.35, 0.35);                 // tame the panel bevel
+        }
         if (facadeDaySet.roughnessMap) mat.roughnessMap = facadeDaySet.roughnessMap;
+        mat.emissiveMap = facadeDaySet.map;
+        mat.emissive = new THREE.Color(0xffe6bb);
+        mat.emissiveIntensity = 0.3;
       }
       let y = CITY_Y;
       const tiers = 2 + ((rng() * 2) | 0);
@@ -645,8 +1065,12 @@ export async function buildMiami(scene, env) {
       for (let t = 0; t < tiers; t++) {
         const th = h * (t === 0 ? 0.55 : 0.45 / (tiers - 1));
         const geo = track(new THREE.BoxGeometry(tw, th, td));
-        const uv = geo.attributes.uv;
-        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, tw / 14), uv.getY(i) * Math.max(1, th / 26));
+        if (facadeDaySet.map) {
+          facadeUV(geo, tw, th, td, DAY_TILE_U, DAY_TILE_V, offU, offV);
+        } else {
+          const uv = geo.attributes.uv;
+          for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, tw / 14), uv.getY(i) * Math.max(1, th / 26));
+        }
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y + th / 2, z);
         mesh.castShadow = true;
@@ -656,6 +1080,11 @@ export async function buildMiami(scene, env) {
       }
       // parapet cylinder
       const capGeo = track(new THREE.CylinderGeometry(Math.min(tw, td) * 0.4, Math.min(tw, td) * 0.42, 3.5, 10));
+      if (facadeDaySet.map) {
+        const uv = capGeo.attributes.uv;
+        const su = (Math.PI * Math.min(tw, td) * 0.8) / DAY_TILE_U, sv = 3.5 / DAY_TILE_V;
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + offU, uv.getY(i) * sv + offV);
+      }
       const cap = new THREE.Mesh(capGeo, mat);
       cap.position.set(x, y + 1.7, z);
       towerGroup.add(cap);
@@ -674,9 +1103,10 @@ export async function buildMiami(scene, env) {
     } else if (style === 'cyl') {
       const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18));
       const uv = geo.attributes.uv;
-      const su = hasGlassTex ? (Math.PI * w) / FACADE_U : Math.max(1, (Math.PI * w) / 16);
-      const sv = hasGlassTex ? h / FACADE_V : Math.max(1, h / 26);
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+      const su = hasGlassTex ? (Math.PI * w) / GLASS_TILE_U : Math.max(1, (Math.PI * w) / 16);
+      const sv = hasGlassTex ? h / GLASS_TILE_V : Math.max(1, h / 26);
+      const ou = hasGlassTex ? offU : 0, ov = hasGlassTex ? offV : 0;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
@@ -684,10 +1114,13 @@ export async function buildMiami(scene, env) {
       d = w;
     } else {
       const geo = track(new THREE.BoxGeometry(w, h, d));
-      const uv = geo.attributes.uv;
-      const su = hasGlassTex ? w / FACADE_U : Math.max(1, w / 14);
-      const sv = hasGlassTex ? h / FACADE_V : Math.max(1, h / 26);
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+      if (hasGlassTex) {
+        facadeUV(geo, w, h, d, GLASS_TILE_U, GLASS_TILE_V, offU, offV);
+      } else {
+        const uv = geo.attributes.uv;
+        const su = Math.max(1, w / 14), sv = Math.max(1, h / 26);
+        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+      }
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
@@ -769,17 +1202,55 @@ export async function buildMiami(scene, env) {
       root.add(leg);
       addCollider(WHEEL_X + side * 6.5, CITY_Y, WHEEL_Z, 3, WHEEL_R + 4, 3);
     }
-    const rimGeo = track(new THREE.TorusGeometry(WHEEL_R, 0.5, 8, 40));
+    // twin offset rims + cross-braces so the wheel reads structural
+    const RIM_Z = 0.7;
+    const rimGeo = track(new THREE.TorusGeometry(WHEEL_R, 0.3, 8, 48));
     const rimMat = track(new THREE.MeshStandardMaterial({ color: 0x223, emissive: 0x29d3ff, emissiveIntensity: 1.6, roughness: 0.4 }));
-    wheel.add(new THREE.Mesh(rimGeo, rimMat));
-    const spokeGeo = track(new THREE.BoxGeometry(0.25, WHEEL_R * 2, 0.25));
-    const spokeMat = track(new THREE.MeshStandardMaterial({ color: 0xccd4da, roughness: 0.5 }));
-    for (let i = 0; i < 6; i++) {
-      const sp = new THREE.Mesh(spokeGeo, spokeMat);
-      sp.rotation.z = (i / 6) * Math.PI;
-      wheel.add(sp);
+    for (const zs of [-1, 1]) {
+      const rim = new THREE.Mesh(rimGeo, rimMat);
+      rim.position.z = zs * RIM_Z;
+      wheel.add(rim);
     }
-    const cabGeo = track(new THREE.BoxGeometry(2.2, 2, 2.2));
+    const spokeMat = track(new THREE.MeshStandardMaterial({ color: 0xccd4da, roughness: 0.5 }));
+    {
+      const braceGeos = [];
+      for (let i = 0; i < 24; i++) {
+        const g = new THREE.BoxGeometry(0.14, 0.14, RIM_Z * 2);
+        g.translate(0, WHEEL_R, 0);
+        g.rotateZ((i / 24) * Math.PI * 2);
+        braceGeos.push(g);
+      }
+      const braces = new THREE.Mesh(track(mergeGeometries(braceGeos)), spokeMat);
+      braceGeos.forEach((g) => g.dispose());
+      wheel.add(braces);
+      // 6 full-diameter spokes per rim + hub axle, merged into one mesh
+      const spokeGeos = [];
+      for (let i = 0; i < 6; i++) {
+        for (const zs of [-1, 1]) {
+          const g = new THREE.BoxGeometry(0.2, WHEEL_R * 2, 0.2);
+          g.rotateZ((i / 6) * Math.PI);
+          g.translate(0, 0, zs * RIM_Z);
+          spokeGeos.push(g);
+        }
+      }
+      const axle = new THREE.CylinderGeometry(0.55, 0.55, RIM_Z * 2 + 0.7, 10);
+      axle.rotateX(Math.PI / 2);
+      spokeGeos.push(axle);
+      const spokes = new THREE.Mesh(track(mergeGeometries(spokeGeos)), spokeMat);
+      spokeGeos.forEach((g) => g.dispose());
+      wheel.add(spokes);
+    }
+    // gondolas with a pyramid roof cap + hanger arm (merged, still 1 mesh each)
+    const cabParts = [new THREE.BoxGeometry(2.1, 1.4, 2.1).translate(0, -0.4, 0)];
+    {
+      const roofCap = new THREE.ConeGeometry(1.62, 0.7, 4);
+      roofCap.rotateY(Math.PI / 4);
+      roofCap.translate(0, 0.65, 0);
+      cabParts.push(roofCap);
+      cabParts.push(new THREE.BoxGeometry(0.1, 0.7, 0.1).translate(0, 1.25, 0));
+    }
+    const cabGeo = track(mergeGeometries(cabParts));
+    cabParts.forEach((g) => g.dispose());
     const cabCols = [0xff5c8a, 0x29d3ff, 0xffd166, 0x43d17a];
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
@@ -854,21 +1325,21 @@ export async function buildMiami(scene, env) {
       root.add(dock);
       addCollider(MAR_X + dx, 0.2, -55, 4, 0.9, 90);
     }
-    const hullGeo = track(new THREE.CapsuleGeometry(1.4, 5, 4, 8));
-    hullGeo.rotateZ(Math.PI / 2);
-    const hullMat = track(new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.4 }));
-    const mastGeo = track(new THREE.CylinderGeometry(0.08, 0.08, 8, 5));
-    const mastMat = track(new THREE.MeshStandardMaterial({ color: 0xd8d8d8 }));
+    // boats v2 — lofted hulls; the legacy rng draws keep their exact order:
+    // (1) size, (2) sail/motor pick, (3) dock, (4) side, (5) z, (6) yaw, (7) phase
+    const boatMat = track(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide,
+    }));
+    const accCols = [0x1c6fb8, 0x2aa198, 0xc2453f, 0x28527a, 0xd98e32];
     for (let i = 0; i < 8; i++) {
       const b = new THREE.Group();
-      const hull = new THREE.Mesh(hullGeo, hullMat);
-      hull.scale.set(0.8 + rng() * 0.5, 0.55, 0.9);
-      b.add(hull);
-      if (rng() < 0.6) {
-        const mast = new THREE.Mesh(mastGeo, mastMat);
-        mast.position.y = 4;
-        b.add(mast);
-      }
+      const sizeDraw = 0.8 + rng() * 0.5;               // legacy hull-scale draw
+      const isSail = rng() < 0.6;                       // legacy mast-chance draw
+      const accent = accCols[(rng3() * accCols.length) | 0];
+      const geo = track(isSail ? buildSailboat(sizeDraw, accent) : buildMotorYacht(sizeDraw, accent));
+      const mesh = new THREE.Mesh(geo, boatMat);
+      mesh.castShadow = true;
+      b.add(mesh);
       b.position.set(MAR_X - 8 + (rng() * 3 | 0) * 26 + (rng() < 0.5 ? -7 : 7), 0.35, -20 - rng() * 70);
       b.rotation.y = rng() * 0.4 - 0.2 + Math.PI / 2;
       b.userData.phase = rng() * Math.PI * 2;
@@ -881,10 +1352,12 @@ export async function buildMiami(scene, env) {
   for (const [hx, hz] of [[430, 70], [-430, 100]]) {
     const h = 45 + rng() * 20;
     const geo = track(new THREE.BoxGeometry(16, h, 16));
-    const uv = geo.attributes.uv;
-    const su = hasGlassTex ? 16 / FACADE_U : 1;
-    const sv = hasGlassTex ? h / FACADE_V : h / 26;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+    if (hasGlassTex) {
+      facadeUV(geo, 16, h, 16, GLASS_TILE_U, GLASS_TILE_V, rng3(), rng3());
+    } else {
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / 26));
+    }
     const mesh = new THREE.Mesh(geo, glassMat);
     mesh.position.set(hx, CITY_Y + h / 2, hz);
     mesh.castShadow = true;

@@ -145,6 +145,25 @@ const TERRAINS = [
   { value: 'island', title: 'Island', icon: '🏝' },
 ];
 
+// Real World (Google Photorealistic 3D Tiles) preset locations
+const RW_PRESETS = [
+  { value: 'miami', title: 'Miami Beach', icon: '🌴', lat: 25.7907, lon: -80.1300 },
+  { value: 'southbeach', title: 'South Beach — Ocean Drive', icon: '🏖', lat: 25.7796, lon: -80.1300 },
+  { value: 'manhattan', title: 'Manhattan NYC', icon: '🗽', lat: 40.7580, lon: -73.9855 },
+  { value: 'vegas', title: 'Las Vegas Strip', icon: '🎰', lat: 36.1147, lon: -115.1728 },
+  { value: 'goldengate', title: 'Golden Gate SF', icon: '🌉', lat: 37.8199, lon: -122.4786 },
+  { value: 'sfdt', title: 'San Francisco DT', icon: '🌁', lat: 37.7920, lon: -122.3980 },
+];
+
+const RW_KEY_STEPS = [
+  'Go to console.cloud.google.com and sign in (any Google account).',
+  'Create a new project (top bar → project picker → “New project”).',
+  'Search “Map Tiles API” in the API Library and press ENABLE.',
+  'Go to APIs & Services → Credentials → Create credentials → API key.',
+  'Copy the key and paste it above — it is stored in YOUR browser only.',
+  'Google’s free monthly credit comfortably covers hobby flying.',
+];
+
 const LOG_RD_MIN = Math.log(300);
 const LOG_RD_MAX = Math.log(4000);
 
@@ -161,6 +180,7 @@ export class Menu {
     this._tabBtns = [];
     this._gpTimer = null;
     this._wizardOpen = settings.map === 'procedural';
+    this._rwOpen = settings.map === 'realworld';
 
     this._injectStyles();
     this._build();
@@ -176,6 +196,7 @@ export class Menu {
     if (this._open) return;
     this._open = true;
     this._wizardOpen = settings.map === 'procedural';
+    this._rwOpen = settings.map === 'realworld';
     this._syncAll();
     this._drawRates();
     this._pollGamepads();
@@ -488,8 +509,12 @@ export class Menu {
   // TAB: MAPS
   // ------------------------------------------------------------
   _buildMaps(sec) {
+    // older saved settings may predate the realworld block
+    if (!settings.realworld) {
+      settings.realworld = { apiKey: '', preset: 'miami', lat: 25.7907, lon: -80.13 };
+    }
     sec.appendChild(el('div', 'pw-h2', 'Map'));
-    const grid = el('div', 'pwm-grid c2');
+    const grid = el('div', 'pwm-grid c3');
 
     // Miami card
     const miami = el('div', 'pwm-card pwm-map-card');
@@ -517,13 +542,34 @@ export class Menu {
     proc.appendChild(el('div', 'pwm-desc', 'Endless generated worlds. Pick a setting, terrain and seed — then hit Generate.'));
     const pickProc = () => {
       this._wizardOpen = true;
+      this._rwOpen = false;
       this._paintWizard();
       try { this._wizard.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* noop */ }
     };
     proc.addEventListener('click', pickProc);
     proc.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); pickProc(); } });
     grid.appendChild(proc);
+
+    // Real World card
+    const rw = el('div', 'pwm-card pwm-map-card');
+    rw.tabIndex = 0;
+    const rwThumb = el('div', 'pwm-thumb realworld', '🌎🏙');
+    rw.appendChild(rwThumb);
+    rw.appendChild(el('div', 'pwm-card-title', 'Real World'));
+    rw.appendChild(el('div', 'pwm-desc', 'Fly REAL cities — Google photorealistic 3D tiles. Miami, Manhattan, the Vegas Strip… bring your own free API key.'));
+    const pickRW = () => {
+      this._rwOpen = true;
+      this._wizardOpen = false;
+      this._paintWizard();
+      try { this._rwPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* noop */ }
+    };
+    rw.addEventListener('click', pickRW);
+    rw.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); pickRW(); } });
+    grid.appendChild(rw);
     sec.appendChild(grid);
+
+    // -------- Real World panel --------
+    this._buildRealWorldPanel(sec);
 
     // -------- procedural wizard --------
     const wiz = el('div', 'pwm-wizard');
@@ -630,6 +676,8 @@ export class Menu {
     this._paintWizard = () => {
       miami.classList.toggle('sel', settings.map === 'miami');
       proc.classList.toggle('sel', settings.map === 'procedural');
+      rw.classList.toggle('sel', settings.map === 'realworld');
+      if (this._paintRW) this._paintRW();
       wiz.style.display = this._wizardOpen ? '' : 'none';
       const outdoor = settings.procedural.setting === 'outdoor';
       step2.style.display = outdoor ? '' : 'none';
@@ -642,6 +690,152 @@ export class Menu {
         : `indoor · seed ${p.seed}`;
     };
     this._syncFns.push(this._paintWizard);
+  }
+
+  // ------------------------------------------------------------
+  // Real World panel (Maps tab)
+  // ------------------------------------------------------------
+  _buildRealWorldPanel(sec) {
+    const rwp = el('div', 'pwm-wizard pwm-rw');
+    this._rwPanel = rwp;
+
+    const stepHead = (n, text) => {
+      const h = el('div', 'pwm-step-h');
+      h.appendChild(el('span', 'pwm-step-n', String(n)));
+      h.appendChild(el('span', 'pwm-step-t', text));
+      return h;
+    };
+
+    // step 1: API key
+    rwp.appendChild(stepHead(1, 'Google API key'));
+    const keyRow = el('div', 'pw-row');
+    keyRow.appendChild(el('div', 'pw-label', 'API key'));
+    const keyInput = el('input', 'pw-input pwm-rw-key');
+    keyInput.type = 'password';
+    keyInput.placeholder = 'Paste your Map Tiles API key (AIza…)';
+    keyInput.autocomplete = 'off';
+    keyInput.spellcheck = false;
+    keyInput.addEventListener('keydown', (e) => e.stopPropagation());
+    keyInput.addEventListener('keyup', (e) => e.stopPropagation());
+    keyInput.addEventListener('input', () => {
+      settings.realworld.apiKey = keyInput.value.trim();
+      saveSettings();
+      paintSummary();
+    });
+    keyRow.appendChild(keyInput);
+    rwp.appendChild(keyRow);
+    rwp.appendChild(el('div', 'pwm-note',
+      'Your key is saved in THIS browser only (localStorage) and is sent nowhere except directly to Google’s tile servers.'));
+
+    // collapsible: how to get a key
+    let helpOpen = false;
+    const helpBtn = btn('pw-btn pwm-rw-help-btn', 'How to get a free key ▸', () => {
+      helpOpen = !helpOpen;
+      helpBody.style.display = helpOpen ? '' : 'none';
+      helpBtn.textContent = helpOpen ? 'How to get a free key ▾' : 'How to get a free key ▸';
+    });
+    rwp.appendChild(helpBtn);
+    const helpBody = el('div', 'pwm-rw-help');
+    helpBody.style.display = 'none';
+    RW_KEY_STEPS.forEach((s, i) => {
+      const row = el('div', 'pwm-rw-help-row');
+      row.appendChild(el('span', 'pwm-rw-help-n pw-mono', `${i + 1}.`));
+      row.appendChild(el('span', 'pwm-dim2', s));
+      helpBody.appendChild(row);
+    });
+    rwp.appendChild(helpBody);
+
+    // step 2: location
+    rwp.appendChild(stepHead(2, 'Location'));
+    const paintPresets = this._optionCards(rwp, {
+      columns: 3,
+      options: RW_PRESETS.map((p) => ({
+        value: p.value, title: p.title, icon: p.icon,
+        desc: `${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}`,
+      })),
+      get: () => settings.realworld.preset,
+      set: (v) => {
+        const p = RW_PRESETS.find((x) => x.value === v);
+        if (!p) return;
+        settings.realworld.preset = p.value;
+        settings.realworld.lat = p.lat;
+        settings.realworld.lon = p.lon;
+        this._commit('realworld');
+        paintCoords();
+        paintSummary();
+      },
+    });
+
+    // custom lat/lon
+    const coordRow = el('div', 'pw-row');
+    coordRow.appendChild(el('div', 'pw-label', 'Custom lat / lon'));
+    const mkCoord = (min, max, ph) => {
+      const inp = el('input', 'pw-input pwm-rw-coord');
+      inp.type = 'number';
+      inp.step = '0.0001';
+      inp.min = String(min);
+      inp.max = String(max);
+      inp.placeholder = ph;
+      inp.addEventListener('keydown', (e) => e.stopPropagation());
+      inp.addEventListener('keyup', (e) => e.stopPropagation());
+      return inp;
+    };
+    const latInput = mkCoord(-90, 90, 'latitude');
+    const lonInput = mkCoord(-180, 180, 'longitude');
+    const commitCoords = () => {
+      const la = parseFloat(latInput.value);
+      const lo = parseFloat(lonInput.value);
+      if (isFinite(la)) settings.realworld.lat = clamp(la, -90, 90);
+      if (isFinite(lo)) settings.realworld.lon = clamp(lo, -180, 180);
+      const hit = RW_PRESETS.find((p) =>
+        Math.abs(p.lat - settings.realworld.lat) < 1e-4 && Math.abs(p.lon - settings.realworld.lon) < 1e-4);
+      settings.realworld.preset = hit ? hit.value : 'custom';
+      this._commit('realworld');
+      paintCoords();
+      paintPresets();
+      paintSummary();
+    };
+    latInput.addEventListener('change', commitCoords);
+    lonInput.addEventListener('change', commitCoords);
+    coordRow.appendChild(latInput);
+    coordRow.appendChild(lonInput);
+    rwp.appendChild(coordRow);
+    rwp.appendChild(el('div', 'pwm-note',
+      'Anywhere Google has photorealistic 3D coverage works — most large cities worldwide. Editing lat/lon switches the preset to “custom”.'));
+
+    // fly row
+    const flyRow = el('div', 'pwm-actions pwm-gen-row');
+    const summary = el('div', 'pwm-summary pw-mono');
+    flyRow.appendChild(summary);
+    flyRow.appendChild(el('div', 'pwm-spacer'));
+    flyRow.appendChild(btn('pw-btn primary', '🌎 Fly real world', () => {
+      commitCoords();
+      settings.map = 'realworld';
+      saveSettings();
+      emit('map:reload');
+      this.close();
+    }));
+    rwp.appendChild(flyRow);
+    sec.appendChild(rwp);
+
+    const paintCoords = () => {
+      if (document.activeElement !== latInput) latInput.value = String(settings.realworld.lat);
+      if (document.activeElement !== lonInput) lonInput.value = String(settings.realworld.lon);
+    };
+    const paintSummary = () => {
+      const r = settings.realworld;
+      const keyState = r.apiKey ? 'key ✓' : 'NO KEY — placard mode';
+      summary.textContent = `${r.preset} · ${Number(r.lat).toFixed(4)}, ${Number(r.lon).toFixed(4)} · ${keyState}`;
+    };
+
+    this._paintRW = () => {
+      rwp.style.display = this._rwOpen ? '' : 'none';
+      if (document.activeElement !== keyInput) keyInput.value = settings.realworld.apiKey || '';
+      paintCoords();
+      paintPresets();
+      paintSummary();
+    };
+    this._syncFns.push(this._paintRW);
   }
 
   // ------------------------------------------------------------
@@ -1242,6 +1436,18 @@ export class Menu {
 }
 .pwm-thumb.miami { background: linear-gradient(160deg, #123a5e 0%, #1d6f8f 45%, #d76b83 100%); }
 .pwm-thumb.proc  { background: linear-gradient(160deg, #10331f 0%, #1d5e46 50%, #45753b 100%); }
+.pwm-thumb.realworld { background: linear-gradient(160deg, #071c33 0%, #14507a 55%, #3fa0c0 100%); }
+
+.pwm-rw-key { flex: 1; min-width: 200px; font-family: var(--pw-mono); letter-spacing: 1px; }
+.pwm-rw-coord { width: 140px; font-family: var(--pw-mono); }
+.pwm-rw-help-btn { margin: 4px 0 2px; font-size: 12px; }
+.pwm-rw-help {
+  border: 1px solid var(--pw-line); border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  padding: 10px 14px; margin: 8px 0 4px;
+}
+.pwm-rw-help-row { display: flex; gap: 10px; font-size: 12.5px; line-height: 1.55; margin: 4px 0; }
+.pwm-rw-help-n { color: var(--pw-accent); flex: none; }
 
 .pwm-opt {
   border: 1px solid var(--pw-line); border-radius: 10px;

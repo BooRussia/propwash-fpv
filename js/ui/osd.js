@@ -386,7 +386,7 @@ export class OSD {
         this.hintEl.textContent = 'RADIO DETECTED — CALIBRATE IN ESC MENU';
         this.hintEl.style.display = '';
       } else if (hint === 3) {
-        this.hintEl.textContent = 'ARM TO FLY: throttle all the way down, then SPACE or your arm switch';
+        this.hintEl.textContent = 'ARM: pull throttle ALL THE WAY DOWN and hold (or press SPACE)';
         this.hintEl.style.display = '';
       } else {
         this.hintEl.style.display = 'none';

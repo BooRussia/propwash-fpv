@@ -15,6 +15,12 @@ export const DEFAULT_SETTINGS = {
     terrain: 'mountains',       // 'tropical' | 'desert' | 'mountains' | 'island'
     seed: 1337,
   },
+  realworld: {
+    apiKey: '',                 // user's Google Maps Platform key (Map Tiles API) — stays in their browser
+    preset: 'miami',
+    lat: 25.7907,
+    lon: -80.13,
+  },
   gameMode: 'freestyle',        // 'freestyle' | 'racing' | 'retrieval'
   flightMode: 'acro',           // 'acro' | 'angle' | 'horizon'
   rates: {                      // Betaflight "Actual" rates

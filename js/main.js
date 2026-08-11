@@ -22,6 +22,7 @@ import { StaticFX } from './fx/staticfx.js';
 import { Environment } from './world/environment.js';
 import { buildMiami } from './world/miami.js';
 import { buildProcedural } from './world/procedural.js';
+import { buildRealWorld } from './world/realworld.js';
 import { ModeManager } from './modes/modes.js';
 import { MotorAudio } from './audio/engine.js';
 
@@ -145,6 +146,8 @@ async function loadMap() {
     if (mapHandle) { mapHandle.dispose(scene); mapHandle = null; }
     if (settings.map === 'miami') {
       mapHandle = await buildMiami(scene, env);
+    } else if (settings.map === 'realworld') {
+      mapHandle = await buildRealWorld(scene, env, settings.realworld);
     } else {
       mapHandle = await buildProcedural(scene, env, settings.procedural);
     }
@@ -191,16 +194,21 @@ function tryArm(want) {
     emit('osd:flash', { text: 'ARMED', ms: 800 });
   } else {
     armed = false;
+    needThrottleLift = true;   // don't instantly re-auto-arm after a deliberate disarm
     emit('osd:flash', { text: 'DISARMED', ms: 800 });
   }
 }
 
 // ---------------- controls ----------------
 const currentControls = { throttle: 0, roll: 0, pitch: 0, yaw: 0 };
+let controlsLive = false;      // a radio or the keyboard is actively providing input
+let lowThrottleMs = 0;         // throttle-held-low timer for auto-arm
+let needThrottleLift = false;  // after a manual disarm, require throttle > 0.1 before auto-arm
 
 function pollControls(dt) {
   radio.update(performance.now());
   const kb = keyboard.getFlightControls(dt);
+  controlsLive = (radio.connected && !!settings.controller.calibration) || kb.active;
   if (radio.connected && settings.controller.calibration) {
     const c = radio.controls;
     currentControls.throttle = c.throttle;
@@ -414,6 +422,17 @@ renderer.setAnimationLoop(() => {
 
   pollControls(dt);
 
+  // default arming: hold the throttle stick all the way down for ~half a second
+  if (!paused && quad && !armed && !quad.crashed && !menu.isOpen && !calibUI.isOpen) {
+    if (controlsLive && currentControls.throttle < 0.025 && !needThrottleLift) {
+      lowThrottleMs += dt * 1000;
+      if (lowThrottleMs >= 450) { lowThrottleMs = 0; tryArm(true); }
+    } else {
+      lowThrottleMs = 0;
+      if (currentControls.throttle > 0.1) needThrottleLift = false;
+    }
+  }
+
   if (!paused && quad && mapHandle) {
     stepPhysics(dt);
     if (armed && !quad.crashed) flightTimer += dt;
@@ -429,6 +448,7 @@ renderer.setAnimationLoop(() => {
   }
 
   env.update(dt, activeCam);
+  mapHandle?.setCamera?.(activeCam);
   mapHandle?.update?.(dt, activeCam.position);
 
   // static overlay: manual toggle and/or signal-driven breakup (FPV only)
