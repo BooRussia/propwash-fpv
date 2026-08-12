@@ -1,5 +1,35 @@
 import * as THREE from 'three';
 import { TOWER_SITES, GROUND_Y } from '../constants.js';
+import { setAoUVs } from '../textures.js';
+
+/** Overlapping AABB ring so micros cannot slip between sectors. Interior stays open. */
+function addShellRing(addCollider, x, z, yBottom, height, radius, wallThick, sectors) {
+  const chord = 2 * radius * Math.sin(Math.PI / sectors);
+  // Tangential span overlaps neighbors; radial thickness tracks visible shell.
+  const tang = chord * 1.35;
+  const rad = Math.max(2.2, wallThick);
+  for (let s = 0; s < sectors; s++) {
+    const a = (s / sectors) * Math.PI * 2;
+    const cx = x + Math.cos(a) * radius;
+    const cz = z + Math.sin(a) * radius;
+    // Square-ish AABB large enough that adjacent boxes overlap on the circumference.
+    const size = Math.max(tang, rad);
+    addCollider(cx, yBottom, cz, size, height, size);
+  }
+}
+
+function applyTowerUVs(geo, height, avgR) {
+  // Lathe UVs are 0..1; stretch so concrete/PBR doesn't smear vertically.
+  const uv = geo.attributes.uv;
+  if (!uv) return;
+  const uScale = (avgR * Math.PI * 2) / 8; // ~8 m horizontal repeat
+  const vScale = height / 6;               // ~6 m vertical repeat
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, uv.getX(i) * uScale, uv.getY(i) * vScale);
+  }
+  uv.needsUpdate = true;
+  setAoUVs(geo);
+}
 
 /** Hyperbolic cooling towers — true industrial scale, dive corridors + bailout air. */
 export function buildCoolingTowers(ctx) {
@@ -9,8 +39,7 @@ export function buildCoolingTowers(ctx) {
     const pts = [];
     const N = 28;
     for (let i = 0; i <= N; i++) {
-      const u = i / N; // 0..1 bottom→top
-      // hyperbolic-ish profile: wide base, pinch at throat, flare at lip
+      const u = i / N;
       let r;
       if (u < t.throatT) {
         const s = u / t.throatT;
@@ -21,37 +50,38 @@ export function buildCoolingTowers(ctx) {
       }
       pts.push(new THREE.Vector2(r, u * t.h));
     }
-    const geo = track(new THREE.LatheGeometry(pts, 48));
+    const geo = track(new THREE.LatheGeometry(pts, 64));
+    applyTowerUVs(geo, t.h, (t.baseR + t.throatR + t.topR) / 3);
+
     const mat = mats.concrete.clone();
     track(mat);
     mat.color = mats.concrete.color.clone().offsetHSL(0, 0, -0.04 + (t.x * 0.0001));
+    if (mat.map) {
+      mat.map = mat.map.clone();
+      mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
+      mat.map.repeat.set(1, 1); // scaling baked into UVs
+      mat.map.needsUpdate = true;
+      track(mat.map);
+    }
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(t.x, GROUND_Y, t.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     root.add(mesh);
 
-    // Hollow interior: colliders are a ring of AABBs around the shell (not solid fill)
-    // so the dive corridor stays open. Sample 8 sectors at mid-height + base ring.
-    const sectors = 10;
-    for (let s = 0; s < sectors; s++) {
-      const a = (s / sectors) * Math.PI * 2;
-      const midR = (t.baseR + t.throatR) * 0.5;
-      const cx = t.x + Math.cos(a) * midR;
-      const cz = t.z + Math.sin(a) * midR;
-      const thick = Math.max(3.5, (t.baseR - t.throatR) * 0.35);
-      addCollider(cx, GROUND_Y, cz, thick, t.h * 0.92, thick);
+    // Hollow shell: 3 stacked overlapping rings matching the hyperbola
+    // (base / mid / throat→lip) so colliders hug visible concrete.
+    const wallThick = Math.max(2.4, (t.baseR - t.throatR) * 0.12);
+    const bands = [
+      { y0: GROUND_Y, h: t.h * 0.38, r: (t.baseR + t.throatR) * 0.55, n: 28 },
+      { y0: GROUND_Y + t.h * 0.32, h: t.h * 0.38, r: (t.throatR + t.baseR) * 0.42, n: 28 },
+      { y0: GROUND_Y + t.h * 0.62, h: t.h * 0.36, r: (t.throatR + t.topR) * 0.5, n: 26 },
+    ];
+    for (const b of bands) {
+      addShellRing(addCollider, t.x, t.z, b.y0, b.h, b.r, wallThick, b.n);
     }
-    // Lip ring collider
-    for (let s = 0; s < 8; s++) {
-      const a = (s / 8) * Math.PI * 2;
-      addCollider(
-        t.x + Math.cos(a) * t.topR,
-        GROUND_Y + t.h - 2.5,
-        t.z + Math.sin(a) * t.topR,
-        4, 3, 4
-      );
-    }
+    // Lip ring
+    addShellRing(addCollider, t.x, t.z, GROUND_Y + t.h - 3, 3.2, t.topR, 3.2, 20);
 
     // Base apron / fill basin rim (bailout shelf) — annular, not a solid plug
     const apron = new THREE.Mesh(
@@ -69,20 +99,22 @@ export function buildCoolingTowers(ctx) {
     ledge.position.set(t.x, GROUND_Y + 0.15, t.z);
     ledge.receiveShadow = true;
     root.add(ledge);
-    // Ring colliders only — keep dive corridor open through the basin
-    for (let s = 0; s < 14; s++) {
-      const a = (s / 14) * Math.PI * 2;
-      const rr = t.baseR + 6.5;
-      addCollider(t.x + Math.cos(a) * rr, GROUND_Y, t.z + Math.sin(a) * rr, 5.5, 1.2, 5.5);
-    }
+    addShellRing(addCollider, t.x, t.z, GROUND_Y, 1.2, t.baseR + 6.5, 4.5, 22);
 
-    // Interior fill water hint (decorative, no collider) — slight offset
+    // Decorative basin disc — below grade slightly + polygonOffset to kill shimmer
+    const poolMat = mats.water.clone();
+    track(poolMat);
+    poolMat.polygonOffset = true;
+    poolMat.polygonOffsetFactor = 2;
+    poolMat.polygonOffsetUnits = 2;
+    poolMat.depthWrite = false;
     const pool = new THREE.Mesh(
       track(new THREE.CircleGeometry(t.baseR * 0.72, 32)),
-      mats.water
+      poolMat
     );
     pool.rotation.x = -Math.PI / 2;
-    pool.position.set(t.x, GROUND_Y + 0.08, t.z);
+    pool.position.set(t.x, GROUND_Y - 0.06, t.z);
+    pool.renderOrder = -1;
     root.add(pool);
 
     // Ladder spine on exterior (visual + thin collider)
