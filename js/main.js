@@ -7,7 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { settings, saveSettings, emit, on, clamp } from './core/state.js';
+import { settings, saveSettings, emit, on } from './core/state.js';
 import { initAssetLibrary } from './core/assets.js';
 import { DRONES } from './physics/drones.js';
 import { Quad } from './physics/quad.js';
@@ -71,7 +71,7 @@ const cameras = new FpvCameraPipeline({
   renderDistance: settings.graphics.renderDistance,
   fxRoot: document.getElementById('fx-root'),
 });
-const { fpvCam, losCam } = cameras;
+const { fpvCam } = cameras;
 
 // ---------------- post-processing ----------------
 const composer = new EffectComposer(renderer);
