@@ -1,0 +1,114 @@
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { groundHeight } from '../constants.js';
+import { buildLifeguardGeo } from './lifeguard.js';
+import { buildParasolCanopy, buildParasolFrame } from './parasols.js';
+
+/** Lifeguard towers + parasols + beach towels. */
+export function buildBeachProps(ctx) {
+  const { root, track, addCollider, rng, rng3 } = ctx;
+  {
+    // lifeguard towers v2 — merged vertex-colored geometry, 1 draw call for all 6
+    const hutCols = [0xff7fa0, 0x53d6d6, 0xffd166, 0x9b5de5, 0x43d17a, 0xff8c42];
+    const lgGeos = [];
+    for (let i = 0; i < 6; i++) {
+      const x = -430 + i * 165 + (rng() - 0.5) * 30;    // legacy rng draws — keep order
+      const z = 10 + rng() * 6;
+      const y = groundHeight(x, z);
+      const g = buildLifeguardGeo(hutCols[i % hutCols.length], hutCols[(i + 2) % hutCols.length]);
+      g.rotateY((rng3() - 0.5) * 0.24);
+      g.translate(x, y, z);
+      lgGeos.push(g);
+      addCollider(x, y, z, 3.6, 4.8, 3.2);              // silhouette is lower than the old hut
+    }
+    const lgGeo = track(mergeGeometries(lgGeos));
+    lgGeos.forEach((g) => g.dispose());
+    const lgMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, side: THREE.DoubleSide }));
+    const lgMesh = new THREE.Mesh(lgGeo, lgMat);
+    lgMesh.castShadow = true;
+    lgMesh.receiveShadow = true;
+    root.add(lgMesh);
+
+    // parasols v2 — scalloped two-tone canopy, visible ribs, tilted poles
+    const canopyGeoA = track(buildParasolCanopy(0));
+    const canopyGeoB = track(buildParasolCanopy(1));
+    const frameGeo = track(buildParasolFrame());
+    const canopyMatWhite = track(new THREE.MeshStandardMaterial({ color: 0xf6f2e7, roughness: 0.85, side: THREE.DoubleSide }));
+    const canopyMatTint = track(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide }));
+    const frameMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }));
+    const NU = 60;
+    const canWhite = new THREE.InstancedMesh(canopyGeoA, canopyMatWhite, NU);
+    const canTint = new THREE.InstancedMesh(canopyGeoB, canopyMatTint, NU);
+    const frames = new THREE.InstancedMesh(frameGeo, frameMat, NU);
+    const umbCols = [0xff5c8a, 0x29d3ff, 0xffd166, 0xff8c42, 0x43d17a, 0x9b5de5, 0xe63946];
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const qS = new THREE.Quaternion();
+    const eul = new THREE.Euler();
+    const vP = new THREE.Vector3();
+    const vS = new THREE.Vector3();
+    const colU = new THREE.Color();
+    const umbSpots = [];
+    for (let i = 0; i < NU; i++) {
+      const x = (rng() - 0.5) * 1100;                   // legacy rng draws — keep order
+      const z = 2 + rng() * 16;
+      const y = groundHeight(x, z);
+      const yaw = rng() * Math.PI;                      // legacy rotY draw
+      const tilt = rng3() * 0.31;                       // 0–18°
+      const s = 0.85 + rng3() * 0.35;
+      eul.set(tilt, yaw, 0, 'YXZ');
+      q.setFromEuler(eul);
+      vP.set(x, Math.max(y, 0.1), z);
+      vS.set(s, s, s);
+      m4.compose(vP, q, vS);
+      canWhite.setMatrixAt(i, m4);
+      canTint.setMatrixAt(i, m4);
+      frames.setMatrixAt(i, m4);
+      canTint.setColorAt(i, colU.setHex(umbCols[(rng3() * umbCols.length) | 0]));
+      umbSpots.push(vP.clone());
+    }
+    canWhite.castShadow = true;
+    canTint.castShadow = true;
+    root.add(canWhite, canTint, frames);
+
+    // beach towels scattered around the parasol clusters, draped to the sand slope
+    const towelGeo = track(new THREE.PlaneGeometry(0.85, 1.75));
+    towelGeo.rotateX(-Math.PI / 2);
+    const towelMat = track(new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 1,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    }));
+    const towelCols = [0xff7096, 0x37c4e0, 0xffe08a, 0x59d98c, 0xb08ae6, 0xf2f2f2, 0xff8c42];
+    const NT = 46;
+    const towels = new THREE.InstancedMesh(towelGeo, towelMat, NT);
+    const up = new THREE.Vector3(0, 1, 0);
+    const nrm = new THREE.Vector3();
+    let ti = 0;
+    for (let i = 0; i < NU && ti < NT; i++) {
+      if (rng3() < 0.35) continue;
+      const u = umbSpots[i];
+      const a = rng3() * Math.PI * 2;
+      const dist = 1.3 + rng3() * 1.7;
+      const x = u.x + Math.cos(a) * dist, z = u.z + Math.sin(a) * dist;
+      const y = groundHeight(x, z);
+      if (y < 0.12) continue;
+      const e = 0.5;
+      nrm.set(
+        (groundHeight(x - e, z) - groundHeight(x + e, z)) / (2 * e), 1,
+        (groundHeight(x, z - e) - groundHeight(x, z + e)) / (2 * e)
+      ).normalize();
+      qS.setFromUnitVectors(up, nrm);
+      eul.set(0, rng3() * Math.PI * 2, 0);
+      q.setFromEuler(eul).premultiply(qS);
+      vP.set(x, y + 0.045, z);
+      vS.set(1, 1, 1);
+      m4.compose(vP, q, vS);
+      towels.setMatrixAt(ti, m4);
+      towels.setColorAt(ti, colU.setHex(towelCols[(rng3() * towelCols.length) | 0]));
+      ti++;
+    }
+    towels.count = ti;
+    towels.receiveShadow = true;
+    root.add(towels);
+  }
+}

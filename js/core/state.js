@@ -36,6 +36,11 @@ export const DEFAULT_SETTINGS = {
     staticMode: 'analog',       // 'analog' | 'digital'
     staticIntensity: 0.35,      // base intensity when toggled on
     signalLoss: true,           // distance/occlusion-based breakup
+    // Camera pipeline extensions (js/camera/) — defaults preserve classic FPV feel
+    stabilization: false,       // horizon soft-lock + gyro damp of motor shake
+    stabStrength: 0.4,          // 0..1 when stabilization is on
+    shutterMs: 0,               // simulated shutter (ms); 0 = off / no blur
+    motionBlur: 0,              // 0..1 motion-blur knob (wired; pass not yet applied)
   },
   environment: {
     timeOfDay: 15.5,            // hours 0..24
