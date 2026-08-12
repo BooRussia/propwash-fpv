@@ -1189,6 +1189,39 @@ export class Menu {
       set: (v) => { settings.camera.signalLoss = v; this._commit('camera'); },
       note: 'The feed breaks up with distance and with terrain or buildings between you and the drone.',
     });
+
+    sec.appendChild(el('div', 'pw-h2', 'Stabilization'));
+    this._toggleRow(sec, {
+      label: 'Horizon soft-lock',
+      get: () => settings.camera.stabilization,
+      set: (v) => { settings.camera.stabilization = v; this._commit('camera'); },
+      note: 'Bleed FPV roll toward level and damp motor micro-shake. Off = classic unlocked FPV.',
+    });
+    this._sliderRow(sec, {
+      label: 'Stab strength',
+      min: 0, max: 1, step: 0.01,
+      getValue: () => settings.camera.stabStrength,
+      setValue: (v) => { settings.camera.stabStrength = v; this._commit('camera'); },
+      display: () => `${Math.round(settings.camera.stabStrength * 100)}%`,
+    });
+
+    sec.appendChild(el('div', 'pw-h2', 'Shutter'));
+    this._sliderRow(sec, {
+      label: 'Shutter speed',
+      min: 0, max: 20, step: 1,
+      getValue: () => settings.camera.shutterMs,
+      setValue: (v) => { settings.camera.shutterMs = Math.round(v); this._commit('camera'); },
+      display: () => settings.camera.shutterMs <= 0 ? 'OFF' : `${Math.round(settings.camera.shutterMs)} ms`,
+      note: 'Extension point for motion blur. Visual pass is not applied yet at 0 blur.',
+    });
+    this._sliderRow(sec, {
+      label: 'Motion blur',
+      min: 0, max: 1, step: 0.01,
+      getValue: () => settings.camera.motionBlur,
+      setValue: (v) => { settings.camera.motionBlur = v; this._commit('camera'); },
+      display: () => `${Math.round(settings.camera.motionBlur * 100)}%`,
+      note: 'Knob wired to js/camera/shutter.js for a future blur pass.',
+    });
   }
 
   // ------------------------------------------------------------

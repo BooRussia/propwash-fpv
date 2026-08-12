@@ -7,7 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-import { settings, saveSettings, emit, on, clamp } from './core/state.js';
+import { settings, saveSettings, emit, on } from './core/state.js';
 import { initAssetLibrary } from './core/assets.js';
 import { DRONES } from './physics/drones.js';
 import { Quad } from './physics/quad.js';
@@ -18,7 +18,7 @@ import { Menu } from './ui/menu.js';
 import { CalibrationUI } from './ui/calibration.js';
 import { OSD } from './ui/osd.js';
 import { StickOverlay } from './ui/sticks.js';
-import { StaticFX } from './fx/staticfx.js';
+import { FpvCameraPipeline } from './camera/index.js';
 import { Environment } from './world/environment.js';
 import { buildMiami } from './world/miami.js';
 import { buildProcedural } from './world/procedural.js';
@@ -65,11 +65,13 @@ function autoDetectQuality() {
 autoDetectQuality();
 
 const scene = new THREE.Scene();
-// near planes: 0.02 destroyed depth precision at range (shimmering waterline /
-// z-fighting in the distance). 0.06 is still tight enough for prop-view.
-const fpvCam = new THREE.PerspectiveCamera(settings.camera.fovDeg, innerWidth / innerHeight, 0.06, settings.graphics.renderDistance);
-const losCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, settings.graphics.renderDistance);
-let activeCam = fpvCam;
+
+// FPV / LOS cameras, signal-loss, and static feed — see js/camera/
+const cameras = new FpvCameraPipeline({
+  renderDistance: settings.graphics.renderDistance,
+  fxRoot: document.getElementById('fx-root'),
+});
+const { fpvCam } = cameras;
 
 // ---------------- post-processing ----------------
 const composer = new EffectComposer(renderer);
@@ -94,8 +96,7 @@ function applyGraphics() {
   renderer.shadowMap.enabled = q.shadows && settings.graphics.shadows;
   bloomPass.enabled = q.bloom && settings.graphics.bloom;
   const rd = settings.graphics.renderDistance;
-  fpvCam.far = rd; losCam.far = rd;
-  fpvCam.updateProjectionMatrix(); losCam.updateProjectionMatrix();
+  cameras.setRenderDistance(rd);
   env?.setRenderDistance(rd);
   env?.setQuality(q.shadowRes);
 }
@@ -111,7 +112,6 @@ const radio = new RadioManager();
 const keyboard = new KeyboardInput();
 const osd = new OSD(document.getElementById('osd-root'));
 const sticks = new StickOverlay(document.getElementById('osd-root'));
-const staticFX = new StaticFX(document.getElementById('fx-root'));
 const menu = new Menu();
 const calibUI = new CalibrationUI(radio);
 const modeManager = new ModeManager(scene);
@@ -256,95 +256,6 @@ function stepPhysics(dt) {
   }
 }
 
-// ---------------- cameras ----------------
-const tiltQuat = new THREE.Quaternion();
-const shakeQuat = new THREE.Quaternion();
-const shakeEuler = new THREE.Euler();
-const camOffset = new THREE.Vector3();
-
-function updateCameras(t) {
-  // FPV camera: locked to drone body with uptilt + micro-shake from motors
-  tiltQuat.setFromAxisAngle(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(settings.camera.tiltDeg));
-  const m = quad.motorOutput * (armed ? 1 : 0);
-  shakeEuler.set(
-    Math.sin(t * 131) * 0.0016 * m,
-    Math.sin(t * 97) * 0.0013 * m,
-    Math.sin(t * 149) * 0.0019 * m
-  );
-  shakeQuat.setFromEuler(shakeEuler);
-  fpvCam.quaternion.copy(quad.quaternion).multiply(tiltQuat).multiply(shakeQuat);
-  camOffset.set(0, 0.02, -0.04).applyQuaternion(quad.quaternion);
-  fpvCam.position.copy(quad.position).add(camOffset);
-  if (fpvCam.fov !== settings.camera.fovDeg) {
-    fpvCam.fov = settings.camera.fovDeg;
-    fpvCam.updateProjectionMatrix();
-  }
-
-  // LOS camera: standing pilot, tracks the drone with mild auto-zoom
-  losCam.position.copy(pilotPos);
-  losCam.lookAt(quad.position);
-  const dist = losCam.position.distanceTo(quad.position);
-  const targetFov = clamp(60 - dist * 0.12, 20, 60);
-  if (Math.abs(losCam.fov - targetFov) > 0.2) {
-    losCam.fov = targetFov;
-    losCam.updateProjectionMatrix();
-  }
-
-  const los = settings.camera.losMode;
-  activeCam = los ? losCam : fpvCam;
-  renderPass.camera = activeCam;
-  if (droneMesh) droneMesh.group.visible = los;
-  osd.setVisible(!los && !menu.isOpen);
-}
-
-// ---------------- signal loss (analog video realism) ----------------
-let sigLoss = 0;
-let sigTimer = 0;
-const rayDir = new THREE.Vector3();
-
-function aabbBlocksRay(box, o, d, maxT) {
-  let tmin = 0, tmax = maxT;
-  for (const ax of ['x', 'y', 'z']) {
-    const inv = 1 / (d[ax] || 1e-9);
-    let t1 = (box.min[ax] - o[ax]) * inv;
-    let t2 = (box.max[ax] - o[ax]) * inv;
-    if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
-    tmin = Math.max(tmin, t1);
-    tmax = Math.min(tmax, t2);
-    if (tmin > tmax) return false;
-  }
-  return true;
-}
-
-function updateSignal(dt) {
-  sigTimer -= dt;
-  if (sigTimer > 0) return;
-  sigTimer = 0.25;
-  const distToPilot = quad.position.distanceTo(pilotPos);
-  let loss = clamp((distToPilot - 250) / 650, 0, 1);
-  // occlusion: terrain samples + collider boxes between pilot and drone
-  rayDir.copy(quad.position).sub(pilotPos);
-  const len = rayDir.length();
-  if (len > 5 && mapHandle) {
-    rayDir.normalize();
-    for (let i = 1; i <= 8; i++) {
-      const f = i / 9;
-      const px = pilotPos.x + rayDir.x * len * f;
-      const py = pilotPos.y + rayDir.y * len * f;
-      const pz = pilotPos.z + rayDir.z * len * f;
-      if (mapHandle.getGroundHeight(px, pz) > py + 1) { loss = Math.min(1, loss + 0.45); break; }
-    }
-    const cols = mapHandle.colliders;
-    if (cols) {
-      const n = cols.length;
-      for (let i = 0; i < n; i++) {
-        if (aabbBlocksRay(cols[i], pilotPos, rayDir, len)) { loss = Math.min(1, loss + 0.35); break; }
-      }
-    }
-  }
-  sigLoss += (loss - sigLoss) * 0.5;
-}
-
 // ---------------- event wiring ----------------
 on('hotkey:menu', () => {
   if (calibUI.isOpen) { calibUI.close(); return; }
@@ -354,27 +265,15 @@ on('menu:open', () => { paused = true; });
 on('menu:close', () => { paused = false; });
 on('hotkey:reset', () => { if (!menu.isOpen && !calibUI.isOpen) { quad.crashed = false; respawn(); emit('osd:flash', { text: 'RESET', ms: 600 }); } });
 on('hotkey:arm', () => { if (!menu.isOpen && !calibUI.isOpen) tryArm(!armed); });
-on('hotkey:view', () => {
-  settings.camera.losMode = !settings.camera.losMode;
-  saveSettings();
-  emit('osd:flash', { text: settings.camera.losMode ? 'LINE OF SIGHT' : 'FPV', ms: 700 });
-});
-on('hotkey:static', () => {
-  settings.camera.staticEnabled = !settings.camera.staticEnabled;
-  saveSettings();
-  emit('osd:flash', { text: `STATIC ${settings.camera.staticEnabled ? 'ON' : 'OFF'} (${settings.camera.staticMode.toUpperCase()})`, ms: 900 });
-});
+on('hotkey:view', () => { cameras.toggleLos(); });
+on('hotkey:static', () => { cameras.toggleStatic(); });
 on('hotkey:camTilt', ({ delta }) => {
   if (menu.isOpen || calibUI.isOpen) return;
-  settings.camera.tiltDeg = clamp(settings.camera.tiltDeg + delta, 0, 60);
-  saveSettings();
-  emit('osd:flash', { text: `CAM TILT ${settings.camera.tiltDeg}°`, ms: 600 });
+  cameras.nudgeTilt(delta);
 });
 on('hotkey:fov', ({ delta }) => {
   if (menu.isOpen || calibUI.isOpen) return;
-  settings.camera.fovDeg = clamp(settings.camera.fovDeg + delta, 60, 150);
-  saveSettings();
-  emit('osd:flash', { text: `FOV ${settings.camera.fovDeg}°`, ms: 600 });
+  cameras.nudgeFov(delta);
 });
 on('drone:changed', () => buildQuad());
 on('map:reload', () => loadMap());
@@ -397,11 +296,8 @@ on('settings:changed', () => {
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
-  fpvCam.aspect = innerHeight ? innerWidth / innerHeight : 1;
-  losCam.aspect = fpvCam.aspect;
-  fpvCam.updateProjectionMatrix();
-  losCam.updateProjectionMatrix();
-  staticFX.resize();
+  const aspect = innerHeight ? innerWidth / innerHeight : 1;
+  cameras.resize(aspect);
 });
 
 // ---------------- boot ----------------
@@ -439,28 +335,30 @@ renderer.setAnimationLoop(() => {
     stepPhysics(dt);
     if (armed && !quad.crashed) flightTimer += dt;
     modeManager.update(dt, quad);
-    updateSignal(dt);
+    cameras.updateSignal(dt, { quad, pilotPos, mapHandle });
   }
 
   if (quad && droneMesh) {
     droneMesh.group.position.copy(quad.position);
     droneMesh.group.quaternion.copy(quad.quaternion);
     droneMesh.update(dt, quad.motorOutput, armed);
-    updateCameras(t);
+    cameras.updatePose(t, {
+      quad,
+      droneMesh,
+      pilotPos,
+      armed,
+      menuOpen: menu.isOpen,
+      osd,
+      renderPass,
+    });
   }
 
+  const activeCam = cameras.activeCam;
   env.update(dt, activeCam);
   mapHandle?.setCamera?.(activeCam);
   mapHandle?.update?.(dt, activeCam.position);
 
-  // static overlay: manual toggle and/or signal-driven breakup (FPV only)
-  let inten = settings.camera.staticEnabled ? settings.camera.staticIntensity : 0;
-  if (settings.camera.signalLoss) inten = Math.max(inten, sigLoss);
-  const staticOn = !settings.camera.losMode && inten > 0.02 && !menu.isOpen;
-  staticFX.setMode(settings.camera.staticMode);
-  staticFX.setIntensity(inten);
-  staticFX.setEnabled(staticOn);
-  if (staticOn) staticFX.update(dt);
+  cameras.updateFeed(dt, { menuOpen: menu.isOpen });
 
   // OSD telemetry
   const speed = quad ? quad.velocity.length() : 0;
@@ -480,7 +378,7 @@ renderer.setAnimationLoop(() => {
     timerS: flightTimer,
     homeDirRad: toHome - droneYaw,
     distHomeM: quad ? quad.position.distanceTo(pilotPos) : 0,
-    rssi: 1 - sigLoss,
+    rssi: cameras.rssi,
     crashed: quad ? quad.crashed : false,
     radioConnected: radio.connected,
     calibrated: !!settings.controller.calibration,
@@ -517,7 +415,8 @@ window.__pw = {
   get quad() { return quad; },
   get map() { return mapHandle; },
   get armed() { return armed; },
-  get sigLoss() { return sigLoss; },
+  get sigLoss() { return cameras.sigLoss; },
+  get cameras() { return cameras; },
   settings,
   emit,
   scene,
