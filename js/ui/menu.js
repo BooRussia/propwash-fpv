@@ -566,6 +566,22 @@ export class Menu {
     miami.addEventListener('click', pickMiami);
     miami.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); pickMiami(); } });
     grid.appendChild(miami);
+    // Ash Prairie card
+    const ash = el('div', 'pwm-card pwm-map-card');
+    ash.tabIndex = 0;
+    const aThumb = el('div', 'pwm-thumb ashPrairie', '🌾🏭');
+    ash.appendChild(aThumb);
+    ash.appendChild(el('div', 'pwm-card-title', 'Ash Prairie'));
+    ash.appendChild(el('div', 'pwm-desc', 'Decommissioned Great Plains nuclear yard + grain co-op. Dive cooling towers, thread pipe racks, whoop the truck alley.'));
+    const pickAsh = () => {
+      settings.map = 'ashPrairie';
+      saveSettings();
+      emit('map:reload');
+      this.close();
+    };
+    ash.addEventListener('click', pickAsh);
+    ash.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); pickAsh(); } });
+    grid.appendChild(ash);
 
     // Procedural card
     const proc = el('div', 'pwm-card pwm-map-card');
@@ -709,6 +725,7 @@ export class Menu {
     // paint routine for the whole tab
     this._paintWizard = () => {
       miami.classList.toggle('sel', settings.map === 'miami');
+      ash.classList.toggle('sel', settings.map === 'ashPrairie');
       proc.classList.toggle('sel', settings.map === 'procedural');
       rw.classList.toggle('sel', settings.map === 'realworld');
       if (this._paintRW) this._paintRW();
@@ -1649,6 +1666,7 @@ export class Menu {
   text-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
 .pwm-thumb.miami { background: linear-gradient(160deg, #123a5e 0%, #1d6f8f 45%, #d76b83 100%); }
+.pwm-thumb.ashPrairie { background: linear-gradient(160deg, #3E3830 0%, #5C5346 40%, #8E8A82 70%, #6B4E3D 100%); }
 .pwm-thumb.proc  { background: linear-gradient(160deg, #10331f 0%, #1d5e46 50%, #45753b 100%); }
 .pwm-thumb.realworld { background: linear-gradient(160deg, #071c33 0%, #14507a 55%, #3fa0c0 100%); }
 
