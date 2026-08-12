@@ -51,3 +51,8 @@ No radio? Keyboard fallback: **I/K** throttle, **W/S** pitch, **A/D** roll, **J/
 
 ESC → Graphics: quality presets, render distance (also sizes procedural maps),
 render scale, bloom, shadows. Quality auto-detects your GPU on first run.
+
+## Architecture notes
+
+- **FPV camera / video pipeline** lives in `js/camera/` (`FpvCameraPipeline`): pose (tilt, FOV, micro-shake), LOS switching, signal-loss → static feed (via `js/fx/staticfx.js`), plus stabilization and shutter/motion-blur extension points. The game loop in `js/main.js` only calls into that module.
+
