@@ -65,8 +65,10 @@ function autoDetectQuality() {
 autoDetectQuality();
 
 const scene = new THREE.Scene();
-const fpvCam = new THREE.PerspectiveCamera(settings.camera.fovDeg, innerWidth / innerHeight, 0.02, settings.graphics.renderDistance);
-const losCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, settings.graphics.renderDistance);
+// near planes: 0.02 destroyed depth precision at range (shimmering waterline /
+// z-fighting in the distance). 0.06 is still tight enough for prop-view.
+const fpvCam = new THREE.PerspectiveCamera(settings.camera.fovDeg, innerWidth / innerHeight, 0.06, settings.graphics.renderDistance);
+const losCam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, settings.graphics.renderDistance);
 let activeCam = fpvCam;
 
 // ---------------- post-processing ----------------

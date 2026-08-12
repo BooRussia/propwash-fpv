@@ -91,7 +91,9 @@ $acg = @(
   @{ key='road_lines'; id='RoadLines019A' },
   @{ key='grass_lawn'; id='Grass001' },
   @{ key='sand_dunes'; id='Ground097' },
-  @{ key='facade_glass'; id='Facade016' },
+  @{ key='facade_glass'; id='Facade016' },      # night curtain wall (lit windows)
+  @{ key='facade_glass_day'; id='Facade006' },  # DAYTIME blue-grey glass curtain wall
+  @{ key='facade_office'; id='Facade020A' },    # daytime mid-rise brick/window
   @{ key='facade_day';   id='Facade001' },
   @{ key='bark_palm';    id='Bark012' }
 )

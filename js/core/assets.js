@@ -17,7 +17,7 @@ export const ASSET_BASE = 'assets/';
 export const TEXTURE_KEYS = [
   'sand_beach', 'sand_wet', 'grass_wild', 'rock_cliff', 'rock_macro', 'snow',
   'forest_floor', 'gravel', 'asphalt', 'sidewalk', 'road_lines', 'grass_lawn',
-  'sand_dunes', 'facade_glass', 'facade_day', 'bark_palm',
+  'sand_dunes', 'facade_glass', 'facade_glass_day', 'facade_office', 'facade_day', 'bark_palm',
 ];
 export const MODEL_KEYS = [
   'boulder_01', 'rock_face_01', 'rock_07', 'namaqualand_boulder_04', 'moon_rock_02',
@@ -67,8 +67,9 @@ export class AssetLibrary {
       loadTex(base + 'ao.jpg', false),
       loadTex(base + 'opacity.jpg', false),
       loadTex(base + 'emissive.jpg', true),
-    ]).then(([map, normalMap, roughnessMap, aoMap, alphaMap, emissiveMap]) => {
-      const set = { map, normalMap, roughnessMap, aoMap, alphaMap, emissiveMap };
+      loadTex(base + 'metal.jpg', false),
+    ]).then(([map, normalMap, roughnessMap, aoMap, alphaMap, emissiveMap, metalnessMap]) => {
+      const set = { map, normalMap, roughnessMap, aoMap, alphaMap, emissiveMap, metalnessMap };
       for (const t of Object.values(set)) {
         if (t) { t.anisotropy = this.maxAniso; this._disposables.push(t); }
       }
@@ -109,6 +110,7 @@ export class AssetLibrary {
       mat.normalScale.set(ns, ns);
     }
     if (set.roughnessMap) mat.roughnessMap = applyRepeat(set.roughnessMap);
+    if (set.metalnessMap) mat.metalnessMap = applyRepeat(set.metalnessMap);
     if (set.aoMap) mat.aoMap = applyRepeat(set.aoMap);
     if (set.alphaMap) { mat.alphaMap = applyRepeat(set.alphaMap); mat.transparent = true; }
     if (opts.emissive !== undefined) {
