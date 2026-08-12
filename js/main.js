@@ -22,6 +22,7 @@ import { FpvCameraPipeline } from './camera/index.js';
 import { TrailSystem } from './world/trails.js';
 import { Environment } from './world/environment.js';
 import { buildMiami } from './world/miami.js';
+import { buildAshPrairie } from './world/ashPrairie.js';
 import { buildProcedural } from './world/procedural.js';
 import { buildRealWorld } from './world/realworld.js';
 import { ModeManager } from './modes/modes.js';
@@ -150,6 +151,8 @@ async function loadMap() {
     if (mapHandle) { mapHandle.dispose(scene); mapHandle = null; }
     if (settings.map === 'miami') {
       mapHandle = await buildMiami(scene, env);
+    } else if (settings.map === 'ashPrairie') {
+      mapHandle = await buildAshPrairie(scene, env);
     } else if (settings.map === 'realworld') {
       mapHandle = await buildRealWorld(scene, env, settings.realworld);
     } else {
