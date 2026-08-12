@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { settings, clamp } from '../core/state.js';
 import { assetLib } from '../core/assets.js';
 import { buildPalm, createPalms, scatterModels } from './vegetation.js';
@@ -90,6 +91,101 @@ function stripeTexture(base, stripe, w = 256, h = 256, planks = 14) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// Deck planking with per-plank tone jitter, butt joints and grain streaks.
+// Deterministic (own PRNG) — never touches the layout streams.
+function plankTexture(baseHex, seed = 7, w = 512, h = 512, planks = 16) {
+  const r = mulberry32(seed);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const base = new THREE.Color(baseHex);
+  const ph = h / planks;
+  for (let i = 0; i < planks; i++) {
+    const t = base.clone().offsetHSL((r() - 0.5) * 0.035, (r() - 0.5) * 0.14, (r() - 0.5) * 0.13);
+    g.fillStyle = `#${t.getHexString()}`;
+    g.fillRect(0, i * ph, w, ph);
+    // lengthwise grain
+    for (let k = 0; k < 26; k++) {
+      const gy = i * ph + 2 + r() * (ph - 4);
+      g.strokeStyle = `rgba(0,0,0,${0.03 + r() * 0.05})`;
+      g.lineWidth = 0.6 + r();
+      g.beginPath();
+      g.moveTo(r() * w * 0.4, gy);
+      g.lineTo(r() * w * 0.4 + w * 0.45, gy + (r() - 0.5) * 2);
+      g.stroke();
+    }
+    // butt joint across the plank
+    const jx = (r() * w) | 0;
+    g.fillStyle = 'rgba(0,0,0,0.32)';
+    g.fillRect(jx, i * ph + 1, 2, ph - 2);
+    // shadowed gap between boards
+    g.fillStyle = 'rgba(0,0,0,0.42)';
+    g.fillRect(0, i * ph, w, 2);
+    g.fillStyle = 'rgba(255,255,255,0.07)';
+    g.fillRect(0, i * ph + 2, w, 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+// Mottled foliage sheet — stops clipped hedges reading as painted plastic.
+function foliageTexture() {
+  const r = mulberry32(0x1EAF);
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5f7d4a'; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 900; i++) {
+    const l = r();
+    g.fillStyle = l < 0.42
+      ? `rgba(28,46,22,${0.25 + r() * 0.5})`
+      : l < 0.82 ? `rgba(96,128,64,${0.2 + r() * 0.45})`
+        : `rgba(158,190,110,${0.15 + r() * 0.35})`;
+    const s = 3 + r() * 8;
+    g.beginPath();
+    g.ellipse(r() * 128, r() * 128, s, s * (0.4 + r() * 0.5), r() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// Parking-lot asphalt with painted stalls — one tile = one 2-row bay.
+function parkingTexture() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const g = c.getContext('2d');
+  const r = mulberry32(0x9A5);
+  g.fillStyle = '#6e7276'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 1400; i++) {
+    const v = r() < 0.5 ? 40 : 210;
+    g.fillStyle = `rgba(${v},${v},${v},${r() * 0.10})`;
+    g.fillRect(r() * 256, r() * 256, 2 + r() * 3, 2 + r() * 3);
+  }
+  // patched seams
+  for (let i = 0; i < 6; i++) {
+    g.fillStyle = `rgba(50,52,55,${0.12 + r() * 0.14})`;
+    g.fillRect(0, r() * 256, 256, 3 + r() * 7);
+  }
+  g.fillStyle = 'rgba(226,220,196,0.46)';
+  for (let x = 8; x < 256; x += 30) {
+    g.fillRect(x, 14, 3, 74);
+    g.fillRect(x, 168, 3, 74);
+  }
+  g.fillRect(0, 86, 256, 3);
+  g.fillRect(0, 165, 256, 3);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -442,6 +538,124 @@ function buildMotorYacht(sz, accent) {
   return merged;
 }
 
+// ---------- streetscape kit (props-v3) ----------
+// Benches, bins, hydrants, meters, bike racks, balconies, rooftop
+// clutter. All builders return vertex-coloured BufferGeometries
+// (position/normal/uv/color) ready to merge or instance.
+function cSph(r, w, h, hex, x, y, z, sy = 1) {
+  const g = new THREE.SphereGeometry(r, w, h);
+  if (sy !== 1) g.scale(1, sy, 1);
+  g.translate(x, y, z);
+  return colorFill(g, hex);
+}
+
+// Slatted park bench, facing -z (back rest at +z). Origin at ground.
+function buildBenchGeo() {
+  const wood = 0xa5714a, frame = 0x2b3036;
+  const G = [];
+  for (const sx of [-0.78, 0.78]) {
+    G.push(cBox(0.07, 0.44, 0.58, frame, sx, 0.22, 0));
+    G.push(cBox(0.07, 0.55, 0.07, frame, sx, 0.66, 0.27, -0.12));
+  }
+  for (const dz of [-0.225, -0.075, 0.075, 0.225]) {
+    G.push(cBox(1.72, 0.045, 0.13, wood, 0, 0.455, dz));
+  }
+  for (const dy of [0.62, 0.77, 0.92]) {
+    G.push(cBox(1.72, 0.115, 0.045, wood, 0, dy, 0.285 + (dy - 0.62) * 0.12, -0.12));
+  }
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// Classic squat fire hydrant. Origin at ground.
+function buildHydrantGeo() {
+  const red = 0xd63426, cap = 0xf2ead8;
+  const G = [
+    cCyl(0.2, 0.23, 0.07, 10, 0x8f8a80, 0, 0.035, 0),
+    cCyl(0.145, 0.17, 0.52, 10, red, 0, 0.32, 0),
+    cSph(0.15, 10, 7, red, 0, 0.6, 0, 0.8),
+    cCyl(0.05, 0.045, 0.1, 6, cap, 0, 0.71, 0),
+  ];
+  for (const a of [0, Math.PI / 2, Math.PI * 1.5]) {
+    G.push(cCyl(0.075, 0.06, 0.1, 8, cap, Math.sin(a) * 0.19, 0.38, Math.cos(a) * 0.19, Math.PI / 2, a, 0));
+  }
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// Litter bin. Origin at ground.
+function buildBinGeo() {
+  const G = [
+    cCyl(0.25, 0.21, 0.58, 10, 0x35594a, 0, 0.31, 0),
+    cCyl(0.265, 0.265, 0.07, 10, 0x22282e, 0, 0.635, 0),
+    cCyl(0.19, 0.19, 0.035, 8, 0x0c0f12, 0, 0.68, 0),
+    cCyl(0.27, 0.27, 0.05, 10, 0x22282e, 0, 0.1, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// Parking meter, display facing +-z. Origin at ground.
+function buildMeterGeo() {
+  const G = [
+    cCyl(0.026, 0.032, 1.08, 6, 0x5a636b, 0, 0.54, 0),
+    cBox(0.17, 0.24, 0.09, 0x37525c, 0, 1.2, 0),
+    cCyl(0.095, 0.095, 0.085, 10, 0x37525c, 0, 1.33, 0, Math.PI / 2),
+    cBox(0.12, 0.11, 0.096, 0xd8d3c8, 0, 1.19, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// 3-hoop bike rack, hoops in the YZ plane spaced along x. Origin at ground.
+function buildBikeRackGeo() {
+  const steel = 0x9aa6b0;
+  const G = [];
+  for (const dx of [-0.5, 0, 0.5]) {
+    const hoop = new THREE.TorusGeometry(0.33, 0.028, 6, 12, Math.PI);
+    hoop.rotateY(Math.PI / 2);
+    hoop.translate(dx, 0.55, 0);
+    G.push(colorFill(hoop, steel));
+    for (const dz of [-0.33, 0.33]) G.push(cCyl(0.028, 0.028, 0.56, 6, steel, dx, 0.28, dz));
+  }
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// Balcony unit: slab + glass parapet + railing. Origin at the wall
+// face, extends +z outward; place with rotY per building face.
+function buildBalconyGeo() {
+  const conc = 0xe3e7ea, rail = 0x252c33, glass = 0x9fc0cd;
+  const G = [
+    cBox(3.15, 0.14, 1.2, conc, 0, 0.07, 0.6),
+    cBox(3.15, 0.06, 0.05, rail, 0, 1.06, 1.17),
+    cBox(0.05, 0.06, 1.16, rail, -1.55, 1.06, 0.58),
+    cBox(0.05, 0.06, 1.16, rail, 1.55, 1.06, 0.58),
+    cBox(3.02, 0.78, 0.035, glass, 0, 0.6, 1.165),
+    cBox(0.035, 0.78, 1.1, glass, -1.53, 0.6, 0.585),
+    cBox(0.035, 0.78, 1.1, glass, 1.53, 0.6, 0.585),
+  ];
+  for (const px of [-1.5, -0.75, 0, 0.75, 1.5]) G.push(cBox(0.05, 0.95, 0.05, rail, px, 0.6, 1.165));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+// Rooftop clutter kit: AC pair + water tank + timber pergola,
+// merged into one instanced geometry. Origin at roof level.
+function buildRooftopKitGeo() {
+  const G = [];
+  G.push(cBox(1.7, 0.95, 1.25, 0x9ba3ab, -2.1, 0.48, -1.1));
+  G.push(cCyl(0.52, 0.52, 0.06, 12, 0x3c4249, -2.1, 0.98, -1.1));
+  G.push(cBox(1.25, 0.8, 1.05, 0x8d959d, -0.55, 0.4, -1.2));
+  G.push(cCyl(0.4, 0.4, 0.05, 12, 0x3c4249, -0.55, 0.83, -1.2));
+  G.push(cCyl(0.95, 0.95, 1.8, 12, 0xcac3b2, 1.9, 1.32, -0.8));
+  G.push(cCyl(0.02, 0.98, 0.55, 12, 0xb4ac99, 1.9, 2.49, -0.8));
+  for (const [lx, lz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) {
+    G.push(cBox(0.14, 0.45, 0.14, 0x6d747c, 1.9 + lx, 0.22, -0.8 + lz));
+  }
+  for (const [px, pz] of [[-1.7, 1.2], [1.7, 1.2], [-1.7, 2.9], [1.7, 2.9]]) {
+    G.push(cBox(0.13, 2.15, 0.13, 0xb99a6f, px, 1.07, pz));
+  }
+  G.push(cBox(3.7, 0.09, 0.14, 0xb99a6f, 0, 2.2, 1.2));
+  G.push(cBox(3.7, 0.09, 0.14, 0xb99a6f, 0, 2.2, 2.9));
+  for (let i = 0; i < 7; i++) G.push(cBox(0.09, 0.07, 1.95, 0xcaa87a, -1.62 + i * 0.54, 2.28, 2.05));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
 // ============================================================
 export async function buildMiami(scene, env) {
   const rng = mulberry32(20250809);
@@ -452,6 +666,24 @@ export async function buildMiami(scene, env) {
   // Third stream for the props-v2 pass (facade UV offsets, parasol tilts,
   // boat accents…). Never draw from rng or rng2 for new features.
   const rng3 = mulberry32(0xFACADE5);
+  // Fourth stream for the streetscape pass (vehicle kinds, furniture jitter,
+  // landscaping, massing variants). rng/rng2/rng3 sequences stay untouched.
+  const rng4 = mulberry32(0x0C0FFEE5);
+  // vehicles.js is authored in parallel — import dynamically so the map
+  // still builds (legacy box cars) if the module is absent or broken.
+  let createVehicleFleet = null;
+  try {
+    ({ createVehicleFleet } = await import('./vehicles.js'));
+  } catch (e) {
+    console.warn('[miami] vehicles.js not available — using box-car fallback');
+  }
+  let fleet = null;        // vehicle fleet handle (disposed with the map)
+  let palmsEntry = null;   // entrance-accent palm field
+  let shelterX = -13.8;    // bus shelter x (set beside the parked bus)
+  const carSpots = [];     // parked-vehicle layout, shared with the streetscape pass
+  const glassPanelGeos = [];  // transparent slabs: bus shelter + entrance canopies
+  const stripY = (z) =>       // furniture rests on the raised curb strips
+    ((z > 35.1 && z < 37.5) || (z > 50.5 && z < 52.9)) ? CITY_Y + 0.13 : CITY_Y;
   const root = new THREE.Group();
   root.name = 'miami';
   scene.add(root);
@@ -469,7 +701,9 @@ export async function buildMiami(scene, env) {
 
   // ---------------- environment HDRIs ----------------
   if (env.setHDRIBands) {
-    env.setHDRIBands({ day: 'beach_day', sunset: 'sunset', night: 'night', overcast: 'overcast' });
+    // day uses the PURE sky (no baked ground content — photographic HDRIs shot
+    // at ground level make their foreground trees look giant from the air)
+    env.setHDRIBands({ day: 'day_clear', sunset: 'sunset', night: 'night', overcast: 'overcast' });
   }
 
   // Legacy-stream preservation: the old single ground mesh consumed one rng()
@@ -530,13 +764,45 @@ export async function buildMiami(scene, env) {
     // (b) city: z in [CITY_Z - 3, 630], sidewalk 1 tile = 2 m
     const Z0 = CITY_Z - 3, Z1 = 630;
     const depth = Z1 - Z0;
-    const geo = track(new THREE.PlaneGeometry(1500, depth, 150, 60));
+    const geo = track(new THREE.PlaneGeometry(1500, depth, 200, 100));
     geo.rotateX(-Math.PI / 2);
     geo.translate(0, 0, (Z0 + Z1) / 2);
     const pos = geo.attributes.position;
+    // City-block tinting. One shared sidewalk texture over 600 m of city reads
+    // as an endless white plain from the air; multiplying it per-vertex with a
+    // block-scale tint (concrete / asphalt / weathered) breaks it into parcels
+    // for zero extra draw calls. Deterministic hash — no rng draws consumed.
+    const cCol = new Float32Array(pos.count * 3);
+    const hash2 = (a, b) => {
+      let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1);
+      h = Math.imul(h ^ (h >>> 15), 0x2545f491);
+      return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+    };
+    const BLK_X = 62, BLK_Z = 47;
+    const parcel = new THREE.Color();
+    const PARCELS = [0xf6f2e8, 0xdcd7ca, 0xbcb8ad, 0xa5a29a, 0x8e8c85, 0x97a0a3];
     for (let i = 0; i < pos.count; i++) {
-      pos.setY(i, meshHeight(pos.getX(i), pos.getZ(i)));
+      const x = pos.getX(i), z = pos.getZ(i);
+      pos.setY(i, meshHeight(x, z));
+      const bx = Math.floor((x + 750) / BLK_X), bz = Math.floor((z - 27) / BLK_Z);
+      const r0 = hash2(bx, bz);
+      parcel.setHex(PARCELS[(r0 * PARCELS.length) | 0]);
+      // seams between parcels + fine mottling so a single parcel is not flat
+      const seam = Math.min(
+        Math.abs(((x + 750) % BLK_X) - BLK_X / 2) / (BLK_X / 2),
+        Math.abs(((z - 27) % BLK_Z) - BLK_Z / 2) / (BLK_Z / 2)
+      );
+      const k = 0.94 + 0.06 * seam + (hash2(x * 3 | 0, z * 3 | 0) - 0.5) * 0.05;
+      // the promenade band by the road stays clean pale concrete
+      const street = z < 58 ? Math.max(0, 1 - Math.abs(z - 44) / 14) : 0;
+      parcel.lerp(new THREE.Color(0xffffff), street);
+      // far field falls off so the horizon plain does not glare
+      const far = 1 - Math.min(0.3, Math.max(0, (z - 210) / 900));
+      cCol[i * 3] = parcel.r * k * far;
+      cCol[i * 3 + 1] = parcel.g * k * far;
+      cCol[i * 3 + 2] = parcel.b * k * far;
     }
+    geo.setAttribute('color', new THREE.BufferAttribute(cCol, 3));
     geo.computeVertexNormals();
     setAoUVs(geo);
     let mat;
@@ -545,6 +811,8 @@ export async function buildMiami(scene, env) {
     } else {
       mat = track(new THREE.MeshStandardMaterial({ color: 0x8f8f8c, roughness: 0.95, metalness: 0 }));
     }
+    mat.vertexColors = true;
+    mat.needsUpdate = true;
     // beach + city overlap (coplanar) in the seam band — push the city mesh
     // back in depth so the sand wins there instead of z-fighting
     mat.polygonOffset = true;
@@ -585,10 +853,11 @@ export async function buildMiami(scene, env) {
         sunColor: 0xffffff,
         waterColor: 0x00404f,
         distortionScale: 2.4,
+        clipBias: 0.05,          // stops reflection shimmer right at the waterline
         fog: true,
       });
       water.rotation.x = -Math.PI / 2;
-      water.position.set(0, -0.05, -1700);
+      water.position.set(0, -0.09, -1700);
       track(water.material);
       root.add(water);
     } else {
@@ -601,8 +870,8 @@ export async function buildMiami(scene, env) {
   }
 
   // ---------------- boardwalk + pier ----------------
-  const woodTex = track(stripeTexture('#8f6b45', '#6d4f31'));
-  woodTex.repeat.set(40, 2);
+  const woodTex = track(plankTexture(0x9a7247, 11, 512, 512, 18));
+  woodTex.repeat.set(78, 1);       // boards run across the walk, ~0.45 m each
   {
     const geo = track(new THREE.BoxGeometry(1240, 0.5, 8));
     const mat = track(new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9 }));
@@ -612,9 +881,10 @@ export async function buildMiami(scene, env) {
     root.add(bw);
   }
   const PIER_X = -150;
+  const WHEEL_X = -215, WHEEL_Z = 42, WHEEL_R = 20;   // ferris wheel (built later; used by layout guards)
   {
-    const woodTex2 = track(stripeTexture('#87653f', '#66492c'));
-    woodTex2.repeat.set(4, 30);
+    const woodTex2 = track(plankTexture(0x8d6a41, 23, 512, 512, 18));
+    woodTex2.repeat.set(1, 20);      // boards run across the pier
     const deckGeo = track(new THREE.BoxGeometry(12, 0.6, 165));
     const deckMat = track(new THREE.MeshStandardMaterial({ map: woodTex2, roughness: 0.9 }));
     const deck = new THREE.Mesh(deckGeo, deckMat);
@@ -666,7 +936,9 @@ export async function buildMiami(scene, env) {
     setAoUVs(geo);
     let mat;
     if (asphaltSet.map) {
-      mat = await assetLib.pbrMaterial('asphalt', { repeat: [1240 / 3, 12 / 3] });  // 1 tile ≈ 3 m
+      // the scan albedo is a pale dry grey; multiply it down so the roadway
+      // reads as blacktop against the concrete promenade instead of matching it
+      mat = await assetLib.pbrMaterial('asphalt', { repeat: [1240 / 3, 12 / 3], color: 0x7c8288 });
     } else {
       const roadTex = track(roadTexture());
       roadTex.repeat.set(90, 1);
@@ -740,7 +1012,11 @@ export async function buildMiami(scene, env) {
     let placed = 0;
     while (placed < N) {
       const x = (rng() - 0.5) * 1200;
-      const z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18;   // road rows + scattered sand
+      let z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18;   // road rows + scattered sand
+      // never in the road lanes (z 37.5..50.5): snap to the nearest sidewalk row.
+      // Deterministic remap — consumes no extra rng draws, so the legacy layout
+      // stream (towers, cars, huts) is untouched.
+      if (z > 37.5 && z < 50.5) z = z < 44 ? 36.5 : 51.5;
       if (Math.abs(x - PIER_X) < 12 && z < 36) continue;
       const y = groundHeight(x, z);
       if (y < 0.1) continue;
@@ -957,45 +1233,269 @@ export async function buildMiami(scene, env) {
     }
     root.add(lp); root.add(lh);
 
-    const carGeo = track(new THREE.BoxGeometry(4.2, 1.1, 1.9));
-    carGeo.translate(0, 0.75, 0);
-    const cabGeo = track(new THREE.BoxGeometry(2.2, 0.75, 1.7));
-    cabGeo.translate(-0.2, 1.65, 0);
-    // 4 wheels baked into one merged geometry per instance (1 extra draw call)
-    const wheelParts = [];
-    for (const wx of [-1.35, 1.35]) {
-      for (const wz of [-0.78, 0.78]) {
-        const g = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 10);
-        g.rotateX(Math.PI / 2);
-        g.translate(wx, 0.33, wz);
-        wheelParts.push(g);
-      }
-    }
-    const wheelGeo = track(mergeGeometries(wheelParts));
-    wheelParts.forEach((g) => g.dispose());
+    // ---- vehicles: hi-fi fleet from vehicles.js, legacy box cars fallback ----
+    // Legacy main-rng draws preserved exactly: per car (1) x jitter, (2) colour.
+    // Kind selection is the NEW rng4 stream; taxi/bus colours are deterministic
+    // REMAPS of the already-drawn colour value (no extra/fewer main-rng draws).
     const carCols = [0xff5c8a, 0x29d3ff, 0xf5e9d0, 0x9b5de5, 0x43d17a, 0xffffff, 0x22262e];
     const NC = 34;
-    const carMat = track(new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.5 }));
-    const cabMat = track(new THREE.MeshStandardMaterial({ color: 0x0b1016, roughness: 0.1, metalness: 0.9 }));
-    const wheelMat = track(new THREE.MeshStandardMaterial({ color: 0x14171b, roughness: 0.9, metalness: 0.1 }));
-    const cars = new THREE.InstancedMesh(carGeo, carMat, NC);
-    const cabs = new THREE.InstancedMesh(cabGeo, cabMat, NC);
-    const wheels = new THREE.InstancedMesh(wheelGeo, wheelMat, NC);
-    const col = new THREE.Color();
-    const m4b = new THREE.Matrix4();
+    const BUS_I = 16;                                   // curb lane, near spawn
+    const TAXI_A = 14, TAXI_B = 21;
     for (let i = 0; i < NC; i++) {
-      const x = -560 + i * 34 + (rng() - 0.5) * 8;
+      const x = -560 + i * 34 + (rng() - 0.5) * 8;      // legacy draw
       const z = i % 2 ? 39.5 : 48.5;
-      m4b.makeRotationY(i % 2 ? 0 : Math.PI);
-      m4b.setPosition(x, CITY_Y, z);
-      cars.setMatrixAt(i, m4b);
-      cabs.setMatrixAt(i, m4b);
-      wheels.setMatrixAt(i, m4b);
-      cars.setColorAt(i, col.setHex(carCols[(rng() * carCols.length) | 0]));
-      addCollider(x, CITY_Y, z, 4.2, 2.1, 1.9);
+      let colorHex = carCols[(rng() * carCols.length) | 0];   // legacy draw
+      const roll = rng4();
+      let kind = roll < 0.42 ? 'sedan' : roll < 0.72 ? 'suv' : roll < 0.88 ? 'pickup' : 'sports';
+      if (i === BUS_I) { kind = 'bus'; colorHex = 0xe9eef2; }
+      else if (i === TAXI_A || i === TAXI_B) { kind = 'taxi'; colorHex = 0xffc400; }
+      carSpots.push({ x, z, rotY: i % 2 ? 0 : Math.PI, kind, colorHex });
+      if (i === BUS_I) addCollider(x, CITY_Y, z, 11.4, 3.1, 2.6);   // bus-sized
+      else addCollider(x, CITY_Y, z, 4.2, 2.1, 1.9);                // legacy per-car collider
     }
-    cars.castShadow = true;
-    root.add(cars); root.add(cabs); root.add(wheels);
+    shelterX = carSpots[BUS_I].x + 2.2;
+    if (createVehicleFleet) {
+      try {
+        const f = await Promise.resolve(createVehicleFleet(NC));
+        for (let i = 0; i < NC; i++) {
+          const s = carSpots[i];
+          f.placeAt(i, s.x, CITY_Y + 0.06, s.z, s.rotY, s.kind, s.colorHex);  // road surface: wheels down
+        }
+        f.finalize(NC);
+        root.add(f.group);
+        fleet = f;
+      } catch (e) {
+        console.warn('[miami] vehicle fleet failed — legacy box cars:', e);
+        fleet = null;
+      }
+    }
+    if (!fleet) {
+      // legacy box cars (exact old look) driven by the same carSpots
+      const carGeo = track(new THREE.BoxGeometry(4.2, 1.1, 1.9));
+      carGeo.translate(0, 0.75, 0);
+      const cabGeo = track(new THREE.BoxGeometry(2.2, 0.75, 1.7));
+      cabGeo.translate(-0.2, 1.65, 0);
+      const wheelParts = [];
+      for (const wx of [-1.35, 1.35]) {
+        for (const wz of [-0.78, 0.78]) {
+          const g = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 10);
+          g.rotateX(Math.PI / 2);
+          g.translate(wx, 0.33, wz);
+          wheelParts.push(g);
+        }
+      }
+      const wheelGeo = track(mergeGeometries(wheelParts));
+      wheelParts.forEach((g) => g.dispose());
+      const carMat = track(new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.5 }));
+      const cabMat = track(new THREE.MeshStandardMaterial({ color: 0x0b1016, roughness: 0.1, metalness: 0.9 }));
+      const wheelMat = track(new THREE.MeshStandardMaterial({ color: 0x14171b, roughness: 0.9, metalness: 0.1 }));
+      const cars = new THREE.InstancedMesh(carGeo, carMat, NC);
+      const cabs = new THREE.InstancedMesh(cabGeo, cabMat, NC);
+      const wheels = new THREE.InstancedMesh(wheelGeo, wheelMat, NC);
+      const col = new THREE.Color();
+      const m4b = new THREE.Matrix4();
+      for (let i = 0; i < NC; i++) {
+        const s = carSpots[i];
+        m4b.makeRotationY(s.rotY);
+        m4b.setPosition(s.x, CITY_Y, s.z);
+        cars.setMatrixAt(i, m4b);
+        cabs.setMatrixAt(i, m4b);
+        wheels.setMatrixAt(i, m4b);
+        cars.setColorAt(i, col.setHex(s.colorHex));
+      }
+      cars.castShadow = true;
+      root.add(cars); root.add(cabs); root.add(wheels);
+    }
+  }
+
+  // ---------------- streetscape: curbs, crosswalks, drains, furniture ----------------
+  // Road band z 37.5..50.5 stays clear — only flush crosswalks/drains inside it.
+  const CROSS_X = [-129, 57];                                 // crosswalks at the two street gaps near spawn
+  const GAP_X = [-501, -315, -129, 57, 243, 429];             // all cross-street columns
+  const propMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0.1 }));
+  {
+    // (1) raised paver curb strips (0.13 m) along both road edges
+    const curbGeos = [
+      new THREE.BoxGeometry(1240, 0.13, 2.4).translate(0, CITY_Y + 0.065, 36.3),
+      new THREE.BoxGeometry(1240, 0.13, 2.4).translate(0, CITY_Y + 0.065, 51.7),
+    ];
+    const curbGeo = track(mergeGeometries(curbGeos));
+    curbGeos.forEach((g) => g.dispose());
+    setAoUVs(curbGeo);
+    let curbMat;
+    if (sidewalkSet.map) {
+      curbMat = await assetLib.pbrMaterial('sidewalk', { repeat: [620, 1.2] });
+    } else {
+      curbMat = track(new THREE.MeshStandardMaterial({ color: 0x9b9b97, roughness: 0.95 }));
+    }
+    const curbs = new THREE.Mesh(curbGeo, curbMat);
+    curbs.receiveShadow = true;
+    root.add(curbs);
+
+    // (2) zebra crosswalks — thin opaque bars flush on the asphalt
+    const cwGeo = track(new THREE.BoxGeometry(3.6, 0.022, 0.62));
+    const cwMat = track(new THREE.MeshStandardMaterial({ color: 0xe9e9e2, roughness: 0.85 }));
+    const cwSpots = [];
+    for (const cx of CROSS_X) {
+      for (let z = 38.75; z <= 49.35; z += 1.18) cwSpots.push([cx, z]);
+    }
+    const cw = new THREE.InstancedMesh(cwGeo, cwMat, cwSpots.length);
+    const mCw = new THREE.Matrix4();
+    for (let i = 0; i < cwSpots.length; i++) {
+      mCw.makeTranslation(cwSpots[i][0], CITY_Y + 0.072, cwSpots[i][1]);
+      cw.setMatrixAt(i, mCw);
+    }
+    cw.receiveShadow = true;
+    root.add(cw);
+
+    // (3) storm drains along both gutters, ~every 60 m (flush with surface)
+    const drGeo = track(new THREE.BoxGeometry(0.85, 0.02, 0.42));
+    const drMat = track(new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: 0.9, metalness: 0.25 }));
+    const drSpots = [];
+    for (let x = -570; x <= 570; x += 60) {
+      if (CROSS_X.some((c) => Math.abs(x - c) < 5)) continue;
+      drSpots.push([x, 38.08]); drSpots.push([x + 27, 49.92]);
+    }
+    const drains = new THREE.InstancedMesh(drGeo, drMat, drSpots.length);
+    for (let i = 0; i < drSpots.length; i++) {
+      mCw.makeTranslation(drSpots[i][0], CITY_Y + 0.071, drSpots[i][1]);
+      drains.setMatrixAt(i, mCw);
+    }
+    root.add(drains);
+
+    // (4) street furniture — every placement baked into ONE merged mesh
+    const oneOff = [];
+    const stamp = (geo, x, y, z, ry) => {
+      const g = geo.clone();
+      if (ry) g.rotateY(ry);
+      g.translate(x, y, z);
+      oneOff.push(g);
+    };
+    const benchGeo = buildBenchGeo();
+    const binGeo = buildBinGeo();
+    const hydGeo = buildHydrantGeo();
+    const meterGeo = buildMeterGeo();
+    const rackGeo = buildBikeRackGeo();
+    const blocked = (x) =>
+      GAP_X.some((c) => Math.abs(x - c) < 6.5) || Math.abs(x - PIER_X) < 10 ||
+      Math.abs(x - WHEEL_X) < 14 || Math.abs(x - shelterX) < 4 || Math.abs(x) > 585;
+
+    // benches (+ bins beside every other one); both sidewalks, facing -z
+    let benchColliders = 0;
+    let benchIdx = 0;
+    for (let x = -575; x <= 575; x += 47) {
+      for (const side of [0, 1]) {
+        const bx = x + (side ? 21 : 0) + (rng4() - 0.5) * 6;
+        if (blocked(bx)) continue;
+        const bz = side ? 52.45 : 35.5;
+        const by = stripY(bz);
+        stamp(benchGeo, bx, by, bz, (rng4() - 0.5) * 0.08);
+        if (benchIdx % 2 === 0) stamp(binGeo, bx + 2.5, stripY(bz), bz + (side ? 0.1 : -0.1), rng4() * Math.PI);
+        if (benchColliders < 6 && Math.abs(bx) < 70) {
+          addCollider(bx, by, bz, 1.9, 1.15, 0.75);
+          benchColliders++;
+        }
+        benchIdx++;
+      }
+    }
+    // hydrants — city side, near the curb face
+    for (let x = -530; x <= 570; x += 88) {
+      const hx = x + (rng4() - 0.5) * 10;
+      if (blocked(hx)) continue;
+      stamp(hydGeo, hx, stripY(51.15), 51.15, rng4() * Math.PI);
+    }
+    // parking meters — one behind each curb-lane car
+    for (const s of carSpots) {
+      if (s.z < 44 || s.kind === 'bus') continue;                 // curb lane only
+      const mx = s.x + 2.1;
+      if (blocked(mx)) continue;
+      stamp(meterGeo, mx, stripY(51.35), 51.35, (rng4() - 0.5) * 0.2);
+    }
+    // bike racks — flanking the two crosswalks + by the bus stop
+    for (const cx of CROSS_X) {
+      for (const s of [-1, 1]) stamp(rackGeo, cx + s * 9, stripY(52.3), 52.3, 0);
+    }
+    stamp(rackGeo, shelterX + 5.2, stripY(52.3), 52.3, 0);
+
+    // (5) bus stop shelter beside the parked bus (one-off; collider)
+    {
+      const sz = 53.55, wood = 0xa5714a, dark = 0x2b3138;
+      for (const [px, pz] of [[-2.05, -0.62], [2.05, -0.62], [-2.05, 0.66], [2.05, 0.66]]) {
+        oneOff.push(cBox(0.09, 2.52, 0.09, dark, shelterX + px, CITY_Y + 1.26, sz + pz));
+      }
+      oneOff.push(cBox(4.6, 0.09, 1.72, dark, shelterX, CITY_Y + 2.56, sz));
+      oneOff.push(cBox(3.6, 0.06, 0.45, wood, shelterX, CITY_Y + 0.62, sz + 0.32));
+      for (const s of [-1.5, 1.5]) oneOff.push(cBox(0.07, 0.6, 0.4, dark, shelterX + s, CITY_Y + 0.3, sz + 0.32));
+      oneOff.push(cBox(4.4, 0.1, 0.06, dark, shelterX, CITY_Y + 2.0, sz + 0.72));
+      oneOff.push(cBox(4.4, 0.1, 0.06, dark, shelterX, CITY_Y + 0.12, sz + 0.72));
+      glassPanelGeos.push(new THREE.BoxGeometry(4.45, 0.05, 1.6).translate(shelterX, CITY_Y + 2.63, sz));
+      glassPanelGeos.push(new THREE.BoxGeometry(4.35, 1.78, 0.04).translate(shelterX, CITY_Y + 1.06, sz + 0.72));
+      addCollider(shelterX, CITY_Y, sz, 4.7, 2.8, 1.9);
+    }
+    const furnGeo = track(mergeGeometries(oneOff));
+    oneOff.forEach((g) => g.dispose());
+    [benchGeo, binGeo, hydGeo, meterGeo, rackGeo].forEach((g) => g.dispose());
+    const furn = new THREE.Mesh(furnGeo, propMat);
+    furn.castShadow = true;
+    furn.receiveShadow = true;
+    root.add(furn);
+  }
+
+  // ---------------- boardwalk edge: dune fence, showers, lamp bollards ----------------
+  {
+    const edgeGeos = [];
+    const postCol = 0xa9977a, railCol = 0xbfae8d;
+    const FZ = 22.4;
+    const fenceGap = (x) =>
+      Math.abs(x) < 7 || Math.abs(x - PIER_X) < 11 ||
+      (x > 52 && x < 80) || ((x + 620) % 123) < 5 || Math.abs(x) > 578;
+    let prev = null;
+    for (let x = -578; x <= 578; x += 2.9) {
+      if (fenceGap(x)) { prev = null; continue; }
+      const y = groundHeight(x, FZ);
+      const pg = new THREE.BoxGeometry(0.09, 1.15, 0.075);
+      pg.rotateZ((rng4() - 0.5) * 0.12);
+      pg.translate(x, y + 0.52, FZ);
+      edgeGeos.push(colorFill(pg, postCol));
+      if (prev) {
+        for (const ry of [0.88, 0.5]) {
+          edgeGeos.push(colorFill(tubeBetween(
+            new THREE.Vector3(prev.x, prev.y + ry, FZ),
+            new THREE.Vector3(x, y + ry, FZ), 0.03, 5), railCol));
+        }
+      }
+      prev = { x, y };
+    }
+    // warm lamp bollards on the boardwalk's seaward edge (deck top = CITY_Y+0.3)
+    const bolls = [];
+    for (let x = -570; x <= 570; x += 31) {
+      if (Math.abs(x - PIER_X) < 10 || Math.abs(x) < 4) continue;
+      edgeGeos.push(cCyl(0.09, 0.115, 0.8, 8, 0x2c3339, x, CITY_Y + 0.7, 24.3));
+      bolls.push(x);
+    }
+    // beach showers
+    for (const sx of [-62, 132]) {
+      const gy = groundHeight(sx, 21.4);
+      edgeGeos.push(cCyl(0.75, 0.85, 0.09, 12, 0x9aa0a4, sx, gy + 0.045, 21.4));
+      edgeGeos.push(cCyl(0.055, 0.07, 2.75, 8, 0x3c444b, sx, gy + 1.38, 21.4));
+      edgeGeos.push(cBox(0.62, 0.06, 0.06, 0x3c444b, sx - 0.28, gy + 2.72, 21.4));
+      edgeGeos.push(cCyl(0.16, 0.05, 0.1, 8, 0x8f979c, sx - 0.56, gy + 2.62, 21.4));
+      edgeGeos.push(cCyl(0.03, 0.03, 0.3, 5, 0xcfd3d6, sx + 0.14, gy + 1.55, 21.4, 0, 0, 1.2));
+    }
+    const edgeGeo = track(mergeGeometries(edgeGeos));
+    edgeGeos.forEach((g) => g.dispose());
+    const edgeMesh = new THREE.Mesh(edgeGeo, propMat);
+    edgeMesh.receiveShadow = true;
+    root.add(edgeMesh);
+    const glowGeo = track(new THREE.CylinderGeometry(0.075, 0.075, 0.1, 8));
+    const glowMat = track(new THREE.MeshStandardMaterial({ color: 0xfff0d8, emissive: 0xffc37a, emissiveIntensity: 1.9 }));
+    const glows = new THREE.InstancedMesh(glowGeo, glowMat, bolls.length);
+    const mGl = new THREE.Matrix4();
+    for (let i = 0; i < bolls.length; i++) {
+      mGl.makeTranslation(bolls[i], CITY_Y + 1.05, 24.3);
+      glows.setMatrixAt(i, mGl);
+    }
+    root.add(glows);
   }
 
   // ---------------- skyline ----------------
@@ -1003,7 +1503,9 @@ export async function buildMiami(scene, env) {
   // (winTexB is only rendered in the no-facade fallback).
   const winTexA = track(windowTexture(rng, 0.5));
   const winTexB = track(windowTexture(rng, 0.65, 0.4));
-  const decoCols = [0xf2b8c6, 0x7fd4c1, 0xf5e9d0, 0xffb385, 0xc3b4e6];
+  // +2 new tints (white stucco, coral): same single main-rng draw indexes a
+  // longer palette — a deterministic REMAP of the drawn value, not a new draw.
+  const decoCols = [0xf2b8c6, 0x7fd4c1, 0xf5e9d0, 0xffb385, 0xc3b4e6, 0xf7f4ec, 0xff8a70];
 
   // Facade physical calibration (verified against the albedo images):
   //   facade_glass = 28 window columns x 18 floor bands per tile
@@ -1012,11 +1514,43 @@ export async function buildMiami(scene, env) {
   //     → 32 m x 32 m keeps the source aspect exactly (2.13 m panels, 3.2 m floors).
   // Every tower maps facades at these constant physical scales via facadeUV(),
   // with a per-tower random UV offset so neighbours never repeat in sync.
-  const GLASS_TILE_U = 28 * 1.5, GLASS_TILE_V = 18 * 3.2;
+  //   facade_glass_day = 14 columns x 8 floor bands of curtain-wall glazing
+  //     → at 1.75 m panes / 3.3 m floors one tile spans 24.5 m x 26.4 m.
+  // When the day set is present the towers wear it as their albedo (real glass
+  // in daylight) and the night lit-window sheet rides along as the emissive map,
+  // re-tiled so its 28x18 grid lands on the same physical pane size.
+  const glassDaySet = await assetLib.textureSet('facade_glass_day');
+  const hasGlassDay = !!glassDaySet.map;
+  const GLASS_TILE_U = hasGlassDay ? 14 * 1.75 : 28 * 1.5;
+  const GLASS_TILE_V = hasGlassDay ? 8 * 3.3 : 18 * 3.2;
   const DAY_TILE_U = 27, DAY_TILE_V = 32;   // 1.8 m panels — reads as windows, not glass blocks
-  const hasGlassTex = !!glassSet.map;
+  const hasGlassTex = !!glassSet.map || hasGlassDay;
+  // materials whose emissive is a night-only effect: { mat, day, night }
+  const dayNight = [];
+  const regDN = (mat, day, night) => { dayNight.push({ mat, day, night }); mat.emissiveIntensity = day; return mat; };
   let glassMat;
-  if (hasGlassTex) {
+  if (hasGlassDay) {
+    let emi = null;
+    if (glassSet.emissiveMap) {
+      emi = track(glassSet.emissiveMap.clone());
+      emi.wrapS = emi.wrapT = THREE.RepeatWrapping;
+      emi.repeat.set(0.5, 8 / 18);        // 28x18 lit-window grid → 14x8 panes
+      emi.needsUpdate = true;
+    }
+    glassMat = regDN(track(new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 1,                      // rough.jpg governs
+      metalness: glassDaySet.metalnessMap ? 1 : 0.45,
+      metalnessMap: glassDaySet.metalnessMap || null,
+      map: glassDaySet.map,
+      normalMap: glassDaySet.normalMap || null,
+      roughnessMap: glassDaySet.roughnessMap || null,
+      envMapIntensity: 1.25,
+      emissive: 0xffe9c4,
+      emissiveMap: emi || glassDaySet.map,
+      emissiveIntensity: 0,
+    })), 0.02, emi ? 1.25 : 0.35);
+  } else if (glassSet.map) {
     glassMat = track(new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 1,                      // rough.jpg governs
@@ -1039,6 +1573,7 @@ export async function buildMiami(scene, env) {
   function addTower(x, z, w, h, d, style) {
     // per-tower UV offset (rng3 — never the layout stream)
     const offU = rng3(), offV = rng3();
+    let mv = 0;   // massing variant (glass towers, mid/back rows) — recorded for later passes
     if (style === 'deco') {
       const color = decoCols[(rng() * decoCols.length) | 0];
       const mat = track(new THREE.MeshStandardMaterial({
@@ -1059,6 +1594,8 @@ export async function buildMiami(scene, env) {
         mat.emissive = new THREE.Color(0xffe6bb);
         mat.emissiveIntensity = 0.3;
       }
+      // stucco reads by daylight, windows glow after dark
+      regDN(mat, facadeDaySet.map ? 0.06 : 0.12, facadeDaySet.map ? 0.42 : 0.75);
       let y = CITY_Y;
       const tiers = 2 + ((rng() * 2) | 0);
       let tw = w, td = d;
@@ -1091,11 +1628,11 @@ export async function buildMiami(scene, env) {
       // neon accent strip
       if (rng() < 0.6) {
         const neonGeo = track(new THREE.BoxGeometry(w * 1.02, 0.5, 0.3));
-        const neonMat = track(new THREE.MeshStandardMaterial({
+        const neonMat = regDN(track(new THREE.MeshStandardMaterial({
           color: 0x111111,
           emissive: rng() < 0.5 ? 0x29d3ff : 0xff5c8a,
           emissiveIntensity: 3.2,
-        }));
+        })), 0.9, 3.6);   // neon tubes wash out in full sun, blaze at night
         const neon = new THREE.Mesh(neonGeo, neonMat);
         neon.position.set(x, CITY_Y + h * 0.5, z - d / 2 - 0.2);
         towerGroup.add(neon);
@@ -1113,16 +1650,51 @@ export async function buildMiami(scene, env) {
       towerGroup.add(mesh);
       d = w;
     } else {
-      const geo = track(new THREE.BoxGeometry(w, h, d));
-      if (hasGlassTex) {
-        facadeUV(geo, w, h, d, GLASS_TILE_U, GLASS_TILE_V, offU, offV);
+      // Massing variants (rng4) kill the single-slab silhouette on ~40% of the
+      // mid/back-row glass towers. VISUAL ONLY — the collider AABB below stays
+      // the legacy full box, and no main-rng draws are added or removed.
+      mv = z > 100 && rng4() < 0.42 ? 1 + ((rng4() * 3) | 0) : 0;
+      const boxes = [];
+      const addBox = (bw, bh, bd, bx, by, bz, ry = 0) => {
+        const g = new THREE.BoxGeometry(bw, bh, bd);
+        if (hasGlassTex) {
+          facadeUV(g, bw, bh, bd, GLASS_TILE_U, GLASS_TILE_V,
+                   offU + boxes.length * 0.37, offV + boxes.length * 0.21);
+        } else {
+          const uv = g.attributes.uv;
+          const su = Math.max(1, bw / 14), sv = Math.max(1, bh / 26);
+          for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+        }
+        if (ry) g.rotateY(ry);
+        g.translate(bx, by, bz);
+        boxes.push(g);
+      };
+      if (mv === 1) {
+        // setback tiers (all inside the legacy footprint)
+        addBox(w, h * 0.6, d, 0, h * 0.3, 0);
+        addBox(w * 0.78, h * 0.26, d * 0.78, 0, h * 0.73, 0);
+        addBox(w * 0.55, h * 0.14, d * 0.55, 0, h * 0.93, 0);
+      } else if (mv === 2) {
+        // L-wing: tall slab + lower wing sharing the same footprint
+        addBox(w * 0.58, h, d, -w * 0.21, h / 2, 0);
+        addBox(w * 0.42, h * 0.62, d * 0.86, w * 0.29, h * 0.31, -d * 0.07);
+      } else if (mv === 3) {
+        // chamfered street corners: 45-deg glass fins over the front edges
+        addBox(w, h, d, 0, h / 2, 0);
+        addBox(1.7, h * 0.995, 1.7, -(w / 2 - 0.55), h * 0.4975, -(d / 2 - 0.55), Math.PI / 4);
+        addBox(1.7, h * 0.995, 1.7, (w / 2 - 0.55), h * 0.4975, -(d / 2 - 0.55), Math.PI / 4);
       } else {
-        const uv = geo.attributes.uv;
-        const su = Math.max(1, w / 14), sv = Math.max(1, h / 26);
-        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+        addBox(w, h, d, 0, h / 2, 0);
+      }
+      let geo;
+      if (boxes.length > 1) {
+        geo = track(mergeGeometries(boxes));
+        boxes.forEach((g) => g.dispose());
+      } else {
+        geo = track(boxes[0]);
       }
       const mesh = new THREE.Mesh(geo, glassMat);
-      mesh.position.set(x, CITY_Y + h / 2, z);
+      mesh.position.set(x, CITY_Y, z);
       mesh.castShadow = true;
       towerGroup.add(mesh);
       // roof details
@@ -1148,7 +1720,7 @@ export async function buildMiami(scene, env) {
       }
     }
     addCollider(x, CITY_Y, z, w, h + 4, d);
-    towerData.push({ x, z, w, h, d });
+    towerData.push({ x, z, w, h, d, style, mv });
   }
 
   const towerData = [];
@@ -1187,9 +1759,669 @@ export async function buildMiami(scene, env) {
     root.add(new THREE.Mesh(merged, mat));
   }
 
+  // ---------------- street level: storefronts, canopies, landscaping ----------------
+  // The change that kills "box on ground": every front-row tower gets a 4 m
+  // storefront band (piers, dark glazing, coloured awnings, recessed entry) or
+  // an entrance canopy + steps, plus a planted strip between sidewalk and
+  // facades. All randomness on rng4; aggressive merging keeps this at ~10 draws.
+  let entranceShrubSpots = [];
+  {
+    const frontTowers = towerData.filter((t) => t.z < 100);
+    const shopOpaque = [];       // vertex-coloured concrete/awnings/doors/steps/planters
+    const shopGlassG = [];       // dark reflective glazing
+    const shopGlow = [];         // unlit (MeshBasic) shop interiors + sign faces
+    const hedgeSpots = [];       // {x, y(center), z, sx, sy, sz, ry}
+    const mulchSpots = [];
+    const flowerSpots = [];
+    const lawnSpots = [];
+    const lotSpots = [];
+    const palmSpots = [];
+    const grateSpots = [];
+    const AWNING_COLS = [0xff6f61, 0x2fb5a3, 0xffc35c, 0xf25c8a, 0x3d6fb0, 0xf2eee2];
+    const FLOWER_COLS = [0xff5d73, 0xff8fa3, 0xffd166, 0xf8f4ec, 0xff7a52];
+    const SIGN_COLS = [0x1f6f8b, 0xb33a3a, 0x2f7d4f, 0x2a3550, 0xb9762a, 0x6d3b6e];
+    const INTERIOR_COLS = [0x594330, 0x4c3b36, 0x5c5236, 0x3d474e];
+    const signLit = (hex) => new THREE.Color(hex).lerp(new THREE.Color(0xffffff), 0.62).getHex();
+    const shopInterior = (r) => INTERIOR_COLS[(r * INTERIOR_COLS.length) | 0];
+    // Large sunlit surfaces clip to white under ACES at this exposure, so every
+    // masonry tone here sits around 0.2–0.3 sRGB — that lands as light grey
+    // concrete in the sun and still has tone left in the shade.
+    const CONC = 0x6f6a60, CONC2 = 0x5f5a52, STEP = 0x6a655c, DOORC = 0x151d24, POSTC = 0x3a4148;
+
+    const addBed = (bx, bz) => {
+      const by = stripY(bz);
+      mulchSpots.push({ x: bx, y: by + 0.11, z: bz, ry: rng4() * Math.PI });
+      const n = 14 + ((rng4() * 6) | 0);
+      for (let i = 0; i < n; i++) {
+        flowerSpots.push({
+          x: bx + (rng4() - 0.5) * 1.3,
+          y: by + 0.27 + rng4() * 0.1,
+          z: bz + (rng4() - 0.5) * 0.9,
+          hex: FLOWER_COLS[(rng4() * FLOWER_COLS.length) | 0],
+        });
+      }
+    };
+    const addHedge = (hx, hz, sx, sy, szc, base) => {
+      hedgeSpots.push({
+        x: hx, z: hz, sx, sy, sz: szc, ry: 0,
+        y: (base === undefined ? stripY(hz) : base) + 0.4 * sy,
+      });
+    };
+
+    let planterColliders = 0;
+    for (let ti = 0; ti < frontTowers.length; ti++) {
+      const t = frontTowers[ti];
+      const frontZ = t.z - t.d / 2;
+      const isShop = rng4() < 0.62;
+      t.hasShop = isShop;
+      const awnCol = AWNING_COLS[(rng4() * AWNING_COLS.length) | 0];
+      const bandW = Math.min(t.w, 46);
+
+      if (isShop) {
+        // ---- 4.2 m storefront band: stone plinth, mullioned glazing, lit
+        // interior, painted sign fascia, striped canvas awning with valance ----
+        const nBays = Math.max(3, Math.round(bandW / 5.2));
+        const bayW = bandW / nBays;
+        const entBay = nBays >> 1;
+        const signCol = SIGN_COLS[(rng4() * SIGN_COLS.length) | 0];
+        const BAND_H = 4.6, GL_BOT = 0.52, GL_TOP = 3.06;
+        // cornice + painted sign fascia, both clear of the awnings below
+        shopOpaque.push(cBox(bandW + 0.7, 0.3, 0.78, CONC2, t.x, CITY_Y + BAND_H - 0.15, frontZ - 0.16));
+        shopOpaque.push(cBox(bandW + 0.2, 0.92, 0.5, signCol, t.x, CITY_Y + BAND_H - 0.76, frontZ - 0.16));
+        shopGlow.push(colorFill(new THREE.BoxGeometry(bandW - 1.4, 0.5, 0.06)
+          .translate(t.x, CITY_Y + BAND_H - 0.76, frontZ - 0.42), signLit(signCol)));
+        // column piers between bays
+        for (let b = 0; b <= nBays; b++) {
+          shopOpaque.push(cBox(0.46, BAND_H, 0.72, CONC, t.x - bandW / 2 + b * bayW, CITY_Y + BAND_H / 2, frontZ - 0.12));
+        }
+        for (let b = 0; b < nBays; b++) {
+          const bx = t.x - bandW / 2 + (b + 0.5) * bayW;
+          const inner = bayW - 0.62;
+          if (b === entBay) {
+            // recessed entry: dark reveal, twin glass doors, push bars, step
+            shopOpaque.push(cBox(inner, 3.35, 0.1, DOORC, bx, CITY_Y + 1.67, frontZ + 0.5));
+            shopGlow.push(colorFill(new THREE.BoxGeometry(inner - 0.2, 2.9, 0.05)
+              .translate(bx, CITY_Y + 1.62, frontZ + 0.46), 0x2a2118));
+            for (const s of [-1, 1]) {
+              shopGlassG.push(new THREE.BoxGeometry(1.02, 2.62, 0.09).translate(bx + s * 0.55, CITY_Y + 1.31, frontZ + 0.2));
+              shopOpaque.push(cBox(0.07, 2.62, 0.11, 0x8d949a, bx + s * 1.06, CITY_Y + 1.31, frontZ + 0.2));
+              shopOpaque.push(cBox(0.05, 0.9, 0.05, 0xc8ced3, bx + s * 0.16, CITY_Y + 1.15, frontZ + 0.14));
+            }
+            shopOpaque.push(cBox(inner + 0.2, 0.14, 0.06, 0x8d949a, bx, CITY_Y + 2.66, frontZ + 0.2));
+            shopOpaque.push(cBox(Math.min(inner + 0.5, 3.6), 0.13, 0.95, STEP, bx, CITY_Y + 0.065, frontZ - 0.45));
+          } else {
+            // shopfront: dark stone bulkhead, full-height glazing, mullions
+            shopOpaque.push(cBox(inner + 0.2, GL_BOT, 0.4, 0x5f6469, bx, CITY_Y + GL_BOT / 2, frontZ - 0.08));
+            shopGlassG.push(new THREE.BoxGeometry(inner, GL_TOP - GL_BOT, 0.12)
+              .translate(bx, CITY_Y + (GL_TOP + GL_BOT) / 2, frontZ - 0.04));
+            // interior: warm dark room with a ceiling light band and a back wall
+            shopGlow.push(colorFill(new THREE.BoxGeometry(inner, GL_TOP - GL_BOT - 0.1, 0.05)
+              .translate(bx, CITY_Y + (GL_TOP + GL_BOT) / 2, frontZ + 0.42), shopInterior(rng4())));
+            shopGlow.push(colorFill(new THREE.BoxGeometry(inner - 0.3, 0.26, 0.04)
+              .translate(bx, CITY_Y + GL_TOP - 0.34, frontZ + 0.38), 0xffe7c0));
+            for (const mx of [-inner / 6, inner / 6]) {
+              shopOpaque.push(cBox(0.075, GL_TOP - GL_BOT, 0.16, 0x8b867c, bx + mx, CITY_Y + (GL_TOP + GL_BOT) / 2, frontZ - 0.06));
+            }
+            shopOpaque.push(cBox(inner, 0.09, 0.17, 0x8b867c, bx, CITY_Y + GL_TOP - 0.62, frontZ - 0.06));   // transom
+          }
+          // striped canvas awning with a hanging valance, tucked under the sign
+          if ((b + ti) % 3 !== 2) {
+            const depth = Math.min(1.75, frontZ - 51.35);   // never over the road band
+            if (depth > 0.8) {
+              const aw = bayW - 0.55;
+              const slope = depth / Math.cos(0.4);
+              const stripes = 5;
+              const AY = 3.36;
+              for (let s2 = 0; s2 < stripes; s2++) {
+                const ag = new THREE.BoxGeometry(aw / stripes - 0.015, 0.05, slope);
+                ag.rotateX(-0.4);
+                ag.translate(bx - aw / 2 + (s2 + 0.5) * (aw / stripes), CITY_Y + AY, frontZ - depth / 2 - 0.16);
+                shopOpaque.push(colorFill(ag, s2 % 2 ? awnCol : 0xefe6d2));
+              }
+              // hanging valance + tie-bars back to the wall
+              for (let s2 = 0; s2 < stripes; s2++) {
+                shopOpaque.push(cBox(aw / stripes - 0.015, 0.28, 0.045,
+                  s2 % 2 ? awnCol : 0xefe6d2,
+                  bx - aw / 2 + (s2 + 0.5) * (aw / stripes),
+                  CITY_Y + AY - 0.14 - 0.2 * depth, frontZ - depth - 0.16));
+              }
+              for (const s2 of [-1, 1]) {
+                shopOpaque.push(cBox(0.04, 0.04, depth, 0x9aa1a7, bx + s2 * aw / 2, CITY_Y + AY + 0.14 - 0.1 * depth, frontZ - depth / 2 - 0.16));
+              }
+            }
+          }
+        }
+        // projecting blade signs — the one shop cue that stays readable from
+        // every angle (a flat fascia sign is hidden by its own awning from below)
+        // reach is clamped so no sign ever crosses into the driving lanes
+        const bladeReach = Math.min(1.51, frontZ - 51.2);
+        for (let b = 1; bladeReach > 0.9 && b < nBays; b += 2) {
+          const bx = t.x - bandW / 2 + b * bayW;
+          const bladeCol = SIGN_COLS[(rng4() * SIGN_COLS.length) | 0];
+          const by = CITY_Y + 3.95;
+          const bz = frontZ - bladeReach + 0.56;
+          shopOpaque.push(cBox(0.09, 0.09, bladeReach * 0.9, 0x2f353a, bx, by + 0.42, frontZ - bladeReach * 0.45));
+          shopOpaque.push(cBox(0.14, 0.9, 1.12, bladeCol, bx, by, bz));
+          for (const s2 of [-1, 1]) {
+            shopGlow.push(colorFill(new THREE.BoxGeometry(0.05, 0.6, 0.86)
+              .translate(bx + s2 * 0.09, by, bz), signLit(bladeCol)));
+          }
+        }
+        // pavement cafe: two tables with chairs in front of every other shop
+        if (ti % 2 === 0 && frontZ > 56) {
+          for (const cs of [-1, 1]) {
+            const cx = t.x + cs * (bandW * 0.28);
+            const cz = frontZ - 2.5;
+            shopOpaque.push(cCyl(0.04, 0.05, 0.72, 6, 0x4a5057, cx, CITY_Y + 0.36, cz));
+            shopOpaque.push(cCyl(0.42, 0.42, 0.05, 12, 0xb8b3a6, cx, CITY_Y + 0.74, cz));
+            shopOpaque.push(cCyl(0.3, 0.34, 0.03, 10, 0x4a5057, cx, CITY_Y + 0.02, cz));
+            for (const ch of [-1, 1]) {
+              const chx = cx + ch * 0.78, chz = cz + ch * 0.16;
+              shopOpaque.push(cBox(0.42, 0.05, 0.42, 0x9d988c, chx, CITY_Y + 0.45, chz));
+              shopOpaque.push(cBox(0.42, 0.46, 0.05, 0x9d988c, chx, CITY_Y + 0.68, chz + ch * 0.19));
+              for (const lx of [-0.17, 0.17]) for (const lz of [-0.17, 0.17]) {
+                shopOpaque.push(cBox(0.035, 0.45, 0.035, 0x5a6067, chx + lx, CITY_Y + 0.225, chz + lz));
+              }
+            }
+          }
+        }
+      } else {
+        // ---- hotel-style entrance canopy, sitting clear above the podium ----
+        t.podiumH = 3.3 + rng4() * 1.3;
+        const cy0 = CITY_Y + t.podiumH + 0.55;
+        // canopy reach clamped so its leading edge stays out of the road band
+        const depth = Math.max(0.9, Math.min(3.4, frontZ - 51.6));
+        for (const s of [-1, 1]) {
+          shopOpaque.push(cCyl(0.09, 0.11, t.podiumH + 0.55, 8, POSTC, t.x + s * 3.1, CITY_Y + (t.podiumH + 0.55) / 2, frontZ - depth + 0.35));
+          shopOpaque.push(cCyl(0.2, 0.24, 0.16, 8, 0x8c9298, t.x + s * 3.1, CITY_Y + 0.08, frontZ - depth + 0.35));
+        }
+        glassPanelGeos.push(new THREE.BoxGeometry(7.4, 0.1, depth + 0.5).translate(t.x, cy0, frontZ - depth / 2 + 0.1));
+        shopOpaque.push(cBox(7.6, 0.16, 0.16, POSTC, t.x, cy0 + 0.06, frontZ - depth - 0.13));
+        shopOpaque.push(cBox(7.6, 0.14, 0.5, POSTC, t.x, cy0 + 0.05, frontZ - 0.2));
+        shopOpaque.push(cBox(4.8, 0.16, 1.3, STEP, t.x, CITY_Y + 0.08, frontZ - 0.9));
+        shopOpaque.push(cBox(5.6, 0.08, 0.8, STEP, t.x, CITY_Y + 0.04, frontZ - 1.85));
+        // carpet strip under the canopy
+        shopOpaque.push(cBox(5.2, 0.03, depth, 0x6d3a33, t.x, CITY_Y + 0.115, frontZ - depth / 2 - 0.3));
+      }
+
+      // planters flanking every doorway (colliders for the closest ones)
+      for (const s of [-1, 1]) {
+        const pxp = t.x + s * 2.75;
+        const pzp = frontZ - 0.95;
+        const py = stripY(pzp);
+        shopOpaque.push(cBox(1.1, 0.62, 1.1, 0x8d877b, pxp, py + 0.31, pzp));
+        shopOpaque.push(cBox(1.18, 0.09, 1.18, 0x7b756a, pxp, py + 0.6, pzp));
+        addHedge(pxp, pzp, 0.58, 0.75, 0.62, py + 0.5);
+        if (planterColliders < 16 && Math.abs(t.x) < 320) {
+          addCollider(pxp, py, pzp, 1.2, 1.4, 1.2);
+          planterColliders++;
+        }
+      }
+      // flower beds flanking wider entrances
+      if (bandW > 18) { addBed(t.x - 4.6, frontZ - 1.0); addBed(t.x + 4.6, frontZ - 1.0); }
+      // hedge row along the facade (only where the front sits back from the strip)
+      if (frontZ > 54.6) {
+        for (let hx = -bandW / 2 + 1.3; hx <= bandW / 2 - 1.3; hx += 2.0) {
+          if (Math.abs(hx) < 4.2) continue;   // entrance walkway
+          addHedge(t.x + hx, frontZ - 1.35, 0.9 + rng4() * 0.3, 0.8 + rng4() * 0.35, 0.9, CITY_Y);
+        }
+      }
+      // palm + shrub accents at every 3rd entrance
+      if (ti % 3 === 0 && frontZ > 56.5) {
+        for (const s of [-1, 1]) {
+          palmSpots.push({ x: t.x + s * (4.5 + rng4() * 1.5), z: frontZ - 2.7 - rng4(), sc: 0.72 + rng4() * 0.2, ry: rng4() * Math.PI * 2 });
+        }
+      }
+      for (const s of [-1, 1]) {
+        const sxp = t.x + s * (bandW / 2 - 0.9);
+        const szp = frontZ - 1.15;
+        entranceShrubSpots.push({ x: sxp, y: stripY(szp), z: szp, scale: 0.65 + rng4() * 0.4, rotY: rng4() * Math.PI * 2 });
+      }
+    }
+
+    // ---- planted beds along the promenade edge ----
+    // Discrete beds (6–11 m) separated by paved gaps, each with a raised kerb,
+    // a mulch bed and a broken hedge row. The old build ran one unbroken hedge
+    // the length of the map, which read from the air as a green ribbon.
+    {
+      let x = -566;
+      let bedIdx = 0;
+      while (x < 566) {
+        const bedLen = 6 + rng4() * 5;
+        const gap = 2.6 + rng4() * 3.4;
+          const cx = x + bedLen / 2;
+        const clear =
+          !GAP_X.some((c) => Math.abs(cx - c) < 14 + bedLen / 2) &&
+          Math.abs(cx - shelterX) > 5 + bedLen / 2 &&
+          Math.abs(cx - WHEEL_X) > 14 &&
+          !frontTowers.some((t) => Math.abs(cx - t.x) < t.w / 2 + bedLen / 2 && (t.z - t.d / 2) < 56.6);
+        if (clear) {
+          const bz = 54.3;
+          // kerb ring around the bed
+          shopOpaque.push(cBox(bedLen, 0.19, 2.3, 0x89847a, cx, CITY_Y + 0.095, bz));
+          mulchSpots.push({ x: cx, y: CITY_Y + 0.14, z: bz, ry: 0, sx: (bedLen - 0.3) / 1.55, sz: 1.85 });
+          if (bedIdx % 3 === 1) {
+            // flowering bed: dense colour clusters instead of clipped box hedge
+            const n = 30 + ((rng4() * 16) | 0);
+            for (let i = 0; i < n; i++) {
+              flowerSpots.push({
+                x: cx + (rng4() - 0.5) * (bedLen - 0.8),
+                y: CITY_Y + 0.34 + rng4() * 0.14,
+                z: bz + (rng4() - 0.5) * 1.7,
+                hex: FLOWER_COLS[(rng4() * FLOWER_COLS.length) | 0],
+              });
+            }
+            for (let hx = -bedLen / 2 + 1; hx <= bedLen / 2 - 1; hx += 2.6) {
+              addHedge(cx + hx, bz - 0.72, 0.62 + rng4() * 0.16, 0.5 + rng4() * 0.16, 0.62, CITY_Y + 0.18);
+            }
+          } else {
+            // individual clipped shrubs, never touching — a continuous run of
+            // instances reads as one extruded green bar from the air
+            for (let hx = -bedLen / 2 + 1.1; hx <= bedLen / 2 - 1.1; hx += 2.45) {
+              if (rng4() < 0.1) continue;                        // gaps keep it organic
+              const jz = (rng4() - 0.5) * 0.55;
+              addHedge(cx + hx + (rng4() - 0.5) * 0.3, bz + jz,
+                       0.6 + rng4() * 0.16, 0.66 + rng4() * 0.34, 0.78, CITY_Y + 0.18);
+            }
+            if (bedIdx % 2 === 0) {
+              entranceShrubSpots.push({ x: cx + (rng4() - 0.5) * bedLen * 0.5, y: CITY_Y + 0.19, z: bz + 0.3, scale: 0.55 + rng4() * 0.3, rotY: rng4() * Math.PI * 2 });
+            }
+          }
+          bedIdx++;
+        }
+        x += bedLen + gap;
+      }
+    }
+
+    // lawn patches filling the gaps between front towers
+    const sorted = frontTowers.slice().sort((a, b) => a.x - b.x);
+    for (let i = 0; i + 1 < sorted.length; i++) {
+      const L = sorted[i], R = sorted[i + 1];
+      const e0 = L.x + L.w / 2, e1 = R.x - R.w / 2;
+      if (e1 - e0 < 12) continue;
+      if (GAP_X.some((c) => c > e0 - 4 && c < e1 + 4)) continue;
+      const cx = (e0 + e1) / 2;
+      const sx = Math.min(2.2, (e1 - e0 - 4) / 9);
+      lawnSpots.push({ x: cx, z: 60.5 + (rng4() - 0.5) * 2, sx, sz: 1.5 + rng4() * 0.5 });
+      // hedge edging + palms turn the bare patch into a pocket park
+      for (let hx = -sx * 4.2; hx <= sx * 4.2; hx += 2.2) {
+        addHedge(cx + hx, 56.4 + (rng4() - 0.5) * 0.4, 0.8, 0.7 + rng4() * 0.25, 0.8, CITY_Y);
+      }
+      palmSpots.push({ x: cx + (rng4() - 0.5) * sx * 5, z: 61 + (rng4() - 0.5) * 3, sc: 0.8 + rng4() * 0.25, ry: rng4() * Math.PI * 2 });
+      entranceShrubSpots.push({ x: cx + (rng4() - 0.5) * 5, y: CITY_Y, z: 58.5 + (rng4() - 0.5) * 3, scale: 0.9 + rng4() * 0.6, rotY: rng4() * Math.PI * 2 });
+    }
+
+    // ---- stone podium at the foot of every tower without a shopfront ----
+    // A curtain wall running straight into the pavement is the single loudest
+    // "box dropped on a plane" tell; a proud base band with a plinth, a capping
+    // reveal and lobby glazing fixes it for one merged draw call. The overhang
+    // stays under half a metre so the legacy tower collider still fits.
+    for (const t of towerData) {
+      if (t.hasShop || t.z > 250 || t.style === 'cyl') continue;
+      const PH = t.podiumH || (3.2 + rng4() * 1.6);  // podium height
+      const pr = 0.28 + rng4() * 0.16;               // how far it stands proud
+      const pw = t.w + pr * 2, pd = t.d + pr * 2;
+      const stone = rng4() < 0.5 ? 0x6b6459 : 0x5c6165;
+      const stone2 = new THREE.Color(stone).offsetHSL(0, 0, 0.05).getHex();
+      shopOpaque.push(cBox(pw, PH - 0.34, pd, stone, t.x, CITY_Y + (PH - 0.34) / 2, t.z));
+      shopOpaque.push(cBox(pw + 0.22, 0.3, pd + 0.22, 0x3f4448, t.x, CITY_Y + 0.15, t.z));       // plinth
+      shopOpaque.push(cBox(pw + 0.3, 0.34, pd + 0.3, 0x7d776c, t.x, CITY_Y + PH - 0.17, t.z));   // cap
+      // clad the base in pilaster strips so it is not one flat slab of stone
+      for (let px = -pw / 2 + 1.4; px < pw / 2 - 0.6; px += 4.4) {
+        shopOpaque.push(cBox(0.55, PH - 0.62, 0.16, stone2, t.x + px, CITY_Y + (PH - 0.62) / 2, t.z - pd / 2 - 0.07));
+      }
+      shopOpaque.push(cBox(pw + 0.06, 0.12, pd + 0.06, 0x4a4f52, t.x, CITY_Y + PH * 0.52, t.z)); // shadow reveal
+      // lobby glazing + revolving-door bay on the street face
+      const fz = t.z - pd / 2;
+      const lw = Math.min(t.w * 0.62, 15);
+      shopGlassG.push(new THREE.BoxGeometry(lw, PH - 1.35, 0.2).translate(t.x, CITY_Y + (PH - 1.35) / 2 + 0.5, fz - 0.02));
+      shopGlow.push(colorFill(new THREE.BoxGeometry(lw - 0.4, PH - 1.6, 0.05)
+        .translate(t.x, CITY_Y + (PH - 1.35) / 2 + 0.5, fz + 0.4), 0x4a4438));
+      for (let mx = -lw / 2 + 1.6; mx < lw / 2 - 0.5; mx += 1.9) {
+        shopOpaque.push(cBox(0.11, PH - 1.35, 0.26, 0x767b80, t.x + mx, CITY_Y + (PH - 1.35) / 2 + 0.5, fz - 0.06));
+      }
+      shopOpaque.push(cBox(lw + 0.6, 0.32, 0.4, 0x7d776c, t.x, CITY_Y + PH - 0.9, fz - 0.12));
+      // entrance apron: darker paving band + two steps
+      shopOpaque.push(cBox(lw + 5, 0.05, 3.4, 0x5b5850, t.x, CITY_Y + 0.025, fz - 1.85));
+      shopOpaque.push(cBox(lw + 1.4, 0.13, 0.9, 0x6d685f, t.x, CITY_Y + 0.065, fz - 0.55));
+    }
+
+    // ---- city blocks behind the front row ----
+    // Cross streets, parking lots, lawns and block palms. Without these the
+    // plateau behind Ocean Drive renders as one unbroken paved plain.
+    const blockPalmSpots = [];
+    const occupied = (x, z, rx, rz) => towerData.some((t) =>
+      Math.abs(x - t.x) < t.w / 2 + rx && Math.abs(z - t.z) < t.d / 2 + rz);
+    const XS_HALF = 6.5;                       // cross-street half width
+    const XS_Z0 = 52.9, XS_Z1 = 268;
+    for (const cx of GAP_X) {
+      // sidewalk kerbs down both sides of the cross street
+      for (const s of [-1, 1]) {
+        shopOpaque.push(cBox(0.5, 0.15, XS_Z1 - XS_Z0, 0x8f8a80,
+          cx + s * (XS_HALF + 0.25), CITY_Y + 0.075, (XS_Z0 + XS_Z1) / 2));
+      }
+      // block palms + planting down the cross street
+      for (let z = XS_Z0 + 12; z < XS_Z1 - 10; z += 21) {
+        for (const s of [-1, 1]) {
+          const px = cx + s * (XS_HALF + 2.4);
+          if (occupied(px, z, 2, 2)) continue;
+          blockPalmSpots.push({ x: px, z: z + (rng4() - 0.5) * 3, sc: 0.75 + rng4() * 0.3, ry: rng4() * Math.PI * 2 });
+          grateSpots.push({ x: px, z: z + 0, y: CITY_Y + 0.012 });
+        }
+      }
+    }
+    // parking lots + pocket parks in the voids between tower rows
+    const parcelTaken = [];
+    const freeParcel = (x, z, r) => !parcelTaken.some((p) =>
+      Math.abs(x - p.x) < r + p.r && Math.abs(z - p.z) < 24);
+    for (let bx = -536; bx <= 536; bx += 37) {
+      for (const bz of [92, 104, 153, 219, 249]) {
+        const z = bz + (rng4() - 0.5) * 7;
+        const x = bx + (rng4() - 0.5) * 6;
+        if (GAP_X.some((c) => Math.abs(x - c) < XS_HALF + 18)) continue;
+        if (occupied(x, z, 18, 13)) continue;
+        const roll = rng4();
+        if (roll < 0.44) {
+          if (!freeParcel(x, z, 17)) continue;
+          parcelTaken.push({ x, z, r: 17 });
+          lotSpots.push({ x, z, ry: 0 });
+          // kerb + hedge screen along the street edge of the lot
+          shopOpaque.push(cBox(30.6, 0.16, 0.5, 0x8a857b, x, CITY_Y + 0.08, z - 9.3));
+          for (let hx = -13; hx <= 13; hx += 2.9) {
+            addHedge(x + hx, z - 10.3, 0.78, 0.62 + rng4() * 0.2, 0.8, CITY_Y);
+          }
+        } else if (roll < 0.8) {
+          if (!freeParcel(x, z, 15)) continue;
+          parcelTaken.push({ x, z, r: 15 });
+          const sx = 2.2 + rng4() * 0.9, sz = 2.0 + rng4() * 0.8;
+          lawnSpots.push({ x, z, sx, sz, y: CITY_Y + 0.02, ry: 0 });
+          // hedge border on all four sides turns the green rectangle into a park
+          const hw = 4.5 * sx, hd = 2.75 * sz;
+          for (let hx = -hw; hx <= hw; hx += 2.6) {
+            addHedge(x + hx, z - hd - 0.5, 0.8, 0.62 + rng4() * 0.22, 0.8, CITY_Y);
+            addHedge(x + hx, z + hd + 0.5, 0.8, 0.62 + rng4() * 0.22, 0.8, CITY_Y);
+          }
+          for (let hz = -hd; hz <= hd; hz += 2.6) {
+            addHedge(x - hw - 0.5, z + hz, 0.8, 0.62 + rng4() * 0.22, 0.8, CITY_Y);
+            addHedge(x + hw + 0.5, z + hz, 0.8, 0.62 + rng4() * 0.22, 0.8, CITY_Y);
+          }
+          for (let k = 0; k < 3; k++) {
+            blockPalmSpots.push({
+              x: x + (rng4() - 0.5) * hw * 1.6, z: z + (rng4() - 0.5) * hd * 1.6,
+              sc: 0.85 + rng4() * 0.35, ry: rng4() * Math.PI * 2,
+            });
+          }
+          addBed(x + (rng4() - 0.5) * hw, z + (rng4() - 0.5) * hd);
+        } else {
+          blockPalmSpots.push({ x, z, sc: 0.8 + rng4() * 0.3, ry: rng4() * Math.PI * 2 });
+        }
+      }
+    }
+    // mid-block infill: small pocket parks in the tight gaps between towers,
+    // where a full 30 m parcel will not fit. Without these the band directly
+    // behind the front row stays an empty paved shelf.
+    for (let ix = -556; ix <= 556; ix += 23) {
+      for (const iz of [70, 88, 112, 140, 168, 200]) {
+        const x = ix + (rng4() - 0.5) * 6;
+        const z = iz + (rng4() - 0.5) * 7;
+        if (GAP_X.some((c) => Math.abs(x - c) < XS_HALF + 7)) continue;
+        if (occupied(x, z, 8.5, 6.5)) continue;
+        if (!freeParcel(x, z, 9)) continue;
+        parcelTaken.push({ x, z, r: 9 });
+        const roll = rng4();
+        if (roll < 0.55) {
+          lawnSpots.push({ x, z, sx: 0.85 + rng4() * 0.35, sz: 0.85 + rng4() * 0.3, y: CITY_Y + 0.02 });
+          for (let hx = -3.6; hx <= 3.6; hx += 2.4) {
+            addHedge(x + hx, z - 2.9, 0.7, 0.6 + rng4() * 0.2, 0.75, CITY_Y);
+            addHedge(x + hx, z + 2.9, 0.7, 0.6 + rng4() * 0.2, 0.75, CITY_Y);
+          }
+          blockPalmSpots.push({ x: x + (rng4() - 0.5) * 5, z: z + (rng4() - 0.5) * 4, sc: 0.75 + rng4() * 0.3, ry: rng4() * Math.PI * 2 });
+        } else if (roll < 0.78) {
+          addBed(x, z);
+          blockPalmSpots.push({ x, z: z + 2.5, sc: 0.8 + rng4() * 0.25, ry: rng4() * Math.PI * 2 });
+          grateSpots.push({ x, z: z + 2.5, y: CITY_Y + 0.012 });
+        } else {
+          blockPalmSpots.push({ x, z, sc: 0.8 + rng4() * 0.3, ry: rng4() * Math.PI * 2 });
+          grateSpots.push({ x, z, y: CITY_Y + 0.012 });
+        }
+      }
+    }
+
+    // tree grates for the palms standing on the paved promenade
+    for (const pp of palmPlacements) {
+      if (grateSpots.length >= 260) break;
+      if (pp.z < 33 || pp.z > 58 || Math.abs(pp.x) > 600) continue;
+      grateSpots.push({ x: pp.x, z: pp.z, y: stripY(pp.z) + 0.012 });
+    }
+
+    // balconies on 2 street-visible faces of ~1/3 of the mid/back towers
+    const balGeo = track(buildBalconyGeo());
+    const balSpots = [];
+    for (const t of towerData) {
+      if (t.z < 100 || t.style !== 'glass' || (t.mv !== 0 && t.mv !== 3)) continue;
+      if (rng4() > 0.34 || t.w < 24) continue;
+      const maxY = CITY_Y + Math.min(t.h - 6, 112);
+      const colsF = Math.max(1, Math.min(3, Math.floor((t.w - 9) / 8)));
+      const colsS = Math.max(1, Math.min(2, Math.floor((t.d - 9) / 8)));
+      for (let fy = CITY_Y + 7.5; fy < maxY && balSpots.length < 880; fy += 6.4) {
+        for (let c = 0; c < colsF; c++) {
+          balSpots.push({ x: t.x + (c - (colsF - 1) / 2) * 7.2, y: fy, z: t.z - t.d / 2, ry: Math.PI });
+        }
+        for (let c = 0; c < colsS; c++) {
+          const off = (c - (colsS - 1) / 2) * 7.2;
+          if (t.x < 0) balSpots.push({ x: t.x + t.w / 2, y: fy, z: t.z + off, ry: Math.PI / 2 });
+          else balSpots.push({ x: t.x - t.w / 2, y: fy, z: t.z + off, ry: -Math.PI / 2 });
+        }
+      }
+    }
+
+    // rooftop clutter kits + parapet hedges
+    const roofKitGeo = track(buildRooftopKitGeo());
+    const roofSpots = [];
+    for (const t of towerData) {
+      if (t.style !== 'glass' || t.mv === 1) continue;
+      if (rng4() > 0.55 || Math.min(t.w, t.d) < 21) continue;
+      roofSpots.push({
+        x: t.x + (rng4() - 0.5) * (t.w - 15),
+        y: CITY_Y + t.h + 0.02,
+        z: t.z + (rng4() - 0.5) * (t.d - 15),
+        ry: ((rng4() * 4) | 0) * (Math.PI / 2),
+      });
+      if (rng4() < 0.38) {
+        const n = Math.floor((t.w - 6) / 2.1);
+        for (let k = 0; k < n; k++) {
+          addHedge(t.x - (t.w - 6) / 2 + k * 2.1, t.z - t.d / 2 + 1.2, 0.95, 0.8, 0.85, CITY_Y + t.h);
+        }
+      }
+    }
+
+    // ---- materialize (merged one-offs + instanced sets) ----
+    const q4 = new THREE.Quaternion();
+    const e4 = new THREE.Euler();
+    const v4 = new THREE.Vector3();
+    const s4 = new THREE.Vector3();
+    const m4c = new THREE.Matrix4();
+    const c4 = new THREE.Color();
+    const placeAll = (im, spots, fill) => {
+      for (let i = 0; i < spots.length; i++) {
+        const s = spots[i];
+        e4.set(0, s.ry || 0, 0);
+        q4.setFromEuler(e4);
+        v4.set(s.x, s.y !== undefined ? s.y : CITY_Y, s.z);
+        s4.set(s.sx || 1, s.sy || 1, s.sz || 1);
+        m4c.compose(v4, q4, s4);
+        im.setMatrixAt(i, m4c);
+        if (fill) fill(im, i, s);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      im.computeBoundingSphere();
+      root.add(im);
+    };
+
+    if (shopOpaque.length) {
+      const g = track(mergeGeometries(shopOpaque));
+      shopOpaque.forEach((x) => x.dispose());
+      const shopMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }));
+      const mesh = new THREE.Mesh(g, shopMat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      root.add(mesh);
+    }
+    if (shopGlassG.length) {
+      const g = track(mergeGeometries(shopGlassG));
+      shopGlassG.forEach((x) => x.dispose());
+      const mat = track(new THREE.MeshStandardMaterial({
+        color: 0x0e1a20, metalness: 0.5, roughness: 0.07,
+        transparent: true, opacity: 0.55,
+        envMapIntensity: 1.15, depthWrite: false,
+      }));
+      root.add(new THREE.Mesh(g, mat));
+    }
+    if (shopGlow.length) {
+      // unlit interiors + sign faces — the depth behind the glass that makes a
+      // storefront read as a shop rather than a black rectangle
+      const g = track(mergeGeometries(shopGlow));
+      shopGlow.forEach((x) => x.dispose());
+      const mat = track(new THREE.MeshBasicMaterial({ vertexColors: true }));
+      root.add(new THREE.Mesh(g, mat));
+    }
+    // cross streets: asphalt running inland at every street gap
+    {
+      const xsGeos = [];
+      for (const cx of GAP_X) {
+        const g = new THREE.PlaneGeometry(XS_HALF * 2, XS_Z1 - XS_Z0);
+        g.rotateX(-Math.PI / 2);
+        g.translate(cx, CITY_Y + 0.055, (XS_Z0 + XS_Z1) / 2);
+        xsGeos.push(g);
+      }
+      const xsGeo = track(mergeGeometries(xsGeos));
+      xsGeos.forEach((g) => g.dispose());
+      setAoUVs(xsGeo);
+      let xsMat;
+      if (asphaltSet.map) {
+        xsMat = await assetLib.pbrMaterial('asphalt', { repeat: [(XS_HALF * 2) / 3, (XS_Z1 - XS_Z0) / 3], color: 0x7c8288 });
+      } else {
+        xsMat = track(new THREE.MeshStandardMaterial({ color: 0x33363a, roughness: 0.96 }));
+      }
+      const xs = new THREE.Mesh(xsGeo, xsMat);
+      xs.receiveShadow = true;
+      root.add(xs);
+    }
+    if (glassPanelGeos.length) {
+      const g = track(mergeGeometries(glassPanelGeos));
+      glassPanelGeos.forEach((x) => x.dispose());
+      glassPanelGeos.length = 0;
+      const mat = track(new THREE.MeshStandardMaterial({
+        color: 0xcfe4ec, metalness: 0.1, roughness: 0.1,
+        transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false,
+      }));
+      root.add(new THREE.Mesh(g, mat));
+    }
+    if (hedgeSpots.length) {
+      // rounded box + mottled foliage sheet + deep, desaturated greens: clipped
+      // hedge instead of the bright plastic loaf the flat-colour version gave
+      const hedgeGeo = track(new RoundedBoxGeometry(1.8, 0.8, 0.75, 3, 0.26));
+      const folTex = track(foliageTexture());
+      folTex.repeat.set(2.5, 1.6);
+      const hedgeMat = track(new THREE.MeshStandardMaterial({
+        map: folTex, color: 0xffffff, roughness: 1, metalness: 0,
+      }));
+      const hedges = new THREE.InstancedMesh(hedgeGeo, hedgeMat, hedgeSpots.length);
+      const HEDGE_COLS = [0x5f7a4a, 0x6a8450, 0x546e42, 0x718a55, 0x4d6b3f];
+      placeAll(hedges, hedgeSpots, (im, i) => {
+        im.setColorAt(i, c4.setHex(HEDGE_COLS[(rng4() * HEDGE_COLS.length) | 0]).offsetHSL((rng4() - 0.5) * 0.03, 0, (rng4() - 0.5) * 0.07));
+      });
+      hedges.castShadow = true;
+      hedges.receiveShadow = true;
+    }
+    if (lotSpots.length) {
+      // surface parking: real city fabric between the tower rows
+      const lotGeo = track(new THREE.PlaneGeometry(30, 18));
+      lotGeo.rotateX(-Math.PI / 2);
+      const lotTex = track(parkingTexture());
+      lotTex.repeat.set(30 / 22, 18 / 17);
+      const lotMat = track(new THREE.MeshStandardMaterial({
+        map: lotTex, roughness: 0.95, metalness: 0,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+      }));
+      for (const s of lotSpots) s.y = CITY_Y + 0.015;
+      const lots = new THREE.InstancedMesh(lotGeo, lotMat, lotSpots.length);
+      placeAll(lots, lotSpots);
+      lots.receiveShadow = true;
+    }
+    if (grateSpots.length) {
+      const grateGeo = track(new THREE.RingGeometry(0.62, 1.15, 10, 1));
+      grateGeo.rotateX(-Math.PI / 2);
+      const grateMat = track(new THREE.MeshStandardMaterial({
+        color: 0x3a3d40, roughness: 0.65, metalness: 0.45, side: THREE.DoubleSide,
+        polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+      }));
+      placeAll(new THREE.InstancedMesh(grateGeo, grateMat, grateSpots.length), grateSpots);
+    }
+    if (mulchSpots.length) {
+      const mulchGeo = track(new RoundedBoxGeometry(1.55, 0.26, 1.1, 2, 0.09));
+      const mulchMat = track(new THREE.MeshStandardMaterial({ color: 0x38302a, roughness: 1 }));
+      placeAll(new THREE.InstancedMesh(mulchGeo, mulchMat, mulchSpots.length), mulchSpots);
+    }
+    if (flowerSpots.length) {
+      const flowGeo = track(new THREE.SphereGeometry(0.17, 6, 4));
+      flowGeo.scale(1, 0.68, 1);
+      const flowMat = track(new THREE.MeshStandardMaterial({ roughness: 0.75 }));
+      const flowers = new THREE.InstancedMesh(flowGeo, flowMat, flowerSpots.length);
+      placeAll(flowers, flowerSpots, (im, i, s) => im.setColorAt(i, c4.setHex(s.hex)));
+    }
+    if (lawnSpots.length) {
+      const lawnGeo = track(new THREE.PlaneGeometry(9, 5.5));
+      lawnGeo.rotateX(-Math.PI / 2);
+      setAoUVs(lawnGeo);
+      let lawnMat;
+      const lawnSet = await assetLib.textureSet('grass_lawn');
+      if (lawnSet.map) {
+        lawnMat = await assetLib.pbrMaterial('grass_lawn', { repeat: [7, 4.5] });
+      } else {
+        lawnMat = track(new THREE.MeshStandardMaterial({ color: 0x4c7a3d, roughness: 1 }));
+      }
+      lawnMat.polygonOffset = true;
+      lawnMat.polygonOffsetFactor = -2;
+      lawnMat.polygonOffsetUnits = -2;
+      // NOTE: no material.vertexColors here — the plane carries no colour
+      // attribute, and USE_COLOR without one resolves to black. InstancedMesh
+      // per-instance colour (setColorAt) works on its own.
+      const lawns = new THREE.InstancedMesh(lawnGeo, lawnMat, lawnSpots.length);
+      for (const s of lawnSpots) s.y = CITY_Y + 0.025;
+      placeAll(lawns, lawnSpots, (im, i) => {
+        im.setColorAt(i, c4.setHSL(0.26 + (rng4() - 0.5) * 0.05, 0.1 + rng4() * 0.14, 0.74 + rng4() * 0.14));
+      });
+      lawns.receiveShadow = true;
+    }
+    if (balSpots.length) {
+      const balMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.15 }));
+      placeAll(new THREE.InstancedMesh(balGeo, balMat, balSpots.length), balSpots);
+    }
+    if (roofSpots.length) {
+      const roofMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }));
+      placeAll(new THREE.InstancedMesh(roofKitGeo, roofMat, roofSpots.length), roofSpots);
+    }
+    // entrance + block palms (two small instanced fields; sway like the rest)
+    const allEntryPalms = palmSpots.concat(blockPalmSpots);
+    if (allEntryPalms.length) {
+      try {
+        palmsEntry = await createPalms(allEntryPalms.length);
+        for (let i = 0; i < allEntryPalms.length; i++) {
+          const p = allEntryPalms[i];
+          palmsEntry.placeAt(i, p.x, CITY_Y, p.z, p.sc, p.ry);
+        }
+        palmsEntry.finalize(allEntryPalms.length);
+        root.add(palmsEntry.group);
+      } catch (e) {
+        console.warn('[miami] entrance palms skipped:', e);
+        palmsEntry = null;
+      }
+    }
+  }
+
   // ---------------- ferris wheel ----------------
   const wheel = new THREE.Group();
-  const WHEEL_X = -215, WHEEL_Z = 42, WHEEL_R = 20;
   {
     const hubY = CITY_Y + WHEEL_R + 4;
     const legGeo = track(new THREE.BoxGeometry(1.4, WHEEL_R + 4, 1.4));
@@ -1315,8 +2547,8 @@ export async function buildMiami(scene, env) {
   const boats = [];
   {
     const MAR_X = 300;
-    const dockTex = track(stripeTexture('#96714a', '#755634'));
-    dockTex.repeat.set(2, 16);
+    const dockTex = track(plankTexture(0x9c7750, 41, 512, 512, 18));
+    dockTex.repeat.set(1, 11);
     const dockGeo = track(new THREE.BoxGeometry(4, 0.4, 90));
     const dockMat = track(new THREE.MeshStandardMaterial({ map: dockTex, roughness: 0.95 }));
     for (const dx of [0, 26, 52]) {
@@ -1437,6 +2669,8 @@ export async function buildMiami(scene, env) {
     await scatterSafe('shrub_02', s02, null, 0);
     await scatterSafe('shrub_03', s03, null, 0);
     await scatterSafe('anthurium_botany_01', anth, null, 0);
+    // storefront/lawn accents collected by the street-level pass (rng4)
+    await scatterSafe('shrub_03', entranceShrubSpots, null, 0);
 
     // fern clusters at the front-row tower bases
     const ferns = [];
@@ -1505,6 +2739,16 @@ export async function buildMiami(scene, env) {
 
   // ---------------- handle ----------------
   let time = 0;
+  let lastNightF = -1;
+  const applyDayNight = () => {
+    const tod = settings.environment.timeOfDay;
+    const dayF = Math.sin(Math.PI * clamp((tod - 6.2) / 13.2, 0, 1));
+    const nightF = clamp(1 - dayF * 2.1, 0, 1);
+    if (Math.abs(nightF - lastNightF) < 0.006) return;
+    lastNightF = nightF;
+    for (const d of dayNight) d.mat.emissiveIntensity = d.day + (d.night - d.day) * nightF;
+  };
+  applyDayNight();
   return {
     name: 'Miami Skyline',
     spawn: { position: spawnPos, yawRad: Math.PI / 2 },
@@ -1515,6 +2759,7 @@ export async function buildMiami(scene, env) {
     homePad: spawnPos.clone(),
     update(dt) {
       time += dt;
+      applyDayNight();
       if (water) {
         water.material.uniforms['time'].value += dt * 0.6;
         // water must go dark at night — the Water shader has its own sun
@@ -1533,10 +2778,13 @@ export async function buildMiami(scene, env) {
         b.rotation.x = Math.sin(time * 0.9 + b.userData.phase) * 0.03;
       }
       if (palms) palms.update(dt);
+      if (palmsEntry) palmsEntry.update(dt);
     },
     dispose(sceneRef) {
       sceneRef.remove(root);
       try { palms?.dispose?.(); } catch (e) { /* noop */ }
+      try { palmsEntry?.dispose?.(); } catch (e) { /* noop */ }
+      try { fleet?.dispose?.(); } catch (e) { /* noop */ }
       for (const h of scatterHandles) { try { h.dispose?.(); } catch (e) { /* noop */ } }
       for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
     },
