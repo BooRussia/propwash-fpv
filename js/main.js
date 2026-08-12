@@ -18,6 +18,7 @@ import { Menu } from './ui/menu.js';
 import { CalibrationUI } from './ui/calibration.js';
 import { OSD } from './ui/osd.js';
 import { StickOverlay } from './ui/sticks.js';
+import { HealthUI } from './ui/health.js';
 import { FpvCameraPipeline } from './camera/index.js';
 import { TrailSystem } from './world/trails.js';
 import { Environment } from './world/environment.js';
@@ -113,6 +114,7 @@ const radio = new RadioManager();
 const keyboard = new KeyboardInput();
 const osd = new OSD(document.getElementById('osd-root'));
 const sticks = new StickOverlay(document.getElementById('osd-root'));
+const health = new HealthUI(document.getElementById('osd-root'));
 const menu = new Menu();
 const calibUI = new CalibrationUI(radio);
 const modeManager = new ModeManager(scene);
@@ -397,6 +399,10 @@ renderer.setAnimationLoop(() => {
   const showSticks = settings.osd.showSticks && !menu.isOpen && !calibUI.isOpen;
   sticks.setVisible(showSticks);
   if (showSticks) sticks.update(currentControls);
+
+  const showHealth = !settings.camera.losMode && !menu.isOpen && !calibUI.isOpen;
+  health.setVisible(showHealth);
+  if (showHealth && quad) health.update(quad.damage);
 
   motorAudio.update(dt, {
     motorOutput: armed && quad ? quad.motorOutput : 0,

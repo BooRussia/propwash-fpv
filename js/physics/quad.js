@@ -18,7 +18,13 @@
 //   battery: rest-voltage discharge + throttle^2 sag → punch fade
 //   per-axis quadratic aero drag (front/top/side CdA), wind aware
 //   prop wash wobble when descending into own wake, ground effect,
-//   ground + shape collisions with crash detection.
+//   ground + shape collisions with impact damage and crash detection.
+//
+// Damage model (public `quad.damage`, see _damage below):
+//   Every contact is scored by the velocity component actually driving
+//   into the surface; the contact normal in the body frame picks which
+//   arm ate the hit. Broken props cost lift, bias the control torque
+//   (a dead prop is an unrecoverable spin) and buzz the airframe.
 //
 // Collision (js/core/collision.js):
 //   The airframe is a sphere of 0.55 * wheelbase. World colliders are
@@ -32,10 +38,11 @@
 // ============================================================
 
 import * as THREE from 'three';
-import { clamp } from '../core/state.js';
+import { clamp, emit } from '../core/state.js';
 import { buildGrid, resolveSphere } from '../core/collision.js';
 
 const DEG2RAD = Math.PI / 180;
+const TAU = Math.PI * 2;
 const GRAVITY = 9.81;           // m/s^2
 const RHO = 1.225;              // air density kg/m^3
 const RESPONSE_TAU = 0.025;     // rate-loop time constant (s)
@@ -56,10 +63,60 @@ const DEF_RATE_Y  = { centerSens: 200, maxRate: 500, expo: 0.54 };
 const ZERO_VEC = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
+// ---- prop wash tuning ----
+// Amplitudes are FRACTIONS OF MAX CONTROL TORQUE. These used to be 0.5/0.15,
+// which let random noise fight the pilot for most of the airframe's authority
+// on any descent over 2 m/s — it read as the drone being shaken around.
+const WASH_MIN_DESCENT = 3.5;   // m/s of sink before the wake is disturbed
+const WASH_TORQUE_RP = 0.10;    // roll/pitch noise as a fraction of max torque
+const WASH_TORQUE_Y = 0.04;     // yaw noise
+
 // ---- swept collision tuning ----
 const SWEEP_TRIGGER = 0.35;     // sweep once travel > this * airframe radius
 const SWEEP_MAX_SUB = 6;
 const SWEEP_TELEPORT = 2.0;     // metres of travel treated as a teleport, not flight
+
+// ---- damage model tuning ----
+// All severities are in "effective m/s": the closing speed along the contact
+// normal plus a small share of the graze speed, divided by airframe robustness.
+const DMG_FLOOR = 3.0;          // below this an impact is harmless, full stop
+const DMG_SPAN = 11.0;          // effective m/s ABOVE the floor that writes off a prop
+const DMG_WHOOP_DIV = 2.2;      // sub-100 g whoops are famously indestructible
+const DMG_TANGENT_ARMED = 0.35; // spinning props catch a surface
+const DMG_TANGENT_IDLE = 0.10;  // a dead-stick graze mostly just slides
+const DMG_PROP_EXP = 1.35;      // prop damage curve (concave-up: fast hits hurt hard)
+const DMG_FRAME_EXP = 1.5;      // frame damage curve
+const DMG_FRAME_EDGE = 0.45;    // frame share of an edge-on hit at u = 1
+const DMG_FRAME_FLAT = 0.85;    // extra frame share for a square belly/top slam
+const DMG_CATASTROPHIC = 20;    // effective m/s that writes the airframe off outright
+const DMG_CRIT_FRAME = 0.35;    // frame health that trips the AIRFRAME CRITICAL call
+const DMG_NICK = 0.85;          // prop health that trips the first PROP n DAMAGED call
+const DMG_DEAD = 0.01;          // at or below this a prop is gone (snapped to 0)
+const DMG_FLASH_GAP = 0.7;      // s between OSD damage flashes (multi-contact crash → one)
+const DMG_DIR_POW = 1.6;        // arm falloff: nearest 1.0, adjacent ~0.4, opposite 0.1
+
+// Imbalance torque as a fraction of max axis torque per unit of prop asymmetry.
+// One destroyed prop → asymmetry 0.5 on all three axes, and lift is down to
+// ~0.78 (mean prop health), so the bias lands at roll/pitch ~0.43 of max — a
+// heavy pull the pilot can still hold — and yaw ~1.25 of max, which saturates
+// the rate loop: the unrecoverable spin a real quad does on a dead motor.
+// A prop at 0.6 gives ~0.58 of max yaw (strong but flyable), 0.9 gives ~0.16.
+const DMG_ASYM_RP = 1.1;
+const DMG_ASYM_YAW = 3.2;
+
+// Out-of-balance buzz. A chipped prop is a vibration, not a seizure: the total
+// injected torque is capped at DMG_VIB_MAX of the axis maximum.
+const DMG_VIB_GAIN = 0.030;
+const DMG_VIB_MAX = 0.045;
+const DMG_VIB_HZ = [9.3, 11.7, 14.1, 17.3];
+
+// Prop layout, viewed from above with the nose at -Z (see `damage.props`):
+//   0 = front-right, 1 = rear-right, 2 = rear-left, 3 = front-left
+// Unit XZ direction of each arm, and the sign of the yaw reaction torque each
+// prop puts into the airframe (0/2 and 1/3 are the counter-rotating diagonals).
+const R2 = Math.SQRT1_2;
+const PROP_X = [R2, R2, -R2, -R2];
+const PROP_Z = [-R2, R2, R2, -R2];
 
 /**
  * Betaflight applyActualRates (deg values pre-converted to rad):
@@ -87,6 +144,17 @@ export class Quad {
     this.batteryVolts = FULL_V * spec.cells;
     this.crashed = false;
     this.carryMassKg = 0;                          // payload
+
+    /**
+     * Airframe condition, 1 = pristine, 0 = destroyed. Read by js/ui/health.js.
+     * `props` index order (viewed from ABOVE, nose = -Z):
+     *   0 = front-right, 1 = rear-right, 2 = rear-left, 3 = front-left
+     * so 0/1 are the right pair, 2/3 the left pair, 0/3 the front pair,
+     * 1/2 the rear pair, and 0/2 vs 1/3 the counter-rotating diagonals.
+     * `frame` is the airframe itself — at 0 the quad is permanently crashed
+     * until reset(). `overall` is the blended hull figure the OSD prints.
+     */
+    this.damage = { props: [1, 1, 1, 1], frame: 1, overall: 1 };
 
     // ---- inputs / config ----
     this._input = { throttle: 0, roll: 0, pitch: 0, yaw: 0 };
@@ -116,6 +184,7 @@ export class Quad {
     this._washN = new THREE.Vector3();             // band-limited noise
     this._washTgt = new THREE.Vector3();
     this._washTimer = 0;
+    this._washAmp = 0;                             // eased wash envelope
 
     // ---- preallocated temps (no per-step allocations) ----
     this._qInv = new THREE.Quaternion();
@@ -134,12 +203,28 @@ export class Quad {
     this._near = [];                               // broadphase result (reused)
     this._strikeStep = false;                      // one prop strike per step
 
+    // ---- damage internals (all preallocated) ----
+    this._simT = 0;                                // integrated sim clock (flash throttle)
+    this._dmgStep = false;                         // one damage event per physics step
+    this._dmgActive = false;                       // fast bail-out while pristine
+    this._thrustMul = 1;                           // mean prop health
+    this._biasX = 0;                               // pitch imbalance (front - rear)
+    this._biasY = 0;                               // yaw imbalance (diagonal A - B)
+    this._biasZ = 0;                               // roll imbalance (right - left)
+    this._vibPhase = [0, 0, 0, 0];
+    this._flashUntil = -1;
+    this._flashPrio = 0;
+    this._nB = new THREE.Vector3();                // contact normal in body frame
+    this._qi2 = new THREE.Quaternion();            // current inverse orientation
+
     // ---- collider broadphase cache (keyed on the map's array identity) ----
     this._grid = null;
     this._gridSrc = null;
     this._gridLen = -1;
     /** Diagnostics for tooling: {shapes, cells, maxBucket, buildMs}. */
     this.gridStats = null;
+
+    this._recomputeDamage();
   }
 
   /** Zero all state; place slightly above ground, level, facing yawRad. */
@@ -164,6 +249,16 @@ export class Quad {
     this._washN.set(0, 0, 0);
     this._washTgt.set(0, 0, 0);
     this._washTimer = 0;
+    this._washAmp = 0;
+    // A fresh airframe: props, frame and every derived imbalance term.
+    const props = this.damage.props;
+    props[0] = props[1] = props[2] = props[3] = 1;
+    this.damage.frame = 1;
+    this._vibPhase[0] = this._vibPhase[1] = this._vibPhase[2] = this._vibPhase[3] = 0;
+    this._dmgStep = false;
+    this._flashUntil = -1;
+    this._flashPrio = 0;
+    this._recomputeDamage();
   }
 
   /** throttle 0..1, roll/pitch/yaw -1..1. */
@@ -213,9 +308,14 @@ export class Quad {
   step(dt, env) {
     if (!(dt > 0) || !Number.isFinite(dt)) return;
     const spec = this.spec;
+    this._simT += dt;
+    // A written-off airframe stays written off until reset() — clearing
+    // `crashed` from outside without a reset re-latches here.
+    if (this.damage.frame <= 0) this.crashed = true;
     const armed = !!(env && env.armed) && !this.crashed;
     this._armedNow = armed;               // read by _impact for prop-strike response
     this._strikeStep = false;             // at most one prop-strike kick per step
+    this._dmgStep = false;                // at most one damage application per step
     // A NaN in the wind field would poison every downstream term, and the
     // recovery net below would then teleport the quad forever.
     let wind = (env && env.wind) ? env.wind : ZERO_VEC;
@@ -300,25 +400,68 @@ export class Quad {
     // ---------------- prop wash ----------------
     // Descending into own wake: band-limited torque noise ∝ descent rate
     // and disc loading. The characteristic descent wobble.
+    // Real prop wash is a low-frequency wallow you fly out of, NOT a violent
+    // shake. It needs a committed descent into the wake — sinking gently or
+    // descending in a turn should stay glass-smooth.
     const descent = -this._airB.y; // body-frame downward airspeed
-    let washAmp = 0;
-    if (armed && descent > 2 && this._input.throttle > 0.25) {
-      washAmp = Math.min((descent - 2) / 5, 1.3) * this._washFactor;
+    let washTarget = 0;
+    if (armed && descent > WASH_MIN_DESCENT && this._input.throttle > 0.3) {
+      washTarget = Math.min((descent - WASH_MIN_DESCENT) / 6, 1) * this._washFactor;
     }
+    // ease the wash envelope in/out so it never switches on abruptly
+    this._washAmp += (washTarget - this._washAmp) * (1 - Math.exp(-dt / 0.25));
+    const washAmp = this._washAmp;
+
     this._washTimer -= dt;
     if (this._washTimer <= 0) {
-      this._washTimer = 0.04 + Math.random() * 0.025; // retarget ~15-25 Hz
+      this._washTimer = 0.11 + Math.random() * 0.08;   // retarget ~5-9 Hz
       this._washTgt.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
     }
-    this._washN.lerp(this._washTgt, 1 - Math.exp(-dt / 0.02));
-    const washX = washAmp * 0.5 * mtx * this._washN.x;
-    const washY = washAmp * 0.15 * mty * this._washN.y;
-    const washZ = washAmp * 0.5 * mtz * this._washN.z;
+    this._washN.lerp(this._washTgt, 1 - Math.exp(-dt / 0.07));
+    const washX = washAmp * WASH_TORQUE_RP * mtx * this._washN.x;
+    const washY = washAmp * WASH_TORQUE_Y * mty * this._washN.y;
+    const washZ = washAmp * WASH_TORQUE_RP * mtz * this._washN.z;
+
+    // ---------------- damage: imbalance + vibration ----------------
+    // Both scale with how hard the props are working, so a parked wreck sits
+    // still and a punch-out with a dead prop is instantly unflyable.
+    let dmgX = 0, dmgY = 0, dmgZ = 0;
+    if (this._dmgActive) {
+      // Lift fraction: 1 at hover, so the bias constants read as "fraction of
+      // max torque while hovering". `_thrust` is one step stale (2.5 ms) — the
+      // motor filter is updated below — which is far inside the motor lag.
+      const lift = clamp(this._thrust / (mass * GRAVITY), 0, 1.6);
+      dmgX = this._biasX * mtx * lift;
+      dmgY = this._biasY * mty * lift;
+      dmgZ = this._biasZ * mtz * lift;
+
+      const drive = this.motorOutput;
+      if (drive > 0.02) {
+        const props = this.damage.props;
+        let vx = 0, vy = 0, vz = 0;
+        for (let i = 0; i < 4; i++) {
+          const bad = 1 - props[i];
+          if (bad <= 0.02) continue;
+          // Out-of-balance prop = oscillating vertical force at its hub:
+          // torque = r x F  →  X from -z, Z from +x.
+          let ph = this._vibPhase[i] + DMG_VIB_HZ[i] * (0.6 + 0.7 * drive) * TAU * dt;
+          if (ph >= TAU) ph -= TAU * Math.floor(ph / TAU);
+          this._vibPhase[i] = ph;
+          const s = Math.sin(ph) * bad * drive;
+          vx -= PROP_Z[i] * s;
+          vz += PROP_X[i] * s;
+          vy += 0.3 * s;
+        }
+        dmgX += clamp(vx * DMG_VIB_GAIN, -DMG_VIB_MAX, DMG_VIB_MAX) * mtx;
+        dmgY += clamp(vy * DMG_VIB_GAIN, -DMG_VIB_MAX, DMG_VIB_MAX) * mty;
+        dmgZ += clamp(vz * DMG_VIB_GAIN, -DMG_VIB_MAX, DMG_VIB_MAX) * mtz;
+      }
+    }
 
     // ---------------- integrate rotation ----------------
-    w.x += ((this._tq.x + washX) / Ix) * dt;
-    w.y += ((this._tq.y + washY) / Iy) * dt;
-    w.z += ((this._tq.z + washZ) / Iz) * dt;
+    w.x += ((this._tq.x + washX + dmgX) / Ix) * dt;
+    w.y += ((this._tq.y + washY + dmgY) / Iy) * dt;
+    w.z += ((this._tq.z + washZ + dmgZ) / Iz) * dt;
     // Mild rotational aero damping (stronger when props are dead).
     const angDamp = armed ? 0.02 : 0.35;
     w.multiplyScalar(Math.max(0, 1 - angDamp * dt));
@@ -329,8 +472,9 @@ export class Quad {
     this.quaternion.multiply(this._dq).normalize();
 
     // ---------------- thrust ----------------
+    // Chipped props bite less air: total lift scales with the mean prop health.
     const thrustCmd = armed
-      ? spec.maxThrustN * this._voltFactor * (0.02 + 0.98 * thrIn * thrIn)
+      ? spec.maxThrustN * this._voltFactor * (0.02 + 0.98 * thrIn * thrIn) * this._thrustMul
       : 0;
     this._thrust += (thrustCmd - this._thrust) * aM;
     let thrust = this._thrust;
@@ -593,19 +737,124 @@ export class Quad {
       v.multiplyScalar(0.93); // props eating energy
     }
 
-    // Armed scrapes count tangential speed harder — glancing a wall at speed
-    // with spinning props is usually a crash in the real world.
-    const impact = -vn + (this._armedNow ? 0.4 : 0.25) * tSpeed;
-    const threshold = spec.massKg < 0.1 ? 10 : 7; // whoops bounce off everything
-    if (impact > threshold && !this.crashed) {
+    // Structural damage. This is also what ends the flight now: the airframe
+    // is written off when `damage.frame` hits 0, either from one catastrophic
+    // hit or from accumulated abuse, instead of from a single speed threshold.
+    if (!this._dmgStep) this._damage(n, spec, -vn, tSpeed);
+  }
+
+  /**
+   * Impact damage.
+   *
+   * `normalImpact` is the closing speed along the contact normal — the
+   * component actually driving into the surface, and the only thing that
+   * really breaks a quad. Graze speed is weighted in lightly, and much harder
+   * while armed because spinning props catch a surface and self-destruct.
+   *
+   * Which prop eats it is chosen from the contact normal in the BODY frame:
+   * the arm pointing at the wall takes the full hit, its neighbours ~40%, the
+   * far arm 10%. A square belly/top slam has no meaningful arm direction, so
+   * it spreads evenly across all four and loads the frame instead.
+   *
+   * Called at most once per physics step (see `_dmgStep`), so a swept step or
+   * a two-contact corner cannot multiply-count one collision.
+   */
+  _damage(n, spec, normalImpact, tSpeed) {
+    const tw = this._armedNow ? DMG_TANGENT_ARMED : DMG_TANGENT_IDLE;
+    const robust = spec.massKg < 0.1 ? DMG_WHOOP_DIV : 1;
+    const eff = (normalImpact + tw * tSpeed) / robust;
+    if (!(eff > DMG_FLOOR)) return;       // a gentle bump is free
+    this._dmgStep = true;
+
+    const u = (eff - DMG_FLOOR) / DMG_SPAN;
+    const propBase = Math.min(Math.pow(u, DMG_PROP_EXP), 1);
+
+    // Contact normal → body frame. The normal points out of the surface, so
+    // the wall lies along -nB. Rotation has been integrated since `_qInv` was
+    // taken, so re-invert here (only on a real impact — never in the hot path).
+    this._qi2.copy(this.quaternion).invert();
+    this._nB.copy(n).applyQuaternion(this._qi2);
+    const flat = Math.min(Math.abs(this._nB.y), 1);   // 1 = square belly/top hit
+    let dx = -this._nB.x, dz = -this._nB.z;
+    const hl = Math.sqrt(dx * dx + dz * dz);
+    if (hl > 1e-4) { dx /= hl; dz /= hl; } else { dx = 0; dz = 0; }
+
+    const props = this.damage.props;
+    let msgIdx = -1, msgKind = 0, msgDelta = 0;
+    for (let i = 0; i < 4; i++) {
+      const before = props[i];
+      if (before <= 0) continue;
+      const facing = dx * PROP_X[i] + dz * PROP_Z[i];            // -1..1
+      // max(0, ...) matters: the arm facing directly away lands on facing = -1
+      // and float error can push it a hair below, where pow() returns NaN.
+      const dirW = 0.1 + 0.9 * Math.pow(Math.max(0, (1 + facing) * 0.5), DMG_DIR_POW);
+      const wgt = dirW + (0.5 - dirW) * flat;                    // flat → even spread
+      let after = before - propBase * wgt;
+      if (after <= DMG_DEAD) after = 0;
+      else if (after > 1) after = 1;
+      if (after === before) continue;
+      props[i] = after;
+      // Report the most alarming single prop event of this impact.
+      const kind = after === 0 ? 2 : (before > DMG_NICK && after <= DMG_NICK ? 1 : 0);
+      const delta = before - after;
+      if (kind > msgKind || (kind > 0 && kind === msgKind && delta > msgDelta)) {
+        msgIdx = i; msgKind = kind; msgDelta = delta;
+      }
+    }
+
+    // ---- frame ----
+    const fBefore = this.damage.frame;
+    let frame = fBefore - Math.pow(u, DMG_FRAME_EXP) * (DMG_FRAME_EDGE + DMG_FRAME_FLAT * flat);
+    if (eff >= DMG_CATASTROPHIC) frame = 0;                      // nothing survives this
+    if (frame <= 0) frame = 0; else if (frame > 1) frame = 1;
+    this.damage.frame = frame;
+    this._recomputeDamage();
+
+    // ---- flash, highest severity wins inside the throttle window ----
+    let prio = 0, msg = '';
+    if (msgKind === 1) { prio = 1; msg = 'PROP ' + (msgIdx + 1) + ' DAMAGED'; }
+    if (msgKind === 2) { prio = 2; msg = 'PROP ' + (msgIdx + 1) + ' DESTROYED'; }
+    if (frame > 0 && fBefore > DMG_CRIT_FRAME && frame <= DMG_CRIT_FRAME) {
+      prio = 3; msg = 'AIRFRAME CRITICAL';
+    }
+    if (prio > 0 && (this._simT >= this._flashUntil || prio > this._flashPrio)) {
+      this._flashUntil = this._simT + DMG_FLASH_GAP;
+      this._flashPrio = prio;
+      emit('osd:flash', { text: msg, ms: 1200 });
+    }
+
+    // ---- write-off ----
+    if (frame <= 0 && !this.crashed) {
       this.crashed = true;
       // Impart a tumble; motors are cut (armed goes false via main.js).
-      const k = Math.min(impact * 0.5, 12);
+      const k = Math.min(eff * 0.5, 12);
       this.angularVelocity.x += (Math.random() - 0.5) * k;
       this.angularVelocity.y += (Math.random() - 0.5) * k * 0.5;
       this.angularVelocity.z += (Math.random() - 0.5) * k;
       const awl = this.angularVelocity.length();
       if (awl > MAX_ANG_VEL) this.angularVelocity.multiplyScalar(MAX_ANG_VEL / awl);
     }
+  }
+
+  /**
+   * Refresh everything derived from `damage`: lift loss, the persistent torque
+   * bias per axis, and the hull figure. Called on every damage change and on
+   * reset — never per step.
+   *
+   * Sign derivations (body: +X right, +Y up, -Z forward):
+   *   right-side lift → +Z torque → rolls LEFT, so losing a right prop rolls right
+   *   front lift      → +X torque → pitches UP,  so losing a front prop drops the nose
+   *   props 0/2 put +Y reaction torque into the frame, 1/3 put -Y
+   */
+  _recomputeDamage() {
+    const p = this.damage.props;
+    const mean = (p[0] + p[1] + p[2] + p[3]) * 0.25;
+    const frame = this.damage.frame;
+    this._thrustMul = mean;
+    this.damage.overall = clamp(0.55 * mean + 0.45 * frame, 0, 1);
+    this._dmgActive = mean < 0.999 || frame < 0.999;
+    this._biasZ = ((p[0] + p[1]) - (p[2] + p[3])) * 0.5 * DMG_ASYM_RP;   // right - left
+    this._biasX = ((p[0] + p[3]) - (p[1] + p[2])) * 0.5 * DMG_ASYM_RP;   // front - rear
+    this._biasY = ((p[0] + p[2]) - (p[1] + p[3])) * 0.5 * DMG_ASYM_YAW;  // diagonal A - B
   }
 }
