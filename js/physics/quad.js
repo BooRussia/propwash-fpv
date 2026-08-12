@@ -18,11 +18,22 @@
 //   battery: rest-voltage discharge + throttle^2 sag → punch fade
 //   per-axis quadratic aero drag (front/top/side CdA), wind aware
 //   prop wash wobble when descending into own wake, ground effect,
-//   ground + AABB collisions with crash detection.
+//   ground + shape collisions with crash detection.
+//
+// Collision (js/core/collision.js):
+//   The airframe is a sphere of 0.55 * wheelbase. World colliders are
+//   boxes / Y-cylinders / yaw-boxes / spheres, indexed in a uniform XZ
+//   spatial hash that is built once per map and cached on the array
+//   identity. Fast steps are swept (2-6 substeps) so thin geometry —
+//   railings, fences, sign posts — cannot be tunnelled at 40 m/s, and
+//   the two deepest contacts of a step are resolved together so corners
+//   push out instead of shoving the quad through the neighbour.
+//   Legacy {min,max} colliders are still accepted verbatim.
 // ============================================================
 
 import * as THREE from 'three';
 import { clamp } from '../core/state.js';
+import { buildGrid, resolveSphere } from '../core/collision.js';
 
 const DEG2RAD = Math.PI / 180;
 const GRAVITY = 9.81;           // m/s^2
@@ -44,6 +55,11 @@ const DEF_RATE_RP = { centerSens: 200, maxRate: 670, expo: 0.54 };
 const DEF_RATE_Y  = { centerSens: 200, maxRate: 500, expo: 0.54 };
 const ZERO_VEC = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
+
+// ---- swept collision tuning ----
+const SWEEP_TRIGGER = 0.35;     // sweep once travel > this * airframe radius
+const SWEEP_MAX_SUB = 6;
+const SWEEP_TELEPORT = 2.0;     // metres of travel treated as a teleport, not flight
 
 /**
  * Betaflight applyActualRates (deg values pre-converted to rad):
@@ -110,6 +126,20 @@ export class Quad {
     this._fW = new THREE.Vector3();                // world-frame force
     this._n = new THREE.Vector3();                 // contact normal
     this._vt = new THREE.Vector3();                // tangential velocity
+    this._prevPos = new THREE.Vector3();           // position before integration
+    this._n0 = new THREE.Vector3();                // deepest contact normal
+    this._n1 = new THREE.Vector3();                // 2nd deepest contact normal
+    this._nT = new THREE.Vector3();                // scratch normal
+    this._tv = new THREE.Vector3();                // scratch tangent
+    this._near = [];                               // broadphase result (reused)
+    this._strikeStep = false;                      // one prop strike per step
+
+    // ---- collider broadphase cache (keyed on the map's array identity) ----
+    this._grid = null;
+    this._gridSrc = null;
+    this._gridLen = -1;
+    /** Diagnostics for tooling: {shapes, cells, maxBucket, buildMs}. */
+    this.gridStats = null;
   }
 
   /** Zero all state; place slightly above ground, level, facing yawRad. */
@@ -117,6 +147,9 @@ export class Quad {
     if (positionVec3) this.position.copy(positionVec3);
     else this.position.set(0, 0, 0);
     this.position.y += this.spec.sizeM * 0.5 + 0.02;
+    // Sweep origin follows the teleport, otherwise the first step after a
+    // respawn would sweep the whole map and invent contacts on the way.
+    this._prevPos.copy(this.position);
     this.quaternion.setFromAxisAngle(UP, Number.isFinite(yawRad) ? yawRad : 0);
     this.velocity.set(0, 0, 0);
     this.angularVelocity.set(0, 0, 0);
@@ -170,26 +203,37 @@ export class Quad {
 
   /**
    * Fixed-step physics update.
-   * env: { getGroundHeight(x,z)->y, colliders: [{min,max}]|null,
+   * env: { getGroundHeight(x,z)->y,
+   *        colliders: shape[] | null,   // js/core/collision.js shapes; a plain
+   *                                     // {min,max} is still read as an AABB
    *        wind: Vector3 (m/s), armed: bool }
+   * The colliders array is indexed once and cached on its identity+length, so
+   * pass the map's own array (not a fresh copy) every step.
    */
   step(dt, env) {
     if (!(dt > 0) || !Number.isFinite(dt)) return;
     const spec = this.spec;
     const armed = !!(env && env.armed) && !this.crashed;
     this._armedNow = armed;               // read by _impact for prop-strike response
-    const wind = (env && env.wind) ? env.wind : ZERO_VEC;
+    this._strikeStep = false;             // at most one prop-strike kick per step
+    // A NaN in the wind field would poison every downstream term, and the
+    // recovery net below would then teleport the quad forever.
+    let wind = (env && env.wind) ? env.wind : ZERO_VEC;
+    if (!Number.isFinite(wind.x + wind.y + wind.z)) wind = ZERO_VEC;
     const getH = (env && typeof env.getGroundHeight === 'function') ? env.getGroundHeight : null;
 
     // Payload raises mass and (partially) inertia.
     const carry = Math.max(0, Number.isFinite(this.carryMassKg) ? this.carryMassKg : 0);
-    const mass = spec.massKg + carry;
-    const iScale = 1 + (carry / spec.massKg) * 0.6;
-    const Ix = spec.inertia.x * iScale;
-    const Iy = spec.inertia.y * iScale;
-    const Iz = spec.inertia.z * iScale;
+    const mass = Math.max(1e-4, spec.massKg + carry);
+    const iScale = 1 + (carry / Math.max(1e-4, spec.massKg)) * 0.6;
+    // Guarded: a spec with a zero/NaN inertia or torque axis used to divide by
+    // zero here and NaN the whole state (and the motorOutput term below).
+    const Ix = Math.max(1e-9, spec.inertia.x * iScale);
+    const Iy = Math.max(1e-9, spec.inertia.y * iScale);
+    const Iz = Math.max(1e-9, spec.inertia.z * iScale);
     const mt = spec.maxTorque;
-    const aM = 1 - Math.exp(-dt / spec.motorTau);   // motor-lag blend
+    const mtx = Math.max(1e-9, mt.x), mty = Math.max(1e-9, mt.y), mtz = Math.max(1e-9, mt.z);
+    const aM = 1 - Math.exp(-dt / Math.max(1e-4, spec.motorTau)); // motor-lag blend
 
     // Air-mode idle: props always spin while armed.
     const thrIn = armed ? Math.max(this._input.throttle, AIRMODE_IDLE) : 0;
@@ -245,9 +289,9 @@ export class Quad {
 
     // ---------------- rate controller → torque ----------------
     const w = this.angularVelocity;
-    const cmdX = armed ? clamp(Ix * (spX - w.x) / RESPONSE_TAU, -mt.x, mt.x) : 0;
-    const cmdY = armed ? clamp(Iy * (spY - w.y) / RESPONSE_TAU, -mt.y, mt.y) : 0;
-    const cmdZ = armed ? clamp(Iz * (spZ - w.z) / RESPONSE_TAU, -mt.z, mt.z) : 0;
+    const cmdX = armed ? clamp(Ix * (spX - w.x) / RESPONSE_TAU, -mtx, mtx) : 0;
+    const cmdY = armed ? clamp(Iy * (spY - w.y) / RESPONSE_TAU, -mty, mty) : 0;
+    const cmdZ = armed ? clamp(Iz * (spZ - w.z) / RESPONSE_TAU, -mtz, mtz) : 0;
     // First-order motor lag on applied torque — the attack/overshoot feel.
     this._tq.x += (cmdX - this._tq.x) * aM;
     this._tq.y += (cmdY - this._tq.y) * aM;
@@ -267,9 +311,9 @@ export class Quad {
       this._washTgt.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
     }
     this._washN.lerp(this._washTgt, 1 - Math.exp(-dt / 0.02));
-    const washX = washAmp * 0.5 * mt.x * this._washN.x;
-    const washY = washAmp * 0.15 * mt.y * this._washN.y;
-    const washZ = washAmp * 0.5 * mt.z * this._washN.z;
+    const washX = washAmp * 0.5 * mtx * this._washN.x;
+    const washY = washAmp * 0.15 * mty * this._washN.y;
+    const washZ = washAmp * 0.5 * mtz * this._washN.z;
 
     // ---------------- integrate rotation ----------------
     w.x += ((this._tq.x + washX) / Ix) * dt;
@@ -313,30 +357,43 @@ export class Quad {
     const vl = this.velocity.length();
     if (vl > MAX_SPEED) this.velocity.multiplyScalar(MAX_SPEED / vl);
 
+    // Sweep origin: where the airframe was before this step's translation.
+    this._prevPos.copy(this.position);
     this.position.addScaledVector(this.velocity, dt);
 
     // ---------------- collisions ----------------
     this._collideGround(getH, spec, dt);
     this._collideBoxes(env ? env.colliders : null, spec, dt);
 
-    // Numerical safety net (bad map data etc.)
+    // Numerical safety net (bad map data etc.). The actuator filters have to
+    // be cleared too — a NaN parked in _thrust/_tq/_wash used to re-poison the
+    // state every step, teleporting the quad to the origin forever.
     if (!Number.isFinite(this.position.x + this.position.y + this.position.z) ||
-        !Number.isFinite(this.velocity.x + this.velocity.y + this.velocity.z)) {
-      this.position.set(0, 2, 0);
+        !Number.isFinite(this.velocity.x + this.velocity.y + this.velocity.z) ||
+        !Number.isFinite(this.quaternion.x + this.quaternion.y + this.quaternion.z + this.quaternion.w)) {
+      this.position.set(0, this._ground(getH, 0, 0) + 2, 0);
+      this._prevPos.copy(this.position);
       this.velocity.set(0, 0, 0);
       w.set(0, 0, 0);
       this.quaternion.identity();
+      this._thrust = 0;
+      this._tq.set(0, 0, 0);
+      this._washN.set(0, 0, 0);
+      this._washTgt.set(0, 0, 0);
+      this._sag = 0;
+      this.motorOutput = 0;
     }
 
     // ---------------- motor output (audio / visuals) ----------------
     let mo = 0;
     if (armed) {
-      const act = (Math.abs(this._tq.x) / mt.x +
-                   Math.abs(this._tq.y) / mt.y +
-                   Math.abs(this._tq.z) / mt.z) / 3;
+      const act = (Math.abs(this._tq.x) / mtx +
+                   Math.abs(this._tq.y) / mty +
+                   Math.abs(this._tq.z) / mtz) / 3;
       mo = clamp(thrIn + 0.25 * act, 0, 1);
     }
     this.motorOutput += (mo - this.motorOutput) * aM;
+    if (!Number.isFinite(this.motorOutput)) this.motorOutput = 0;
   }
 
   // ------------------------------------------------------------
@@ -366,45 +423,145 @@ export class Quad {
     const hz0 = this._ground(getH, p.x, p.z - e);
     const hz1 = this._ground(getH, p.x, p.z + e);
     this._n.set(hx0 - hx1, 2 * e, hz0 - hz1).normalize();
-    p.y = gy + r;
+    // Push out along the surface normal, not straight up: the distance from
+    // the airframe centre to the local ground plane is (p.y - gy) * n.y, so a
+    // slope used to leave the quad buried up to (1 - n.y) * r deep. On flat
+    // ground n.y == 1 and this reduces exactly to the old `p.y = gy + r`.
+    const pen = r - (p.y - gy) * this._n.y;
+    if (pen <= 0) return;
+    p.addScaledVector(this._n, pen);
     this._impact(this._n, spec, dt);
   }
 
+  /**
+   * Build/refresh the broadphase for a map's collider bag. Cached on the
+   * array identity *and* length, so maps that stream colliders in after the
+   * handle is returned (procedural) pick them up without a manual flush.
+   */
+  _ensureGrid(cols) {
+    if (!cols || !cols.length) {
+      this._grid = null;
+      this._gridSrc = cols || null;
+      this._gridLen = cols ? cols.length : -1;
+      return null;
+    }
+    if (this._grid && cols === this._gridSrc && cols.length === this._gridLen) return this._grid;
+    const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+    const grid = buildGrid(cols);
+    const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+    this._grid = grid;
+    this._gridSrc = cols;
+    this._gridLen = cols.length;
+    this.gridStats = {
+      shapes: grid.itemCount,
+      cells: grid.cellCount,
+      cellSize: grid.cellSize,
+      oversized: grid.alwaysCount,
+      maxBucket: grid.maxBucket,
+      buildMs: t1 - t0,
+    };
+    return grid;
+  }
+
+  /**
+   * Obstacle collisions. Broadphase = spatial hash over the swept segment;
+   * narrowphase = sphere vs {aabb|cyl|obb|sphere}. Fast steps are swept so
+   * thin geometry cannot be tunnelled.
+   */
   _collideBoxes(cols, spec, dt) {
-    if (!cols || !cols.length) return;
+    const grid = this._ensureGrid(cols);
+    if (!grid) return;
+
     const r = spec.sizeM * 0.55;
     const p = this.position;
-    for (let i = 0; i < cols.length; i++) {
-      const b = cols[i];
-      if (!b || !b.min || !b.max) continue;
-      const mn = b.min, mx = b.max;
-      if (p.x < mn.x - r || p.x > mx.x + r ||
-          p.y < mn.y - r || p.y > mx.y + r ||
-          p.z < mn.z - r || p.z > mx.z + r) continue;
-      const cx = clamp(p.x, mn.x, mx.x);
-      const cy = clamp(p.y, mn.y, mx.y);
-      const cz = clamp(p.z, mn.z, mx.z);
-      const dx = p.x - cx, dy = p.y - cy, dz = p.z - cz;
-      const d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 > r * r) continue;
-      if (d2 > 1e-10) {
-        // Sphere centre outside the box: push out along contact direction.
-        const inv = 1 / Math.sqrt(d2);
-        this._n.set(dx * inv, dy * inv, dz * inv);
-        p.set(cx + this._n.x * r, cy + this._n.y * r, cz + this._n.z * r);
-      } else {
-        // Centre inside the box: exit through the nearest face.
-        let best = p.x - mn.x;
-        this._n.set(-1, 0, 0);
-        if (mx.x - p.x < best) { best = mx.x - p.x; this._n.set(1, 0, 0); }
-        if (p.y - mn.y < best) { best = p.y - mn.y; this._n.set(0, -1, 0); }
-        if (mx.y - p.y < best) { best = mx.y - p.y; this._n.set(0, 1, 0); }
-        if (p.z - mn.z < best) { best = p.z - mn.z; this._n.set(0, 0, -1); }
-        if (mx.z - p.z < best) { best = mx.z - p.z; this._n.set(0, 0, 1); }
-        p.addScaledVector(this._n, best + r);
-      }
-      this._impact(this._n, spec, dt);
+    const pv = this._prevPos;
+    let sx = p.x - pv.x, sy = p.y - pv.y, sz = p.z - pv.z;
+    let seg = Math.sqrt(sx * sx + sy * sy + sz * sz);
+    // A jump far beyond anything the flight model can produce means someone
+    // teleported us (respawn, debug pinning). Resolve at the destination only —
+    // and re-anchor the sweep origin so the broadphase query below is centred
+    // on where we actually are, not where we were.
+    if (!(seg >= 0) || seg > SWEEP_TELEPORT) { sx = sy = sz = 0; seg = 0; pv.copy(p); }
+
+    // One broadphase query covering the whole swept segment plus slack for
+    // the push-out corrections applied during the march.
+    const margin = r + 0.35;
+    const list = grid.query(pv.x + sx * 0.5, pv.z + sz * 0.5, seg * 0.5 + margin, this._near);
+    if (!list.length) return;
+
+    const lim = SWEEP_TRIGGER * r;
+    let sub = 1;
+    if (lim > 0 && seg > lim) {
+      sub = Math.ceil(seg / lim);
+      if (sub < 2) sub = 2;
+      if (sub > SWEEP_MAX_SUB) sub = SWEEP_MAX_SUB;
     }
+    if (sub === 1) { this._resolveAt(list, r, spec, dt); return; }
+
+    // March the segment. `a*` carries the corrections of earlier substeps
+    // forward, so tangential (sliding) motion survives a contact. The last
+    // substep lands on the exact integrated target, so a sweep that touches
+    // nothing leaves the position bit-identical to the unswept path.
+    const sdt = dt / sub;
+    const tx = p.x, ty = p.y, tz = p.z;
+    let ax = 0, ay = 0, az = 0;
+    for (let i = 1; i <= sub; i++) {
+      if (i === sub) p.set(tx + ax, ty + ay, tz + az);
+      else {
+        const t = i / sub;
+        p.set(pv.x + sx * t + ax, pv.y + sy * t + ay, pv.z + sz * t + az);
+      }
+      const bx = p.x, by = p.y, bz = p.z;
+      this._resolveAt(list, r, spec, sdt);
+      ax += p.x - bx; ay += p.y - by; az += p.z - bz;
+    }
+  }
+
+  /**
+   * Resolve the airframe sphere against a candidate list at its current
+   * position. The two deepest contacts are gathered first and resolved
+   * together — resolving sequentially (the old behaviour) could shove the
+   * quad out of one collider and straight into its neighbour in a corner.
+   * Returns the deepest penetration found (0 = untouched).
+   */
+  _resolveAt(list, r, spec, dt) {
+    const p = this.position;
+    const n0 = this._n0, n1 = this._n1, nT = this._nT;
+    let d0 = 0, d1 = 0;
+
+    for (let i = 0; i < list.length; i++) {
+      const depth = resolveSphere(list[i], p, r, nT);
+      if (!(depth > 0)) continue;
+      if (depth > d0) {
+        d1 = d0; n1.copy(n0);
+        d0 = depth; n0.copy(nT);
+      } else if (depth > d1) {
+        d1 = depth; n1.copy(nT);
+      }
+    }
+    if (d0 <= 0) return 0;
+
+    // --- positional: deepest first, then whatever the second still needs ---
+    p.addScaledVector(n0, d0);
+    if (d1 > 0) {
+      const c = n0.dot(n1);
+      const rem = d1 - d0 * c;              // residual after the first push
+      if (rem > 1e-5) {
+        // Move only along the part of n1 orthogonal to n0, so fixing the
+        // second contact cannot re-bury us in the first.
+        this._tv.copy(n1).addScaledVector(n0, -c);
+        const tl = this._tv.length();
+        if (tl > 1e-3) {
+          const s = Math.min(rem / tl, r * 2);
+          p.addScaledVector(this._tv, s / tl);
+        }
+      }
+    }
+
+    // --- velocity: project out along both normals (deepest first) ---
+    this._impact(n0, spec, dt);
+    if (d1 > 0) this._impact(n1, spec, dt);
+    return d0;
   }
 
   /** Bounce / friction / crash response against surface normal n. */
@@ -425,7 +582,10 @@ export class Quad {
 
     // Prop strike: spinning props catching a surface kick the quad violently.
     // A slow bump is survivable; a fast scrape while armed whips it around.
-    if (this._armedNow && !this.crashed && hard && tSpeed > 1.5) {
+    // Gated to once per physics step: a swept step can call _impact up to
+    // 12 times, and un-gated that stacked a dozen random kicks into one step.
+    if (this._armedNow && !this.crashed && hard && tSpeed > 1.5 && !this._strikeStep) {
+      this._strikeStep = true;
       const k = Math.min(tSpeed * 0.35, 6);
       this.angularVelocity.x += (Math.random() - 0.5) * k;
       this.angularVelocity.y += (Math.random() - 0.5) * k * 1.3; // yaw kick dominates

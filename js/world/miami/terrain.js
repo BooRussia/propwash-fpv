@@ -46,13 +46,46 @@ export async function buildGround(ctx) {
     // (b) city: z in [CITY_Z - 3, 630], sidewalk 1 tile = 2 m
     const Z0 = CITY_Z - 3, Z1 = 630;
     const depth = Z1 - Z0;
-    const geo = track(new THREE.PlaneGeometry(1500, depth, 150, 60));
+    const geo = track(new THREE.PlaneGeometry(1500, depth, 200, 100));
     geo.rotateX(-Math.PI / 2);
     geo.translate(0, 0, (Z0 + Z1) / 2);
     const pos = geo.attributes.position;
+    // City-block tinting. One shared sidewalk texture over 600 m of city reads
+    // as an endless white plain from the air; multiplying it per-vertex with a
+    // block-scale tint (concrete / asphalt / weathered) breaks it into parcels
+    // for zero extra draw calls. Deterministic hash — no rng draws consumed.
+    const cCol = new Float32Array(pos.count * 3);
+    const hash2 = (a, b) => {
+      let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1);
+      h = Math.imul(h ^ (h >>> 15), 0x2545f491);
+      return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+    };
+    const BLK_X = 62, BLK_Z = 47;
+    const parcel = new THREE.Color();
+    const white = new THREE.Color(0xffffff);
+    const PARCELS = [0xf6f2e8, 0xdcd7ca, 0xbcb8ad, 0xa5a29a, 0x8e8c85, 0x97a0a3];
     for (let i = 0; i < pos.count; i++) {
-      pos.setY(i, meshHeight(pos.getX(i), pos.getZ(i)));
+      const x = pos.getX(i), z = pos.getZ(i);
+      pos.setY(i, meshHeight(x, z));
+      const bx = Math.floor((x + 750) / BLK_X), bz = Math.floor((z - 27) / BLK_Z);
+      const r0 = hash2(bx, bz);
+      parcel.setHex(PARCELS[(r0 * PARCELS.length) | 0]);
+      // seams between parcels + fine mottling so a single parcel is not flat
+      const seam = Math.min(
+        Math.abs(((x + 750) % BLK_X) - BLK_X / 2) / (BLK_X / 2),
+        Math.abs(((z - 27) % BLK_Z) - BLK_Z / 2) / (BLK_Z / 2)
+      );
+      const k = 0.94 + 0.06 * seam + (hash2(x * 3 | 0, z * 3 | 0) - 0.5) * 0.05;
+      // the promenade band by the road stays clean pale concrete
+      const street = z < 58 ? Math.max(0, 1 - Math.abs(z - 44) / 14) : 0;
+      parcel.lerp(white, street);
+      // far field falls off so the horizon plain does not glare
+      const far = 1 - Math.min(0.3, Math.max(0, (z - 210) / 900));
+      cCol[i * 3] = parcel.r * k * far;
+      cCol[i * 3 + 1] = parcel.g * k * far;
+      cCol[i * 3 + 2] = parcel.b * k * far;
     }
+    geo.setAttribute('color', new THREE.BufferAttribute(cCol, 3));
     geo.computeVertexNormals();
     setAoUVs(geo);
     let mat;
@@ -61,6 +94,8 @@ export async function buildGround(ctx) {
     } else {
       mat = track(new THREE.MeshStandardMaterial({ color: 0x8f8f8c, roughness: 0.95, metalness: 0 }));
     }
+    mat.vertexColors = true;
+    mat.needsUpdate = true;
     // beach + city overlap (coplanar) in the seam band — push the city mesh
     // back in depth so the sand wins there instead of z-fighting
     mat.polygonOffset = true;
@@ -104,10 +139,11 @@ export async function buildOcean(ctx) {
         sunColor: 0xffffff,
         waterColor: 0x00404f,
         distortionScale: 2.4,
+        clipBias: 0.05,          // stops reflection shimmer right at the waterline
         fog: true,
       });
       water.rotation.x = -Math.PI / 2;
-      water.position.set(0, -0.05, -1700);
+      water.position.set(0, -0.09, -1700);
       track(water.material);
       root.add(water);
     } else {

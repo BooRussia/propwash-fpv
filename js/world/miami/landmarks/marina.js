@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { stripeTexture } from '../textures.js';
+import { plankTexture } from '../textures.js';
 import { buildSailboat, buildMotorYacht } from './yachts.js';
 
 /** Marina docks + boats. Returns { boats } for bobbing update. */
@@ -8,8 +8,8 @@ export function buildMarina(ctx) {
   const boats = [];
   {
     const MAR_X = 300;
-    const dockTex = track(stripeTexture('#96714a', '#755634'));
-    dockTex.repeat.set(2, 16);
+    const dockTex = track(plankTexture(0x9c7750, 41, 512, 512, 18));
+    dockTex.repeat.set(1, 11);
     const dockGeo = track(new THREE.BoxGeometry(4, 0.4, 90));
     const dockMat = track(new THREE.MeshStandardMaterial({ map: dockTex, roughness: 0.95 }));
     for (const dx of [0, 26, 52]) {

@@ -1,14 +1,161 @@
-import { scatterModels } from '../vegetation.js';
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { assetLib } from '../../core/assets.js';
+import { scatterModels, createPalms } from '../vegetation.js';
 import {
-  CITY_Y, PIER_X, WHEEL_X, groundHeight, baseProfile, sandNoise,
+  CITY_Y, PIER_X, WHEEL_X, groundHeight, baseProfile, sandNoise, inReserved,
 } from './constants.js';
+import { foliageTexture, parkingTexture, setAoUVs } from './textures.js';
+
+/**
+ * Materialise everything green the street-level pass laid out: clipped hedges,
+ * mulch beds, flower clusters, lawns, surface parking, tree grates and the two
+ * instanced palm fields. Spots inside a hero-landmark reservation are dropped
+ * here (filtering after the draws keeps the rng4 sequence intact).
+ * Returns { palmsEntry } for update/dispose.
+ */
+export async function buildLandscaping(ctx, spots) {
+  const { root, track, rng4 } = ctx;
+  const keep = (arr) => arr.filter((s) => !inReserved(s.x, s.z));
+  const hedgeSpots = keep(spots.hedgeSpots);
+  const mulchSpots = keep(spots.mulchSpots);
+  const flowerSpots = keep(spots.flowerSpots);
+  const lawnSpots = keep(spots.lawnSpots);
+  const lotSpots = keep(spots.lotSpots);
+  const grateSpots = keep(spots.grateSpots);
+  const palmSpots = keep(spots.palmSpots);
+  const blockPalmSpots = keep(spots.blockPalmSpots);
+  spots.entranceShrubSpots = keep(spots.entranceShrubSpots);
+
+  const q4 = new THREE.Quaternion();
+  const e4 = new THREE.Euler();
+  const v4 = new THREE.Vector3();
+  const s4 = new THREE.Vector3();
+  const m4c = new THREE.Matrix4();
+  const c4 = new THREE.Color();
+  const placeAll = (im, list, fill) => {
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i];
+      e4.set(0, s.ry || 0, 0);
+      q4.setFromEuler(e4);
+      v4.set(s.x, s.y !== undefined ? s.y : CITY_Y, s.z);
+      s4.set(s.sx || 1, s.sy || 1, s.sz || 1);
+      m4c.compose(v4, q4, s4);
+      im.setMatrixAt(i, m4c);
+      if (fill) fill(im, i, s);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    im.computeBoundingSphere();
+    root.add(im);
+    return im;
+  };
+
+  if (hedgeSpots.length) {
+    // rounded box + mottled foliage sheet + deep, desaturated greens: clipped
+    // hedge instead of the bright plastic loaf a flat colour gives
+    // 1 subdivision, not 3: ~1600 hedge instances at 588 tris each cost 0.9 M
+    // triangles a frame — the rounded silhouette survives the drop, the cost
+    // does not.
+    const hedgeGeo = track(new RoundedBoxGeometry(1.8, 0.8, 0.75, 1, 0.24));
+    const folTex = track(foliageTexture());
+    folTex.repeat.set(2.5, 1.6);
+    const hedgeMat = track(new THREE.MeshStandardMaterial({
+      map: folTex, color: 0xffffff, roughness: 1, metalness: 0,
+    }));
+    const hedges = new THREE.InstancedMesh(hedgeGeo, hedgeMat, hedgeSpots.length);
+    const HEDGE_COLS = [0x5f7a4a, 0x6a8450, 0x546e42, 0x718a55, 0x4d6b3f];
+    placeAll(hedges, hedgeSpots, (im, i) => {
+      im.setColorAt(i, c4.setHex(HEDGE_COLS[(rng4() * HEDGE_COLS.length) | 0])
+        .offsetHSL((rng4() - 0.5) * 0.03, 0, (rng4() - 0.5) * 0.07));
+    });
+    hedges.castShadow = true;
+    hedges.receiveShadow = true;
+  }
+  if (lotSpots.length) {
+    // surface parking: real city fabric between the tower rows
+    const lotGeo = track(new THREE.PlaneGeometry(30, 18));
+    lotGeo.rotateX(-Math.PI / 2);
+    const lotTex = track(parkingTexture());
+    lotTex.repeat.set(30 / 22, 18 / 17);
+    const lotMat = track(new THREE.MeshStandardMaterial({
+      map: lotTex, roughness: 0.95, metalness: 0,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    }));
+    for (const s of lotSpots) s.y = CITY_Y + 0.015;
+    const lots = placeAll(new THREE.InstancedMesh(lotGeo, lotMat, lotSpots.length), lotSpots);
+    lots.receiveShadow = true;
+  }
+  if (grateSpots.length) {
+    const grateGeo = track(new THREE.RingGeometry(0.62, 1.15, 10, 1));
+    grateGeo.rotateX(-Math.PI / 2);
+    const grateMat = track(new THREE.MeshStandardMaterial({
+      color: 0x3a3d40, roughness: 0.65, metalness: 0.45, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+    }));
+    placeAll(new THREE.InstancedMesh(grateGeo, grateMat, grateSpots.length), grateSpots);
+  }
+  if (mulchSpots.length) {
+    const mulchGeo = track(new RoundedBoxGeometry(1.55, 0.26, 1.1, 1, 0.09));
+    const mulchMat = track(new THREE.MeshStandardMaterial({ color: 0x38302a, roughness: 1 }));
+    placeAll(new THREE.InstancedMesh(mulchGeo, mulchMat, mulchSpots.length), mulchSpots);
+  }
+  if (flowerSpots.length) {
+    const flowGeo = track(new THREE.SphereGeometry(0.17, 6, 4));
+    flowGeo.scale(1, 0.68, 1);
+    const flowMat = track(new THREE.MeshStandardMaterial({ roughness: 0.75 }));
+    placeAll(new THREE.InstancedMesh(flowGeo, flowMat, flowerSpots.length),
+      flowerSpots, (im, i, s) => im.setColorAt(i, c4.setHex(s.hex)));
+  }
+  if (lawnSpots.length) {
+    const lawnGeo = track(new THREE.PlaneGeometry(9, 5.5));
+    lawnGeo.rotateX(-Math.PI / 2);
+    setAoUVs(lawnGeo);
+    let lawnMat;
+    const lawnSet = await assetLib.textureSet('grass_lawn');
+    if (lawnSet.map) {
+      lawnMat = await assetLib.pbrMaterial('grass_lawn', { repeat: [7, 4.5] });
+    } else {
+      lawnMat = track(new THREE.MeshStandardMaterial({ color: 0x4c7a3d, roughness: 1 }));
+    }
+    lawnMat.polygonOffset = true;
+    lawnMat.polygonOffsetFactor = -2;
+    lawnMat.polygonOffsetUnits = -2;
+    // NOTE: no material.vertexColors here — the plane carries no colour
+    // attribute, and USE_COLOR without one resolves to black. InstancedMesh
+    // per-instance colour (setColorAt) works on its own.
+    for (const s of lawnSpots) s.y = CITY_Y + 0.025;
+    const lawns = placeAll(new THREE.InstancedMesh(lawnGeo, lawnMat, lawnSpots.length), lawnSpots, (im, i) => {
+      im.setColorAt(i, c4.setHSL(0.26 + (rng4() - 0.5) * 0.05, 0.1 + rng4() * 0.14, 0.74 + rng4() * 0.14));
+    });
+    lawns.receiveShadow = true;
+  }
+
+  // entrance + block palms (one instanced field; sways like the rest)
+  let palmsEntry = null;
+  const allEntryPalms = palmSpots.concat(blockPalmSpots);
+  if (allEntryPalms.length) {
+    try {
+      palmsEntry = await createPalms(allEntryPalms.length);
+      for (let i = 0; i < allEntryPalms.length; i++) {
+        const p = allEntryPalms[i];
+        palmsEntry.placeAt(i, p.x, CITY_Y, p.z, p.sc, p.ry);
+      }
+      palmsEntry.finalize(allEntryPalms.length);
+      root.add(palmsEntry.group);
+    } catch (e) {
+      console.warn('[miami] entrance palms skipped:', e);
+      palmsEntry = null;
+    }
+  }
+  return { palmsEntry };
+}
 
 /** Photoscan rocks + tropical shrubs/ferns (rng2 only). */
-export async function buildDressing(ctx, towerData) {
+export async function buildDressing(ctx, towerData, entranceShrubSpots) {
   const { root, colliders, scatterHandles, rng2 } = ctx;
 
   const scatterSafe = async (slug, placements, colliderList, colliderSize) => {
-    if (!placements.length) return;
+    if (!placements || !placements.length) return;
     try {
       const h = await scatterModels(root, slug, placements, colliderList, colliderSize);
       if (h) scatterHandles.push(h);
@@ -66,6 +213,8 @@ export async function buildDressing(ctx, towerData) {
     await scatterSafe('shrub_02', s02, null, 0);
     await scatterSafe('shrub_03', s03, null, 0);
     await scatterSafe('anthurium_botany_01', anth, null, 0);
+    // storefront/lawn accents collected by the street-level pass (rng4)
+    await scatterSafe('shrub_03', entranceShrubSpots, null, 0);
 
     // fern clusters at the front-row tower bases
     const ferns = [];

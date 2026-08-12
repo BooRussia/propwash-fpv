@@ -3,7 +3,7 @@
 // Exports: class Menu { constructor(), open(), close(), get isOpen }
 // main.js calls open()/close(); ESC handling lives in main.js.
 // ============================================================
-import { settings, saveSettings, emit, clamp, resetSettings } from '../core/state.js';
+import { settings, saveSettings, emit, on, clamp, resetSettings } from '../core/state.js';
 import { DRONES, hoverThrottle } from '../physics/drones.js';
 
 // ---------------------------------------------------------------
@@ -33,6 +33,28 @@ function fmtTime(h) {
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 function compass(deg) { return COMPASS[Math.round(((deg % 360) + 360) % 360 / 45) % 8]; }
+
+// ---------------------------------------------------------------
+// trail list formatting
+// ---------------------------------------------------------------
+function fmtDur(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  return `${Math.floor(s / 60)}:${pad2(s % 60)}`;
+}
+
+function fmtDate(ms) {
+  const n = Number(ms);
+  if (!isFinite(n) || n <= 0) return '';
+  try { return new Date(n).toLocaleDateString(); } catch (e) { return ''; }
+}
+
+function trailMeta(t) {
+  if (t.premade) return t.blurb || 'Built-in route';
+  const bits = [`${Math.round(Number(t.lengthM) || 0)} m`, fmtDur(t.durationS), `${t.samples} pts`];
+  const d = fmtDate(t.createdAt);
+  if (d) bits.push(d);
+  return bits.join('  ·  ');
+}
 
 // ---------------------------------------------------------------
 // drone-spec readers (tolerant of field naming in drones.js)
@@ -118,6 +140,7 @@ const RATE_PRESETS = [
 const TABS = [
   { id: 'fly', label: 'Fly', icon: '🛩' },
   { id: 'maps', label: 'Maps', icon: '🗺' },
+  { id: 'trails', label: 'Trails', icon: '🛤' },
   { id: 'rates', label: 'Rates', icon: '📈' },
   { id: 'controller', label: 'Controller', icon: '🎮' },
   { id: 'environment', label: 'Environment', icon: '🌦' },
@@ -181,9 +204,14 @@ export class Menu {
     this._gpTimer = null;
     this._wizardOpen = settings.map === 'procedural';
     this._rwOpen = settings.map === 'realworld';
+    this._trailState = { map: '', recording: false, activeId: null, pending: null, trails: [] };
+    this._trailSig = null;
 
     this._injectStyles();
     this._build();
+
+    // TrailSystem answers 'trail:list' with 'trail:list:result'
+    on('trail:list:result', (d) => this._onTrails(d));
 
     const mount = document.getElementById('ui-root') || document.body;
     mount.appendChild(this.backdrop);
@@ -200,6 +228,7 @@ export class Menu {
     this._syncAll();
     this._drawRates();
     this._pollGamepads();
+    if (this._activeTab === 'trails') this._requestTrails();
     this._startGpPoll();
     this.backdrop.classList.add('pwm-open');
     emit('menu:open');
@@ -230,7 +259,10 @@ export class Menu {
 
   _startGpPoll() {
     this._stopGpPoll();
-    this._gpTimer = setInterval(() => this._pollGamepads(), 500);
+    this._gpTimer = setInterval(() => {
+      this._pollGamepads();
+      if (this._activeTab === 'trails') this._requestTrails();
+    }, 500);
   }
 
   _stopGpPoll() {
@@ -246,6 +278,7 @@ export class Menu {
     }
     if (this._content) this._content.scrollTop = this._scrollPos[id] || 0;
     if (id === 'rates') this._drawRates();
+    if (id === 'trails') this._requestTrails();
   }
 
   // ------------------------------------------------------------
@@ -315,6 +348,7 @@ export class Menu {
     };
     this._buildFly(section('fly'));
     this._buildMaps(section('maps'));
+    this._buildTrails(section('trails'));
     this._buildRates(section('rates'));
     this._buildController(section('controller'));
     this._buildEnvironment(section('environment'));
@@ -836,6 +870,155 @@ export class Menu {
       paintSummary();
     };
     this._syncFns.push(this._paintRW);
+  }
+
+  // ------------------------------------------------------------
+  // TAB: TRAILS
+  // Record a line, save it, follow it. All state lives in
+  // js/world/trails.js — this tab only talks over the bus.
+  // ------------------------------------------------------------
+  _buildTrails(sec) {
+    sec.appendChild(el('div', 'pw-h2', 'Record a line'));
+    sec.appendChild(el('div', 'pwm-note',
+      'Hit RECORD, close the menu and fly the line you like. PropWash samples the drone 20× a second and ' +
+      'lays a glowing ribbon behind you. Press STOP when you are happy with it, then name it and save.'));
+
+    const recRow = el('div', 'pwm-actions');
+    this._trailRecBtn = btn('pw-btn primary pwm-rec-btn', '● RECORD', () => {
+      emit('trail:record:toggle');
+      this._requestTrails();
+    });
+    recRow.appendChild(this._trailRecBtn);
+    const recState = el('div', 'pwm-rec-state pw-mono');
+    this._trailRecDot = el('span', 'pwm-rec-dot');
+    recState.appendChild(this._trailRecDot);
+    this._trailRecLabel = el('span', null, 'IDLE');
+    recState.appendChild(this._trailRecLabel);
+    recRow.appendChild(recState);
+    sec.appendChild(recRow);
+    sec.appendChild(el('div', 'pwm-note',
+      'Recording only captures while the motors are armed — recording keeps running after you close this menu.'));
+
+    // ---------------- save ----------------
+    sec.appendChild(el('div', 'pw-h2', 'Save recorded line'));
+    const saveRow = el('div', 'pw-row');
+    saveRow.appendChild(el('div', 'pw-label', 'Trail name'));
+    const nameInput = el('input', 'pw-input pwm-trail-input');
+    nameInput.type = 'text';
+    nameInput.maxLength = 48;
+    nameInput.placeholder = 'Sunset Line';
+    nameInput.autocomplete = 'off';
+    nameInput.spellcheck = false;
+    const doSave = () => {
+      if (!this._trailState.pending) return;
+      emit('trail:save', { name: nameInput.value });
+      nameInput.value = '';
+      this._requestTrails();
+    };
+    nameInput.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+    });
+    nameInput.addEventListener('keyup', (e) => e.stopPropagation());
+    saveRow.appendChild(nameInput);
+    this._trailSaveBtn = btn('pw-btn primary', '💾  Save trail', doSave);
+    saveRow.appendChild(this._trailSaveBtn);
+    sec.appendChild(saveRow);
+    this._trailNameInput = nameInput;
+    this._trailPendingNote = el('div', 'pwm-note', 'Nothing recorded yet.');
+    sec.appendChild(this._trailPendingNote);
+
+    // ---------------- list ----------------
+    const head = el('div', 'pwm-trail-head');
+    head.appendChild(el('div', 'pw-h2 pwm-trail-h2', 'Trails on this map'));
+    head.appendChild(el('div', 'pwm-spacer'));
+    head.appendChild(btn('pw-btn pwm-mini', 'Hide trail', () => { emit('trail:hide'); this._requestTrails(); }));
+    head.appendChild(btn('pw-btn pwm-mini', 'Refresh', () => { this._trailSig = null; this._requestTrails(); }));
+    sec.appendChild(head);
+
+    this._trailList = el('div', 'pwm-trail-list');
+    sec.appendChild(this._trailList);
+    sec.appendChild(el('div', 'pwm-note',
+      'FLY drops you at the trail start with the ribbon lit — reset (R) keeps putting you back there until you hide it. ' +
+      'Built-in trails are marked PREMADE and cannot be deleted. Saved trails live in this browser.'));
+
+    this._paintTrails(true);
+  }
+
+  _requestTrails() {
+    emit('trail:list');
+  }
+
+  _onTrails(d) {
+    if (!d || typeof d !== 'object') return;
+    this._trailState = {
+      map: d.map || '',
+      recording: !!d.recording,
+      activeId: d.activeId || null,
+      pending: d.pending || null,
+      trails: Array.isArray(d.trails) ? d.trails : [],
+    };
+    this._paintTrails(false);
+  }
+
+  _paintTrails(force) {
+    const st = this._trailState;
+    if (this._trailRecBtn) {
+      this._trailRecBtn.textContent = st.recording ? '■  STOP RECORDING' : '●  RECORD';
+      this._trailRecBtn.classList.toggle('rec', st.recording);
+    }
+    if (this._trailRecDot) this._trailRecDot.classList.toggle('on', st.recording);
+    if (this._trailRecLabel) this._trailRecLabel.textContent = st.recording ? 'RECORDING' : 'IDLE';
+    if (this._trailSaveBtn) this._trailSaveBtn.disabled = !st.pending;
+    if (this._trailPendingNote) {
+      this._trailPendingNote.textContent = st.pending
+        ? `Unsaved line ready — ${Math.round(st.pending.lengthM)} m, ${fmtDur(st.pending.durationS)}, ${st.pending.samples} points.`
+        : (st.recording ? 'Recording… fly your line, then press STOP.' : 'Nothing recorded yet.');
+    }
+    if (!this._trailList) return;
+
+    // rebuild the rows only when something actually changed
+    const sig = `${st.map}|${st.activeId}|${st.trails.map((t) => `${t.id}:${t.name}:${t.samples}`).join(',')}`;
+    if (!force && sig === this._trailSig) return;
+    this._trailSig = sig;
+    this._trailList.textContent = '';
+
+    if (!st.trails.length) {
+      this._trailList.appendChild(el('div', 'pwm-trail-empty pwm-dim2',
+        'No trails on this map yet — record your first line above.'));
+      return;
+    }
+
+    for (const t of st.trails) {
+      const row = el('div', 'pwm-trail-row');
+      row.classList.toggle('active', !!t.active);
+
+      const main = el('div', 'pwm-trail-main');
+      const title = el('div', 'pwm-trail-name');
+      title.appendChild(el('span', null, t.name || 'Untitled'));
+      if (t.premade) title.appendChild(el('span', 'pwm-badge alt', 'Premade'));
+      if (t.active) title.appendChild(el('span', 'pwm-badge', 'Showing'));
+      main.appendChild(title);
+      main.appendChild(el('div', 'pwm-trail-meta pw-mono', trailMeta(t)));
+      row.appendChild(main);
+
+      row.appendChild(btn('pw-btn pwm-mini primary', '▶  Fly', () => {
+        emit('trail:fly', { id: t.id });
+        this.close();
+      }));
+      if (!t.premade) {
+        row.appendChild(btn('pw-btn pwm-mini danger', 'Delete', () => {
+          let ok = false;
+          try { ok = window.confirm(`Delete trail “${t.name}”? This cannot be undone.`); }
+          catch (e) { ok = false; }
+          if (!ok) return;
+          emit('trail:delete', { id: t.id });
+          this._trailSig = null;
+          this._requestTrails();
+        }));
+      }
+      this._trailList.appendChild(row);
+    }
   }
 
   // ------------------------------------------------------------
@@ -1576,6 +1759,50 @@ export class Menu {
 .pwm-status .v { font-family: var(--pw-mono); }
 .pwm-ok { color: var(--pw-ok); }
 .pwm-warn { color: var(--pw-warn); }
+
+/* ---------- trails ---------- */
+.pwm-rec-btn { min-width: 190px; letter-spacing: 1.4px; }
+.pwm-rec-btn.rec {
+  background: var(--pw-danger); color: #2a0505; border-color: transparent;
+  box-shadow: 0 0 18px rgba(255,77,77,0.45);
+}
+.pwm-rec-btn.rec:hover { background: #ff6b6b; }
+.pwm-rec-state { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; letter-spacing: 2px; color: var(--pw-dim); }
+.pwm-rec-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex: none;
+  background: rgba(255,255,255,0.18); border: 1px solid var(--pw-line);
+}
+.pwm-rec-dot.on {
+  background: var(--pw-danger); border-color: transparent;
+  box-shadow: 0 0 10px rgba(255,77,77,0.9);
+  animation: pwm-rec-blink 1.1s steps(1, end) infinite;
+}
+@keyframes pwm-rec-blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.2; } }
+
+.pwm-trail-input { flex: 1; min-width: 160px; max-width: 320px; }
+.pwm-trail-head { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.pwm-trail-h2 { margin: 18px 0 8px; }
+.pwm-mini { padding: 7px 13px; font-size: 12px; }
+.pwm-trail-list { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.pwm-trail-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--pw-line); border-radius: 10px;
+  padding: 11px 14px; background: rgba(255,255,255,0.03);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.pwm-trail-row:hover { border-color: rgba(41,211,255,0.45); }
+.pwm-trail-row.active {
+  border-color: var(--pw-accent); background: rgba(41,211,255,0.09);
+  box-shadow: 0 0 16px rgba(41,211,255,0.16);
+}
+.pwm-trail-main { flex: 1; min-width: 0; }
+.pwm-trail-name { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+.pwm-trail-meta { font-size: 11.5px; color: var(--pw-dim); margin-top: 4px; }
+.pwm-badge.alt { color: var(--pw-warn); border-color: rgba(255,200,87,0.45); }
+.pwm-trail-empty {
+  border: 1px dashed var(--pw-line); border-radius: 10px;
+  padding: 18px 14px; text-align: center; font-size: 13px;
+}
 
 .pwm-keys {
   display: grid; grid-template-columns: 120px 1fr; gap: 8px 18px;

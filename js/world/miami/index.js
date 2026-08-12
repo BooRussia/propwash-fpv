@@ -1,7 +1,8 @@
 // ============================================================
 // PropWash FPV — Miami Skyline map (assembled)
 // Tropical high-rise beach city: ocean, beach, boardwalk, pier,
-// Ocean Drive, art-deco + glass skyline, ferris wheel, marina.
+// Ocean Drive, art-deco + glass skyline, ferris wheel, marina,
+// lighthouse, cable-stayed bridge and convention centre.
 // Photoreal pass: CC0 PBR ground/road/facades via AssetLibrary,
 // photoscan rocks + tropical vegetation via vegetation.js.
 // Every asset degrades gracefully — with an empty assets/ folder
@@ -19,12 +20,16 @@ import { buildPier } from './landmarks/pier.js';
 import { buildRoad } from './road.js';
 import { buildPalms } from './palms.js';
 import { buildBeachProps } from './landmarks/beachProps.js';
-import { buildStreet } from './street.js';
-import { buildSkyline, buildHelipads } from './buildings.js';
+import { buildStreet, buildStreetFurniture, buildBoardwalkEdge } from './street.js';
+import { buildSkyline, cullReserved, buildStreetLevel, buildHelipads } from './buildings.js';
 import { buildFerris } from './landmarks/ferris.js';
 import { buildSign } from './landmarks/sign.js';
 import { buildMarina } from './landmarks/marina.js';
-import { buildDressing } from './dressing.js';
+import { buildArtDeco } from './landmarks/artdeco.js';
+import { buildLighthouse } from './landmarks/lighthouse.js';
+import { buildBridge } from './landmarks/bridge.js';
+import { buildConvention } from './landmarks/convention.js';
+import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildPoints } from './points.js';
 
 export async function buildMiami(scene, env) {
@@ -36,6 +41,9 @@ export async function buildMiami(scene, env) {
   // Third stream for the props-v2 pass (facade UV offsets, parasol tilts,
   // boat accents…). Never draw from rng or rng2 for new features.
   const rng3 = mulberry32(0xFACADE5);
+  // Fourth stream for the streetscape pass (vehicle kinds, furniture jitter,
+  // landscaping, massing variants). rng/rng2/rng3 sequences stay untouched.
+  const rng4 = mulberry32(0x0C0FFEE5);
   const root = new THREE.Group();
   root.name = 'miami';
   scene.add(root);
@@ -45,9 +53,20 @@ export async function buildMiami(scene, env) {
   const track = (obj) => { disposables.push(obj); return obj; };
   const { colliders, addCollider } = createColliderBag();
 
+  // Materials whose emissive is a night-only effect: { mat, day, night }.
+  // regDN() registers one and immediately parks it at its daylight value.
+  const dayNight = [];
+  const regDN = (mat, day, night) => {
+    dayNight.push({ mat, day, night });
+    mat.emissiveIntensity = day;
+    return mat;
+  };
+
   // ---------------- environment HDRIs ----------------
   if (env.setHDRIBands) {
-    env.setHDRIBands({ day: 'beach_day', sunset: 'sunset', night: 'night', overcast: 'overcast' });
+    // day uses the PURE sky (no baked ground content — photographic HDRIs shot
+    // at ground level make their foreground trees look giant from the air)
+    env.setHDRIBands({ day: 'day_clear', sunset: 'sunset', night: 'night', overcast: 'overcast' });
   }
 
   // Legacy-stream preservation: the old single ground mesh consumed one rng()
@@ -57,19 +76,29 @@ export async function buildMiami(scene, env) {
   for (let i = 0; i < 151 * 77; i++) rng();
 
   // ---------------- shared PBR texture sets (each key may be absent) ----------------
-  const [sandSet, sidewalkSet, asphaltSet, roadLinesSet, glassSet, facadeDaySet] = await Promise.all([
+  const [
+    sandSet, sidewalkSet, asphaltSet, roadLinesSet,
+    glassSet, glassDaySet, officeSet,
+  ] = await Promise.all([
     assetLib.textureSet('sand_beach'),
     assetLib.textureSet('sidewalk'),
     assetLib.textureSet('asphalt'),
     assetLib.textureSet('road_lines'),
-    assetLib.textureSet('facade_glass'),
-    assetLib.textureSet('facade_day'),
+    assetLib.textureSet('facade_glass'),      // NIGHT photo: emissive only
+    assetLib.textureSet('facade_glass_day'),  // daytime curtain wall
+    assetLib.textureSet('facade_office'),     // daytime mid-rise brick/window
   ]);
 
   const ctx = {
     root, track, addCollider, colliders, scatterHandles,
-    rng, rng2, rng3,
-    sandSet, sidewalkSet, asphaltSet, roadLinesSet, glassSet, facadeDaySet,
+    rng, rng2, rng3, rng4, regDN,
+    sandSet, sidewalkSet, asphaltSet, roadLinesSet,
+    glassSet, glassDaySet, officeSet,
+    // transparent slabs shared by the bus shelter + hotel entrance canopies;
+    // merged into one draw call by buildStreetLevel()
+    glassPanelGeos: [],
+    propMat: null,
+    palmPlacements: null,
   };
 
   // ---------------- ground: beach mesh + city mesh ----------------
@@ -81,20 +110,33 @@ export async function buildMiami(scene, env) {
   // ---------------- boardwalk + pier ----------------
   buildPier(ctx);
 
-  // ---------------- Ocean Drive road ----------------
+  // ---------------- Ocean Drive: road, curbs, crosswalks, cross streets ----------------
   await buildRoad(ctx);
 
   // ---------------- palms ----------------
-  const { palms } = await buildPalms(ctx);
+  const { palms, palmPlacements } = await buildPalms(ctx);
+  ctx.palmPlacements = palmPlacements;
 
   // ---------------- beach props: lifeguard towers + parasols + towels ----------------
   buildBeachProps(ctx);
 
-  // ---------------- streetlights + parked cars ----------------
-  buildStreet(ctx);
+  // ---------------- streetlights + parked vehicle fleet ----------------
+  const street = await buildStreet(ctx);
+
+  // ---------------- street furniture + boardwalk edge ----------------
+  buildStreetFurniture(ctx, street);
+  buildBoardwalkEdge(ctx);
 
   // ---------------- skyline ----------------
   const sky = buildSkyline(ctx);
+  // clear the two hero-landmark blocks before anything reads towerData
+  cullReserved(ctx, sky);
+
+  // ---------------- street level: storefronts, canopies, podiums, blocks ----------------
+  const landscape = buildStreetLevel(ctx, sky, street);
+
+  // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
+  const { palmsEntry } = await buildLandscaping(ctx, landscape);
 
   // ---------------- ferris wheel ----------------
   const { wheel } = buildFerris(ctx);
@@ -108,14 +150,31 @@ export async function buildMiami(scene, env) {
   // ---------------- helipad towers ----------------
   buildHelipads(ctx, sky);
 
+  // ---------------- hero landmarks ----------------
+  buildArtDeco(ctx);
+  const lighthouse = buildLighthouse(ctx);
+  buildBridge(ctx);
+  buildConvention(ctx);
+
   // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------
-  await buildDressing(ctx, sky.towerData);
+  await buildDressing(ctx, sky.towerData, landscape.entranceShrubSpots);
 
   // ---------------- spawn / gates / retrieval ----------------
   const { spawnPos, gates, retrievalPoints } = buildPoints(ctx, sky.towerData);
 
   // ---------------- handle ----------------
   let time = 0;
+  let lastNightF = -1;
+  const applyDayNight = () => {
+    const tod = settings.environment.timeOfDay;
+    const dayF = Math.sin(Math.PI * clamp((tod - 6.2) / 13.2, 0, 1));
+    const nightF = clamp(1 - dayF * 2.1, 0, 1);
+    if (Math.abs(nightF - lastNightF) < 0.006) return;
+    lastNightF = nightF;
+    for (const d of dayNight) d.mat.emissiveIntensity = d.day + (d.night - d.day) * nightF;
+  };
+  applyDayNight();
+
   return {
     name: 'Miami Skyline',
     spawn: { position: spawnPos, yawRad: Math.PI / 2 },
@@ -126,6 +185,7 @@ export async function buildMiami(scene, env) {
     homePad: spawnPos.clone(),
     update(dt) {
       time += dt;
+      applyDayNight();
       if (water) {
         water.material.uniforms['time'].value += dt * 0.6;
         // water must go dark at night — the Water shader has its own sun
@@ -143,11 +203,15 @@ export async function buildMiami(scene, env) {
         b.position.y = 0.35 + Math.sin(time * 1.1 + b.userData.phase) * 0.12;
         b.rotation.x = Math.sin(time * 0.9 + b.userData.phase) * 0.03;
       }
+      lighthouse.update(dt);
       if (palms) palms.update(dt);
+      if (palmsEntry) palmsEntry.update(dt);
     },
     dispose(sceneRef) {
       sceneRef.remove(root);
       try { palms?.dispose?.(); } catch (e) { /* noop */ }
+      try { palmsEntry?.dispose?.(); } catch (e) { /* noop */ }
+      try { street.fleet?.dispose?.(); } catch (e) { /* noop */ }
       for (const h of scatterHandles) { try { h.dispose?.(); } catch (e) { /* noop */ } }
       for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
     },

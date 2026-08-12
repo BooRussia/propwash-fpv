@@ -36,6 +36,22 @@ export function cCyl(r0, r1, h, seg, hex, x, y, z, rx = 0, ry = 0, rz = 0) {
   return colorFill(g, hex);
 }
 
+export function cSph(r, w, h, hex, x, y, z, sy = 1) {
+  const g = new THREE.SphereGeometry(r, w, h);
+  if (sy !== 1) g.scale(1, sy, 1);
+  g.translate(x, y, z);
+  return colorFill(g, hex);
+}
+
+export function cTorus(r, tube, radSeg, tubSeg, hex, x, y, z, rx = 0, ry = 0, rz = 0, arc = Math.PI * 2) {
+  const g = new THREE.TorusGeometry(r, tube, radSeg, tubSeg, arc);
+  if (rz) g.rotateZ(rz);
+  if (rx) g.rotateX(rx);
+  if (ry) g.rotateY(ry);
+  g.translate(x, y, z);
+  return colorFill(g, hex);
+}
+
 export function tubeBetween(p0, p1, r, seg) {
   const dir = new THREE.Vector3().subVectors(p1, p0);
   const len = dir.length();
@@ -43,6 +59,11 @@ export function tubeBetween(p0, p1, r, seg) {
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
   g.translate((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
   return g;
+}
+
+/** tubeBetween + a flat vertex colour, ready to merge into a vertexColors mesh. */
+export function cTube(p0, p1, r, seg, hex) {
+  return colorFill(tubeBetween(p0, p1, r, seg), hex);
 }
 
 // Physically scaled facade UVs for a BoxGeometry: every face maps the texture

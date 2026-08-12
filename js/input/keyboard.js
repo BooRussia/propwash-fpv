@@ -9,7 +9,7 @@
 // Hotkeys emitted on the shared bus:
 //   Escape -> hotkey:menu      KeyR  -> hotkey:reset
 //   Space  -> hotkey:arm       KeyV  -> hotkey:view
-//   KeyC   -> hotkey:static
+//   KeyC   -> hotkey:static    KeyT  -> hotkey:trail  (record a trail)
 //   ArrowUp/Down    -> hotkey:camTilt {delta: +1/-1}   (repeat allowed)
 //   ArrowRight/Left -> hotkey:fov     {delta: +2/-2}   (repeat allowed)
 //
@@ -20,7 +20,7 @@ import { emit, clamp } from '../core/state.js';
 
 const FLIGHT_CODES = new Set(['KeyI', 'KeyK', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyJ', 'KeyL']);
 const PREVENT_CODES = new Set([
-  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyC', 'KeyV', 'KeyR',
+  'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyC', 'KeyV', 'KeyR', 'KeyT',
 ]);
 
 const THROTTLE_RATE = 0.8; // sticky throttle, units per second
@@ -94,6 +94,9 @@ export class KeyboardInput {
         break;
       case 'KeyC':
         if (!e.repeat) emit('hotkey:static');
+        break;
+      case 'KeyT':
+        if (!e.repeat) emit('hotkey:trail');
         break;
       case 'ArrowUp':
         emit('hotkey:camTilt', { delta: +1 });   // key repeat allowed

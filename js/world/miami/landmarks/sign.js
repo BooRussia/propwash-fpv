@@ -35,8 +35,13 @@ export function buildSign(ctx) {
     geos.forEach(g => g.dispose());
     const sign = new THREE.Mesh(merged, segMat);
     const SIGN_X = 60, SIGN_Z = 14;
+    const WORD_W = ox - 2.5;                       // laid out along +x from 0
     const sy = groundHeight(SIGN_X + 22, SIGN_Z) + 2.4;
-    sign.position.set(SIGN_X, sy, SIGN_Z);
+    // The glyphs read left-to-right when viewed from +z, i.e. from the city.
+    // A beach sign faces the water: turn it 180° and slide it back so it still
+    // occupies the same span of sand.
+    sign.rotation.y = Math.PI;
+    sign.position.set(SIGN_X + WORD_W - 1.7, sy, SIGN_Z);
     root.add(sign);
     const postGeo = track(new THREE.BoxGeometry(0.7, 3, 0.7));
     const postMat = track(new THREE.MeshStandardMaterial({ color: 0x8a8f95 }));
@@ -45,6 +50,6 @@ export function buildSign(ctx) {
       post.position.set(px, sy - 1.5, SIGN_Z);
       root.add(post);
     }
-    addCollider(SIGN_X + 22, sy - 3, SIGN_Z, 46, 12, 1.6);
+    addCollider(SIGN_X + WORD_W / 2, sy - 3, SIGN_Z, WORD_W + 2, 12, 1.6);
   }
 }

@@ -4,7 +4,9 @@ import { groundHeight, PIER_X } from './constants.js';
 
 /**
  * Deterministic palm placement (main rng) + hero palms (rng2).
- * Returns { palms } handle for update/dispose (null if legacy cones used).
+ * Returns { palms, palmPlacements } — the handle for update/dispose (null if
+ * legacy cones are used) plus the placement list the street pass needs for
+ * tree grates.
  */
 export async function buildPalms(ctx) {
   const { root, track, addCollider, rng, rng2 } = ctx;
@@ -14,7 +16,11 @@ export async function buildPalms(ctx) {
     let placed = 0;
     while (placed < N) {
       const x = (rng() - 0.5) * 1200;
-      const z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18;   // road rows + scattered sand
+      let z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18;   // road rows + scattered sand
+      // never in the road lanes (z 37.5..50.5): snap to the nearest sidewalk row.
+      // Deterministic remap — consumes no extra rng draws, so the legacy layout
+      // stream (towers, cars, huts) is untouched.
+      if (z > 37.5 && z < 50.5) z = z < 44 ? 36.5 : 51.5;
       if (Math.abs(x - PIER_X) < 12 && z < 36) continue;
       const y = groundHeight(x, z);
       if (y < 0.1) continue;
@@ -93,5 +99,5 @@ export async function buildPalms(ctx) {
       addCollider(hx, hy, hz, 0.6, 7.5 * s, 0.6);   // thin trunk collider per hero
     }
   }
-  return { palms };
+  return { palms, palmPlacements };
 }

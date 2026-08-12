@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { CITY_Y, CITY_Z, PIER_X } from '../constants.js';
-import { stripeTexture } from '../textures.js';
+import { plankTexture } from '../textures.js';
 
 /** Boardwalk + pier deck, pylons, pavilion. */
 export function buildPier(ctx) {
   const { root, track, addCollider } = ctx;
-  const woodTex = track(stripeTexture('#8f6b45', '#6d4f31'));
-  woodTex.repeat.set(40, 2);
+  const woodTex = track(plankTexture(0x9a7247, 11, 512, 512, 18));
+  woodTex.repeat.set(78, 1);       // boards run across the walk, ~0.45 m each
   {
     const geo = track(new THREE.BoxGeometry(1240, 0.5, 8));
     const mat = track(new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9 }));
@@ -16,8 +16,8 @@ export function buildPier(ctx) {
     root.add(bw);
   }
   {
-    const woodTex2 = track(stripeTexture('#87653f', '#66492c'));
-    woodTex2.repeat.set(4, 30);
+    const woodTex2 = track(plankTexture(0x8d6a41, 23, 512, 512, 18));
+    woodTex2.repeat.set(1, 20);      // boards run across the pier
     const deckGeo = track(new THREE.BoxGeometry(12, 0.6, 165));
     const deckMat = track(new THREE.MeshStandardMaterial({ map: woodTex2, roughness: 0.9 }));
     const deck = new THREE.Mesh(deckGeo, deckMat);

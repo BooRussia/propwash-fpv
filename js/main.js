@@ -19,6 +19,7 @@ import { CalibrationUI } from './ui/calibration.js';
 import { OSD } from './ui/osd.js';
 import { StickOverlay } from './ui/sticks.js';
 import { FpvCameraPipeline } from './camera/index.js';
+import { TrailSystem } from './world/trails.js';
 import { Environment } from './world/environment.js';
 import { buildMiami } from './world/miami.js';
 import { buildProcedural } from './world/procedural.js';
@@ -116,6 +117,7 @@ const menu = new Menu();
 const calibUI = new CalibrationUI(radio);
 const modeManager = new ModeManager(scene);
 const motorAudio = new MotorAudio();
+const trails = new TrailSystem(scene);
 
 // ---------------- drone ----------------
 let quad = null;
@@ -156,6 +158,7 @@ async function loadMap() {
     env.setIndoor?.(settings.map === 'procedural' && settings.procedural.setting === 'indoor');
     pilotPos.copy(mapHandle.spawn.position).add(new THREE.Vector3(0, 1.7, 0));
     modeManager.start(settings.gameMode, mapHandle);
+    trails.setMap(settings.map);
     respawn();
     loadStatus('Ready', 1);
   } catch (err) {
@@ -167,7 +170,12 @@ async function loadMap() {
 
 function respawn() {
   if (!quad || !mapHandle) return;
-  quad.reset(mapHandle.spawn.position.clone(), mapHandle.spawn.yawRad || 0);
+  // Following a trail? Start the drone at that trail's first sample.
+  const o = trails.getSpawnOverride();
+  quad.reset(
+    o ? o.position.clone() : mapHandle.spawn.position.clone(),
+    o ? o.yawRad : (mapHandle.spawn.yawRad || 0)
+  );
   armed = false;
   flightTimer = 0;
 }
@@ -267,6 +275,7 @@ on('hotkey:reset', () => { if (!menu.isOpen && !calibUI.isOpen) { quad.crashed =
 on('hotkey:arm', () => { if (!menu.isOpen && !calibUI.isOpen) tryArm(!armed); });
 on('hotkey:view', () => { cameras.toggleLos(); });
 on('hotkey:static', () => { cameras.toggleStatic(); });
+on('hotkey:trail', () => { if (!menu.isOpen && !calibUI.isOpen) trails.toggleRecording(); });
 on('hotkey:camTilt', ({ delta }) => {
   if (menu.isOpen || calibUI.isOpen) return;
   cameras.nudgeTilt(delta);
@@ -335,6 +344,7 @@ renderer.setAnimationLoop(() => {
     stepPhysics(dt);
     if (armed && !quad.crashed) flightTimer += dt;
     modeManager.update(dt, quad);
+    trails.update(dt, quad.position, quad.quaternion, armed, quad.crashed);
     cameras.updateSignal(dt, { quad, pilotPos, mapHandle });
   }
 
