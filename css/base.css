@@ -1,19 +1,19 @@
 /* ============ PropWash FPV — base design system ============ */
 :root {
-  --pw-accent: #29d3ff;
-  --pw-accent2: #ff5c8a;
-  --pw-bg: rgba(10, 14, 22, 0.82);
-  --pw-bg-solid: #0a0e16;
-  --pw-panel: rgba(16, 22, 34, 0.92);
-  --pw-line: rgba(120, 180, 220, 0.18);
-  --pw-text: #dfeaf2;
-  --pw-dim: #8fa3b5;
-  --pw-danger: #ff4d4d;
-  --pw-ok: #37e08b;
-  --pw-warn: #ffc857;
-  --pw-radius: 10px;
+  --pw-accent: #c4c4cc;
+  --pw-accent2: #8a9099;
+  --pw-bg: rgba(0, 0, 0, 0.86);
+  --pw-bg-solid: #000000;
+  --pw-panel: rgba(12, 12, 14, 0.94);
+  --pw-line: rgba(240, 240, 250, 0.16);
+  --pw-text: #f0f0fa;
+  --pw-dim: #8a8a96;
+  --pw-danger: #c44a4a;
+  --pw-ok: #6a9a78;
+  --pw-warn: #b8a46a;
+  --pw-radius: 2px;
   --pw-font: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --pw-mono: "Consolas", "Cascadia Mono", monospace;
+  --pw-mono: "Consolas", "Cascadia Mono", "SF Mono", monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,7 +38,7 @@ html, body {
 /* ---------- loading screen ---------- */
 #loading {
   position: fixed; inset: 0; z-index: 1000;
-  background: radial-gradient(ellipse at 50% 40%, #101a2c 0%, #05070c 70%);
+  background: var(--pw-bg-solid);
   display: flex; align-items: center; justify-content: center;
   transition: opacity 0.6s ease;
 }
@@ -46,18 +46,16 @@ html, body {
 .load-inner { text-align: center; }
 .load-logo {
   font-size: 64px; font-weight: 800; letter-spacing: 6px; color: #fff;
-  text-shadow: 0 0 30px rgba(41, 211, 255, 0.55);
 }
 .load-logo span { color: var(--pw-accent); }
 .load-sub { letter-spacing: 10px; font-size: 13px; color: var(--pw-dim); margin-top: 6px; }
 .load-bar {
-  width: 340px; height: 4px; margin: 28px auto 12px;
-  background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;
+  width: 340px; height: 2px; margin: 28px auto 12px;
+  background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden;
 }
 #load-fill {
-  width: 5%; height: 100%; border-radius: 2px;
-  background: linear-gradient(90deg, var(--pw-accent), #7ae7ff);
-  box-shadow: 0 0 12px var(--pw-accent);
+  width: 5%; height: 100%; border-radius: 1px;
+  background: linear-gradient(90deg, var(--pw-accent2), var(--pw-accent), #e8e8f0);
   transition: width 0.3s ease;
 }
 #load-status { font-size: 12px; color: var(--pw-dim); font-family: var(--pw-mono); }
@@ -75,30 +73,29 @@ html, body {
   border: 1px solid var(--pw-line);
   border-radius: var(--pw-radius);
   padding: 22px 26px;
-  box-shadow: 0 18px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
-  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.03);
   max-width: min(92vw, 900px);
 }
 
 .pw-btn {
   display: inline-block;
-  background: rgba(41, 211, 255, 0.08);
-  border: 1px solid rgba(41, 211, 255, 0.35);
+  background: transparent;
+  border: 1px solid rgba(240, 240, 250, 0.28);
   color: var(--pw-text);
-  border-radius: 8px;
+  border-radius: var(--pw-radius);
   padding: 10px 18px;
   font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: var(--pw-font);
 }
-.pw-btn:hover { background: rgba(41, 211, 255, 0.22); border-color: var(--pw-accent); box-shadow: 0 0 14px rgba(41,211,255,0.25); }
+.pw-btn:hover { background: rgba(240, 240, 250, 0.06); border-color: var(--pw-accent); }
 .pw-btn:active { transform: translateY(1px); }
-.pw-btn.primary { background: var(--pw-accent); color: #04222c; border-color: transparent; }
-.pw-btn.primary:hover { background: #5fe0ff; }
-.pw-btn.danger { border-color: rgba(255,77,77,0.5); background: rgba(255,77,77,0.1); }
-.pw-btn.danger:hover { background: rgba(255,77,77,0.25); border-color: var(--pw-danger); }
-.pw-btn.sel, .pw-btn.active { background: var(--pw-accent); color: #04222c; border-color: transparent; }
+.pw-btn.primary { background: var(--pw-text); color: #000; border-color: var(--pw-text); }
+.pw-btn.primary:hover { background: var(--pw-accent); border-color: var(--pw-accent); color: #000; }
+.pw-btn.danger { border-color: rgba(196,74,74,0.55); background: rgba(196,74,74,0.08); }
+.pw-btn.danger:hover { background: rgba(196,74,74,0.18); border-color: var(--pw-danger); }
+.pw-btn.sel, .pw-btn.active { background: var(--pw-text); color: #000; border-color: var(--pw-text); }
 .pw-btn:disabled { opacity: 0.4; cursor: default; }
 
 .pw-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
@@ -106,29 +103,29 @@ html, body {
 .pw-value { font-family: var(--pw-mono); font-size: 13px; color: var(--pw-accent); min-width: 64px; text-align: right; }
 
 .pw-h1 { font-size: 26px; font-weight: 800; letter-spacing: 2px; margin-bottom: 4px; }
-.pw-h2 { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; color: var(--pw-accent); text-transform: uppercase; margin: 18px 0 8px; }
+.pw-h2 { font-size: 15px; font-weight: 700; letter-spacing: 1.5px; color: var(--pw-text); text-transform: uppercase; margin: 18px 0 8px; }
 .pw-dim { color: var(--pw-dim); font-size: 13px; }
 .pw-mono { font-family: var(--pw-mono); }
 
 input[type="range"].pw-slider {
   -webkit-appearance: none; appearance: none;
-  flex: 1; height: 4px; border-radius: 2px;
+  flex: 1; height: 4px; border-radius: 1px;
   background: rgba(255,255,255,0.12);
   outline: none;
 }
 input[type="range"].pw-slider::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  width: 16px; height: 16px; border-radius: 50%;
+  width: 14px; height: 14px; border-radius: 50%;
   background: var(--pw-accent);
-  box-shadow: 0 0 10px rgba(41,211,255,0.6);
+  border: 1px solid rgba(240,240,250,0.35);
   cursor: pointer;
 }
 
 select.pw-select, input.pw-input {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04);
   border: 1px solid var(--pw-line);
   color: var(--pw-text);
-  border-radius: 7px;
+  border-radius: var(--pw-radius);
   padding: 8px 12px;
   font-size: 14px;
   font-family: var(--pw-font);
@@ -139,4 +136,4 @@ select.pw-select option { background: var(--pw-bg-solid); }
 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }

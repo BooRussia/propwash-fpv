@@ -62,7 +62,7 @@ const STAB_MS        = 2000;   // stillness required before centers are captured
 const HOLD_DEFLECT   = 0.6;    // normalized deflection to count as "held"
 const HOLD_MS        = 700;    // hold duration for direction capture
 const RANGE_READY    = 0.8;    // raw range an axis needs to count as "swept"
-const ACCENT         = '#29d3ff';
+const ACCENT         = '#c4c4cc';
 const RING_C         = 2 * Math.PI * 27; // countdown ring circumference
 
 const EMPTY = [];
@@ -137,7 +137,7 @@ const CSS = `
 .pwc-overlay {
   position: fixed; inset: 0; z-index: 200;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at 50% 35%, rgba(8,14,24,0.88), rgba(2,4,8,0.95));
+  background: rgba(0, 0, 0, 0.92);
   animation: pwc-fade 0.22s ease;
 }
 @keyframes pwc-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -148,32 +148,32 @@ const CSS = `
 @keyframes pwc-pop { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
 .pwc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .pwc-title { font-size: 24px; font-weight: 800; letter-spacing: 3px; }
-.pwc-title .pwc-t2 { color: var(--pw-accent); text-shadow: 0 0 18px rgba(41,211,255,0.45); }
+.pwc-title .pwc-t2 { color: var(--pw-accent); }
 .pwc-conn { display: flex; align-items: center; gap: 8px; max-width: 46%; padding-top: 6px; }
 .pwc-conndot { width: 9px; height: 9px; border-radius: 50%; background: var(--pw-danger); flex: none; transition: background 0.2s, box-shadow 0.2s; }
-.pwc-conndot.on { background: var(--pw-ok); box-shadow: 0 0 10px var(--pw-ok); }
+.pwc-conndot.on { background: var(--pw-ok); }
 .pwc-connname { font-size: 10px; color: var(--pw-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pwc-progress { display: flex; gap: 4px; margin: 16px 0 18px; }
 .pwc-seg { flex: 1; text-align: center; font-size: 9px; letter-spacing: 1px; color: var(--pw-dim); opacity: 0.55; position: relative; padding-top: 10px; transition: opacity 0.25s, color 0.25s; }
 .pwc-seg::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.10); transition: background 0.25s, box-shadow 0.25s; }
-.pwc-seg.done::before { background: rgba(41,211,255,0.5); }
+.pwc-seg.done::before { background: rgba(196,196,204,0.5); }
 .pwc-seg.cur { color: var(--pw-text); opacity: 1; }
-.pwc-seg.cur::before { background: var(--pw-accent); box-shadow: 0 0 10px rgba(41,211,255,0.6); }
+.pwc-seg.cur::before { background: var(--pw-accent); }
 .pwc-body { min-height: 330px; display: flex; flex-direction: column; }
 .pwc-step { animation: pwc-step 0.25s ease; flex: 1; display: flex; flex-direction: column; }
 @keyframes pwc-step { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 .pwc-instr { font-size: 21px; font-weight: 700; letter-spacing: 0.5px; text-align: center; margin-top: 10px; }
 .pwc-sub { text-align: center; margin: 8px auto 0; max-width: 520px; line-height: 1.45; }
 .pwc-note { margin-top: 16px; font-size: 12px; line-height: 1.5; text-align: center; }
-.pwc-arrow { text-align: center; font-size: 42px; color: var(--pw-accent); text-shadow: 0 0 20px rgba(41,211,255,0.55); margin-top: 14px; line-height: 1; animation: pwc-bob 1.1s ease-in-out infinite; }
+.pwc-arrow { text-align: center; font-size: 42px; color: var(--pw-accent); margin-top: 14px; line-height: 1; animation: pwc-bob 1.1s ease-in-out infinite; }
 @keyframes pwc-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .pwc-foot { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pw-line); }
 .pwc-spacer { flex: 1; }
 .pwc-devlist { margin: 18px auto 0; width: min(560px, 100%); }
-.pwc-dev { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: rgba(255,255,255,0.04); border: 1px solid var(--pw-line); color: var(--pw-text); border-radius: 8px; padding: 12px 14px; margin: 6px 0; cursor: pointer; font-size: 13px; font-family: var(--pw-font); transition: all 0.15s ease; }
-.pwc-dev:hover { border-color: var(--pw-accent); background: rgba(41,211,255,0.08); }
-.pwc-dev.sel { border-color: var(--pw-accent); background: rgba(41,211,255,0.12); box-shadow: inset 0 0 18px rgba(41,211,255,0.12), 0 0 12px rgba(41,211,255,0.18); }
-.pwc-devdot { width: 8px; height: 8px; border-radius: 50%; background: var(--pw-ok); box-shadow: 0 0 8px var(--pw-ok); flex: none; }
+.pwc-dev { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: rgba(255,255,255,0.04); border: 1px solid var(--pw-line); color: var(--pw-text); border-radius: var(--pw-radius); padding: 12px 14px; margin: 6px 0; cursor: pointer; font-size: 13px; font-family: var(--pw-font); transition: all 0.15s ease; }
+.pwc-dev:hover { border-color: var(--pw-accent); background: rgba(196,196,204,0.08); }
+.pwc-dev.sel { border-color: var(--pw-accent); background: rgba(196,196,204,0.12); }
+.pwc-devdot { width: 8px; height: 8px; border-radius: 50%; background: var(--pw-ok); flex: none; }
 .pwc-devid { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--pw-mono); font-size: 12px; }
 .pwc-waiting { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 26px 10px; color: var(--pw-dim); font-size: 13px; }
 .pwc-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--pw-warn); animation: pwc-pulse 1.2s infinite ease-in-out; flex: none; }
@@ -182,50 +182,50 @@ const CSS = `
 .pwc-axis { display: flex; align-items: center; gap: 10px; margin: 7px 0; }
 .pwc-axname { width: 34px; font-size: 11px; color: var(--pw-dim); font-family: var(--pw-mono); text-align: right; flex: none; }
 .pwc-track { position: relative; flex: 1; height: 12px; border-radius: 6px; background: rgba(255,255,255,0.07); }
-.pwc-band { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: linear-gradient(90deg, rgba(41,211,255,0.16), rgba(41,211,255,0.34)); }
-.pwc-band.ok { background: linear-gradient(90deg, rgba(55,224,139,0.2), rgba(55,224,139,0.42)); }
+.pwc-band { position: absolute; top: 0; bottom: 0; border-radius: 6px; background: linear-gradient(90deg, rgba(196,196,204,0.16), rgba(196,196,204,0.34)); }
+.pwc-band.ok { background: linear-gradient(90deg, rgba(106,154,120,0.22), rgba(106,154,120,0.42)); }
 .pwc-cline { position: absolute; top: 1px; bottom: 1px; width: 1px; background: rgba(255,255,255,0.28); }
-.pwc-dot { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--pw-accent); box-shadow: 0 0 8px rgba(41,211,255,0.8); }
+.pwc-dot { position: absolute; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--pw-accent); }
 .pwc-axval { width: 56px; text-align: right; font-size: 11px; font-family: var(--pw-mono); color: var(--pw-dim); flex: none; }
 .pwc-axval.ok { color: var(--pw-ok); }
 .pwc-ringwrap { position: relative; width: 74px; height: 74px; margin: 16px auto 0; }
 .pwc-ring { width: 74px; height: 74px; transform: rotate(-90deg); }
 .pwc-ring-bg { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 4; }
-.pwc-ring-fg { fill: none; stroke: var(--pw-accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: ${RING_C.toFixed(2)}; stroke-dashoffset: ${RING_C.toFixed(2)}; filter: drop-shadow(0 0 5px rgba(41,211,255,0.7)); }
+.pwc-ring-fg { fill: none; stroke: var(--pw-accent); stroke-width: 4; stroke-linecap: round; stroke-dasharray: ${RING_C.toFixed(2)}; stroke-dashoffset: ${RING_C.toFixed(2)}; }
 .pwc-ringnum { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--pw-mono); font-size: 15px; color: var(--pw-text); }
 .pwc-holdbar { width: min(420px, 82%); height: 8px; margin: 20px auto 0; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
-.pwc-holdfill { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, var(--pw-accent), #7ae7ff); box-shadow: 0 0 10px rgba(41,211,255,0.6); }
+.pwc-holdfill { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, var(--pw-accent2), var(--pw-accent)); }
 .pwc-detected { text-align: center; margin-top: 12px; font-family: var(--pw-mono); font-size: 13px; color: var(--pw-dim); min-height: 20px; }
 .pwc-detected.ok { color: var(--pw-ok); }
 .pwc-checkwrap { display: flex; justify-content: center; margin-top: 14px; min-height: 60px; }
 .pwc-check { width: 58px; height: 58px; }
-.pwc-check circle { fill: none; stroke: var(--pw-ok); stroke-width: 2.5; stroke-dasharray: 151; stroke-dashoffset: 151; animation: pwc-circ 0.4s ease forwards; filter: drop-shadow(0 0 6px rgba(55,224,139,0.6)); }
+.pwc-check circle { fill: none; stroke: var(--pw-ok); stroke-width: 2.5; stroke-dasharray: 151; stroke-dashoffset: 151; animation: pwc-circ 0.4s ease forwards;  }
 .pwc-check path { fill: none; stroke: var(--pw-ok); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: pwc-tickd 0.28s 0.28s ease forwards; }
 @keyframes pwc-circ { to { stroke-dashoffset: 0; } }
 @keyframes pwc-tickd { to { stroke-dashoffset: 0; } }
 .pwc-bigskip { display: flex; justify-content: center; margin-top: 22px; }
 .pwc-sticks { display: flex; gap: 30px; justify-content: center; margin: 20px 0 6px; flex-wrap: wrap; }
 .pwc-stickbox { text-align: center; }
-.pwc-canvas { border-radius: 10px; background: rgba(255,255,255,0.03); }
+.pwc-canvas { border-radius: var(--pw-radius); background: rgba(255,255,255,0.03); }
 .pwc-sticklabel { margin-top: 6px; font-size: 10px; letter-spacing: 2px; color: var(--pw-dim); }
 .pwc-vrow { display: flex; align-items: center; gap: 12px; width: min(520px, 100%); margin: 10px auto 0; }
 .pwc-vlab { width: 70px; font-size: 10px; letter-spacing: 2px; color: var(--pw-dim); text-align: right; flex: none; }
 .pwc-thr { position: relative; flex: 1; height: 12px; border-radius: 6px; background: rgba(255,255,255,0.07); overflow: hidden; }
-.pwc-thrfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, rgba(41,211,255,0.45), var(--pw-accent)); box-shadow: 0 0 10px rgba(41,211,255,0.5); }
+.pwc-thrfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, rgba(196,196,204,0.45), var(--pw-accent)); }
 .pwc-armpill { padding: 6px 16px; border-radius: 20px; font-size: 11px; letter-spacing: 2px; font-weight: 700; border: 1px solid var(--pw-line); color: var(--pw-dim); transition: all 0.2s ease; }
-.pwc-armpill.on { color: #04220f; background: var(--pw-ok); border-color: transparent; box-shadow: 0 0 18px rgba(55,224,139,0.55); }
+.pwc-armpill.on { color: #0a120c; background: var(--pw-ok); border-color: transparent; }
 .pwc-verifybtns { display: flex; gap: 12px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
 .pwc-x { position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--pw-dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 6px; transition: color 0.15s, transform 0.15s; }
 .pwc-x:hover { color: var(--pw-text); transform: scale(1.12); }
-.pwc-ch { border: 1px solid var(--pw-line); background: rgba(255,255,255,0.025); border-radius: 9px; padding: 12px 16px; margin: 10px 0; transition: border-color 0.2s, box-shadow 0.2s; }
-.pwc-ch:hover, .pwc-ch:focus-within { border-color: rgba(41,211,255,0.45); box-shadow: 0 0 18px rgba(41,211,255,0.09); }
+.pwc-ch { border: 1px solid var(--pw-line); background: rgba(255,255,255,0.025); border-radius: var(--pw-radius); padding: 12px 16px; margin: 10px 0; transition: border-color 0.2s, box-shadow 0.2s; }
+.pwc-ch:hover, .pwc-ch:focus-within { border-color: rgba(196,196,204,0.45); }
 .pwc-chtop { display: flex; align-items: center; gap: 12px; }
 .pwc-chname { width: 86px; font-weight: 700; letter-spacing: 1.5px; font-size: 13px; flex: none; }
 .pwc-chax { width: 48px; font-size: 10px; color: var(--pw-dim); font-family: var(--pw-mono); flex: none; }
 .pwc-ftrack { position: relative; flex: 1; height: 14px; border-radius: 7px; background: rgba(255,255,255,0.06); }
-.pwc-ffill { position: absolute; top: 0; bottom: 0; background: rgba(41,211,255,0.32); border-radius: 7px; }
+.pwc-ffill { position: absolute; top: 0; bottom: 0; background: rgba(196,196,204,0.32); border-radius: 7px; }
 .pwc-fcline { position: absolute; top: 1px; bottom: 1px; width: 1px; background: rgba(255,255,255,0.3); }
-.pwc-fdot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--pw-accent); box-shadow: 0 0 10px rgba(41,211,255,0.85); }
+.pwc-fdot { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--pw-accent); }
 .pwc-fval { width: 66px; text-align: right; font-family: var(--pw-mono); font-size: 12px; color: var(--pw-accent); flex: none; }
 .pwc-chctl { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 .pwc-ctlab { font-size: 10px; letter-spacing: 1.5px; color: var(--pw-dim); }
@@ -238,7 +238,7 @@ const CSS = `
 .pwc-inv input { accent-color: var(--pw-accent); width: 14px; height: 14px; cursor: pointer; }
 .pwc-armrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .pwc-armdesc { flex: 1; min-width: 140px; font-family: var(--pw-mono); font-size: 12px; color: var(--pw-text); }
-.pwc-listen { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: rgba(255,200,87,0.08); border: 1px solid rgba(255,200,87,0.4); color: var(--pw-warn); font-size: 12px; display: none; }
+.pwc-listen { margin-top: 10px; padding: 9px 12px; border-radius: var(--pw-radius); background: rgba(255,200,87,0.08); border: 1px solid rgba(255,200,87,0.4); color: var(--pw-warn); font-size: 12px; display: none; }
 .pwc-listen.show { display: block; animation: pwc-fade 0.2s ease; }
 .pwc-ftfoot { display: flex; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--pw-line); flex-wrap: wrap; }
 .pwc-empty { text-align: center; padding: 30px 10px 10px; }
