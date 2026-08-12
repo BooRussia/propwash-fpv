@@ -1342,7 +1342,7 @@ export class Menu {
 .pwm-backdrop {
   position: fixed; inset: 0; z-index: 140;
   display: none; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0,0,0,0.78);
 }
 .pwm-backdrop.pwm-open { display: flex; animation: pwm-fade 0.16s ease; }
 @keyframes pwm-fade { from { opacity: 0; } to { opacity: 1; } }
