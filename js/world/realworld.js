@@ -652,6 +652,83 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
 // ---------------------------------------------------------------
 // public entry
 // ---------------------------------------------------------------
+/**
+ * Ask Google for the 3D Tiles root with the user's key and translate whatever
+ * comes back into something actionable. Returns {ok:true} or
+ * {ok:false, title, detail, hint}.
+ */
+async function preflightKey(apiKey) {
+  const url = `https://tile.googleapis.com/v1/3dtiles/root.json?key=${encodeURIComponent(apiKey)}`;
+  let res = null;
+  try {
+    res = await fetch(url, { method: 'GET' });
+  } catch (e) {
+    return {
+      ok: false,
+      title: 'CANNOT REACH GOOGLE',
+      detail: 'NETWORK OR BROWSER BLOCKED THE TILE REQUEST',
+      hint: 'CHECK YOUR CONNECTION / AD-BLOCKER, THEN FLY AGAIN',
+    };
+  }
+  if (res.ok) return { ok: true };
+
+  let reason = '';
+  let message = '';
+  try {
+    const body = await res.json();
+    const err = body && body.error;
+    message = String((err && err.message) || '');
+    const details = (err && err.details) || [];
+    for (const d of details) {
+      if (d && d.reason) { reason = String(d.reason); break; }
+    }
+    if (!reason && err && err.status) reason = String(err.status);
+  } catch (e) { /* non-JSON error body */ }
+
+  const short = (message || `HTTP ${res.status}`).toUpperCase().slice(0, 62);
+
+  // Referrer restriction is the single most common cause once the API is on:
+  // the key is fine, it just is not allowed to be used from this site.
+  if (/REFERR|REFERER/i.test(reason) || /referer/i.test(message)) {
+    return {
+      ok: false,
+      title: 'KEY BLOCKED FOR THIS SITE',
+      detail: `ADD ${location.host.toUpperCase()}/* TO THE KEY'S WEBSITE RESTRICTIONS`,
+      hint: 'GOOGLE CLOUD > CREDENTIALS > YOUR KEY > WEBSITE RESTRICTIONS',
+    };
+  }
+  if (/SERVICE_DISABLED|PERMISSION_DENIED|API_NOT/i.test(reason) || /has not been used|is disabled/i.test(message)) {
+    return {
+      ok: false,
+      title: 'MAP TILES API NOT ENABLED',
+      detail: short,
+      hint: 'GOOGLE CLOUD > APIS & SERVICES > ENABLE "MAP TILES API"',
+    };
+  }
+  if (/BILLING/i.test(reason) || /billing/i.test(message)) {
+    return {
+      ok: false,
+      title: 'BILLING NOT ENABLED',
+      detail: 'GOOGLE REQUIRES A BILLING ACCOUNT (FREE CREDIT STILL APPLIES)',
+      hint: 'GOOGLE CLOUD > BILLING > LINK AN ACCOUNT TO THIS PROJECT',
+    };
+  }
+  if (/API_KEY_INVALID/i.test(reason)) {
+    return {
+      ok: false,
+      title: 'API KEY NOT VALID',
+      detail: 'THE KEY WAS NOT ACCEPTED — CHECK FOR A TYPO OR STRAY SPACE',
+      hint: 'ESC > MAPS > REAL WORLD TO PASTE IT AGAIN',
+    };
+  }
+  return {
+    ok: false,
+    title: `TILE REQUEST FAILED (${res.status})`,
+    detail: short,
+    hint: reason ? `REASON: ${reason}` : 'SEE THE BROWSER CONSOLE FOR THE FULL ERROR',
+  };
+}
+
 export async function buildRealWorld(scene, env, opts) {
   const o = {
     apiKey: '',
@@ -669,6 +746,16 @@ export async function buildRealWorld(scene, env, opts) {
       'REAL WORLD MODE',
       'ADD YOUR FREE GOOGLE MAPS API KEY IN ESC > MAPS',
       'CONSOLE.CLOUD.GOOGLE.COM · ENABLE "MAP TILES API"');
+  }
+
+  // Preflight the key ourselves so we can report Google's ACTUAL reason.
+  // The tiles library only surfaces an HTTP status, which made every failure
+  // look like "key rejected" even when the real cause was referrer
+  // restrictions or a project without billing enabled.
+  const pre = await preflightKey(apiKey);
+  if (!pre.ok) {
+    console.error('[realworld] key preflight failed:', pre);
+    return buildPlacard(scene, env, pre.title, pre.detail, pre.hint);
   }
 
   let lib = null;
