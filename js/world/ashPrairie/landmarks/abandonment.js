@@ -57,8 +57,8 @@ export function buildAbandonment(ctx) {
   const post = makePool(new THREE.BoxGeometry(0.12, 1, 0.12), mats.galv || mats.steel, 500, 'fencePosts');
   const rail = makePool(new THREE.BoxGeometry(1, 0.08, 0.08), mats.oxideDark || mats.oxide, 400, 'fenceRails');
   const pole = makePool(new THREE.CylinderGeometry(0.12, 0.16, 1, 6), mats.oxideDark || mats.oxide, 80, 'poles');
-  const shrub = makePool(new THREE.ConeGeometry(0.6, 1.2, 5), mats.overgrow || mats.poisonGrass || mats.grass, 1600, 'shrubs');
-  const weed = makePool(new THREE.BoxGeometry(0.12, 0.55, 0.12), mats.overgrowDark || mats.moss || mats.grass, 2200, 'weeds');
+  const shrub = makePool(new THREE.ConeGeometry(0.6, 1.2, 5), mats.overgrowDark || mats.moss || mats.overgrow, 1600, 'shrubs');
+  const weed = makePool(new THREE.BoxGeometry(0.12, 0.55, 0.12), mats.mossDark || mats.moss || mats.overgrowDark, 2200, 'weeds');
   const mossClump = makePool(new THREE.SphereGeometry(0.45, 5, 4), mats.moss || mats.grass, 900, 'moss');
   const crackWeed = makePool(new THREE.BoxGeometry(0.08, 0.35, 0.08), mats.mossDark || mats.moss || mats.grass, 1400, 'crackWeeds');
 
@@ -91,7 +91,7 @@ export function buildAbandonment(ctx) {
     for (let i = 0; i < 4; i++) {
       const ox = x + (rng() - 0.5) * L * 0.9;
       const oz = z + (rng() - 0.5) * W * 0.9;
-      addInstance(mossClump, ox, gy(ox, oz) + 0.12, oz, 0.9 + rng() * 0.5, 0.3, 0.9 + rng() * 0.5, 0);
+      addInstance(mossClump, ox, gy(ox, oz) + 0.18, oz, 1.4 + rng() * 0.7, 0.42, 1.4 + rng() * 0.7, 0);
     }
   }
 
@@ -210,7 +210,7 @@ export function buildAbandonment(ctx) {
       const d = t.baseR * 0.7 + rng() * 14;
       const x = t.x + Math.cos(a) * d;
       const z = t.z + Math.sin(a) * d;
-      addInstance(mossClump, x, gy(x, z) + 0.1, z, 1.2 + rng(), 0.25 + rng() * 0.2, 1.2 + rng(), 0);
+      addInstance(mossClump, x, gy(x, z) + 0.18, z, 2.2 + rng() * 1.4, 0.45 + rng() * 0.25, 2.2 + rng() * 1.4, 0);
     }
   }
   for (let i = 0; i < 35; i++) {
@@ -218,7 +218,7 @@ export function buildAbandonment(ctx) {
     const d = CONTAINMENT.r + 2 + rng() * 12;
     const x = CONTAINMENT.x + Math.cos(a) * d;
     const z = CONTAINMENT.z + Math.sin(a) * d;
-    addInstance(mossClump, x, gy(x, z) + 0.1, z, 1 + rng(), 0.22, 1 + rng(), 0);
+    addInstance(mossClump, x, gy(x, z) + 0.16, z, 1.8 + rng() * 0.8, 0.38, 1.8 + rng() * 0.8, 0);
   }
 
   // Near-tower crack weeds (30–50 m band)
@@ -230,8 +230,8 @@ export function buildAbandonment(ctx) {
       for (let s = 0; s < 14; s++) {
         x += Math.cos(ang) * 0.55;
         z += Math.sin(ang) * 0.55;
-        addInstance(crackWeed, x, gy(x, z) + 0.12, z, 1, 0.6 + rng() * 0.7, 1, ang);
-        if (s % 3 === 0) addInstance(mossClump, x, gy(x, z) + 0.1, z, 0.9, 0.22, 0.9, 0);
+        addInstance(crackWeed, x, gy(x, z) + 0.18, z, 1.4, 0.9 + rng() * 0.8, 1.4, ang);
+        if (s % 3 === 0) addInstance(mossClump, x, gy(x, z) + 0.16, z, 1.6, 0.35, 1.6, 0);
       }
     }
   }
@@ -247,8 +247,8 @@ export function buildAbandonment(ctx) {
       x += Math.cos(ang) * 0.55 + (rng() - 0.5) * 0.15;
       z += Math.sin(ang) * 0.55 + (rng() - 0.5) * 0.15;
       if (Math.abs(x) > 220) continue;
-      addInstance(crackWeed, x, gy(x, z) + 0.12, z, 0.8, 0.5 + rng() * 0.7, 0.8, ang);
-      if (s % 4 === 0) addInstance(mossClump, x, gy(x, z) + 0.08, z, 0.6, 0.18, 0.6, 0);
+      addInstance(crackWeed, x, gy(x, z) + 0.18, z, 1.4, 0.9 + rng() * 0.8, 1.4, ang);
+      if (s % 4 === 0) addInstance(mossClump, x, gy(x, z) + 0.14, z, 1.2, 0.28, 1.2, 0);
     }
   }
 
