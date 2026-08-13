@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import {
   groundHeight, SPAWN, PAD_Y, TOWER_SITES, CONTAINMENT, ELEVATORS,
   CONVEYOR, PIPE_RACK, SWITCHYARD, TURBINE, COOP, SILO_LF, STACK, DUMP_CANOPY,
@@ -10,19 +10,21 @@ export function buildPoints(ctx) {
   const { root, track, mats } = ctx;
 
   const gy = groundHeight(SPAWN.x, SPAWN.z);
-  const spawnPos = new THREE.Vector3(SPAWN.x, gy + PAD_Y + 3.2, SPAWN.z); // hover height so pad FOV is not ground-grazing
+  const padY = gy + PAD_Y;
+  // Hover spawn so pad FOV is not ground-grazing; pad mesh stays on ground.
+  const spawnPos = new THREE.Vector3(SPAWN.x, padY + 3.2, SPAWN.z);
   {
     const padGeo = track(new THREE.CircleGeometry(2.4, 28));
     const pad = new THREE.Mesh(padGeo, mats.pad);
     pad.rotation.x = -Math.PI / 2;
-    pad.position.copy(spawnPos).y += 0.02;
+    pad.position.set(SPAWN.x, padY + 0.02, SPAWN.z);
     root.add(pad);
     const ring = new THREE.Mesh(
       track(new THREE.RingGeometry(2.5, 2.85, 32)),
       track(new THREE.MeshStandardMaterial({ color: 0x8A7A2A, side: THREE.DoubleSide, roughness: 0.6 }))
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(spawnPos).y += 0.03;
+    ring.position.set(SPAWN.x, padY + 0.03, SPAWN.z);
     root.add(ring);
   }
 
