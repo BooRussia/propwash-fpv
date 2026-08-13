@@ -81,22 +81,22 @@ export async function buildGround(ctx) {
   ground.receiveShadow = true;
   root.add(ground);
 
-  // Small yard asphalt lots only — no full-width slab toward spawn (0,165).
-  const aMat = mats.asphalt.clone();
-  track(aMat);
-  aMat.polygonOffset = true;
-  aMat.polygonOffsetFactor = -1;
-  aMat.polygonOffsetUnits = -1;
-  capAnisotropy(aMat, 4);
+  // Disconnected gravel pads only (Desi): 20–40 m, switchyard / dump / coop.
+  // No continuous hardscape from spawn (z≈165) through the yard.
+  const lotMat = (mats.soil || mats.asphalt).clone();
+  track(lotMat);
+  lotMat.polygonOffset = true;
+  lotMat.polygonOffsetFactor = -1;
+  lotMat.polygonOffsetUnits = -1;
+  capAnisotropy(lotMat, 4);
   for (const [ax, az, aw, ad] of [
-    [-145, -15, 70, 55],
-    [40, 88, 32, 18],
-    [110, 55, 48, 32],
-    [-105, 35, 55, 28],
+    [-145, -15, 36, 32], // switchyard
+    [40, 88, 28, 20],    // dump
+    [110, 55, 36, 28],   // coop
   ]) {
     const g = track(new THREE.PlaneGeometry(aw, ad));
     g.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(g, aMat);
+    const mesh = new THREE.Mesh(g, lotMat);
     mesh.position.set(ax, 0.04, az);
     mesh.receiveShadow = true;
     root.add(mesh);
