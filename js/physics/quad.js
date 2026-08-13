@@ -81,7 +81,12 @@ const SWEEP_TELEPORT = 2.0;     // metres of travel treated as a teleport, not f
 // normal plus a small share of the graze speed, divided by airframe robustness.
 const DMG_FLOOR = 3.0;          // below this an impact is harmless, full stop
 const DMG_SPAN = 11.0;          // effective m/s ABOVE the floor that writes off a prop
-const DMG_WHOOP_DIV = 2.2;      // sub-100 g whoops are famously indestructible
+// Whoops are famously tough, but at 2.2 the default meteor75 needed 30.7 m/s to
+// lose a prop — above its ~24 m/s top speed — so the damage model was invisible
+// on the drone most people fly. 1.45 keeps whoops clearly the most durable
+// airframe while putting prop loss (~20 m/s) and write-off (~18 m/s flat slam)
+// inside their real flight envelope.
+const DMG_WHOOP_DIV = 1.45;
 const DMG_TANGENT_ARMED = 0.35; // spinning props catch a surface
 const DMG_TANGENT_IDLE = 0.10;  // a dead-stick graze mostly just slides
 const DMG_PROP_EXP = 1.35;      // prop damage curve (concave-up: fast hits hurt hard)
