@@ -10,8 +10,9 @@ import { settings, clamp } from '../core/state.js';
 const _euler = new THREE.Euler(0, 0, 0, 'YXZ');
 const _stabQ = new THREE.Quaternion();
 
-/** Scale factor for motor micro-shake (1 = full shake). */
+/** Scale factor for motor micro-shake (1 = full shake). Camera noise off → 0. */
 export function dampShake(base = 1) {
+  if (settings.camera.noise === false) return 0;
   if (!settings.camera.stabilization) return base;
   const s = clamp(settings.camera.stabStrength ?? 0, 0, 1);
   return base * (1 - s * 0.85);
