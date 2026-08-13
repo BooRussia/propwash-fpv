@@ -96,6 +96,8 @@ export function buildAbandonment(ctx) {
   }
 
   function placeVehicle(kit, x, z, rot) {
+    // Don't park cars in the pad look-corridor
+    if (z > 140 && Math.abs(x) < 50) return;
     const y = gy(x, z);
     const sink = rng() * 0.15; // slightly settled
     const yy = y - sink;

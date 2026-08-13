@@ -49,7 +49,7 @@ export function buildPoints(ctx) {
     // v2 denser-zone freestyle gates
     G(ADMIN.x, ADMIN.z, 2.4, 0, 2.0),
     G(TURBINE.x, TURBINE.z, 8.5, 90, 2.2),
-    G(ANTENNA_FARM.x + 8, ANTENNA_FARM.z, 12, 45, 2.6),
+    G((ANTENNA_FARM.x0 + ANTENNA_FARM.x1) / 2, (ANTENNA_FARM.z0 + ANTENNA_FARM.z1) / 2, 12, 45, 2.6),
     G(BUCKET_ELEV.x, BUCKET_ELEV.z + 4, 20, 180, 2.4),
   ];
 
@@ -65,7 +65,7 @@ export function buildPoints(ctx) {
     new THREE.Vector3(DUMP_CANOPY.x, DUMP_CANOPY.h + 0.8, DUMP_CANOPY.z),
     new THREE.Vector3(CONVEYOR.x0 + 40, CONVEYOR.y + 2.5, CONVEYOR.z),
     new THREE.Vector3(ADMIN.x, ADMIN.h + 1.5, ADMIN.z),
-    new THREE.Vector3(ANTENNA_FARM.x, 44, ANTENNA_FARM.z),
+    new THREE.Vector3((ANTENNA_FARM.x0 + ANTENNA_FARM.x1) / 2, 44, (ANTENNA_FARM.z0 + ANTENNA_FARM.z1) / 2),
     new THREE.Vector3(RUINS.x, 4, RUINS.z),
   ];
 
