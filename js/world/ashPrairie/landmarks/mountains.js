@@ -1,74 +1,67 @@
 import * as THREE from 'three';
-import { GROUND_Y, PAL } from '../constants.js';
+import { GROUND_Y, SPAWN } from '../constants.js';
 
 /**
- * Horizon ridge / mountain ring — Chernobyl-scale depth.
- * Far ridges: visual impostors (no collide). Nearer foothills: light colliders.
+ * Distant horizon ridges only — outside flyable radius.
+ * Never a near-field wall. Spawn approach (z>140, |x|<80) stays open prairie.
  */
 export function buildMountains(ctx) {
-  const { root, track, addCollider, mats } = ctx;
+  const { root, track, mats } = ctx;
 
-  const rockMat = mats.mountainFar || mats.rock || mats.concreteDark;
-  const soilMat = mats.mountainNear || mats.soil || mats.concreteDark;
+  const farMat = mats.mountainFar || mats.rock || mats.concreteDark;
+  const nearMat = mats.mountainNear || mats.soil || mats.concreteDark;
 
-  // Shared low-poly ridge segment (wedge)
-  const ridgeGeo = track(new THREE.ConeGeometry(1, 1, 5));
-  const foothillGeo = track(new THREE.CylinderGeometry(1, 1.35, 1, 6));
+  const ridgeGeo = track(new THREE.ConeGeometry(1, 1, 6));
+  const hillGeo = track(new THREE.CylinderGeometry(0.9, 1.2, 1, 6));
 
-  function placeRidge(x, z, h, r, collide) {
-    const mesh = new THREE.Mesh(ridgeGeo, rockMat);
-    mesh.position.set(x, GROUND_Y + h * 0.45, z);
-    mesh.scale.set(r, h, r * 0.85);
-    mesh.rotation.y = (x * 0.01 + z * 0.013) % (Math.PI * 2);
+  function tooCloseToSpawn(x, z, r) {
+    const dx = x - SPAWN.x, dz = z - SPAWN.z;
+    // Keep pad→yard corridor open (looking -Z from spawn) and the +Z prairie
+    if (z > 80 && Math.abs(x) < 90 + r) return true;
+    if (Math.hypot(dx, dz) < 420 + r) return true;
+    return false;
+  }
+
+  function place(geo, mat, x, z, h, r) {
+    if (tooCloseToSpawn(x, z, r)) return;
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, GROUND_Y + h * 0.42, z);
+    mesh.scale.set(r, h, r * 0.8);
+    mesh.rotation.y = (x * 0.013 + z * 0.01) % (Math.PI * 2);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     root.add(mesh);
-    if (collide) {
-      addCollider(x, GROUND_Y, z, r * 1.2, h * 0.7, r * 1.0);
-    }
   }
 
-  function placeFoothill(x, z, h, r, collide) {
-    const mesh = new THREE.Mesh(foothillGeo, soilMat);
-    mesh.position.set(x, GROUND_Y + h * 0.5, z);
-    mesh.scale.set(r, h, r);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    root.add(mesh);
-    if (collide) addCollider(x, GROUND_Y, z, r * 1.6, h * 0.85, r * 1.6);
-  }
-
-  // Outer ring ~420–520 m — visual only
-  const outerR = 480;
-  for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    const jitter = ((i * 17) % 7) - 3;
-    const rr = outerR + jitter * 8;
+  // Far ring ~620–720 m — gapped, not a continuous wall. Visual only.
+  const outerR = 680;
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2 + 0.07;
+    // Skip a wide southern-ish gap? Keep all far; tooCloseToSpawn filters near.
+    const rr = outerR + ((i * 11) % 9) * 6;
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
-    const h = 55 + (i % 5) * 18 + (i % 3) * 8;
-    const rad = 28 + (i % 4) * 10;
-    placeRidge(x, z, h, rad, false);
-    // Secondary peak
-    placeRidge(x + Math.cos(a + 0.2) * 35, z + Math.sin(a + 0.2) * 35, h * 0.65, rad * 0.7, false);
+    const h = 48 + (i % 5) * 14;
+    const rad = 18 + (i % 4) * 6;
+    place(ridgeGeo, farMat, x, z, h, rad);
+    place(ridgeGeo, farMat, x + Math.cos(a + 0.15) * 22, z + Math.sin(a + 0.15) * 22, h * 0.62, rad * 0.65);
   }
 
-  // Mid foothills ~280–340 m — light collide if near play approaches
-  const midR = 310;
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2 + 0.1;
-    const rr = midR + ((i * 13) % 9) * 4;
+  // Mid hills ~520 m — sparse, gapped, never near spawn
+  const midR = 540;
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2 + 0.2;
+    const rr = midR + ((i * 7) % 5) * 8;
     const x = Math.cos(a) * rr;
     const z = Math.sin(a) * rr;
-    const h = 18 + (i % 4) * 7;
-    const rad = 22 + (i % 3) * 6;
-    const nearPlay = Math.abs(x) < 260 && Math.abs(z) < 260;
-    placeFoothill(x, z, h, rad, nearPlay);
+    const h = 14 + (i % 3) * 6;
+    const rad = 16 + (i % 3) * 5;
+    place(hillGeo, nearMat, x, z, h, rad);
   }
 
-  // Soft northern bluff behind spawn (horizon read when looking +Z / -Z into yard)
-  for (let i = 0; i < 8; i++) {
-    const x = -140 + i * 40;
-    placeRidge(x, -420, 70 + (i % 3) * 20, 40, false);
+  // Distant south silhouette behind the yard (z << 0), well past towers
+  for (let i = 0; i < 6; i++) {
+    const x = -160 + i * 64;
+    place(ridgeGeo, farMat, x, -560, 62 + (i % 3) * 16, 22);
   }
 }
