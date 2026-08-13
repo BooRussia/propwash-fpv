@@ -42,23 +42,19 @@ export async function buildGround(ctx) {
     const pf = patchF(x, z);
     const soilAmt = THREE.MathUtils.clamp(0.45 + pf * 0.35 + (r - 0.5) * 0.2, 0, 1);
     if (inYard && Math.abs(y - GROUND_Y) < 0.8) {
-      // Hardscape apron: soil → concrete dust
-      tmp.copy(cSoil).lerp(cConc, 0.28 + r * 0.3 + soilAmt * 0.15);
-      tmp.lerp(cSoilB, (1 - soilAmt) * 0.25);
-      tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.05);
+      tmp.copy(cSoil).lerp(cConc, 0.18 + r * 0.22 + soilAmt * 0.12);
+      tmp.lerp(cSoilB, (1 - soilAmt) * 0.4);
+      tmp.offsetHSL(0, -0.03, (rng2() - 0.5) * 0.09);
     } else {
-      // Prairie → Desi poisonGrass documentary decay
-      tmp.copy(cA).lerp(cB, r * 0.5).lerp(cPoison, 0.35 + r * 0.25);
-      if (soilAmt > 0.62) {
-        tmp.lerp(cSoil, (soilAmt - 0.62) * 1.4);
-      } else if (soilAmt < 0.28) {
-        tmp.lerp(cMoss, (0.28 - soilAmt) * 1.2); // moss hollows
-      }
-      tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.03);
+      // Stronger value mottling so prairie reads at 30–130m (not a black pancake)
+      const mott = hash2((x * 0.12) | 0, (z * 0.12) | 0);
+      tmp.copy(cA).lerp(cPoison, 0.25 + r * 0.35).lerp(cB, mott * 0.45);
+      if (soilAmt > 0.55) tmp.lerp(cSoil, (soilAmt - 0.55) * 1.8);
+      else if (soilAmt < 0.35) tmp.lerp(cMoss, (0.35 - soilAmt) * 1.5);
+      tmp.offsetHSL(0.01 * (mott - 0.5), -0.04, (mott - 0.5) * 0.16 + (rng2() - 0.5) * 0.05);
     }
-    // North concrete / tower apron: moss patches on hardscape
-    if (inYard && z < -100 && Math.abs(y - GROUND_Y) < 1.2 && r > 0.55) {
-      tmp.lerp(cMoss, 0.25 + (r - 0.55) * 0.5);
+    if (inYard && z < -90 && Math.abs(y - GROUND_Y) < 1.4 && r > 0.48) {
+      tmp.lerp(cMoss, 0.35 + (r - 0.48) * 0.55);
     }
     colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
   }

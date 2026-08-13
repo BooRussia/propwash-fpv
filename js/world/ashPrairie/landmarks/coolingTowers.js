@@ -18,14 +18,14 @@ function addShellRing(addCollider, x, z, yBottom, height, radius, wallThick, sec
   }
 }
 
-function applyTowerUVs(geo, height, avgR) {
-  // Lathe UVs are 0..1; stretch so concrete/PBR doesn't smear vertically.
+function applyTowerUVs(geo, height, avgR, uOff = 0, vOff = 0) {
   const uv = geo.attributes.uv;
   if (!uv) return;
-  const uScale = (avgR * Math.PI * 2) / 8; // ~8 m horizontal repeat
-  const vScale = height / 6;               // ~6 m vertical repeat
+  // Larger tiles (~12 m H / ~10 m V) + per-tower offset to break repetition
+  const uScale = (avgR * Math.PI * 2) / 12;
+  const vScale = height / 10;
   for (let i = 0; i < uv.count; i++) {
-    uv.setXY(i, uv.getX(i) * uScale, uv.getY(i) * vScale);
+    uv.setXY(i, uv.getX(i) * uScale + uOff, uv.getY(i) * vScale + vOff);
   }
   uv.needsUpdate = true;
   setAoUVs(geo);
@@ -51,7 +51,7 @@ export function buildCoolingTowers(ctx) {
       pts.push(new THREE.Vector2(r, u * t.h));
     }
     const geo = track(new THREE.LatheGeometry(pts, 64));
-    applyTowerUVs(geo, t.h, (t.baseR + t.throatR + t.topR) / 3);
+    applyTowerUVs(geo, t.h, (t.baseR + t.throatR + t.topR) / 3, t.x * 0.017, t.z * 0.011);
 
     const mat = (mats.concreteTower || mats.concrete).clone();
     track(mat);
@@ -106,6 +106,45 @@ export function buildCoolingTowers(ctx) {
       lip.position.set(t.x, GROUND_Y + t.h - 0.4, t.z);
       lip.rotation.x = Math.PI / 2;
       root.add(lip);
+    }
+
+
+    // Dirt skirt at grade (breaks clean concrete pancake)
+    {
+      const skirt = new THREE.Mesh(
+        track(new THREE.CylinderGeometry(t.baseR + 1.2, t.baseR + 4.5, 3.2, 28, 1, true)),
+        mats.oxideDark || mats.rustCool || mats.concreteDark
+      );
+      skirt.position.set(t.x, GROUND_Y + 1.5, t.z);
+      skirt.receiveShadow = true;
+      root.add(skirt);
+    }
+    // Vertical stains (north-biased) + moss patches
+    for (let s = 0; s < 7; s++) {
+      const a = -0.35 + s * 0.22 + (t.x * 0.001);
+      const sx = t.x + Math.cos(a) * (t.baseR * 0.92);
+      const sz = t.z + Math.sin(a) * (t.baseR * 0.92);
+      const stainH = t.h * (0.35 + (s % 3) * 0.12);
+      const stain = new THREE.Mesh(
+        track(new THREE.BoxGeometry(1.6, stainH, 0.12)),
+        mats.rustCool || mats.oxideDark
+      );
+      stain.position.set(sx, GROUND_Y + stainH * 0.45, sz);
+      stain.lookAt(t.x, GROUND_Y + stainH * 0.45, t.z);
+      stain.castShadow = false;
+      root.add(stain);
+    }
+    for (let m = 0; m < 5; m++) {
+      const a = Math.PI * 0.55 + m * 0.18; // north
+      const mx = t.x + Math.cos(a) * (t.baseR * 0.88);
+      const mz = t.z + Math.sin(a) * (t.baseR * 0.88);
+      const moss = new THREE.Mesh(
+        track(new THREE.SphereGeometry(2.2 + m * 0.3, 6, 4)),
+        mats.moss || mats.mossDark || mats.oxideDark
+      );
+      moss.position.set(mx, GROUND_Y + 2.0 + m * 1.1, mz);
+      moss.scale.set(1, 0.35, 0.8);
+      root.add(moss);
     }
 
     // Base apron / fill basin rim (bailout shelf) — annular, not a solid plug
