@@ -311,7 +311,7 @@ export class Quad {
     this._simT += dt;
     // A written-off airframe stays written off until reset() — clearing
     // `crashed` from outside without a reset re-latches here.
-    if (this.damage.frame <= 0) this.crashed = true;
+    if (this.damage.frame <= 0 || this.damage.props.some((p) => p <= DMG_DEAD)) this.crashed = true;
     const armed = !!(env && env.armed) && !this.crashed;
     this._armedNow = armed;               // read by _impact for prop-strike response
     this._strikeStep = false;             // at most one prop-strike kick per step
@@ -824,7 +824,11 @@ export class Quad {
     }
 
     // ---- write-off ----
-    if (frame <= 0 && !this.crashed) {
+    // A quad keeps flying on damaged props — degraded, pulling, but flyable.
+    // It is only grounded when a prop is actually GONE (you cannot fly a
+    // quadcopter on three props) or the airframe itself is written off.
+    const propGone = this.damage.props.some((p) => p <= DMG_DEAD);
+    if ((frame <= 0 || propGone) && !this.crashed) {
       this.crashed = true;
       // Impart a tumble; motors are cut (armed goes false via main.js).
       const k = Math.min(eff * 0.5, 12);

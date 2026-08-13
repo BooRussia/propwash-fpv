@@ -262,7 +262,30 @@ function stepPhysics(dt) {
   }
   if (quad.crashed && armed) {
     armed = false;
-    emit('osd:flash', { text: 'CRASHED — PRESS R TO RESET', ms: 2500 });
+    emit('osd:flash', { text: 'CRASHED — RESPAWNING…', ms: 1600 });
+  }
+}
+
+// Auto-respawn a few seconds after a write-off so a bad hit does not end the
+// session; R still resets instantly.
+const CRASH_RESPAWN_S = 3;
+let crashRespawnIn = 0;
+
+function updateCrashRespawn(dt) {
+  if (!quad || !quad.crashed) { crashRespawnIn = 0; return; }
+  if (menu.isOpen || calibUI.isOpen) return;   // don't respawn behind the menu
+  // Arm the countdown on ANY write-off, including one that happens while
+  // disarmed (falling out of the sky with a dead prop still counts).
+  if (crashRespawnIn <= 0) crashRespawnIn = CRASH_RESPAWN_S;
+  const before = Math.ceil(crashRespawnIn);
+  crashRespawnIn -= dt;
+  const now = Math.ceil(crashRespawnIn);
+  if (now !== before && now > 0) emit('osd:flash', { text: `RESPAWNING IN ${now}…`, ms: 900 });
+  if (crashRespawnIn <= 0) {
+    crashRespawnIn = 0;
+    quad.crashed = false;
+    respawn();
+    emit('osd:flash', { text: 'READY — THROTTLE DOWN TO ARM', ms: 1600 });
   }
 }
 
@@ -273,7 +296,7 @@ on('hotkey:menu', () => {
 });
 on('menu:open', () => { paused = true; });
 on('menu:close', () => { paused = false; });
-on('hotkey:reset', () => { if (!menu.isOpen && !calibUI.isOpen) { quad.crashed = false; respawn(); emit('osd:flash', { text: 'RESET', ms: 600 }); } });
+on('hotkey:reset', () => { if (!menu.isOpen && !calibUI.isOpen) { crashRespawnIn = 0; quad.crashed = false; respawn(); emit('osd:flash', { text: 'RESET', ms: 600 }); } });
 on('hotkey:arm', () => { if (!menu.isOpen && !calibUI.isOpen) tryArm(!armed); });
 on('hotkey:view', () => { cameras.toggleLos(); });
 on('hotkey:static', () => { cameras.toggleStatic(); });
@@ -346,6 +369,7 @@ renderer.setAnimationLoop(() => {
     stepPhysics(dt);
     if (armed && !quad.crashed) flightTimer += dt;
     modeManager.update(dt, quad);
+    updateCrashRespawn(dt);
     trails.update(dt, quad.position, quad.quaternion, armed, quad.crashed);
     cameras.updateSignal(dt, { quad, pilotPos, mapHandle });
   }
