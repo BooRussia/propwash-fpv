@@ -23,14 +23,26 @@ export const DEFAULT_SETTINGS = {
   },
   gameMode: 'freestyle',        // 'freestyle' | 'racing' | 'retrieval'
   flightMode: 'acro',           // 'acro' | 'angle' | 'horizon'
-  rates: {                      // Betaflight "Actual" rates
-    roll:  { centerSens: 200, maxRate: 670, expo: 0.54 },
-    pitch: { centerSens: 200, maxRate: 670, expo: 0.54 },
-    yaw:   { centerSens: 200, maxRate: 500, expo: 0.54 },
+  // Nested rate profiles (Actual + Betaflight). Legacy flat
+  // {roll,pitch,yaw} is migrated in load() → rates.actual.
+  rates: {
+    model: 'actual',
+    actual: {
+      roll:  { centerSens: 10, maxRate: 670, expo: 0.7 },
+      pitch: { centerSens: 10, maxRate: 670, expo: 0.7 },
+      yaw:   { centerSens: 10, maxRate: 670, expo: 0.7 },
+    },
+    betaflight: {
+      roll:  { rate: 155, expo: 30, superExpo: 73 },
+      pitch: { rate: 155, expo: 30, superExpo: 73 },
+      yaw:   { rate: 100, expo: 30, superExpo: 73 },
+    },
   },
+  throttleExpo: 0.20,           // Liftoff Mid curve expo 20 → 0..1
   camera: {
-    tiltDeg: 25,                // FPV camera uptilt (ArrowUp/Down)
-    fovDeg: 120,                // FPV FOV (ArrowLeft/Right)
+    tiltDeg: 30,                // FPV camera uptilt (ArrowUp/Down); meteor75 Liftoff default
+    fovDeg: 117.5,              // FPV FOV (ArrowLeft/Right) — Liftoff match
+    noise: true,                // Liftoff useCameraNoise — motor micro-shake
     losMode: false,             // V toggles line-of-sight view
     staticEnabled: false,       // C toggles static overlay
     staticMode: 'analog',       // 'analog' | 'digital'
@@ -48,6 +60,8 @@ export const DEFAULT_SETTINGS = {
     windDirDeg: 90,             // where wind blows FROM, compass deg
     gustiness: 0.3,             // 0..1
     rain: 0,                    // 0..1
+    propwash: true,             // Liftoff propwash toggle
+    propwashIntensity: 42,      // 0..100 Liftoff default
   },
   graphics: {
     quality: 'high',            // 'low' | 'medium' | 'high' | 'ultra'
@@ -84,15 +98,97 @@ function deepMerge(base, patch) {
   return out;
 }
 
+/**
+ * Migrate legacy flat rates {roll,pitch,yaw} → nested {model,actual,betaflight}
+ * BEFORE deepMerge so we don't leave stray roll/pitch/yaw keys beside actual.
+ */
+function migrateParsed(parsed) {
+  if (!parsed || typeof parsed !== 'object') return;
+  const r = parsed.rates;
+  if (!r || typeof r !== 'object') return;
+
+  const hasNested = !!(r.actual || r.betaflight || r.model);
+  const hasFlat = !!(r.roll && (r.roll.centerSens != null || r.roll.maxRate != null));
+
+  if (hasFlat && !r.actual) {
+    parsed.rates = {
+      model: r.model === 'betaflight' ? 'betaflight' : 'actual',
+      actual: {
+        roll: r.roll,
+        pitch: r.pitch || r.roll,
+        yaw: r.yaw || r.roll,
+      },
+      // betaflight filled from DEFAULT_SETTINGS via deepMerge
+      ...(r.betaflight ? { betaflight: r.betaflight } : {}),
+    };
+  } else if (hasNested && hasFlat) {
+    // Partial / messy save: prefer nested, drop flat
+    if (!r.actual) {
+      r.actual = { roll: r.roll, pitch: r.pitch || r.roll, yaw: r.yaw || r.roll };
+    }
+    delete r.roll;
+    delete r.pitch;
+    delete r.yaw;
+  }
+
+  // Top-level propwash → environment (if an older patch put them there)
+  if (parsed.propwash != null || parsed.propwashIntensity != null) {
+    parsed.environment = parsed.environment || {};
+    if (parsed.propwash != null && parsed.environment.propwash == null) {
+      parsed.environment.propwash = !!parsed.propwash;
+    }
+    if (parsed.propwashIntensity != null && parsed.environment.propwashIntensity == null) {
+      parsed.environment.propwashIntensity = parsed.propwashIntensity;
+    }
+    delete parsed.propwash;
+    delete parsed.propwashIntensity;
+  }
+  if (parsed.physics && typeof parsed.physics === 'object') {
+    parsed.environment = parsed.environment || {};
+    if (parsed.physics.propwash != null && parsed.environment.propwash == null) {
+      parsed.environment.propwash = !!parsed.physics.propwash;
+    }
+    if (parsed.physics.propwashIntensity != null && parsed.environment.propwashIntensity == null) {
+      parsed.environment.propwashIntensity = parsed.physics.propwashIntensity;
+    }
+  }
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return deepMerge(DEFAULT_SETTINGS, JSON.parse(raw));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      migrateParsed(parsed);
+      return deepMerge(DEFAULT_SETTINGS, parsed);
+    }
   } catch (e) { console.warn('settings load failed', e); }
   return deepMerge(DEFAULT_SETTINGS, {});
 }
 
 export const settings = load();
+
+// Ensure rates always has nested shape even after odd merges
+if (settings.rates && (settings.rates.roll || !settings.rates.actual)) {
+  migrateParsed({ rates: settings.rates });
+  if (settings.rates.roll && !settings.rates.actual) {
+    settings.rates.actual = {
+      roll: settings.rates.roll,
+      pitch: settings.rates.pitch || settings.rates.roll,
+      yaw: settings.rates.yaw || settings.rates.roll,
+    };
+  }
+  delete settings.rates.roll;
+  delete settings.rates.pitch;
+  delete settings.rates.yaw;
+  if (!settings.rates.model) settings.rates.model = 'actual';
+  if (!settings.rates.betaflight) {
+    settings.rates.betaflight = deepMerge(DEFAULT_SETTINGS.rates.betaflight, {});
+  }
+  if (!settings.rates.actual) {
+    settings.rates.actual = deepMerge(DEFAULT_SETTINGS.rates.actual, {});
+  }
+}
 
 let saveTimer = null;
 export function saveSettings() {

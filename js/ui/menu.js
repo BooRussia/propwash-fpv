@@ -5,6 +5,16 @@
 // ============================================================
 import { settings, saveSettings, emit, on, clamp, resetSettings } from '../core/state.js';
 import { DRONES, hoverThrottle } from '../physics/drones.js';
+import {
+  actualRate,
+  getRateDegS,
+  getMaxRateDegS,
+  ensureRatesShape,
+  applyDroneFeelToSettings,
+} from '../input/rates.js';
+
+// Ensure persisted rates are nested before any UI reads them.
+ensureRatesShape(settings.rates);
 
 // ---------------------------------------------------------------
 // small DOM helpers
@@ -117,24 +127,25 @@ function hoverLabel(spec) {
 }
 
 // ---------------------------------------------------------------
-// Betaflight "Actual" rates
+// Rate presets (Actual + Betaflight / Liftoff)
 // ---------------------------------------------------------------
-function actualRate(x, r) {
-  const expo = clamp(Number(r.expo) || 0, 0, 1);
-  const expof = Math.abs(x) * (Math.pow(x, 5) * expo + x * (1 - expo));
-  return r.centerSens * x + Math.max(0, r.maxRate - r.centerSens) * expof;
-}
-
 const RATE_AXES = [
   { id: 'roll', label: 'Roll', color: '#9aa3ad' },
   { id: 'pitch', label: 'Pitch', color: '#c44a4a' },
   { id: 'yaw', label: 'Yaw', color: '#b8a46a' },
 ];
 
-const RATE_PRESETS = [
+const RATE_PRESETS_ACTUAL = [
+  { name: 'Meteor', centerSens: 10, maxRate: 670, expo: 0.70 },
   { name: 'Cinematic', centerSens: 160, maxRate: 400, expo: 0.30 },
   { name: 'Freestyle', centerSens: 200, maxRate: 670, expo: 0.54 },
   { name: 'Race', centerSens: 280, maxRate: 860, expo: 0.60 },
+];
+
+const RATE_PRESETS_BF = [
+  { name: 'Chameleon', rate: 100, expo: 0, superExpo: 78 },
+  { name: 'Race-ish', rate: 150, expo: 30, superExpo: 70 },
+  { name: 'Meteor BF', rate: 155, expo: 30, superExpo: 73 },
 ];
 
 const TABS = [
@@ -498,9 +509,13 @@ export class Menu {
         const pick = () => {
           if (settings.drone === id) { paint(); return; }
           settings.drone = id;
+          // Reapply Liftoff-matched feel defaults for this airframe.
+          applyDroneFeelToSettings(settings, spec?.feel);
           this._commit('drone');
           emit('drone:changed');
           paint();
+          this._syncAll();
+          this._drawRates();
         };
         card.addEventListener('click', pick);
         card.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); pick(); } });
@@ -1042,10 +1057,27 @@ export class Menu {
   // TAB: RATES
   // ------------------------------------------------------------
   _buildRates(sec) {
+    ensureRatesShape(settings.rates);
+
     sec.appendChild(el('div', 'pw-h2', 'Rate profile'));
-    sec.appendChild(el('div', 'pwm-note',
-      'Betaflight “Actual” rates. Center sensitivity shapes feel around mid-stick, ' +
-      'max rate caps rotation speed at full deflection, expo softens the middle.'));
+    this._ratesNote = el('div', 'pwm-note', '');
+    sec.appendChild(this._ratesNote);
+
+    this._segRow(sec, {
+      label: 'Model',
+      options: [
+        { value: 'actual', label: 'ACTUAL' },
+        { value: 'betaflight', label: 'BETAFLIGHT' },
+      ],
+      get: () => settings.rates.model === 'betaflight' ? 'betaflight' : 'actual',
+      set: (v) => {
+        ensureRatesShape(settings.rates);
+        settings.rates.model = v === 'betaflight' ? 'betaflight' : 'actual';
+        this._commit('rates');
+        this._updateRatesModelUI();
+        this._drawRates();
+      },
+    });
 
     const cv = el('canvas', 'pwm-canvas');
     cv.width = 1080;
@@ -1053,22 +1085,20 @@ export class Menu {
     this._ratesCanvas = cv;
     sec.appendChild(cv);
 
-    const presets = el('div', 'pw-row');
-    presets.appendChild(el('div', 'pw-label', 'Presets'));
-    for (const p of RATE_PRESETS) {
-      presets.appendChild(btn('pw-btn', p.name, () => {
-        for (const ax of RATE_AXES) {
-          const r = settings.rates[ax.id];
-          r.centerSens = p.centerSens;
-          r.maxRate = p.maxRate;
-          r.expo = p.expo;
-        }
-        this._commit('rates');
-        this._syncAll();
-        this._drawRates();
-      }));
-    }
-    sec.appendChild(presets);
+    // Presets row (buttons swapped by model)
+    this._ratesPresetsRow = el('div', 'pw-row');
+    this._ratesPresetsRow.appendChild(el('div', 'pw-label', 'Presets'));
+    this._ratesPresetsBtns = el('div', 'pw-row');
+    this._ratesPresetsBtns.style.flex = '1';
+    this._ratesPresetsBtns.style.gap = '6px';
+    this._ratesPresetsBtns.style.flexWrap = 'wrap';
+    this._ratesPresetsRow.appendChild(this._ratesPresetsBtns);
+    sec.appendChild(this._ratesPresetsRow);
+
+    this._ratesActualPanel = el('div', 'pwm-rates-panel');
+    this._ratesBfPanel = el('div', 'pwm-rates-panel');
+    sec.appendChild(this._ratesActualPanel);
+    sec.appendChild(this._ratesBfPanel);
 
     for (const ax of RATE_AXES) {
       const h = el('div', 'pwm-axis-h');
@@ -1076,42 +1106,152 @@ export class Menu {
       sw.style.background = ax.color;
       h.appendChild(sw);
       h.appendChild(el('span', null, ax.label));
-      sec.appendChild(h);
+      this._ratesActualPanel.appendChild(h);
 
-      this._sliderRow(sec, {
+      this._sliderRow(this._ratesActualPanel, {
         label: 'Center sensitivity',
-        min: 50, max: 400, step: 1,
-        getValue: () => settings.rates[ax.id].centerSens,
+        min: 1, max: 400, step: 1,
+        getValue: () => settings.rates.actual[ax.id].centerSens,
         setValue: (v) => {
-          settings.rates[ax.id].centerSens = Math.round(v);
+          settings.rates.actual[ax.id].centerSens = Math.round(v);
           this._commit('rates');
           this._drawRates();
         },
-        display: () => `${settings.rates[ax.id].centerSens}°/s`,
+        display: () => `${settings.rates.actual[ax.id].centerSens}°/s`,
       });
-      this._sliderRow(sec, {
+      this._sliderRow(this._ratesActualPanel, {
         label: 'Max rate',
-        min: 200, max: 1200, step: 5,
-        getValue: () => settings.rates[ax.id].maxRate,
+        min: 50, max: 1200, step: 5,
+        getValue: () => settings.rates.actual[ax.id].maxRate,
         setValue: (v) => {
-          settings.rates[ax.id].maxRate = Math.round(v);
+          settings.rates.actual[ax.id].maxRate = Math.round(v);
           this._commit('rates');
           this._drawRates();
         },
-        display: () => `${settings.rates[ax.id].maxRate}°/s`,
+        display: () => `${settings.rates.actual[ax.id].maxRate}°/s`,
       });
-      this._sliderRow(sec, {
+      this._sliderRow(this._ratesActualPanel, {
         label: 'Expo',
         min: 0, max: 1, step: 0.01,
-        getValue: () => settings.rates[ax.id].expo,
+        getValue: () => settings.rates.actual[ax.id].expo,
         setValue: (v) => {
-          settings.rates[ax.id].expo = Math.round(v * 100) / 100;
+          settings.rates.actual[ax.id].expo = Math.round(v * 100) / 100;
           this._commit('rates');
           this._drawRates();
         },
-        display: () => settings.rates[ax.id].expo.toFixed(2),
+        display: () => settings.rates.actual[ax.id].expo.toFixed(2),
       });
     }
+
+    for (const ax of RATE_AXES) {
+      const h = el('div', 'pwm-axis-h');
+      const sw = el('span', 'pwm-swatch');
+      sw.style.background = ax.color;
+      h.appendChild(sw);
+      h.appendChild(el('span', null, ax.label));
+      this._ratesBfPanel.appendChild(h);
+
+      this._sliderRow(this._ratesBfPanel, {
+        label: 'Rate',
+        min: 1, max: 200, step: 1,
+        getValue: () => settings.rates.betaflight[ax.id].rate,
+        setValue: (v) => {
+          settings.rates.betaflight[ax.id].rate = Math.round(v);
+          this._commit('rates');
+          this._drawRates();
+        },
+        display: () => String(Math.round(settings.rates.betaflight[ax.id].rate)),
+      });
+      this._sliderRow(this._ratesBfPanel, {
+        label: 'Expo',
+        min: 0, max: 100, step: 1,
+        getValue: () => settings.rates.betaflight[ax.id].expo,
+        setValue: (v) => {
+          settings.rates.betaflight[ax.id].expo = Math.round(v);
+          this._commit('rates');
+          this._drawRates();
+        },
+        display: () => String(Math.round(settings.rates.betaflight[ax.id].expo)),
+      });
+      this._sliderRow(this._ratesBfPanel, {
+        label: 'Super Expo',
+        min: 0, max: 100, step: 1,
+        getValue: () => settings.rates.betaflight[ax.id].superExpo,
+        setValue: (v) => {
+          settings.rates.betaflight[ax.id].superExpo = Math.round(v);
+          this._commit('rates');
+          this._drawRates();
+        },
+        display: () => String(Math.round(settings.rates.betaflight[ax.id].superExpo)),
+      });
+    }
+
+    sec.appendChild(el('div', 'pw-h2', 'Throttle'));
+    this._sliderRow(sec, {
+      label: 'Throttle expo',
+      min: 0, max: 1, step: 0.01,
+      getValue: () => Number(settings.throttleExpo) || 0,
+      setValue: (v) => {
+        settings.throttleExpo = Math.round(v * 100) / 100;
+        this._commit('throttleExpo');
+      },
+      display: () => `${Math.round((Number(settings.throttleExpo) || 0) * 100)}`,
+      note: 'Liftoff Mid curve expo (default 20). Softens low stick, keeps full punch.',
+    });
+
+    this._rebuildRatesPresets();
+    this._updateRatesModelUI();
+  }
+
+  _rebuildRatesPresets() {
+    const host = this._ratesPresetsBtns;
+    if (!host) return;
+    host.textContent = '';
+    const bf = settings.rates.model === 'betaflight';
+    if (bf) {
+      for (const p of RATE_PRESETS_BF) {
+        host.appendChild(btn('pw-btn', p.name, () => {
+          ensureRatesShape(settings.rates);
+          for (const ax of RATE_AXES) {
+            const r = settings.rates.betaflight[ax.id];
+            r.rate = p.rate;
+            r.expo = p.expo;
+            r.superExpo = p.superExpo;
+          }
+          this._commit('rates');
+          this._syncAll();
+          this._drawRates();
+        }));
+      }
+    } else {
+      for (const p of RATE_PRESETS_ACTUAL) {
+        host.appendChild(btn('pw-btn', p.name, () => {
+          ensureRatesShape(settings.rates);
+          for (const ax of RATE_AXES) {
+            const r = settings.rates.actual[ax.id];
+            r.centerSens = p.centerSens;
+            r.maxRate = p.maxRate;
+            r.expo = p.expo;
+          }
+          this._commit('rates');
+          this._syncAll();
+          this._drawRates();
+        }));
+      }
+    }
+  }
+
+  _updateRatesModelUI() {
+    ensureRatesShape(settings.rates);
+    const bf = settings.rates.model === 'betaflight';
+    if (this._ratesActualPanel) this._ratesActualPanel.style.display = bf ? 'none' : '';
+    if (this._ratesBfPanel) this._ratesBfPanel.style.display = bf ? '' : 'none';
+    if (this._ratesNote) {
+      this._ratesNote.textContent = bf
+        ? 'Betaflight classical rates (Liftoff Rate / Expo / Super Expo). Rate 0–200, Expo & Super Expo 0–100.'
+        : 'Betaflight “Actual” rates. Center sensitivity shapes mid-stick feel, max rate caps full deflection, expo softens the middle.';
+    }
+    this._rebuildRatesPresets();
   }
 
   _drawRates() {
@@ -1120,6 +1260,7 @@ export class Menu {
     let ctx = null;
     try { ctx = cv.getContext('2d'); } catch (e) { return; }
     if (!ctx) return;
+    ensureRatesShape(settings.rates);
 
     const W = cv.width, H = cv.height;
     const padL = 78, padR = 26, padT = 24, padB = 46;
@@ -1132,10 +1273,9 @@ export class Menu {
 
     let maxRate = 200;
     for (const ax of RATE_AXES) {
-      const r = settings.rates[ax.id];
-      if (r) maxRate = Math.max(maxRate, Number(r.maxRate) || 0, Number(r.centerSens) || 0);
+      maxRate = Math.max(maxRate, getMaxRateDegS(ax.id, settings.rates) || 0);
     }
-    const maxY = Math.ceil(maxRate / 100) * 100;
+    const maxY = Math.ceil(maxRate / 100) * 100 || 200;
 
     const xTo = (x) => cx + (x * plotW) / 2;
     const yTo = (r) => cy - (r / maxY) * (plotH / 2);
@@ -1187,8 +1327,6 @@ export class Menu {
     // curves
     const N = 128;
     for (const ax of RATE_AXES) {
-      const r = settings.rates[ax.id];
-      if (!r) continue;
       ctx.strokeStyle = ax.color;
       ctx.lineWidth = 2.5;
       ctx.shadowColor = ax.color;
@@ -1197,24 +1335,24 @@ export class Menu {
       for (let i = 0; i <= N; i++) {
         const x = -1 + (2 * i) / N;
         const px = xTo(x);
-        const py = yTo(actualRate(x, r));
+        const py = yTo(getRateDegS(ax.id, x, settings.rates));
         if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
       ctx.stroke();
     }
     ctx.shadowBlur = 0;
 
-    // legend (top-left inside plot)
+    // legend
     ctx.font = '15px Consolas, monospace';
     ctx.textBaseline = 'middle';
     let ly = padT + 16;
     for (const ax of RATE_AXES) {
-      const r = settings.rates[ax.id];
+      const max = Math.round(getMaxRateDegS(ax.id, settings.rates));
       ctx.fillStyle = ax.color;
       ctx.fillRect(padL + 14, ly - 5, 12, 12);
       ctx.fillStyle = 'rgba(223,234,242,0.92)';
       ctx.textAlign = 'left';
-      ctx.fillText(`${ax.label.toUpperCase()}  ${Math.round(r?.maxRate ?? 0)}°/s`, padL + 34, ly + 1);
+      ctx.fillText(`${ax.label.toUpperCase()}  ${max}°/s`, padL + 34, ly + 1);
       ly += 24;
     }
   }
@@ -1323,6 +1461,23 @@ export class Menu {
       setValue: (v) => { settings.environment.rain = v; this._commit('environment'); },
       display: () => `${Math.round(settings.environment.rain * 100)}%`,
     });
+
+    sec.appendChild(el('div', 'pw-h2', 'Propwash'));
+    sec.appendChild(el('div', 'pwm-note',
+      'Descending into your own wake adds a low-frequency wallow. Match Liftoff intensity (default 42).'));
+    this._toggleRow(sec, {
+      label: 'Propwash',
+      get: () => settings.environment.propwash !== false,
+      set: (v) => { settings.environment.propwash = !!v; this._commit('environment'); },
+      note: 'Off zeroes the wash envelope — no descent wobble.',
+    });
+    this._sliderRow(sec, {
+      label: 'Propwash intensity',
+      min: 0, max: 100, step: 1,
+      getValue: () => Number(settings.environment.propwashIntensity) || 0,
+      setValue: (v) => { settings.environment.propwashIntensity = Math.round(v); this._commit('environment'); },
+      display: () => String(Math.round(settings.environment.propwashIntensity ?? 0)),
+    });
   }
 
   // ------------------------------------------------------------
@@ -1340,11 +1495,20 @@ export class Menu {
     });
     this._sliderRow(sec, {
       label: 'FOV',
-      min: 60, max: 150, step: 1,
+      min: 60, max: 150, step: 0.5,
       getValue: () => settings.camera.fovDeg,
-      setValue: (v) => { settings.camera.fovDeg = Math.round(v); this._commit('camera'); },
-      display: () => `${Math.round(settings.camera.fovDeg)}°`,
-      note: 'Also ArrowLeft / ArrowRight in flight.',
+      setValue: (v) => { settings.camera.fovDeg = Math.round(v * 2) / 2; this._commit('camera'); },
+      display: () => {
+        const f = Number(settings.camera.fovDeg) || 0;
+        return `${f % 1 ? f.toFixed(1) : String(f)}°`;
+      },
+      note: 'Default 117.5° (Liftoff match). Also ArrowLeft / ArrowRight in flight.',
+    });
+    this._toggleRow(sec, {
+      label: 'Camera noise',
+      get: () => settings.camera.noise !== false,
+      set: (v) => { settings.camera.noise = !!v; this._commit('camera'); },
+      note: 'Liftoff useCameraNoise — motor micro-shake on the FPV feed.',
     });
     this._toggleRow(sec, {
       label: 'Line-of-sight view',

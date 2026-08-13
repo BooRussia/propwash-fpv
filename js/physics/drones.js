@@ -18,6 +18,8 @@
 //   battWh             battery energy (Wh)
 //   sagVoltsPerCell    voltage sag per cell at full punch (V)
 //   camTiltDefaultDeg  typical FPV camera uptilt (deg)
+//   idleMotorThrottle  air-mode idle floor (0..1), from feel
+//   feel               Liftoff-matched rates / idle / cam / throttle expo
 //   description        one-liner for the UI
 //
 // Inertia model: quads are roughly flat discs —
@@ -26,7 +28,17 @@
 //   including first-order motor lag) matches each class:
 //   5in ~75 ms, whoop ~90 ms, cinewhoop ~115 ms. Yaw is much weaker
 //   (prop drag torque only), reaching 500 deg/s in ~180-220 ms.
+//
+// Changing drone in the Fly tab calls applyDroneFeelDefaults() and
+// rewrites rates + idle + cam tilt + throttle expo to the Liftoff-
+// matched feel profile for that airframe.
 // ============================================================
+
+const ACTUAL_METEOR = { centerSens: 10, maxRate: 670, expo: 0.7 };
+const BF_METEOR_RP = { rate: 155, expo: 30, superExpo: 73 };
+const BF_METEOR_Y = { rate: 100, expo: 30, superExpo: 73 };
+const BF_CHAMELEON = { rate: 100, expo: 0, superExpo: 78 };
+const ACTUAL_CINE = { centerSens: 160, maxRate: 400, expo: 0.35 };
 
 export const DRONES = {
   // ----------------------------------------------------------
@@ -54,7 +66,24 @@ export const DRONES = {
     dragArea:  { front: 0.0024, top: 0.0060, side: 0.0028 },
     battWh: 1.66,               // 1S 450 mAh * 3.7 V
     sagVoltsPerCell: 0.35,      // 1S sags hard on punch-outs
-    camTiltDefaultDeg: 20,
+    camTiltDefaultDeg: 30,
+    idleMotorThrottle: 0.01,
+    feel: {
+      ratesModel: 'actual',
+      actual: {
+        roll: { ...ACTUAL_METEOR },
+        pitch: { ...ACTUAL_METEOR },
+        yaw: { ...ACTUAL_METEOR },
+      },
+      betaflight: {
+        roll: { ...BF_METEOR_RP },
+        pitch: { ...BF_METEOR_RP },
+        yaw: { ...BF_METEOR_Y },
+      },
+      idleMotorThrottle: 0.01,
+      throttleExpo: 0.20,
+      camTiltDeg: 30,
+    },
     description: 'Ducted 1S micro whoop — nimble indoors, tossed around by any wind.',
   },
 
@@ -84,6 +113,23 @@ export const DRONES = {
     battWh: 12.6,               // 4S 850 mAh * 14.8 V
     sagVoltsPerCell: 0.16,
     camTiltDefaultDeg: 25,
+    idleMotorThrottle: 0.03,
+    feel: {
+      ratesModel: 'actual',
+      actual: {
+        roll: { ...ACTUAL_CINE },
+        pitch: { ...ACTUAL_CINE },
+        yaw: { ...ACTUAL_CINE },
+      },
+      betaflight: {
+        roll: { rate: 100, expo: 20, superExpo: 50 },
+        pitch: { rate: 100, expo: 20, superExpo: 50 },
+        yaw: { rate: 100, expo: 20, superExpo: 50 },
+      },
+      idleMotorThrottle: 0.03,
+      throttleExpo: 0.20,
+      camTiltDeg: 25,
+    },
     description: 'Heavy ducted 3-inch cinewhoop — smooth, stable, deliberate.',
   },
 
@@ -96,6 +142,7 @@ export const DRONES = {
   // Torque: I*363 rad/s^2 ≈ 1.7 N*m → 670 deg/s in ~75 ms with 60 ms tau
   //   (physically plausible: 2 motors * 12.5 N * 0.085 m arm ≈ 2.1 N*m ceiling)
   // Drag: open frame, low CdA/m → 50+ m/s in a full-tilt dive.
+  // Liftoff Chameleon BF profile: 100 / 0 / 78 on all axes.
   // ----------------------------------------------------------
   nazgul5: {
     id: 'nazgul5',
@@ -113,6 +160,23 @@ export const DRONES = {
     battWh: 28.9,               // 6S 1300 mAh * 22.2 V
     sagVoltsPerCell: 0.13,
     camTiltDefaultDeg: 30,
+    idleMotorThrottle: 0.04,
+    feel: {
+      ratesModel: 'betaflight',
+      actual: {
+        roll:  { centerSens: 200, maxRate: 670, expo: 0.54 },
+        pitch: { centerSens: 200, maxRate: 670, expo: 0.54 },
+        yaw:   { centerSens: 200, maxRate: 500, expo: 0.54 },
+      },
+      betaflight: {
+        roll: { ...BF_CHAMELEON },
+        pitch: { ...BF_CHAMELEON },
+        yaw: { ...BF_CHAMELEON },
+      },
+      idleMotorThrottle: 0.04,
+      throttleExpo: 0.20,
+      camTiltDeg: 30,
+    },
     description: 'The 5-inch freestyle benchmark — huge power, instant rotation.',
   },
 };
@@ -125,4 +189,13 @@ export const DRONES = {
 export function hoverThrottle(spec) {
   if (!spec || !(spec.maxThrustN > 0) || !(spec.massKg > 0)) return 0;
   return Math.sqrt((spec.massKg * 9.81) / spec.maxThrustN);
+}
+
+/**
+ * Air-mode idle floor for a drone spec (Liftoff per-drone idle).
+ */
+export function idleMotorThrottle(spec) {
+  if (!spec) return 0.035;
+  const v = spec.feel?.idleMotorThrottle ?? spec.idleMotorThrottle;
+  return Number.isFinite(Number(v)) ? Number(v) : 0.035;
 }

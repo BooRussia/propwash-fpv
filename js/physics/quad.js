@@ -11,7 +11,7 @@
 //   yaw   +1 = nose right      → negative rotation about body +Y
 //
 // Model summary:
-//   sticks → Betaflight "Actual Rates" → rate setpoints (rad/s)
+//   sticks → Actual or Betaflight rates (js/input/rates.js) → setpoints (rad/s)
 //   torque-limited P controller toward setpoint (responseTau)
 //   first-order motor lag on torque & thrust (spec.motorTau)
 //   thrust ∝ throttle^2 * battery voltage factor, air-mode idle floor
@@ -38,7 +38,8 @@
 // ============================================================
 
 import * as THREE from 'three';
-import { clamp, emit } from '../core/state.js';
+import { clamp, emit, settings } from '../core/state.js';
+import { getRateDegS, getMaxRateDegS, normalizeRates } from '../input/rates.js';
 import { buildGrid, resolveSphere } from '../core/collision.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -58,8 +59,6 @@ const RESTITUTION = 0.3;
 const FRICTION_KEEP = 0.75;     // tangential velocity kept per impact
 const ANGVEL_KEEP = 0.55;       // angular velocity kept per impact
 
-const DEF_RATE_RP = { centerSens: 200, maxRate: 670, expo: 0.54 };
-const DEF_RATE_Y  = { centerSens: 200, maxRate: 500, expo: 0.54 };
 const ZERO_VEC = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -117,19 +116,6 @@ const DMG_VIB_HZ = [9.3, 11.7, 14.1, 17.3];
 const R2 = Math.SQRT1_2;
 const PROP_X = [R2, R2, -R2, -R2];
 const PROP_Z = [-R2, R2, R2, -R2];
-
-/**
- * Betaflight applyActualRates (deg values pre-converted to rad):
- *   expof = |x| * (x^5*expo + x*(1-expo))
- *   rate  = centerSens*x + max(0, maxRate-centerSens) * expof
- */
-function actualRate(x, ax) {
-  const a = Math.abs(x);
-  const x5 = x * x * x * x * x;
-  const expof = a * (x5 * ax.expo + x * (1 - ax.expo));
-  const stickMovement = Math.max(0, ax.maxRad - ax.centerRad);
-  return ax.centerRad * x + stickMovement * expof;
-}
 
 export class Quad {
   constructor(spec) {
@@ -271,24 +257,12 @@ export class Quad {
     this._input.yaw = clamp(f(c.yaw), -1, 1);
   }
 
-  /** settings.rates shape: {roll:{centerSens,maxRate,expo}, pitch, yaw} in deg/s. */
+  /**
+   * settings.rates: nested {model, actual:{...}, betaflight:{...}} (or legacy flat).
+   * Stored normalized; stick→deg/s via getRateDegS in step().
+   */
   setRates(ratesObj) {
-    const conv = (axis, def) => {
-      const a = (ratesObj && ratesObj[axis]) || {};
-      const center = Number.isFinite(a.centerSens) ? a.centerSens : def.centerSens;
-      const max = Number.isFinite(a.maxRate) ? a.maxRate : def.maxRate;
-      const expo = clamp(Number.isFinite(a.expo) ? a.expo : def.expo, 0, 1);
-      return {
-        centerRad: Math.max(0, center) * DEG2RAD,
-        maxRad: Math.max(Math.max(0, center), max) * DEG2RAD,
-        expo,
-      };
-    };
-    this._rates = {
-      roll: conv('roll', DEF_RATE_RP),
-      pitch: conv('pitch', DEF_RATE_RP),
-      yaw: conv('yaw', DEF_RATE_Y),
-    };
+    this._rates = normalizeRates(ratesObj);
   }
 
   /** "acro" | "angle" | "horizon" */
@@ -335,8 +309,14 @@ export class Quad {
     const mtx = Math.max(1e-9, mt.x), mty = Math.max(1e-9, mt.y), mtz = Math.max(1e-9, mt.z);
     const aM = 1 - Math.exp(-dt / Math.max(1e-4, spec.motorTau)); // motor-lag blend
 
-    // Air-mode idle: props always spin while armed.
-    const thrIn = armed ? Math.max(this._input.throttle, AIRMODE_IDLE) : 0;
+    // Throttle expo (Liftoff Mid curve) then air-mode idle floor (per-drone feel).
+    let thrStick = this._input.throttle;
+    const thrExpo = clamp(Number(settings.throttleExpo) || 0, 0, 1);
+    if (thrExpo > 0) thrStick = thrStick * (1 - thrExpo) + thrStick * thrStick * thrStick * thrExpo;
+    const idle = (spec.feel && Number.isFinite(spec.feel.idleMotorThrottle))
+      ? spec.feel.idleMotorThrottle
+      : (Number.isFinite(spec.idleMotorThrottle) ? spec.idleMotorThrottle : AIRMODE_IDLE);
+    const thrIn = armed ? Math.max(thrStick, idle) : 0;
 
     // ---------------- battery ----------------
     if (armed) {
@@ -358,9 +338,11 @@ export class Quad {
     let spX = 0, spY = 0, spZ = 0;
     if (armed) {
       const r = this._rates;
-      const acroX = -actualRate(this._input.pitch, r.pitch);
-      const acroY = -actualRate(this._input.yaw, r.yaw);
-      const acroZ = -actualRate(this._input.roll, r.roll);
+      const acroX = -getRateDegS('pitch', this._input.pitch, r) * DEG2RAD;
+      const acroY = -getRateDegS('yaw', this._input.yaw, r) * DEG2RAD;
+      const acroZ = -getRateDegS('roll', this._input.roll, r) * DEG2RAD;
+      const maxPitch = getMaxRateDegS('pitch', r) * DEG2RAD;
+      const maxRoll = getMaxRateDegS('roll', r) * DEG2RAD;
       if (this._mode === 'acro') {
         spX = acroX; spY = acroY; spZ = acroZ;
       } else {
@@ -372,8 +354,8 @@ export class Quad {
         const rrMeas = -this.angularVelocity.z;                // current roll-right rate
         const ndRate = ANGLE_P * (this._input.pitch * ANGLE_MAX - noseDown) - ANGLE_D * ndMeas;
         const rrRate = ANGLE_P * (this._input.roll * ANGLE_MAX - rollRight) - ANGLE_D * rrMeas;
-        const angX = clamp(-ndRate, -r.pitch.maxRad, r.pitch.maxRad);
-        const angZ = clamp(-rrRate, -r.roll.maxRad, r.roll.maxRad);
+        const angX = clamp(-ndRate, -maxPitch, maxPitch);
+        const angZ = clamp(-rrRate, -maxRoll, maxRoll);
         if (this._mode === 'angle') {
           spX = angX; spZ = angZ;
         } else {
@@ -405,8 +387,10 @@ export class Quad {
     // descending in a turn should stay glass-smooth.
     const descent = -this._airB.y; // body-frame downward airspeed
     let washTarget = 0;
-    if (armed && descent > WASH_MIN_DESCENT && this._input.throttle > 0.3) {
-      washTarget = Math.min((descent - WASH_MIN_DESCENT) / 6, 1) * this._washFactor;
+    const pwOn = settings.environment?.propwash !== false;
+    const pwInt = clamp((Number(settings.environment?.propwashIntensity) || 0) / 100, 0, 1);
+    if (pwOn && armed && descent > WASH_MIN_DESCENT && this._input.throttle > 0.3) {
+      washTarget = Math.min((descent - WASH_MIN_DESCENT) / 6, 1) * this._washFactor * pwInt;
     }
     // ease the wash envelope in/out so it never switches on abruptly
     this._washAmp += (washTarget - this._washAmp) * (1 - Math.exp(-dt / 0.25));

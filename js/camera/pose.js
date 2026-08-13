@@ -48,7 +48,9 @@ export function updateCameraPose(cams, t, ctx) {
   // FPV: body-locked with uptilt + motor micro-shake
   tiltQuat.setFromAxisAngle(_xAxis, THREE.MathUtils.degToRad(settings.camera.tiltDeg));
   const m = quad.motorOutput * (ctx.armed ? 1 : 0);
-  const shakeScale = dampShake(1);
+  // Liftoff useCameraNoise: when off, kill motor micro-shake entirely.
+  const noiseOn = settings.camera.noise !== false;
+  const shakeScale = dampShake(1) * (noiseOn ? 1 : 0);
   shakeEuler.set(
     Math.sin(t * 131) * 0.0016 * m * shakeScale,
     Math.sin(t * 97) * 0.0013 * m * shakeScale,
