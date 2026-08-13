@@ -105,6 +105,8 @@ export async function buildGround(ctx) {
   for (const [mx, mz, mw, md] of [
     [-90, -150, 40, 36], [-30, -165, 36, 32], [35, -148, 42, 36],
     [75, -115, 28, 28], [-60, -130, 22, 20],
+    [110, 55, 40, 30], [-145, -15, 50, 40], [40, 88, 30, 20],
+    [130, 70, 24, 18], [-105, 35, 40, 28],
   ]) {
     const g = track(new THREE.PlaneGeometry(mw, md));
     g.rotateX(-Math.PI / 2);
