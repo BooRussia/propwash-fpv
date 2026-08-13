@@ -1,37 +1,18 @@
 // ============================================================
 // PropWash FPV — drone specifications
-// Three real quads with realistic physical numbers (SI units).
+// Physical numbers tuned from Liftoff Part*Data extracts
+// (UnityPy + TypeTreeGenerator). See LIFTOFF_FEEL_BRIEF.json.
 //
 // Field reference:
-//   id                 key in DRONES / settings.drone
-//   displayName        UI name
-//   class              'whoop' | 'cinewhoop' | 'freestyle'
-//   propInches         prop diameter in inches
-//   cells              LiPo cell count (1S/4S/6S)
-//   massKg             all-up weight incl. battery (kg)
-//   sizeM              wheelbase, motor-to-motor diagonal (m)
-//   maxThrustN         total thrust, 4 motors, full stick, fresh pack (N)
-//   motorTau           motor+prop spool time constant (s)
-//   inertia {x,y,z}    body inertia (kg*m^2); x=pitch, y=yaw, z=roll
-//   maxTorque {x,y,z}  peak control torque per axis (N*m)
-//   dragArea {front,top,side}  Cd*A per body axis (m^2)
-//   battWh             battery energy (Wh)
-//   sagVoltsPerCell    voltage sag per cell at full punch (V)
-//   camTiltDefaultDeg  typical FPV camera uptilt (deg)
-//   idleMotorThrottle  air-mode idle floor (0..1), from feel
-//   feel               Liftoff-matched rates / idle / cam / throttle expo
-//   description        one-liner for the UI
+//   id, displayName, class, propInches, cells, massKg, sizeM
+//   maxThrustN         4-motor peak thrust, fresh pack (N)
+//   motorTau, inertia, maxTorque, dragArea
+//   battWh, sagVoltsPerCell, camTiltDefaultDeg
+//   idleMotorThrottle, feel (rates / idle / cam / throttle expo)
+//   parts              Liftoff Motor/Prop/Battery/Frame tables
 //
-// Inertia model: quads are roughly flat discs —
-//   I_pitch/roll ≈ m * (wheelbase/2)^2 * 0.5,  I_yaw ≈ 1.5x that.
-// Torque model: sized so torque-limited time-to-max-rate (670 deg/s,
-//   including first-order motor lag) matches each class:
-//   5in ~75 ms, whoop ~90 ms, cinewhoop ~115 ms. Yaw is much weaker
-//   (prop drag torque only), reaching 500 deg/s in ~180-220 ms.
-//
-// Changing drone in the Fly tab calls applyDroneFeelDefaults() and
-// rewrites rates + idle + cam tilt + throttle expo to the Liftoff-
-// matched feel profile for that airframe.
+// Thrust path (quad.js) reads maxThrustN and scales by
+// parts.prop.propConstant / propConstantBaseline when present.
 // ============================================================
 
 const ACTUAL_METEOR = { centerSens: 10, maxRate: 670, expo: 0.7 };
@@ -40,34 +21,65 @@ const BF_METEOR_Y = { rate: 100, expo: 30, superExpo: 73 };
 const BF_CHAMELEON = { rate: 100, expo: 0, superExpo: 78 };
 const ACTUAL_CINE = { centerSens: 160, maxRate: 400, expo: 0.35 };
 
+/** Peak thrust used by the flight model (N). */
+export function effectiveMaxThrustN(spec) {
+  if (!spec) return 0;
+  const base = Number(spec.maxThrustN) || 0;
+  const pc = Number(spec.parts?.prop?.propConstant);
+  const pc0 = Number(spec.parts?.prop?.propConstantBaseline);
+  if (Number.isFinite(pc) && Number.isFinite(pc0) && pc0 > 0) {
+    return base * (pc / pc0);
+  }
+  return base;
+}
+
 export const DRONES = {
   // ----------------------------------------------------------
-  // BetaFPV Meteor75 Pro — 75 mm brushless 1S tiny whoop.
-  // ~24.7 g dry, ~34 g AUW with 1S 450 mAh. 40 mm (1.6") props.
-  // Sanity: weight = 0.034*9.81 = 0.3335 N; maxThrust 0.93 N
-  //   → TWR = 2.79; hoverThrottle = sqrt(0.3335/0.93) = 0.599 ✓ (0.58–0.65)
-  // Inertia: 0.034*(0.0375)^2*0.5 = 2.4e-5 (pitch/roll), yaw 1.5x = 3.6e-5
-  // Torque: I*178 rad/s^2 ≈ 4.3e-3 N*m → 670 deg/s in ~90 ms with 25 ms tau
-  // Drag: ducted frame, huge CdA for its mass — top speed ~24 m/s,
-  //   and wind shoves it around hard (CdA/m ≈ 0.07, 1.6x the 5-inch).
+  // BetaFPV Meteor75 Pro — Liftoff Micro build extract
+  // Happymodel EX0802 22000KV + Gemfan 40mm×3 + Air75 + Oomph 1S520
+  // Parts AUW ≈ 0.0336 kg. Actual rates 10 / 0.7 / 670, idle 0.01.
+  // maxThrust sized for ~TWR 3.8 on parts AUW (whoop-class punch).
   // ----------------------------------------------------------
   meteor75: {
     id: 'meteor75',
     displayName: 'BetaFPV Meteor75 Pro',
     class: 'whoop',
-    propInches: 1.6,
+    propInches: 1.574,
     cells: 1,
-    massKg: 0.034,
+    massKg: 0.0336,
     sizeM: 0.075,
-    maxThrustN: 0.93,
-    motorTau: 0.025,
-    inertia:   { x: 2.4e-5, y: 3.6e-5, z: 2.4e-5 },
-    maxTorque: { x: 4.3e-3, y: 1.8e-3, z: 4.3e-3 },
-    dragArea:  { front: 0.0024, top: 0.0060, side: 0.0028 },
-    battWh: 1.66,               // 1S 450 mAh * 3.7 V
-    sagVoltsPerCell: 0.35,      // 1S sags hard on punch-outs
+    maxThrustN: 1.25,            // TWR ≈ 3.79 @ 0.0336 kg
+    motorTau: 0.022,
+    inertia:   { x: 2.36e-5, y: 3.54e-5, z: 2.36e-5 },
+    maxTorque: { x: 3.1e-3,  y: 1.5e-3,  z: 3.1e-3 },
+    dragArea:  { front: 0.0023, top: 0.0058, side: 0.0027 },
+    battWh: 1.976,               // 520 mAh × 3.8 V
+    sagVoltsPerCell: 0.50,       // Ri 0.2 Ω 1S — punches sag hard
     camTiltDefaultDeg: 30,
     idleMotorThrottle: 0.01,
+    parts: {
+      motor: {
+        id: 'HappymodelEX0802Motor22000KV01',
+        weight_kg: 0.0016, size: 802, diameter_mm: 8, statorHeight_mm: 2,
+        kv: 22000, maxPower_W: 13, maxS: 1, noLoadI: 0.45, noLoadV: 2.0, Ri_ohm: 0.2,
+      },
+      prop: {
+        id: 'Gemfan40mmPropeller301',
+        weight_kg: 0.0005, diameter_in: 1.574, pitch: 3.5, blades: 3,
+        propConstant: 1.0, propConstantBaseline: 1.0,
+      },
+      frame: {
+        id: 'BetaFPVAir75Frame01',
+        weight_kg: 0.0112, maxPropellerSize_in: 1.65,
+        batteryAtBottom: true, hasDragOverride: false, dragOverrideValue: 0.82,
+      },
+      battery: {
+        id: 'Oomph1SBattery520mAh01',
+        weight_kg: 0.014, mAh: 520, S: 1, Vcell: 3.8,
+        cellRi_ohm: 0.1, Ccont: 80, Cburst: 160,
+      },
+      approxPartsAuw_kg: 0.0336,
+    },
     feel: {
       ratesModel: 'actual',
       actual: {
@@ -84,18 +96,11 @@ export const DRONES = {
       throttleExpo: 0.20,
       camTiltDeg: 30,
     },
-    description: 'Ducted 1S micro whoop — nimble indoors, tossed around by any wind.',
+    description: 'Liftoff Micro Meteor75 — 0802 22000KV / 40mm tri / 1S520. Nimble whoop punch.',
   },
 
   // ----------------------------------------------------------
-  // GEPRC Cinebot30 — 3-inch 4S ducted cinewhoop.
-  // ~410 g AUW with 4S 850 mAh, 127 mm wheelbase.
-  // Sanity: weight = 0.410*9.81 = 4.022 N; maxThrust 16.1 N
-  //   → TWR = 4.00; hoverThrottle = sqrt(4.022/16.1) = 0.500 ✓ (~0.5)
-  // Inertia: 0.410*(0.0635)^2*0.5 = 8.3e-4 (pitch/roll), yaw 1.24e-3
-  // Torque: I*159 rad/s^2 ≈ 0.131 N*m → 670 deg/s in ~115 ms with 45 ms tau
-  // Drag: chunky ducts → top speed ~35 m/s. Highest disc loading of the
-  //   three (≈220 N/m^2), so it prop-washes worst in fast descents.
+  // GEPRC Cinebot30 — unchanged (no Liftoff extract yet)
   // ----------------------------------------------------------
   cinebot30: {
     id: 'cinebot30',
@@ -110,7 +115,7 @@ export const DRONES = {
     inertia:   { x: 8.3e-4, y: 1.24e-3, z: 8.3e-4 },
     maxTorque: { x: 0.131,  y: 0.062,   z: 0.131 },
     dragArea:  { front: 0.020, top: 0.034, side: 0.022 },
-    battWh: 12.6,               // 4S 850 mAh * 14.8 V
+    battWh: 12.6,
     sagVoltsPerCell: 0.16,
     camTiltDefaultDeg: 25,
     idleMotorThrottle: 0.03,
@@ -134,33 +139,51 @@ export const DRONES = {
   },
 
   // ----------------------------------------------------------
-  // iFlight Nazgul5 V3 — classic 5-inch 6S freestyle quad.
-  // ~640 g AUW with 6S 1300 mAh, 2306 motors, 240 mm wheelbase.
-  // Sanity: weight = 0.640*9.81 = 6.278 N; maxThrust 50 N
-  //   → TWR = 7.96; hoverThrottle = sqrt(6.278/50) = 0.354 ✓ (0.34–0.37)
-  // Inertia: 0.640*(0.120)^2*0.5 = 4.6e-3 (pitch/roll), yaw 6.9e-3
-  // Torque: I*363 rad/s^2 ≈ 1.7 N*m → 670 deg/s in ~75 ms with 60 ms tau
-  //   (physically plausible: 2 motors * 12.5 N * 0.085 m arm ≈ 2.1 N*m ceiling)
-  // Drag: open frame, low CdA/m → 50+ m/s in a full-tilt dive.
-  // Liftoff Chameleon BF profile: 100 / 0 / 78 on all axes.
+  // 5″ freestyle slot — Liftoff Armattan Chameleon parts mapped
+  // onto nazgul5. Hypetrain 2306 2450KV + HQ 5×4×3 (pc 1.2) +
+  // Chameleon frame + Ahtech 4S1500. Parts AUW ≈ 0.432 kg.
+  // BF rates 100 / 0 / 78, idle 0.04. TWR ≈ 8.0.
   // ----------------------------------------------------------
   nazgul5: {
     id: 'nazgul5',
     displayName: 'iFlight Nazgul5 V3',
     class: 'freestyle',
-    propInches: 5,
-    cells: 6,
-    massKg: 0.640,
-    sizeM: 0.240,
-    maxThrustN: 50,
-    motorTau: 0.06,
-    inertia:   { x: 4.6e-3, y: 6.9e-3, z: 4.6e-3 },
-    maxTorque: { x: 1.7,    y: 0.50,   z: 1.7 },
-    dragArea:  { front: 0.030, top: 0.055, side: 0.034 },
-    battWh: 28.9,               // 6S 1300 mAh * 22.2 V
-    sagVoltsPerCell: 0.13,
+    propInches: 5.0,
+    cells: 4,
+    massKg: 0.432,
+    sizeM: 0.225,
+    maxThrustN: 33.9,            // TWR ≈ 8.0 @ 0.432 kg; includes propConstant 1.2
+    motorTau: 0.055,
+    inertia:   { x: 2.73e-3, y: 4.10e-3, z: 2.73e-3 },
+    maxTorque: { x: 0.95,    y: 0.32,    z: 0.95 },
+    dragArea:  { front: 0.028, top: 0.050, side: 0.032 },
+    battWh: 22.2,                // 1500 mAh × 14.8 V
+    sagVoltsPerCell: 0.12,       // cellRi 0.003 Ω, C85
     camTiltDefaultDeg: 30,
     idleMotorThrottle: 0.04,
+    parts: {
+      motor: {
+        id: 'Hypetrain2306Motor01',
+        weight_kg: 0.03, size: 2306, diameter_mm: 23, statorLength_mm: 6,
+        kv: 2450, maxPower_W: 300, maxS: 5, noLoadI: 0.5, noLoadV: 10, Ri_ohm: 0.048,
+      },
+      prop: {
+        id: 'HQV1Series5040TriPropeller01',
+        weight_kg: 0.0034, diameter_in: 5.0, pitch: 4.0, blades: 3,
+        propConstant: 1.2, propConstantBaseline: 1.2,
+      },
+      frame: {
+        id: 'ArmattanChameleonFrame01',
+        weight_kg: 0.118, maxPropellerSize_in: 5.0,
+        batteryAtBottom: false, hasDragOverride: false, dragOverrideValue: 0.82,
+      },
+      battery: {
+        id: 'AhtechInfinityBattery01',
+        weight_kg: 0.18, mAh: 1500, S: 4, Vcell: 3.7,
+        cellRi_ohm: 0.003, Ccont: 85, Cburst: 170,
+      },
+      approxPartsAuw_kg: 0.4316,
+    },
     feel: {
       ratesModel: 'betaflight',
       actual: {
@@ -177,23 +200,16 @@ export const DRONES = {
       throttleExpo: 0.20,
       camTiltDeg: 30,
     },
-    description: 'The 5-inch freestyle benchmark — huge power, instant rotation.',
+    description: '5″ freestyle with Liftoff Chameleon parts — 2306 2450KV / 5040×3 / 4S1500.',
   },
 };
 
-/**
- * Simple-model hover throttle for UI display: sqrt(weight / maxThrust).
- * (The flight model uses thrust ∝ throttle^2, so this is the stick position
- * at which thrust equals weight on a fresh battery.)
- */
 export function hoverThrottle(spec) {
-  if (!spec || !(spec.maxThrustN > 0) || !(spec.massKg > 0)) return 0;
-  return Math.sqrt((spec.massKg * 9.81) / spec.maxThrustN);
+  const thrust = effectiveMaxThrustN(spec);
+  if (!spec || !(thrust > 0) || !(spec.massKg > 0)) return 0;
+  return Math.sqrt((spec.massKg * 9.81) / thrust);
 }
 
-/**
- * Air-mode idle floor for a drone spec (Liftoff per-drone idle).
- */
 export function idleMotorThrottle(spec) {
   if (!spec) return 0.035;
   const v = spec.feel?.idleMotorThrottle ?? spec.idleMotorThrottle;

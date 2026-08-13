@@ -62,6 +62,7 @@ export const DEFAULT_SETTINGS = {
     rain: 0,                    // 0..1
     propwash: true,             // Liftoff propwash toggle
     propwashIntensity: 42,      // 0..100 Liftoff default
+    batteryMode: true,             // Liftoff batteryMode — voltage sag when on
   },
   graphics: {
     quality: 'high',            // 'low' | 'medium' | 'high' | 'ultra'

@@ -40,6 +40,7 @@
 import * as THREE from 'three';
 import { clamp, emit, settings } from '../core/state.js';
 import { getRateDegS, getMaxRateDegS, normalizeRates } from '../input/rates.js';
+import { effectiveMaxThrustN } from './drones.js';
 import { buildGrid, resolveSphere } from '../core/collision.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -154,7 +155,7 @@ export class Quad {
     const discArea = 4 * Math.PI * propRadM * propRadM;
     this._washFactor = clamp((spec.massKg * GRAVITY / discArea) / 160, 0.5, 1.4);
     // Battery drains a full pack in ~4.7 min of hovering.
-    const hovT2 = clamp((spec.massKg * GRAVITY) / spec.maxThrustN, 0.05, 0.9);
+    const hovT2 = clamp((spec.massKg * GRAVITY) / Math.max(1e-6, effectiveMaxThrustN(spec)), 0.05, 0.9);
     this._drainK = 1 / (280 * (0.02 + 0.98 * hovT2));
 
     // ---- filtered actuator state ----
@@ -324,7 +325,8 @@ export class Quad {
     }
     const rest = EMPTY_V + (FULL_V - EMPTY_V) * Math.pow(this._soc, 0.75);
     // Sag ∝ throttle^2, worse as internal resistance rises near empty.
-    const sagTgt = armed ? spec.sagVoltsPerCell * thrIn * thrIn * (1 + (1 - this._soc) * 0.6) : 0;
+    const battMode = settings.environment?.batteryMode !== false;
+    const sagTgt = (armed && battMode) ? spec.sagVoltsPerCell * thrIn * thrIn * (1 + (1 - this._soc) * 0.6) : 0;
     this._sag += (sagTgt - this._sag) * (1 - Math.exp(-dt / 0.08));
     const cellV = Math.max(3.0, rest - this._sag);
     this.batteryVolts = cellV * spec.cells;
@@ -458,7 +460,7 @@ export class Quad {
     // ---------------- thrust ----------------
     // Chipped props bite less air: total lift scales with the mean prop health.
     const thrustCmd = armed
-      ? spec.maxThrustN * this._voltFactor * (0.02 + 0.98 * thrIn * thrIn) * this._thrustMul
+      ? effectiveMaxThrustN(spec) * this._voltFactor * (0.02 + 0.98 * thrIn * thrIn) * this._thrustMul
       : 0;
     this._thrust += (thrustCmd - this._thrust) * aM;
     let thrust = this._thrust;
