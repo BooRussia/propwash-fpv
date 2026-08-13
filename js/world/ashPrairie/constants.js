@@ -128,4 +128,16 @@ export const PAL = {
   rustCool: 0x5C4033,
   beaconAmber: 0xC4A35A,
   beaconCool: 0xD8DCE0,
+  // Chernobyl / Pripyat documentary decay (Desi)
+  mossA: 0x3F4A32,
+  mossB: 0x2C3524,
+  overgrowA: 0x5A6340,
+  overgrowB: 0x4A5238,
+  poisonGrass: 0x6B7054,
+  carBodyA: 0x4A5560,
+  carBodyB: 0x5C4038,
+  carBodyC: 0x3E3E38,
+  glassDead: 0x1C2220,
+  mountainFar: 0x6A7380,
+  mountainNear: 0x5C6358,
 };
