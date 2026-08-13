@@ -146,6 +146,11 @@ export function buildAbandonment(ctx) {
     [SWITCHYARD.x + 45, SWITCHYARD.z + 30, 3],
     [60, 35, 2],
     [-35, 65, 2],
+    [TOWER_SITES[0].x + 40, TOWER_SITES[0].z + 24, 3],
+    [TOWER_SITES[1].x - 34, TOWER_SITES[1].z + 26, 3],
+    [TOWER_SITES[2].x + 32, TOWER_SITES[2].z + 20, 3],
+    [-10, -125, 2],
+    [20, -100, 2],
   ];
   let kitIdx = 0;
   for (const [cx, cz, n] of lots) {
@@ -200,7 +205,7 @@ export function buildAbandonment(ctx) {
   // --- Moss on major concrete + asphalt crack weeds ---
   // Tower / containment aprons
   for (const t of TOWER_SITES) {
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 48; i++) {
       const a = rng() * Math.PI * 2;
       const d = t.baseR * 0.7 + rng() * 14;
       const x = t.x + Math.cos(a) * d;
@@ -214,6 +219,21 @@ export function buildAbandonment(ctx) {
     const x = CONTAINMENT.x + Math.cos(a) * d;
     const z = CONTAINMENT.z + Math.sin(a) * d;
     addInstance(mossClump, x, gy(x, z) + 0.1, z, 1 + rng(), 0.22, 1 + rng(), 0);
+  }
+
+  // Near-tower crack weeds (30–50 m band)
+  for (const t of TOWER_SITES) {
+    for (let c = 0; c < 8; c++) {
+      let x = t.x + (rng() - 0.5) * 70;
+      let z = t.z + 20 + rng() * 40;
+      const ang = rng() * Math.PI;
+      for (let s = 0; s < 14; s++) {
+        x += Math.cos(ang) * 0.55;
+        z += Math.sin(ang) * 0.55;
+        addInstance(crackWeed, x, gy(x, z) + 0.12, z, 1, 0.6 + rng() * 0.7, 1, ang);
+        if (s % 3 === 0) addInstance(mossClump, x, gy(x, z) + 0.1, z, 0.9, 0.22, 0.9, 0);
+      }
+    }
   }
 
   // Asphalt crack lines with weeds (apron reclaim)
