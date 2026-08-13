@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Water } from 'three/addons/objects/Water.js';
 import { assetLib } from '../../core/assets.js';
 import { meshHeight, CANAL, PAL, GROUND_Y } from './constants.js';
-import { setAoUVs } from './textures.js';
+import { setAoUVs, capAnisotropy } from './textures.js';
 
 /** Prairie ground plane with richer soil/grass patch variation (landmarks unchanged). */
 export async function buildGround(ctx) {
@@ -64,13 +64,14 @@ export async function buildGround(ctx) {
   let mat;
   if (mats.grassSet && mats.grassSet.map) {
     try {
-      mat = await assetLib.pbrMaterial('grass_wild', { repeat: [SIZE / 22, SIZE / 22], color: PAL.grassA });
+      mat = await assetLib.pbrMaterial('grass_wild', { repeat: [SIZE / 16, SIZE / 16], color: PAL.grassA }); // ~16 m/tile anti-shimmer
       track(mat);
     } catch (e) { mat = null; }
   }
   if (!mat) mat = mats.grass;
   mat.vertexColors = true;
   mat.needsUpdate = true;
+  capAnisotropy(mat, 4);
   const ground = new THREE.Mesh(geo, mat);
   ground.receiveShadow = true;
   root.add(ground);
@@ -82,6 +83,7 @@ export async function buildGround(ctx) {
   aMat.polygonOffset = true;
   aMat.polygonOffsetFactor = -1;
   aMat.polygonOffsetUnits = -1;
+  capAnisotropy(aMat, 4);
   const apronMesh = new THREE.Mesh(apron, aMat);
   apronMesh.position.set(0, 0.04, -20);
   apronMesh.receiveShadow = true;

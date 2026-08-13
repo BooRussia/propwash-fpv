@@ -44,8 +44,8 @@ export function buildAdmin(ctx) {
     addBox(ctx, mats, 'brick', x - winW / 2 - 0.12, floorY + sillH, sZ, 0.24, winH, wallT + 0.2);
     addBox(ctx, mats, 'brick', x + winW / 2 + 0.12, floorY + sillH, sZ, 0.24, winH, wallT + 0.2);
     addBox(ctx, mats, 'brick', x, floorY + sillH + winH, sZ, winW + 0.5, 0.25, wallT + 0.15);
-    addBox(ctx, mats, 'oxideDark', x, floorY + sillH + 0.18, sZ, winW, winH - 0.2, 0.15, { collide: false });
-    // Broken glass shard lip (visual)
+    addBox(ctx, mats, 'voidDark', x, floorY + sillH + 0.18, sZ + 0.08, winW, winH - 0.2, 0.2, { collide: false });
+    addBox(ctx, mats, 'galv', x, floorY + sillH + 0.18, sZ, 0.06, winH - 0.2, wallT + 0.1, { collide: false }); // mullion
     addBox(ctx, mats, 'galv', x + 0.3, floorY + sillH + 0.5, sZ - 0.05, 0.08, 0.7, 0.05, { collide: false });
   }
   // Lower solid under windows + upper band
@@ -63,7 +63,8 @@ export function buildAdmin(ctx) {
   addBox(ctx, mats, 'brick', eX, floorY + 1.0, A.z + 0.5 - 0.95, wallT + 0.15, 1.6, 0.25);
   addBox(ctx, mats, 'brick', eX, floorY + 1.0, A.z + 0.5 + 0.95, wallT + 0.15, 1.6, 0.25);
   addBox(ctx, mats, 'brick', eX, floorY + 2.6, A.z + 0.5, wallT, A.h - 2.6, 2.2);
-  addBox(ctx, mats, 'oxideDark', eX, floorY + 1.18, A.z + 0.5, 0.12, 1.4, 1.5, { collide: false });
+  addBox(ctx, mats, 'voidDark', eX - 0.05, floorY + 1.18, A.z + 0.5, 0.18, 1.4, 1.5, { collide: false });
+  addBox(ctx, mats, 'galv', eX, floorY + 1.18, A.z + 0.5, 0.06, 1.4, 0.08, { collide: false });
 
   // Roof (partial — open monitor for bailout up)
   addBox(ctx, mats, 'oxide', A.x - 4, floorY + A.h, A.z, A.w - 6, 0.3, A.d + 0.6);

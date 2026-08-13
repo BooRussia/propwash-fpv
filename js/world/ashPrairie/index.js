@@ -96,7 +96,7 @@ export async function buildAshPrairie(scene, env) {
     // Soft pad glow — night emissive ≤ 0.35 (Desi polish)
     if (mats.pad) {
       mats.pad.emissiveIntensity = lit
-        ? 0.12 + 0.23 * nightF
+        ? Math.min(0.35, 0.12 + 0.23 * nightF)
         : 0.35 + 0.35 * (1 - nightF);
     }
     // Tiny bulb emissives (PointLights carry the real illumination)

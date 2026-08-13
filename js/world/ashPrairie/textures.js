@@ -46,7 +46,7 @@ export async function buildMaterials(track) {
   }
 
   // Tower shells: ~8–10 m/tile → moderate repeat on sidewalk scan
-  const concreteTower = await pbrOr('sidewalk', sidewalkSet, PAL.concreteA, [2.2, 2.2], {
+  const concreteTower = await pbrOr('sidewalk', sidewalkSet, PAL.concreteA, [1.4, 1.4], {
     roughness: 0.82, metalness: 0.04,
   });
   const concretePad = await pbrOr('sidewalk', sidewalkSet, PAL.concreteB, [4, 4], {
@@ -60,8 +60,8 @@ export async function buildMaterials(track) {
     gravelSet, asphaltSet, rockSet, grassSet, officeSet, sidewalkSet, rockMacroSet,
     // Prairie macro 12–20 m tiles (larger repeat numbers = smaller tiles on world plane
     // — grass plane sets own repeat in terrain; these are for props)
-    soil: await pbrOr('gravel', gravelSet, PAL.soilA, [18, 18]),
-    grass: await pbrOr('grass_wild', grassSet, PAL.grassA, [16, 16]),
+    soil: await pbrOr('gravel', gravelSet, PAL.soilA, [14, 14]),
+    grass: await pbrOr('grass_wild', grassSet, PAL.grassA, [12, 12]),
     concrete: concreteTower, // alias — tower shells / legacy keys
     concreteTower,
     concretePad,
@@ -93,6 +93,15 @@ export async function buildMaterials(track) {
     nightPointLights: [],
   };
   return mats;
+}
+
+/** Cap anisotropy on large ground/apron planes (anti-shimmer). */
+export function capAnisotropy(mat, max = 4) {
+  if (!mat) return;
+  for (const key of ['map', 'normalMap', 'roughnessMap', 'aoMap', 'metalnessMap']) {
+    const tex = mat[key];
+    if (tex && 'anisotropy' in tex) tex.anisotropy = Math.min(tex.anisotropy || 1, max);
+  }
 }
 
 /** Helper: box mesh with collider. cy is bottom of box (Miami convention). */
