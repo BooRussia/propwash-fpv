@@ -44,7 +44,7 @@ export async function buildAshPrairie(scene, env) {
 
   // Late golden-hour HDRI bands (sunset feel; day_clear for noon)
   if (env.setHDRIBands) {
-    env.setHDRIBands({ day: 'sunset', sunset: 'sunset', night: 'night', overcast: 'overcast' });
+    env.setHDRIBands({ day: 'day_clear', sunset: 'sunset', night: 'night', overcast: 'overcast' });
   }
   // Soft prairie haze — Environment has no setFog; shorten render distance slightly
   // so distance fog reads as warm basin air without killing tower silhouettes.
