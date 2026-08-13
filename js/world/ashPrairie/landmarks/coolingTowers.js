@@ -2,14 +2,21 @@ import * as THREE from 'three';
 import { TOWER_SITES, GROUND_Y, PAL } from '../constants.js';
 import { setAoUVs } from '../textures.js';
 
-/** Reesy NDCT undercroft (Desi signed 8 m + muddy basin). */
-const CLEAR_H = 8;
+/** Reesy NDCT undercroft (correction on 773bea7): 8.0 m clear, all-V, Ø0.80, bay 5.8–6.2. */
+const CLEAR_H = 8.0;
 const LINTEL_H = 1.0;
-const N_PAIRS = 44;
-const COL_RT = 0.36;
-const COL_RB = 0.40;
-const FOOT_SPAN = 5.7;
+const PITCH_TARGET = 6.85;
+const N_PAIRS_MIN = 40;
+const N_PAIRS_MAX = 48;
+const COL_R = 0.40; // Ø 0.80 m
+const BAY_MIN = 5.8;
+const BAY_MAX = 6.2;
 const SHELL0 = CLEAR_H + LINTEL_H;
+
+function pairCount(baseR) {
+  const n = Math.round((Math.PI * 2 * baseR) / PITCH_TARGET);
+  return Math.max(N_PAIRS_MIN, Math.min(N_PAIRS_MAX, n));
+}
 
 /** Overlapping AABB ring so micros cannot slip between sectors. Interior stays open. */
 function addShellRing(addCollider, x, z, yBottom, height, radius, wallThick, sectors) {
@@ -51,26 +58,26 @@ function applyTowerUVs(geo, height, avgR, uOff = 0, vOff = 0) {
   setAoUVs(geo);
 }
 
-function makeMudMat(track, mats) {
+function tintSoil(track, mats, voidMix, roughness, metalness) {
   const src = mats.soil || mats.concreteDark;
-  const mud = src.clone();
-  track(mud);
+  const mat = src.clone();
+  track(mat);
   const soilB = new THREE.Color(PAL.soilB ?? 0x3E3830);
   const vd = new THREE.Color(PAL.voidDark ?? 0x1A1816);
-  mud.color = soilB.clone().lerp(vd, 0.42);
-  mud.roughness = 0.28;
-  mud.metalness = 0.2;
-  mud.polygonOffset = true;
-  mud.polygonOffsetFactor = 1;
-  mud.polygonOffsetUnits = 1;
-  if (mud.map) {
-    mud.map = mud.map.clone();
-    mud.map.wrapS = mud.map.wrapT = THREE.RepeatWrapping;
-    mud.map.repeat.set(8, 8);
-    mud.map.needsUpdate = true;
-    track(mud.map);
+  mat.color = soilB.clone().lerp(vd, voidMix);
+  mat.roughness = roughness;
+  mat.metalness = metalness;
+  mat.polygonOffset = true;
+  mat.polygonOffsetFactor = 1;
+  mat.polygonOffsetUnits = 1;
+  if (mat.map) {
+    mat.map = mat.map.clone();
+    mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
+    mat.map.repeat.set(8, 8);
+    mat.map.needsUpdate = true;
+    track(mat.map);
   }
-  return mud;
+  return mat;
 }
 
 function polar(x, z, r, a) {
@@ -79,16 +86,18 @@ function polar(x, z, r, a) {
 
 /**
  * Hyperbolic cooling towers — NDCT undercroft:
- * 8 m open colonnade, 44 V/Λ RC pairs, heavy lintel, muddy basin (no tropical water).
+ * 8.0 m open colonnade, all-V RC pairs (~44 @ D96), Ø0.80, 5.8–6.2 m bays,
+ * dry/muddy basin + optional puddles (no tropical water).
  */
 export function buildCoolingTowers(ctx) {
   const { root, track, addCollider, mats } = ctx;
-  const mudMat = makeMudMat(track, mats);
-  const colGeo = track(new THREE.CylinderGeometry(COL_RT, COL_RB, 1, 8));
+  const dryMat = tintSoil(track, mats, 0.28, 0.85, 0.04);
+  const puddleMat = tintSoil(track, mats, 0.55, 0.22, 0.25);
+  const colGeo = track(new THREE.CylinderGeometry(COL_R, COL_R, 1, 8));
   const flangeGeo = track(new THREE.CylinderGeometry(0.55, 0.55, 0.16, 8));
   const colMat = mats.concreteTower || mats.concrete;
   const flangeMat = mats.rustHot || mats.oxideDark || mats.oxide;
-  const nCol = TOWER_SITES.length * N_PAIRS * 2;
+  const nCol = TOWER_SITES.length * N_PAIRS_MAX * 2;
   const cols = new THREE.InstancedMesh(colGeo, colMat, nCol);
   const flanges = new THREE.InstancedMesh(flangeGeo, flangeMat, nCol);
   cols.castShadow = true;
@@ -112,7 +121,7 @@ export function buildCoolingTowers(ctx) {
     dummy.scale.set(1, 1, 1);
     dummy.updateMatrix();
     flanges.setMatrixAt(iCol, dummy.matrix);
-    addRakerCollider(addCollider, ax, ay, az, bx, by, bz, 0.85);
+    addRakerCollider(addCollider, ax, ay, az, bx, by, bz, 0.90);
     iCol++;
   };
 
@@ -224,47 +233,53 @@ export function buildCoolingTowers(ctx) {
       addShellRing(addCollider, t.x, t.z, GROUND_Y + CLEAR_H, LINTEL_H, r, 1.3, 36);
     }
 
-    // 44 paired V/Λ rakers — continuous colonnade, flyable ~5 m bays, no solid skirt.
+    // All-V rakers (no Λ/X). Pitch ~6.85 m @ D96 → ~5.8–6.2 m clear bays.
     {
-      const dA = (Math.PI * 2) / N_PAIRS;
-      const rFoot = t.baseR + 0.12;
-      const rTop = t.baseR - 0.4;
-      const half = FOOT_SPAN * 0.5 / rFoot;
+      const nPairs = pairCount(t.baseR);
+      const dA = (Math.PI * 2) / nPairs;
+      const pitch = dA * t.baseR;
+      const colD = COL_R * 2;
+      const footSpan = Math.min(pitch - 0.08, BAY_MAX + colD);
+      const rFoot = t.baseR + 0.15;
+      const rTop = t.baseR - 0.45;
+      const half = (footSpan * 0.5) / rFoot;
       const y0 = GROUND_Y + 0.12;
       const y1 = GROUND_Y + CLEAR_H;
-      for (let p = 0; p < N_PAIRS; p++) {
+      for (let p = 0; p < nPairs; p++) {
         const a = p * dA;
-        const isV = (p % 2) === 0;
-        if (isV) {
-          const [x0, z0] = polar(t.x, t.z, rFoot, a - half);
-          const [x1, z1] = polar(t.x, t.z, rFoot, a + half);
-          const [tx, tz] = polar(t.x, t.z, rTop, a);
-          placeCol(x0, y0, z0, tx, y1, tz);
-          placeCol(x1, y0, z1, tx, y1, tz);
-        } else {
-          const nudge = 0.28 / rFoot;
-          const [x0, z0] = polar(t.x, t.z, rFoot, a - nudge);
-          const [x1, z1] = polar(t.x, t.z, rFoot, a + nudge);
-          const [t0x, t0z] = polar(t.x, t.z, rTop, a - half);
-          const [t1x, t1z] = polar(t.x, t.z, rTop, a + half);
-          placeCol(x0, y0, z0, t0x, y1, t0z);
-          placeCol(x1, y0, z1, t1x, y1, t1z);
-        }
+        const [x0, z0] = polar(t.x, t.z, rFoot, a - half);
+        const [x1, z1] = polar(t.x, t.z, rFoot, a + half);
+        const [tx, tz] = polar(t.x, t.z, rTop, a);
+        placeCol(x0, y0, z0, tx, y1, tz);
+        placeCol(x1, y0, z1, tx, y1, tz);
       }
     }
 
-    // Muddy basin (soilB / voidDark wet look) — NOT tropical water.
+    // Dry/muddy basin + optional puddles — NOT tropical water.
     {
       const basinR = t.baseR * 0.74;
       const mud = new THREE.Mesh(
         track(new THREE.CircleGeometry(basinR, 40)),
-        mudMat
+        dryMat
       );
       mud.rotation.x = -Math.PI / 2;
       mud.position.set(t.x, GROUND_Y + 0.04, t.z);
       mud.receiveShadow = true;
       mud.renderOrder = -1;
       root.add(mud);
+      for (let u = 0; u < 3; u++) {
+        const pa = u * 2.15 + t.x * 0.01;
+        const pr = basinR * (0.22 + u * 0.12);
+        const [px, pz] = polar(t.x, t.z, pr, pa);
+        const puddle = new THREE.Mesh(
+          track(new THREE.CircleGeometry(2.2 + u * 0.5, 16)),
+          puddleMat
+        );
+        puddle.rotation.x = -Math.PI / 2;
+        puddle.position.set(px, GROUND_Y + 0.05, pz);
+        puddle.renderOrder = -1;
+        root.add(puddle);
+      }
       addCollider(t.x, GROUND_Y - 0.12, t.z, basinR * 1.15, 0.4, basinR * 1.15);
       addShellRing(addCollider, t.x, t.z, GROUND_Y - 0.08, 0.35, basinR * 0.55, 10, 14);
       addShellRing(addCollider, t.x, t.z, GROUND_Y - 0.08, 0.35, basinR * 0.85, 8, 18);
@@ -373,6 +388,8 @@ export function buildCoolingTowers(ctx) {
     root.add(ladder);
   }
 
+  cols.count = iCol;
+  flanges.count = iCol;
   cols.instanceMatrix.needsUpdate = true;
   flanges.instanceMatrix.needsUpdate = true;
   root.add(cols);
