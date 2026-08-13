@@ -231,7 +231,11 @@ export class Quad {
   reset(positionVec3, yawRad) {
     if (positionVec3) this.position.copy(positionVec3);
     else this.position.set(0, 0, 0);
-    this.position.y += this.spec.sizeM * 0.5 + 0.02;
+    // Sit ON the surface, not in it. The collision sphere has radius
+    // 0.55 * wheelbase, so anything less than that leaves the airframe
+    // intersecting whatever we spawned onto (the launch pad, most visibly).
+    // The extra 3 cm keeps the skids clear instead of exactly touching.
+    this.position.y += this.spec.sizeM * 0.55 + 0.03;
     // Sweep origin follows the teleport, otherwise the first step after a
     // respawn would sweep the whole map and invent contacts on the way.
     this._prevPos.copy(this.position);

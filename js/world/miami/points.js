@@ -2,20 +2,22 @@ import * as THREE from 'three';
 import {
   CITY_Y, CITY_Z, PIER_X, WHEEL_R, groundHeight,
 } from './constants.js';
+import { buildHelipad } from '../helipad.js';
 
 /** Spawn pad mesh + race gates + retrieval points. */
 export function buildPoints(ctx, towerData) {
   const { root, track } = ctx;
 
   // ---------------- spawn / home pad ----------------
-  const spawnPos = new THREE.Vector3(0, groundHeight(0, 8) + 0.06, 8);
+  // A painted helipad so the take-off and landing point is unmistakable.
+  // The drone spawns above pad.topY, never inside the deck.
+  const padGround = groundHeight(0, 8);
+  const spawnPos = new THREE.Vector3(0, padGround, 8);
   {
-    const padGeo = track(new THREE.CircleGeometry(2.2, 28));
-    const padMat = track(new THREE.MeshStandardMaterial({ color: 0x0d2b33, emissive: 0x29d3ff, emissiveIntensity: 0.9, side: THREE.DoubleSide }));
-    const pad = new THREE.Mesh(padGeo, padMat);
-    pad.rotation.x = -Math.PI / 2;
-    pad.position.copy(spawnPos).y += 0.02;
-    root.add(pad);
+    const pad = buildHelipad(0, padGround, 8, { radius: 2.4 });
+    root.add(pad.group);
+    track({ dispose: () => pad.dispose() });
+    spawnPos.y = pad.topY;
   }
 
   // ---------------- race gates ----------------
