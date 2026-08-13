@@ -73,6 +73,7 @@ export const DEFAULT_SETTINGS = {
     shadows: true,
   },
   osd: { showSticks: true },      // on-screen stick position overlay
+  debug: { hitboxes: false },     // H toggles the collider wireframe overlay
   audio: { master: 0.3 },
   controller: {
     deviceId: null,             // gamepad.id string of chosen radio

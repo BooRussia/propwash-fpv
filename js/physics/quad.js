@@ -59,6 +59,8 @@ const EMPTY_V = 3.5;            // "landed" rest volts per cell
 const RESTITUTION = 0.3;
 const FRICTION_KEEP = 0.75;     // tangential velocity kept per impact
 const ANGVEL_KEEP = 0.55;       // angular velocity kept per impact
+// Tangential velocity kept per second while wedged in a too-narrow gap.
+const WEDGE_SCRUB = 0.12;
 
 const ZERO_VEC = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -194,6 +196,7 @@ export class Quad {
     this._tv = new THREE.Vector3();                // scratch tangent
     this._near = [];                               // broadphase result (reused)
     this._strikeStep = false;                      // one prop strike per step
+    this._penDepth = 0;                            // current contact depth (m)
 
     // ---- damage internals (all preallocated) ----
     this._simT = 0;                                // integrated sim clock (flash throttle)
@@ -698,8 +701,15 @@ export class Quad {
     }
 
     // --- velocity: project out along both normals (deepest first) ---
+    // Carry the penetration depth so _impact can tell a glancing separation
+    // from being wedged between two walls (see the WEDGE_SCRUB branch).
+    this._penDepth = d0;
     this._impact(n0, spec, dt);
-    if (d1 > 0) this._impact(n1, spec, dt);
+    if (d1 > 0) {
+      this._penDepth = d1;
+      this._impact(n1, spec, dt);
+    }
+    this._penDepth = 0;
     return d0;
   }
 
@@ -707,7 +717,20 @@ export class Quad {
   _impact(n, spec, dt) {
     const v = this.velocity;
     const vn = v.dot(n);
-    if (vn >= 0) return; // separating
+    if (vn >= 0) {
+      // Squeezing through a gap narrower than the airframe: both walls push
+      // perpendicular to travel, so vn === 0 on each and the old early-return
+      // applied no friction at all — the quad ping-ponged sideways while its
+      // forward speed sailed on through a hole it does not fit in.
+      // Scrub along the wall instead, so a too-narrow gap stops you.
+      if (vn < 1e-4 && this._penDepth > 0) {
+        this._vt.copy(v).addScaledVector(n, -vn);
+        const scrub = Math.pow(WEDGE_SCRUB, Math.min(1, this._penDepth / (spec.sizeM * 0.25)) * dt * 60);
+        v.copy(this._vt).multiplyScalar(scrub).addScaledVector(n, vn);
+        this.angularVelocity.multiplyScalar(Math.pow(ANGVEL_KEEP, dt * 60));
+      }
+      return; // separating
+    }
     this._vt.copy(v).addScaledVector(n, -vn); // tangential component
     const tSpeed = this._vt.length();
     // Hard hits use full impulse response; resting contact (400 Hz repeats)

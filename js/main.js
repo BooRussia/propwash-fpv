@@ -19,6 +19,7 @@ import { CalibrationUI } from './ui/calibration.js';
 import { OSD } from './ui/osd.js';
 import { StickOverlay } from './ui/sticks.js';
 import { HealthUI } from './ui/health.js';
+import { ColliderDebug } from './ui/colliderDebug.js';
 import { FpvCameraPipeline } from './camera/index.js';
 import { TrailSystem } from './world/trails.js';
 import { Environment } from './world/environment.js';
@@ -121,6 +122,7 @@ const calibUI = new CalibrationUI(radio);
 const modeManager = new ModeManager(scene);
 const motorAudio = new MotorAudio();
 const trails = new TrailSystem(scene);
+const colliderDebug = new ColliderDebug(scene);
 
 // ---------------- drone ----------------
 let quad = null;
@@ -163,6 +165,8 @@ async function loadMap() {
     env.setIndoor?.(settings.map === 'procedural' && settings.procedural.setting === 'indoor');
     pilotPos.copy(mapHandle.spawn.position).add(new THREE.Vector3(0, 1.7, 0));
     modeManager.start(settings.gameMode, mapHandle);
+    colliderDebug.setColliders(mapHandle ? mapHandle.colliders : null);
+    colliderDebug.setVisible(!!settings.debug.hitboxes);
     trails.setMap(settings.map);
     respawn();
     loadStatus('Ready', 1);
@@ -304,6 +308,12 @@ on('hotkey:arm', () => { if (!menu.isOpen && !calibUI.isOpen) tryArm(!armed); })
 on('hotkey:view', () => { cameras.toggleLos(); });
 on('hotkey:static', () => { cameras.toggleStatic(); });
 on('hotkey:trail', () => { if (!menu.isOpen && !calibUI.isOpen) trails.toggleRecording(); });
+on('hotkey:hitbox', () => {
+  if (menu.isOpen || calibUI.isOpen) return;
+  settings.debug.hitboxes = colliderDebug.toggle();
+  saveSettings();
+  emit('osd:flash', { text: settings.debug.hitboxes ? 'HITBOX VIEW ON' : 'HITBOX VIEW OFF', ms: 900 });
+});
 on('hotkey:camTilt', ({ delta }) => {
   if (menu.isOpen || calibUI.isOpen) return;
   cameras.nudgeTilt(delta);
@@ -370,6 +380,7 @@ renderer.setAnimationLoop(() => {
 
   if (!paused && quad && mapHandle) {
     stepPhysics(dt);
+    colliderDebug.update(quad.position);
     if (armed && !quad.crashed) flightTimer += dt;
     modeManager.update(dt, quad);
     updateCrashRespawn(dt);
