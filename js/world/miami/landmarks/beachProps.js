@@ -1,25 +1,39 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { groundHeight } from '../constants.js';
+import { groundHeight, inKeepout } from '../constants.js';
 import { buildLifeguardGeo } from './lifeguard.js';
 import { buildParasolCanopy, buildParasolFrame } from './parasols.js';
 
+// Curated lifeguard-stand positions. The old formula (-430 + i*165 + jitter)
+// dropped stand #4 straight into the MIAMI sign; these six sit in the gaps
+// between the pier, the amusement plaza, the pergola walk, the sign and the
+// volleyball courts. The rng draws are still taken so the layout stream that
+// follows (parasols, towels, towers, cars) is bit-identical.
+const LIFEGUARDS = [
+  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
+];
+
 /** Lifeguard towers + parasols + beach towels. */
 export function buildBeachProps(ctx) {
-  const { root, track, addCollider, rng, rng3 } = ctx;
+  const { root, track, addCollider, addCyl, setTag, rng, rng3 } = ctx;
+  setTag('lifeguard');
   {
     // lifeguard towers v2 — merged vertex-colored geometry, 1 draw call for all 6
     const hutCols = [0xff7fa0, 0x53d6d6, 0xffd166, 0x9b5de5, 0x43d17a, 0xff8c42];
     const lgGeos = [];
     for (let i = 0; i < 6; i++) {
-      const x = -430 + i * 165 + (rng() - 0.5) * 30;    // legacy rng draws — keep order
-      const z = 10 + rng() * 6;
+      void ((rng() - 0.5) * 30);                        // legacy rng draws — keep order
+      void (10 + rng() * 6);
+      const x = LIFEGUARDS[i][0], z = LIFEGUARDS[i][1];
       const y = groundHeight(x, z);
       const g = buildLifeguardGeo(hutCols[i % hutCols.length], hutCols[(i + 2) % hutCols.length]);
       g.rotateY((rng3() - 0.5) * 0.24);
       g.translate(x, y, z);
       lgGeos.push(g);
-      addCollider(x, y, z, 3.6, 4.8, 3.2);              // silhouette is lower than the old hut
+      // deck 3.3 x 2.9 on splayed legs, roof crown at 4.54, flag to 5.2
+      addCollider(x, y, z + 0.05, 3.4, 4.6, 3.05);
+      addCyl(x + 1.15, y + 4.3, z + 0.75, 0.06, 1.7);   // flag pole
+      addCollider(x - 0.6, y, z - 3.55, 1.05, 1.85, 4.8);   // access ramp
     }
     const lgGeo = track(mergeGeometries(lgGeos));
     lgGeos.forEach((g) => g.dispose());
@@ -48,10 +62,28 @@ export function buildBeachProps(ctx) {
     const vP = new THREE.Vector3();
     const vS = new THREE.Vector3();
     const colU = new THREE.Color();
+    setTag('parasol');
+    // A parasol that lands on the amusement deck, the pergola terrace, a
+    // volleyball court, the spawn pad or the sign apron is walked sideways in
+    // fixed 34 m steps until it clears — a deterministic remap that consumes
+    // no rng draws, so the layout stream is untouched.
+    const NUDGE = [0, 34, -34, 68, -68, 102, -102, 150, -150];
+    const clearX = (x0, z0) => {
+      for (let k = 0; k < NUDGE.length; k++) {
+        const x = x0 + NUDGE[k];
+        if (Math.abs(x) > 560) continue;
+        if (inKeepout(x, z0, 1.5)) continue;
+        const gy = groundHeight(x, z0);
+        if (ctx.blocked(x, z0, 1.35, gy - 0.2, gy + 2.4)) continue;   // lifeguard stands, showers…
+        return x;
+      }
+      return x0;
+    };
     const umbSpots = [];
     for (let i = 0; i < NU; i++) {
-      const x = (rng() - 0.5) * 1100;                   // legacy rng draws — keep order
+      const xRaw = (rng() - 0.5) * 1100;                // legacy rng draws — keep order
       const z = 2 + rng() * 16;
+      const x = clearX(xRaw, z);
       const y = groundHeight(x, z);
       const yaw = rng() * Math.PI;                      // legacy rotY draw
       const tilt = rng3() * 0.31;                       // 0–18°
@@ -66,6 +98,9 @@ export function buildBeachProps(ctx) {
       frames.setMatrixAt(i, m4);
       canTint.setColorAt(i, colU.setHex(umbCols[(rng3() * umbCols.length) | 0]));
       umbSpots.push(vP.clone());
+      // pole only — the canopy is fabric, and a 2.4 m disc of invisible steel
+      // at head height would be the worst collider on the beach
+      addCyl(x, Math.max(y, 0.1), z, 0.07, 2.15 * s);
     }
     canWhite.castShadow = true;
     canTint.castShadow = true;
@@ -92,6 +127,7 @@ export function buildBeachProps(ctx) {
       const x = u.x + Math.cos(a) * dist, z = u.z + Math.sin(a) * dist;
       const y = groundHeight(x, z);
       if (y < 0.12) continue;
+      if (inKeepout(x, z, 0.4)) continue;               // never draped over built ground
       const e = 0.5;
       nrm.set(
         (groundHeight(x - e, z) - groundHeight(x + e, z)) / (2 * e), 1,
@@ -109,6 +145,8 @@ export function buildBeachProps(ctx) {
     }
     towels.count = ti;
     towels.receiveShadow = true;
+    towels.name = 'beach-towels';
     root.add(towels);
   }
+  setTag('world');
 }

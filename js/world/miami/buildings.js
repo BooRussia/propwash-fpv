@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
-  CITY_Y, WHEEL_X, GAP_X, XS_HALF, XS_Z0, XS_Z1, stripY, inReserved,
+  CITY_Y, GAP_X, XS_HALF, XS_Z0, XS_Z1, CINEMA_X, CINEMA_W,
+  stripY, reservedOverlap,
 } from './constants.js';
 import { windowTexture, decoFacadeTextures, setAoUVs } from './textures.js';
 import { facadeUV, colorFill, cBox, cCyl } from './geo.js';
@@ -59,9 +60,10 @@ function buildRooftopKitGeo() {
  */
 export function buildSkyline(ctx) {
   const {
-    root, track, addCollider, colliders, rng, rng3, rng4,
+    root, track, addCollider, addCyl, setTag, rng, rng3, rng4,
     glassSet, glassDaySet, officeSet,
   } = ctx;
+  setTag('tower');
   // winTexA/B consume main-rng draws — always create both to preserve the stream
   // (winTexB is only rendered in the no-facade fallback).
   const winTexA = track(windowTexture(rng, 0.5));
@@ -168,8 +170,14 @@ export function buildSkyline(ctx) {
   function addTower(x, z, w, h, d, style) {
     // per-tower UV offset (rng3 — never the layout stream)
     const offU = rng3(), offV = rng3();
-    const entry = { x, z, w, h, d, style, mv: 0, meshes: [], collider: null };
+    const entry = { x, z, w, h, d, style, mv: 0, meshes: [], colliders: [] };
     const add = (mesh) => { towerGroup.add(mesh); entry.meshes.push(mesh); };
+    // Collider massing collected as the geometry is built, so the bag matches
+    // the silhouette instead of a single w x (h+4) x d block that hovered four
+    // metres over every roof and ignored every setback.
+    const massing = [];
+    const obbs = [];
+    const solid = (bw, bh, bd, bx, by, bz) => massing.push([bw, bh, bd, bx, by, bz]);
 
     if (style === 'deco') {
       const color = decoCols[(rng() * decoCols.length) | 0];
@@ -200,6 +208,7 @@ export function buildSkyline(ctx) {
         mesh.position.set(x, y + th / 2, z);
         mesh.castShadow = true;
         add(mesh);
+        solid(tw, th, td, 0, y - CITY_Y, 0);
         y += th;
         tw *= 0.72; td *= 0.72;
       }
@@ -214,6 +223,7 @@ export function buildSkyline(ctx) {
       const cap = new THREE.Mesh(capGeo, mat);
       cap.position.set(x, y + 1.7, z);
       add(cap);
+      entry.cap = { r: Math.min(tw, td) * 0.42, y0: y - CITY_Y - 0.05, h: 3.6 };
       // neon accent strip
       if (rng() < 0.6) {
         const neonGeo = track(new THREE.BoxGeometry(w * 1.02, 0.5, 0.3));
@@ -239,6 +249,7 @@ export function buildSkyline(ctx) {
       add(mesh);
       d = w;
       entry.d = w;
+      entry.cylR = w / 2;
     } else {
       // Facade variant. Picked from a position hash, NOT a stream draw: mid-rise
       // towers wear the brick/window office sheet so the skyline is not one
@@ -267,6 +278,8 @@ export function buildSkyline(ctx) {
         if (ry) g.rotateY(ry);
         g.translate(bx, by, bz);
         boxes.push(g);
+        if (ry) obbs.push([bw, bh, bd, bx, by - bh / 2, bz, ry]);
+        else solid(bw, bh, bd, bx, by - bh / 2, bz);
       };
       if (mv === 1) {
         // setback tiers (all inside the legacy footprint)
@@ -303,6 +316,7 @@ export function buildSkyline(ctx) {
         const ac = new THREE.Mesh(acGeo, acMat);
         ac.position.set(x + w * 0.2, CITY_Y + h + 1.25, z);
         add(ac);
+        solid(w * 0.25, 2.5, d * 0.25, w * 0.2, h, 0);
       }
       if (rng() < 0.4) {
         const mastGeo = track(new THREE.CylinderGeometry(0.15, 0.15, 14, 5));
@@ -316,10 +330,24 @@ export function buildSkyline(ctx) {
         );
         beacon.position.set(x, CITY_Y + h + 14, z);
         add(beacon);
+        entry.mast = true;
       }
     }
-    addCollider(x, CITY_Y, z, w, h + 4, d);
-    entry.collider = colliders[colliders.length - 1];
+    // ---- emit the collider set ----
+    if (entry.cylR !== undefined) {
+      entry.colliders.push(addCyl(x, CITY_Y, z, entry.cylR, h));
+    } else if (massing.length) {
+      for (const m of massing) {
+        entry.colliders.push(addCollider(x + m[3], CITY_Y + m[4], z + m[5], m[0], m[1], m[2]));
+      }
+    } else {
+      entry.colliders.push(addCollider(x, CITY_Y, z, w, h, d));
+    }
+    for (const o of obbs) {
+      entry.colliders.push(ctx.addOBB(x + o[3], CITY_Y + o[4], z + o[5], o[0], o[1], o[2], o[6]));
+    }
+    if (entry.cap) entry.colliders.push(addCyl(x, CITY_Y + entry.cap.y0, z, entry.cap.r, entry.cap.h));
+    if (entry.mast) entry.colliders.push(addCyl(x, CITY_Y + h, z, 0.42, 14.4));
     towerData.push(entry);
   }
 
@@ -376,9 +404,12 @@ export function cullReserved(ctx, sky) {
   const doomed = new Set();
   const keep = [];
   for (const t of sky.towerData) {
-    if (inReserved(t.x, t.z)) {
+    // FOOTPRINT overlap, not centre-in-rect: a tower whose corner poked into
+    // a hero block used to survive the cull and then intersect the landmark
+    // (that is where five of the worst overlaps in the audit came from).
+    if (reservedOverlap(t.x, t.z, t.w, t.d)) {
       for (const m of t.meshes) if (m.parent) m.parent.remove(m);
-      if (t.collider) doomed.add(t.collider);
+      for (const c of t.colliders) doomed.add(c);
     } else {
       keep.push(t);
     }
@@ -394,7 +425,8 @@ export function cullReserved(ctx, sky) {
 
 /** Helipad towers at the skyline flanks. Appends to towerData. */
 export function buildHelipads(ctx, sky) {
-  const { root, track, addCollider, rng, rng3 } = ctx;
+  const { root, track, addCollider, addCyl, setTag, rng, rng3 } = ctx;
+  setTag('helipad');
   const { towerData, glassMat, hasGlassTex, GLASS_TILE_U, GLASS_TILE_V } = sky;
   for (const [hx, hz] of [[430, 70], [-430, 100]]) {
     const h = 45 + rng() * 20;
@@ -421,9 +453,13 @@ export function buildHelipads(ctx, sky) {
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(hx, CITY_Y + h + 0.45, hz);
     root.add(ring);
-    addCollider(hx, CITY_Y, hz, 16, h + 1, 16);
-    towerData.push({ x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0, meshes: [mesh, pad, ring], collider: null });
+    // shaft exactly 16 x h, then the pad disc as its own cylinder — the old
+    // 16 x (h+1) box put a metre of invisible ceiling over the landing deck
+    addCollider(hx, CITY_Y, hz, 16, h, 16);
+    addCyl(hx, CITY_Y + h, hz, 6, 0.4);
+    towerData.push({ x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0, meshes: [mesh, pad, ring], colliders: [] });
   }
+  setTag('world');
 }
 
 /**
@@ -435,7 +471,8 @@ export function buildHelipads(ctx, sky) {
  * (the planting is materialised there so the vegetation lives in one module).
  */
 export function buildStreetLevel(ctx, sky, street) {
-  const { root, track, addCollider, rng4, glassPanelGeos, palmPlacements } = ctx;
+  const { root, track, addCollider, setTag, rng4, glassPanelGeos } = ctx;
+  setTag('streetlevel');
   const { towerData } = sky;
   const { shelterX } = street;
 
@@ -482,7 +519,6 @@ export function buildStreetLevel(ctx, sky, street) {
     });
   };
 
-  let planterColliders = 0;
   for (let ti = 0; ti < frontTowers.length; ti++) {
     const t = frontTowers[ti];
     const frontZ = t.z - t.d / 2;
@@ -508,6 +544,11 @@ export function buildStreetLevel(ctx, sky, street) {
       for (let b = 0; b <= nBays; b++) {
         shopOpaque.push(cBox(0.46, BAND_H, 0.72, CONC, t.x - bandW / 2 + b * bayW, CITY_Y + BAND_H / 2, frontZ - 0.12));
       }
+      // the whole band is solid: cornice front face frontZ-0.55, pier front
+      // face frontZ-0.48. Canvas awnings above are deliberately left soft.
+      setTag('tower');
+      addCollider(t.x, CITY_Y, frontZ - 0.15, bandW + 0.7, BAND_H, 0.8);
+      setTag('streetlevel');
       for (let b = 0; b < nBays; b++) {
         const bx = t.x - bandW / 2 + (b + 0.5) * bayW;
         const inner = bayW - 0.62;
@@ -618,18 +659,16 @@ export function buildStreetLevel(ctx, sky, street) {
       shopOpaque.push(cBox(5.2, 0.03, depth, 0x6d3a33, t.x, CITY_Y + 0.115, frontZ - depth / 2 - 0.3));
     }
 
-    // planters flanking every doorway (colliders for the closest ones)
+    // planters flanking every doorway — pushed 1.2 m off the facade so the
+    // stone box clears the storefront band instead of half-burying in it
     for (const s of [-1, 1]) {
       const pxp = t.x + s * 2.75;
-      const pzp = frontZ - 0.95;
+      const pzp = frontZ - 1.25;
       const py = stripY(pzp);
       shopOpaque.push(cBox(1.1, 0.62, 1.1, 0x8d877b, pxp, py + 0.31, pzp));
       shopOpaque.push(cBox(1.18, 0.09, 1.18, 0x7b756a, pxp, py + 0.6, pzp));
       addHedge(pxp, pzp, 0.58, 0.75, 0.62, py + 0.5);
-      if (planterColliders < 16 && Math.abs(t.x) < 320) {
-        addCollider(pxp, py, pzp, 1.2, 1.4, 1.2);
-        planterColliders++;
-      }
+      addCollider(pxp, py, pzp, 1.2, 1.32, 1.2);
     }
     // flower beds flanking wider entrances
     if (bandW > 18) { addBed(t.x - 4.6, frontZ - 1.0); addBed(t.x + 4.6, frontZ - 1.0); }
@@ -667,7 +706,7 @@ export function buildStreetLevel(ctx, sky, street) {
       const clear =
         !GAP_X.some((c) => Math.abs(cx - c) < 14 + bedLen / 2) &&
         Math.abs(cx - shelterX) > 5 + bedLen / 2 &&
-        Math.abs(cx - WHEEL_X) > 14 &&
+        Math.abs(cx - CINEMA_X) > CINEMA_W / 2 + 5 + bedLen / 2 &&
         !frontTowers.some((t) => Math.abs(cx - t.x) < t.w / 2 + bedLen / 2 && (t.z - t.d / 2) < 56.6);
       if (clear) {
         const bz = 54.3;
@@ -738,6 +777,13 @@ export function buildStreetLevel(ctx, sky, street) {
     const stone = rng4() < 0.5 ? 0x6b6459 : 0x5c6165;
     const stone2 = new THREE.Color(stone).offsetHSL(0, 0, 0.05).getHex();
     shopOpaque.push(cBox(pw, PH - 0.34, pd, stone, t.x, CITY_Y + (PH - 0.34) / 2, t.z));
+    // the podium stands proud of the shaft by pr on every side — without its
+    // own collider the pilot clips 30-45 cm into stone at street level
+    if (t.z < 120) {
+      setTag('tower');
+      addCollider(t.x, CITY_Y, t.z, pw + 0.3, PH, pd + 0.3);
+      setTag('streetlevel');
+    }
     shopOpaque.push(cBox(pw + 0.22, 0.3, pd + 0.22, 0x3f4448, t.x, CITY_Y + 0.15, t.z));       // plinth
     shopOpaque.push(cBox(pw + 0.3, 0.34, pd + 0.3, 0x7d776c, t.x, CITY_Y + PH - 0.17, t.z));   // cap
     // clad the base in pilaster strips so it is not one flat slab of stone
@@ -855,14 +901,8 @@ export function buildStreetLevel(ctx, sky, street) {
     }
   }
 
-  // tree grates for the palms standing on the paved promenade
-  if (palmPlacements) {
-    for (const pp of palmPlacements) {
-      if (grateSpots.length >= 260) break;
-      if (pp.z < 33 || pp.z > 58 || Math.abs(pp.x) > 600) continue;
-      grateSpots.push({ x: pp.x, z: pp.z, y: stripY(pp.z) + 0.012 });
-    }
-  }
+  // (grates for the promenade palm field are stamped by palms.js — the palm
+  //  positions are not resolved until every structure has published a collider)
 
   // ---- balconies on 2 street-visible faces of ~1/3 of the mid/back towers ----
   const balSpots = [];
@@ -964,14 +1004,19 @@ export function buildStreetLevel(ctx, sky, street) {
   if (balSpots.length) {
     const balGeo = track(buildBalconyGeo());
     const balMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.15 }));
-    placeAll(new THREE.InstancedMesh(balGeo, balMat, balSpots.length), balSpots);
+    const im = new THREE.InstancedMesh(balGeo, balMat, balSpots.length);
+    im.name = 'tower-balconies';
+    placeAll(im, balSpots);
   }
   if (roofSpots.length) {
     const roofKitGeo = track(buildRooftopKitGeo());
     const roofMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }));
-    placeAll(new THREE.InstancedMesh(roofKitGeo, roofMat, roofSpots.length), roofSpots);
+    const im = new THREE.InstancedMesh(roofKitGeo, roofMat, roofSpots.length);
+    im.name = 'tower-rooftops';
+    placeAll(im, roofSpots);
   }
 
+  setTag('world');
   return {
     hedgeSpots, mulchSpots, flowerSpots, lawnSpots, lotSpots, grateSpots,
     palmSpots, blockPalmSpots, entranceShrubSpots,

@@ -1,10 +1,9 @@
 // ============================================================
-// PropWash FPV — atmosphere: sky, sun/moon, stars, fog, wind, rain
-// + photoreal HDRI image-based lighting (assets/hdri/*, optional)
+// PropWash FPV — atmosphere: procedural sky, sun/moon, stars, fog, wind, rain
 // ============================================================
 // Owns: scene.background, scene.environment, scene.fog,
 // renderer.toneMappingExposure (after boot), the sun/moon/hemisphere
-// lights and the rain field.
+// lights, the sky dome + night dome, the star field and the rain field.
 //
 // Public API (consumed by main.js / maps):
 //   constructor(scene, renderer)
@@ -15,17 +14,50 @@
 //   setQuality(shadowMapRes)
 //   setIndoor(bool)
 //   setHDRIBands({day, sunset, night, overcast})  assetLib.hdri keys | null
+//   setSkyMode('procedural' | 'hdri' | null)      null = follow settings
 //   update(dt, camera)             camera = ACTIVE camera
 //   getWind(posVector3, outVector3) -> outVector3   (allocation-free)
-//   dispose()                      frees PMREM render targets (optional)
+//   dispose()                      frees render targets / GPU resources
 //
-// HDRI banding: a band is derived from rain + sun elevation
-// (rain >= 0.5 -> overcast; el < -6 -> night; el < 10 -> sunset; else day)
-// and re-evaluated on setTimeOfDay / setWeather. If the band's HDRI file
-// loads (lazy, swaps throttled to <= 1/s), it replaces the procedural Sky
-// as scene.background and, PMREM-processed, as scene.environment. If the
-// file is missing (assets/ empty) or fails, the procedural Sky + PMREM
-// path below keeps working exactly as before — zero HDRI requirements.
+// ------------------------------------------------------------
+// SKY ARCHITECTURE (procedural is the default and only default)
+//
+//   1. `sky`  — three/addons Sky (Preetham). Drives the LIT sky: deep blue at
+//      altitude, warm horizon band through sunrise/sunset. Its turbidity /
+//      rayleigh / mie parameters are continuous functions of sun elevation and
+//      of the weather, re-evaluated on every setTimeOfDay / setWeather, so a
+//      time slider drag reads as one continuous sweep with no banding or pops.
+//      The Preetham model dies at roughly -2.3 deg of sun elevation, which is
+//      exactly where layer 2 takes over.
+//
+//   2. `nightDome` — a custom shader dome composited OVER the Sky with
+//      premultiplied alpha. It carries everything Preetham cannot express:
+//        * the deep blue-black night gradient (never pure black)
+//        * the blue-hour twilight lobe in the sun's azimuth (the thing that
+//          makes dusk keep glowing after the Sky has gone flat)
+//        * the violet upper wash and the anti-solar Belt of Venus
+//        * Miami's warm city skyglow hugging the horizon
+//        * a faint Milky Way band and the moon's halo
+//        * the OVERCAST/RAIN layer — a drifting grey cloud deck whose opacity
+//          follows `rain`, warm-tinted toward the sun so a rainy sunset still
+//          reads as a sunset, only muted.
+//      Its alpha ramps 0 -> 1 across sun elevation +1.5 -> -6 deg, so the two
+//      layers cross-fade through exactly the window where the Preetham sky
+//      loses energy. Everything it draws is driven by JS colour/scalar ramps,
+//      so every parameter is a smooth function of elevation and weather.
+//
+//   3. stars (shader Points, twinkle + magnitude distribution + galactic band)
+//      and the moon disc (phase-correct terminator, limb darkening, halo)
+//      render additively on top, both pinned to the far plane so they are
+//      occluded by the world but never clipped.
+//
+//   Image-based lighting is generated from layers 1+2 with PMREMGenerator and
+//   rebuilt (throttled) whenever the sun has moved enough to matter, so
+//   reflections and ambient track the sky at every hour.
+//
+// HDRI: photographic bands are still supported through setHDRIBands() but are
+// OFF by default. Opt in with settings.environment.photoSky = true (or
+// setSkyMode('hdri')). setHDRIBands() never throws for existing callers.
 // ============================================================
 
 import * as THREE from 'three';
@@ -42,6 +74,11 @@ const NIGHT_HOURS = 24 - DAY_HOURS;    // 11
 const SUN_PEAK_DEG = 70;           // noon-ish elevation at 13:00
 const NIGHT_DEPTH_DEG = 48;        // how far the sun dips at solar midnight
 
+// The moon walks the same celestial arc, offset in time. The offset both
+// places it in the sky and defines the direction of its bright limb.
+const MOON_OFFSET_HOURS = -1.1;
+const MOON_ILLUM = 0.78;           // illuminated fraction (waxing gibbous)
+
 // ---------------- shadow constants ----------------
 const SHADOW_HALF = 60;            // 120 m ortho box around the camera
 const SHADOW_DIST = 180;           // light distance from shadow center
@@ -51,8 +88,18 @@ const RAIN_COUNT = 3000;           // line segments
 const RAIN_SIZE = 60;              // wrap box edge (m), centered on camera
 
 // ---------------- star constants ----------------
-const STAR_COUNT = 2200;
-const BRIGHT_STAR_COUNT = 300;
+const STAR_COUNT = 2600;
+const STAR_BAND_FRACTION = 0.34;   // share clustered along the galactic plane
+
+// ---------------- sky geometry constants ----------------
+const DOME_SCALE = 1000;           // both domes; depth is pinned to the far plane
+const MOON_RADIUS_RAD = 0.019;     // ~1.1 deg angular radius (flattering, not literal)
+const MOON_SPAN = 5.0;             // plane half-width in moon radii (room for the halo)
+
+// ---------------- env-map (PMREM) throttling ----------------
+const ENV_MIN_MS = 160;            // never rebuild reflections faster than this
+const ENV_HOUR_EPS = 0.2;          // sim-hours of sun travel that force a rebuild
+const ENV_RAIN_EPS = 0.05;
 
 // ---------------- gust field constants ----------------
 const GW1 = Math.PI * 2 * 0.13;    // rad/s — incommensurate gust frequencies
@@ -64,34 +111,116 @@ const GPOS = 0.021;                // spatial phase scale (rad per meter-ish)
 // ---------------- keyframe ramps over sun elevation (degrees) ----------------
 const C = (hex) => new THREE.Color(hex);
 
-const SKY_TURBIDITY = [[-8, 2.2], [0, 10.0], [4, 7.5], [12, 5.5], [70, 3.8]];
-const SKY_RAYLEIGH  = [[-8, 1.2], [0, 3.4], [6, 2.3], [20, 1.5], [70, 1.1]];
-const SKY_MIE_COEFF = [[-8, 0.003], [0, 0.021], [6, 0.011], [20, 0.005], [70, 0.0035]];
-const SKY_MIE_G     = [[0, 0.95], [10, 0.86], [70, 0.80]];
+// --- Preetham parameters. Rayleigh peaks around the horizon crossing (deep
+// reds at sunset), mie widens and strengthens as the sun sinks, turbidity
+// stays low for clean tropical air and is driven up by rain.
+const SKY_TURBIDITY = [[-10, 2.0], [-4, 2.6], [-1, 3.2], [1, 3.4], [4, 3.2], [12, 2.9], [30, 2.6], [70, 2.4]];
+const SKY_RAYLEIGH  = [[-10, 3.0], [-4, 4.4], [-1, 5.2], [1, 5.2], [4, 4.6], [12, 3.9], [30, 3.4], [70, 3.2]];
+const SKY_MIE_COEFF = [[-10, 0.004], [-4, 0.008], [-1, 0.012], [1, 0.013], [4, 0.009], [12, 0.005], [30, 0.0032], [70, 0.0028]];
+const SKY_MIE_G     = [[-4, 0.90], [0, 0.88], [8, 0.84], [25, 0.79], [70, 0.76]];
 
+// --- Preetham output grade (see _patchSkyShader). The Preetham fragment ends
+// with pow(texColor, 1/2.4), which is effectively a gamma encode: it lifts and
+// desaturates everything, so an un-graded sky reads as near-white at any sun
+// height above ~20 deg. These two ramps pull it back — gain sets how much of
+// the atmosphere's energy reaches the frame, saturation restores the colour
+// the gamma curve ate. Together they are what turns the sky from "hazy white"
+// into deep blue at altitude and a saturated red band at sunset.
+const SKY_GAIN = [[-14, 0.80], [-6, 0.68], [-2, 0.58], [0, 0.45], [3, 0.36], [8, 0.28], [16, 0.225], [30, 0.172], [70, 0.145]];
+// Saturation has to stay moderate at altitude: Preetham's daylight output is
+// already green-dominant, so pushing this much past ~2.1 drags the zenith into
+// teal instead of deepening it into blue.
+const SKY_SAT  = [[-14, 1.12], [-2, 1.22], [0, 1.30], [4, 1.38], [12, 1.58], [30, 1.86], [70, 2.05]];
+
+// --- IBL ambient from the graded procedural sky (compensates the gain above).
+// The top stops track SKY_GAIN: the daylight gain drop above is offset here so
+// ambient bounce stays exactly where the maps were authored against.
+const ENV_INTENSITY = [[-40, 0.90], [-8, 0.90], [-2, 0.85], [2, 0.95], [10, 1.36], [30, 1.66], [70, 1.78]];
+
+// --- lights
 const SUN_INTENSITY  = [[-2.5, 0], [0, 0.55], [4, 1.5], [10, 2.3], [25, 2.9], [70, 3.1]];
-const HEMI_INTENSITY = [[-12, 0.30], [-4, 0.34], [0, 0.38], [10, 0.50], [70, 0.62]];
+const HEMI_INTENSITY = [[-40, 1.10], [-12, 1.00], [-4, 0.70], [0, 0.55], [10, 0.52], [70, 0.64]];
+// Moonlight is deliberately generous: physically a full moon is ~1/400000 of
+// daylight, which renders as pure black. This is the level at which a moonlit
+// world is actually flyable while still reading as night.
+const MOON_LIGHT_PEAK = 3.4;
 
 const SUN_COLOR = [
-  [-2, C(0xff5b26)], [0, C(0xff7d38)], [4, C(0xffae62)],
+  [-2, C(0xff4f20)], [0, C(0xff7833)], [4, C(0xffad60)],
   [12, C(0xffd8a1)], [30, C(0xfff3e2)], [70, C(0xfffdf8)],
 ];
+const SUN_RAIN_COLOR = C(0xb9a99c);   // muted, slightly warm grey through cloud
+
 const HEMI_SKY_COLOR = [
-  [-14, C(0x0e1526)], [-5, C(0x1a2138)], [0, C(0x5b4a5e)],
-  [5, C(0xa08266)], [12, C(0x7fa0c2)], [70, C(0x8fb9dd)],
+  [-40, C(0x24365e)], [-14, C(0x2a3d66)], [-6, C(0x3a4870)], [-2, C(0x5a4f6a)],
+  [0, C(0x7c5a60)], [5, C(0xa08266)], [12, C(0x7fa0c2)], [70, C(0x8fb9dd)],
 ];
 const HEMI_GROUND_COLOR = [
-  [-14, C(0x090b10)], [-5, C(0x101219)], [0, C(0x3b2b25)],
-  [5, C(0x5c4834)], [12, C(0x565349)], [70, C(0x5f5a4d)],
+  [-40, C(0x161a26)], [-14, C(0x1a1e2a)], [-6, C(0x24242e)], [-2, C(0x342c30)],
+  [0, C(0x453329)], [5, C(0x5c4834)], [12, C(0x565349)], [70, C(0x5f5a4d)],
 ];
+
 const FOG_COLOR = [
-  [-16, C(0x04060b)], [-6, C(0x080c16)], [-1.5, C(0x281b2c)], [0.5, C(0x9c5430)],
-  [4, C(0xc98d58)], [9, C(0xb3a084)], [16, C(0x9fb4c8)], [70, C(0xaac5db)],
+  [-40, C(0x0a1122)], [-14, C(0x111c33)], [-8, C(0x1c2842)], [-4, C(0x38364f)],
+  [-1, C(0x7d5251)], [1, C(0xb07047)], [5, C(0xc59a6e)], [10, C(0xb6ab95)],
+  [18, C(0xa3b8cc)], [70, C(0xaec8de)],
 ];
 const RAIN_FOG_GRAY = C(0x6f767e);
 const INDOOR_FOG = C(0x14171c);
 
-// ---------------- HDRI band constants ----------------
+// --- tone-mapping exposure (ACES). Daylight keeps the calibration the maps
+// were authored against; night is lifted enough to fly by.
+const EXPOSURE = [
+  [-40, 0.62], [-14, 0.65], [-6, 0.72], [-1, 0.78], [2, 0.82], [10, 0.85], [30, 0.86], [70, 0.85],
+];
+
+// ---------------- night-dome ramps ----------------
+const NIGHT_ZENITH = [
+  [-40, C(0x0d1533)], [-16, C(0x111c3f)], [-9, C(0x142449)], [-5, C(0x152c5c)],
+  [-2, C(0x14306a)], [3, C(0x122a55)],
+];
+const NIGHT_HORIZON = [
+  [-40, C(0x141d38)], [-16, C(0x1b2745)], [-9, C(0x243050)], [-5, C(0x373a56)],
+  [-2, C(0x4a3549)], [3, C(0x5a3340)],
+];
+const TWI_COLOR = [
+  [-18, C(0x24122a)], [-12, C(0x4d1f3c)], [-8, C(0x8d3438)], [-4.5, C(0xd4602c)],
+  [-1.5, C(0xff8a3a)], [3, C(0xffa960)],
+];
+const TWI_STRENGTH = [[-20, 0], [-14, 0.12], [-9, 0.45], [-5, 1.00], [-2, 1.45], [0, 1.60], [5, 1.60]];
+const TWI_HI_COLOR = [
+  [-16, C(0x131a3c)], [-9, C(0x2b2354)], [-5, C(0x5a2f66)], [-1.5, C(0x86436e)], [3, C(0x9c5f68)],
+];
+const TWI_HI_STRENGTH = [[-18, 0], [-12, 0.06], [-7, 0.22], [-3, 0.44], [0, 0.50], [5, 0.50]];
+const BELT_COLOR = C(0xd07f95);
+const BELT_STRENGTH = [[-13, 0], [-8, 0.07], [-4, 0.19], [-0.5, 0.22], [3, 0.12], [7, 0]];
+
+// Miami is a bright city: a warm sodium/LED wash sits on the horizon all night.
+const GLOW_COLOR = C(0xffb673);
+const GLOW_STRENGTH = [[-40, 0.30], [-14, 0.28], [-8, 0.21], [-4, 0.11], [-0.5, 0.02], [2, 0]];
+
+const NIGHT_LIFT = 1.95;           // linear multiplier on the night base gradient
+const MW_COLOR = C(0xa9bcdf);
+const MW_STRENGTH = [[-40, 0.095], [-17, 0.080], [-11, 0.042], [-7, 0.012], [-4, 0]];
+const MOON_GLOW_COLOR = C(0xcddcff);
+
+// --- overcast deck (only visible when rain > 0)
+const CLOUD_TOP = [
+  [-40, C(0x14161f)], [-14, C(0x181b25)], [-6, C(0x2b2f3a)], [-1, C(0x4c4852)],
+  [3, C(0x6f7484)], [12, C(0x8f98a7)], [70, C(0xa9b2c1)],
+];
+// the underside of a rainy city night: sodium light bounced back down
+const CLOUD_BOT = [
+  [-40, C(0x33221a)], [-14, C(0x3a2820)], [-6, C(0x4a3a2c)], [-1, C(0x7a594b)],
+  [3, C(0x9b8678)], [12, C(0xaaaeb5)], [70, C(0xc3c9d2)],
+];
+const CLOUD_SUN_COLOR = [
+  [-8, C(0x2c1511)], [-2, C(0x8e4522)], [1, C(0xc2733a)], [5, C(0xd39a5e)],
+  [14, C(0xd0c2ab)], [70, C(0xdadada)],
+];
+const CLOUD_SUN_STRENGTH = [[-9, 0], [-4, 0.08], [-1, 0.28], [3, 0.32], [14, 0.18], [70, 0.11]];
+
+// ---------------- HDRI band constants (opt-in path) ----------------
 const DEFAULT_HDRI_BANDS = {
   day: 'day_clear',
   sunset: 'sunset',
@@ -99,41 +228,243 @@ const DEFAULT_HDRI_BANDS = {
   overcast: 'overcast',
 };
 
-// Approximate azimuth (world compass deg) at which each HDRI's sun/brightest
-// area is baked, used so backgroundRotation roughly tracks the computed sun.
-// 0 means "unknown / don't care" — tune per asset if the sun visibly fights
-// the shadow direction.
 const HDRI_BAKED_SUN_AZ_DEG = {
   beach_day: 0, day_clear: 0, sunset: 0, night: 0, overcast: 0,
 };
 
-// Directional sun retune while an HDRI band is active (the HDRI supplies
-// sky + ambient; the DirectionalLight remains the shadow caster).
 const HDRI_SUN = {
-  day:      { intensity: 2.5, color: 0xfff1dc },  // warm white
-  sunset:   { intensity: 1.8, color: 0xff9440 },  // orange
-  night:    { intensity: 0.0, color: 0xfff1dc },  // sun off; moonlight only
-  overcast: { intensity: 0.6, color: 0xe8ecef },  // weak, near-neutral
+  day:      { intensity: 2.5, color: 0xfff1dc },
+  sunset:   { intensity: 1.8, color: 0xff9440 },
+  night:    { intensity: 0.0, color: 0xfff1dc },
+  overcast: { intensity: 0.6, color: 0xe8ecef },
 };
 
-// Fog colors while an HDRI band is active (rain still greys/thickens in
-// _applyFog, and overcast additionally darkens with daylight below).
 const HDRI_FOG = {
-  day: C(0xa9bccb),        // light blue-grey
-  sunset: C(0xc79b6e),     // warm haze
-  night: C(0x05070d),      // near-black
-  overcast: C(0x8d949c),   // flat grey
+  day: C(0xa9bccb),
+  sunset: C(0xc79b6e),
+  night: C(0x05070d),
+  overcast: C(0x8d949c),
 };
 
-// Tone-mapping exposure over sun elevation for HDRI day/sunset/night bands
-// (targets: night ~0.5, sunset ~0.8, day ~0.75; ACES).
 const HDRI_EXPOSURE = [
   [-12, 0.50], [-6, 0.66], [-2, 0.76], [2, 0.80], [10, 0.80], [24, 0.75], [70, 0.74],
 ];
 
-const HDRI_SWAP_MIN_MS = 1000;     // never swap backgrounds more than 1/s
+const HDRI_SWAP_MIN_MS = 1000;
 
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const X_AXIS = new THREE.Vector3(1, 0, 0);
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+// ============================================================
+// shaders
+// ============================================================
+
+// Both domes pin z to w so they sit exactly on the far plane: never clipped by
+// camera.far, always occluded by anything the world has already drawn.
+const DOME_VERT = /* glsl */`
+varying vec3 vDir;
+void main() {
+  vDir = position;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_Position.z = gl_Position.w;
+}
+`;
+
+const DOME_FRAG = /* glsl */`
+uniform vec3 uSunDir;
+uniform vec3 uMoonDir;
+uniform vec3 uZenith;
+uniform vec3 uHorizon;
+uniform vec3 uGlowCol;
+uniform float uGlow;
+uniform vec3 uTwiCol;
+uniform float uTwi;
+uniform vec3 uTwiHiCol;
+uniform float uTwiHi;
+uniform vec3 uBeltCol;
+uniform float uBelt;
+uniform vec3 uMwCol;
+uniform vec3 uMwAxis;
+uniform float uMw;
+uniform vec3 uMoonGlowCol;
+uniform float uMoonGlow;
+uniform float uNight;
+uniform vec3 uCloudTop;
+uniform vec3 uCloudBot;
+uniform vec3 uCloudSunCol;
+uniform float uCloudSun;
+uniform float uCloud;
+uniform vec3 uCloudOfs;
+uniform float uDetail;
+
+varying vec3 vDir;
+
+float hash13(vec3 p) {
+  p = fract(p * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+float vnoise(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  float n000 = hash13(i);
+  float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+  float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+  float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+  float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+  float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+  float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+  float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+  return mix(
+    mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+    mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y),
+    f.z);
+}
+
+void main() {
+  vec3 d = normalize(vDir);
+  float h = d.y;
+  vec2 dh = normalize(vec2(d.x, d.z) + vec2(1e-5, 1e-5));
+  vec2 sh = normalize(vec2(uSunDir.x, uSunDir.z) + vec2(1e-5, 1e-5));
+  float sa = max(dot(dh, sh), 0.0);
+
+  // ---------- night layer ----------
+  vec3 night = mix(uHorizon, uZenith, pow(clamp(h + 0.07, 0.0, 1.0), 0.55));
+
+  // city skyglow hugging the horizon, gently uneven around the compass
+  float az = atan(d.z, d.x);
+  float glowAz = 0.70 + 0.30 * (0.5 + 0.5 * sin(az * 2.0 + 0.9));
+  night += uGlowCol * (uGlow * exp(-max(h, 0.0) * 11.0) * smoothstep(-0.30, 0.0, h) * glowAz);
+
+  // twilight lobe toward the sun + broad violet wash above it
+  float lobe = pow(sa, 2.2);
+  night += uTwiCol * (uTwi * lobe * exp(-max(h, 0.0) * 6.5) * smoothstep(-0.22, -0.01, h));
+  night += uTwiHiCol * (uTwiHi * (0.30 + 0.70 * lobe) * exp(-max(h, 0.0) * 2.0));
+
+  // Belt of Venus / earth shadow, opposite the sun
+  float ab = max(-dot(dh, sh), 0.0);
+  night += uBeltCol * (uBelt * ab * ab * exp(-abs(h - 0.11) * 13.0));
+
+  // Milky Way band
+  if (uMw > 0.0005) {
+    float mwd = dot(d, uMwAxis);
+    float band = exp(-mwd * mwd * 30.0);
+    float n = vnoise(d * 7.0);
+    n = mix(n, n * 0.55 + vnoise(d * 19.0) * 0.45, uDetail);
+    night += uMwCol * (uMw * band * (0.22 + 1.15 * n * n) * smoothstep(-0.02, 0.18, h));
+  }
+
+  // moon halo
+  float ang = 1.0 - max(dot(d, uMoonDir), 0.0);
+  float halo = exp(-ang * 900.0) * 0.55 + exp(-ang * 90.0) * 0.30 + exp(-ang * 6.0) * 0.06;
+  night += uMoonGlowCol * (uMoonGlow * halo);
+
+  // ---------- overcast layer ----------
+  vec3 cloud = mix(uCloudBot, uCloudTop, smoothstep(-0.06, 0.55, h));
+  float ca = uCloud;
+  if (uCloud > 0.001) {
+    float cn = vnoise(d * 2.6 + uCloudOfs);
+    cn = mix(cn, cn * 0.6 + vnoise(d * 6.4 + uCloudOfs * 2.1) * 0.4, uDetail);
+    cloud *= 0.70 + 0.64 * cn;
+    cloud += uCloudSunCol * (uCloudSun * pow(sa, 3.0) * exp(-max(h, 0.0) * 3.2));
+    ca = clamp(ca * (0.78 + 0.36 * cn) * (0.90 + 0.10 * smoothstep(0.0, 0.45, h)), 0.0, 1.0);
+  }
+
+  // composite: night over sky, then cloud over that (premultiplied alpha)
+  float a1 = uNight;
+  float outA = ca + a1 * (1.0 - ca);
+  vec3 outC = cloud * ca + night * (a1 * (1.0 - ca));
+  gl_FragColor = vec4(outC, outA);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+const STAR_VERT = /* glsl */`
+attribute vec3 aColor;
+attribute float aSize;
+attribute float aTw;
+attribute float aPh;
+uniform float uTime;
+uniform float uOpacity;
+uniform float uPixelRatio;
+varying vec3 vColor;
+varying float vA;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_Position.z = gl_Position.w;
+  // scintillation: stronger low in the sky, where the air path is longest
+  float amp = 0.14 + 0.24 * (1.0 - clamp(position.y, 0.0, 1.0));
+  float tw = 1.0 + amp * (sin(uTime * aTw + aPh) * 0.68 + sin(uTime * aTw * 2.13 + aPh * 1.7) * 0.32);
+  tw = clamp(tw, 0.42, 1.55);
+  vColor = aColor;
+  vA = uOpacity * tw;
+  gl_PointSize = max(1.0, aSize * uPixelRatio * (0.88 + 0.13 * tw));
+}
+`;
+
+const STAR_FRAG = /* glsl */`
+varying vec3 vColor;
+varying float vA;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d2 = dot(c, c);
+  if (d2 > 0.25) discard;
+  float a = max(exp(-d2 * 15.0) - 0.0286, 0.0) * 1.03;
+  gl_FragColor = vec4(vColor * (a * vA), 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+const MOON_VERT = /* glsl */`
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_Position.z = gl_Position.w;
+}
+`;
+
+const MOON_FRAG = /* glsl */`
+uniform sampler2D uMap;
+uniform vec2 uLit;        // bright-limb direction in disc space (unit)
+uniform float uK;         // terminator ellipse param: 1 - 2 * illuminated
+uniform float uSpan;      // plane half-width in moon radii
+uniform float uOpacity;
+uniform vec3 uTint;
+uniform float uGlow;
+uniform float uEarth;     // earthshine on the unlit limb
+varying vec2 vUv;
+void main() {
+  vec2 p = (vUv - 0.5) * (2.0 * uSpan);
+  float r = length(p);
+  float disc = smoothstep(1.02, 0.94, r);
+  float a = dot(p, uLit);
+  float b = dot(p, vec2(-uLit.y, uLit.x));
+  float term = uK * sqrt(max(1.0 - min(b * b, 1.0), 0.0));
+  float lit = smoothstep(term - 0.11, term + 0.11, a);
+  float shade = mix(uEarth, 1.0, lit);
+  float rr = min(r, 1.0);
+  shade *= 0.62 + 0.38 * pow(sqrt(max(1.0 - rr * rr, 0.0)), 0.4);
+  vec3 alb = texture2D(uMap, p * 0.5 + 0.5).rgb;
+  float halo = exp(-max(r - 1.0, 0.0) * 2.2) * uGlow;
+  vec3 col = uTint * (alb * (shade * disc) + halo * 0.5);
+  gl_FragColor = vec4(col * uOpacity, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}
+`;
+
+// ============================================================
+// helpers
+// ============================================================
 
 // Piecewise-linear scalar ramp over sorted [x, value] stops.
 function ramp(stops, x) {
@@ -174,6 +505,19 @@ function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 }
 
+// deterministic PRNG so the star field and the moon's maria are identical
+// every session (screenshots stay comparable)
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // ============================================================
 export class Environment {
   constructor(scene, renderer) {
@@ -191,12 +535,16 @@ export class Environment {
     this._rain = clamp(finite(env.rain, 0), 0, 1);
     this._renderDistance = clamp(finite(settings?.graphics?.renderDistance, 1500), 200, 20000);
     this._shadowRes = 2048;
+    this._detail = 1;                 // 0 on low quality: one noise octave instead of two
 
     // ---- sun/moon state ----
     this._sunElDeg = 45;
     this._sunAzDeg = 90;
+    this._moonElDeg = -45;
+    this._moonAzDeg = 270;
     this._sunDir = new THREE.Vector3(0, 1, 0);
     this._moonDir = new THREE.Vector3(0, -1, 0);
+    this._moonIllum = MOON_ILLUM;
 
     // ---- wind state (allocation-free getWind) ----
     this._windTime = Math.random() * 512;         // decorrelate sessions
@@ -208,42 +556,61 @@ export class Environment {
     this._rainActive = 0;
     this._streakLen = 0.3;
 
-    // ---- stars ----
+    // ---- sky animation state ----
+    this._skyTime = 0;
+    this._starOpacity = 0;
     this._starTarget = 0;
+    this._cloudDrift = new THREE.Vector3(0, 0, 0);
 
     // ---- procedural env map bookkeeping ----
     this._envRT = null;
-    this._envBuiltAt = null;
+    this._envDirty = true;
+    this._envLastBuild = -Infinity;
+    this._envBuiltHours = null;
+    this._envBuiltRain = -1;
 
-    // ---- HDRI IBL state ----
+    // ---- HDRI IBL state (opt-in) ----
     this._hdriBands = { ...DEFAULT_HDRI_BANDS };
     this._band = 'day';
-    this._hdriKey = null;         // last key attempted (null = procedural only)
-    this._hdriDesiredKey = null;  // latest wanted key (null = procedural)
-    this._hdriTex = null;         // applied equirect texture (shared, assetLib-owned)
-    this._hdriApplied = false;    // true only when a texture actually loaded
-    this._hdriEnvRTs = new Map(); // key -> PMREM RenderTarget (cached per key)
-    this._hdriToken = 0;          // async race guard
+    this._hdriKey = null;
+    this._hdriDesiredKey = null;
+    this._hdriTex = null;
+    this._hdriApplied = false;
+    this._hdriEnvRTs = new Map();
+    this._hdriToken = 0;
     this._hdriLastSwap = -Infinity;
-    this._hdriTimer = null;       // pending throttled swap
+    this._hdriTimer = null;
+    this._skyModeForced = null;       // null = follow settings.environment.photoSky
 
     // ---- reusable temps (no per-frame allocations) ----
     this._tmpA = new THREE.Vector3();
+    this._tmpB = new THREE.Vector3();
+    this._tmpC = new THREE.Vector3();
     this._svRight = new THREE.Vector3();
     this._svUp = new THREE.Vector3();
     this._svCenter = new THREE.Vector3();
     this._fogBase = new THREE.Color(0x9fb8d0);
+    this._tmpCol = new THREE.Color();
   }
 
   // ----------------------------------------------------------
   async init() {
     const scene = this.scene;
 
-    // ---------- sky dome ----------
+    // ---------- lit sky dome (Preetham) ----------
     this.sky = new Sky();
-    this.sky.scale.setScalar(1000);      // shader pins depth to the far plane; scale just needs to enclose the camera
+    this._patchSkyShader();
+    this.sky.scale.setScalar(DOME_SCALE);
     this.sky.frustumCulled = false;
+    // draw the backdrop AFTER the opaque world so the depth test throws away
+    // every sky pixel the city already covers (it is centred on the camera, so
+    // the default front-to-back sort would otherwise put it first)
+    this.sky.renderOrder = 5;
     scene.add(this.sky);
+
+    // ---------- night / weather dome ----------
+    this._buildNightDome();
+    scene.add(this.nightDome);
 
     // ---------- fog ----------
     this._fog = new THREE.Fog(0x9fb8d0, 180, 1400);
@@ -264,7 +631,7 @@ export class Environment {
     scene.add(this.sunLight.target);
 
     // ---------- moon (no shadow — keeps night cheap) ----------
-    this.moonLight = new THREE.DirectionalLight(0x93a9d1, 0);
+    this.moonLight = new THREE.DirectionalLight(0x9db2d8, 0);
     this.moonLight.visible = false;
     scene.add(this.moonLight);
 
@@ -272,16 +639,12 @@ export class Environment {
     this.hemi = new THREE.HemisphereLight(0x8fb9dd, 0x5f5a4d, 0.5);
     scene.add(this.hemi);
 
-    // ---------- celestial group (stars + moon disc), follows camera ----------
+    // ---------- celestial group (stars + moon), rides with the camera ----------
     this._celestial = new THREE.Group();
-    this._celestial.scale.setScalar(this._renderDistance * 0.9);
     scene.add(this._celestial);
 
-    this._starMats = [];
-    this._stars = this._buildStars(STAR_COUNT, 1.6, 0.72);
-    this._brightStars = this._buildStars(BRIGHT_STAR_COUNT, 2.6, 0.95);
+    this._buildStars();
     this._celestial.add(this._stars);
-    this._celestial.add(this._brightStars);
 
     this._buildMoonDisc();
     this._celestial.add(this._moonDisc);
@@ -307,12 +670,15 @@ export class Environment {
       windDirDeg: this._windDirDeg,
       gustiness: this._gustiness,
       rain: this._rain,
-    }); // -> _applyAtmosphere() -> first PMREM build + first HDRI request
+    }); // -> _applyAtmosphere()
+
+    // build the first reflection probe immediately so nothing pops on frame 1
+    this._rebuildEnvMap();
   }
 
   // ----------------------------------------------------------
   setTimeOfDay(hours) {
-    let h = finite(hours, 12);
+    const h = finite(hours, 12);
     this._hours = ((h % 24) + 24) % 24;
     if (!this._ready) return;
     this._applyAtmosphere();
@@ -335,14 +701,19 @@ export class Environment {
     this._rainGeo.setDrawRange(0, this._rainActive * 2);
     this._rainObj.visible = !this._indoor && this._rainActive > 0;
 
-    this._applyAtmosphere(); // rain also affects fog / light / exposure / stars / band
+    this._applyAtmosphere(); // rain also drives sky, fog, light, exposure, stars
   }
 
   // ----------------------------------------------------------
   // Map hook: choose which HDRI key backs each band. Partial objects are
   // merged over the defaults (NOT over a previous custom set, so every map
   // states its full intent). Pass a null/undefined value to force the
-  // procedural Sky for that band. e.g. Miami: setHDRIBands({ day: 'beach_day' })
+  // procedural sky for that band.
+  //
+  // NOTE: photographic skies are OFF by default — the procedural sky above is
+  // the default path for every map. This only records the map's preference;
+  // it takes effect when settings.environment.photoSky is true (or after
+  // setSkyMode('hdri')). Kept so existing callers keep working unchanged.
   setHDRIBands(bands = {}) {
     const b = bands || {};
     this._hdriBands = {
@@ -352,14 +723,22 @@ export class Environment {
       overcast: b.overcast !== undefined ? b.overcast : DEFAULT_HDRI_BANDS.overcast,
     };
     if (!this._ready) return;
-    this._applyAtmosphere(); // re-evaluates the band -> schedules a swap if needed
+    this._applyAtmosphere();
+  }
+
+  // ----------------------------------------------------------
+  // 'procedural' | 'hdri' | null (null = follow settings.environment.photoSky,
+  // which is absent by default and therefore procedural).
+  setSkyMode(mode) {
+    this._skyModeForced = (mode === 'procedural' || mode === 'hdri') ? mode : null;
+    if (!this._ready) return;
+    this._applyAtmosphere();
   }
 
   // ----------------------------------------------------------
   setRenderDistance(meters) {
     this._renderDistance = clamp(finite(meters, 1500), 200, 20000);
     if (!this._ready) return;
-    this._celestial.scale.setScalar(this._renderDistance * 0.9);
     this._applyFog();
   }
 
@@ -368,7 +747,9 @@ export class Environment {
     let res = Math.floor(finite(shadowMapRes, 2048));
     res = clamp(res, 256, 8192);
     this._shadowRes = res;
+    this._detail = res >= 2048 ? 1 : 0;   // low/medium drop the second noise octave
     if (!this._ready) return;
+    this._domeU.uDetail.value = this._detail;
     const sh = this.sunLight.shadow;
     if (sh.mapSize.x !== res) {
       sh.mapSize.set(res, res);
@@ -389,8 +770,9 @@ export class Environment {
     if (!this._ready) return;
 
     if (flag) {
-      // hide the outside world (including any HDRI background/IBL)
+      // hide the outside world
       this.sky.visible = false;
+      this.nightDome.visible = false;
       this._celestial.visible = false;
       this._rainObj.visible = false;
       this.sunLight.visible = false;
@@ -410,7 +792,8 @@ export class Environment {
     } else {
       this._celestial.visible = true;
       this._rainObj.visible = this._rainActive > 0;
-      this._applyAtmosphere(); // restores lights, fog, exposure, stars, HDRI/sky
+      this._applyAtmosphere(); // restores lights, fog, exposure, stars, sky
+      this._envDirty = true;
     }
   }
 
@@ -454,22 +837,39 @@ export class Environment {
     if (!this._ready || !camera) return;
 
     if (!this._indoor) {
-      // sky + celestial sphere ride with the camera so they never clip
+      // sky, night dome and celestial sphere ride with the camera
       this.sky.position.copy(camera.position);
+      this.nightDome.position.copy(camera.position);
       this._celestial.position.copy(camera.position);
+
+      // animation clock (wrapped to keep float precision in the shaders)
+      this._skyTime = (this._skyTime + dt) % 3600;
+      this._starU.uTime.value = this._skyTime;
+      this._starU.uPixelRatio.value = this.renderer.getPixelRatio();
+
+      // overcast deck drifts downwind; gusty air scuds faster
+      if (this._domeU.uCloud.value > 0.001) {
+        const drift = dt * (0.004 + 0.0016 * this._windSpeed) * (0.6 + 0.9 * this._gustiness);
+        const o = this._cloudDrift;
+        o.x = (o.x + this._windDir.x * drift) % 512;
+        o.z = (o.z + this._windDir.z * drift) % 512;
+        o.y = (o.y + drift * 0.35) % 512;
+        this._domeU.uCloudOfs.value.copy(o);
+      }
 
       if (this.sunLight.visible) this._snapShadow(camera);
 
-      // stars ease in/out through dawn and dusk (target is 0 while an HDRI
-      // background is active — the night HDRI has real stars baked in)
-      const k = Math.min(1, dt * 1.6);
-      const mats = this._starMats;
-      for (let i = 0; i < mats.length; i++) {
-        mats[i].opacity += (this._starTarget * mats[i].userData.peak - mats[i].opacity) * k;
+      // stars ease in/out through dawn and dusk
+      const k = Math.min(1, dt * 1.7);
+      this._starOpacity += (this._starTarget - this._starOpacity) * k;
+      this._starU.uOpacity.value = this._starOpacity;
+      this._stars.visible = this._starOpacity > 0.003;
+
+      // throttled procedural reflection probe rebuild
+      if (this._envDirty && !this._hdriApplied) {
+        const t = nowMs();
+        if (t - this._envLastBuild >= ENV_MIN_MS) this._rebuildEnvMap();
       }
-      const starsOn = mats[0].opacity > 0.004 || this._starTarget > 0.004;
-      this._stars.visible = starsOn;
-      this._brightStars.visible = starsOn;
     }
 
     if (this._rainObj.visible) this._updateRain(dt, camera);
@@ -494,11 +894,30 @@ export class Environment {
       try { this._envRT.dispose(); } catch (e) { /* noop */ }
       this._envRT = null;
     }
+    const kill = (o) => {
+      if (!o) return;
+      try { o.geometry?.dispose(); } catch (e) { /* noop */ }
+      try {
+        const m = o.material;
+        if (m) { m.map?.dispose?.(); m.uniforms?.uMap?.value?.dispose?.(); m.dispose(); }
+      } catch (e) { /* noop */ }
+    };
+    kill(this.sky);          // the Preetham dome owns a BoxGeometry + ShaderMaterial too
+    kill(this.nightDome);
+    kill(this._stars);
+    kill(this._moonDisc);
+    kill(this._rainObj);
+    try { this._pmrem?.dispose(); } catch (e) { /* noop */ }
   }
 
   // ==========================================================
   // internals
   // ==========================================================
+
+  get _photoSky() {
+    if (this._skyModeForced !== null) return this._skyModeForced === 'hdri';
+    return !!(settings && settings.environment && settings.environment.photoSky);
+  }
 
   _applyWindDir() {
     // windDirDeg = compass direction wind blows FROM (0=N=-Z, 90=E=+X).
@@ -508,32 +927,47 @@ export class Environment {
     this._windLat.set(this._windDir.z, 0, -this._windDir.x);
   }
 
-  // Sun elevation follows a sine peaking at SUN_PEAK_DEG at 13:00, dips to
-  // -NIGHT_DEPTH_DEG at solar midnight; azimuth sweeps E -> S -> W by day and
-  // W -> N -> E by night. Continuous and 24h-periodic. Moon is anti-solar.
-  _computeSun(hours) {
-    let elDeg, azDeg;
-    if (hours >= SUNRISE && hours <= SUNSET) {
-      const f = (hours - SUNRISE) / DAY_HOURS;
-      elDeg = SUN_PEAK_DEG * Math.sin(Math.PI * f);
-      azDeg = 90 + 180 * f;
+  // Celestial arc shared by sun and moon: elevation follows a sine peaking at
+  // SUN_PEAK_DEG at 13:00 and dipping to -NIGHT_DEPTH_DEG at solar midnight;
+  // azimuth sweeps E -> S -> W by day and W -> N -> E by night. Continuous and
+  // 24h-periodic. Writes [el, az] into `out2`.
+  _arc(hours, out2) {
+    const h = ((hours % 24) + 24) % 24;
+    if (h >= SUNRISE && h <= SUNSET) {
+      const f = (h - SUNRISE) / DAY_HOURS;
+      out2[0] = SUN_PEAK_DEG * Math.sin(Math.PI * f);
+      out2[1] = 90 + 180 * f;
     } else {
-      const f = (((hours - SUNSET) % 24) + 24) % 24 / NIGHT_HOURS;
-      elDeg = -NIGHT_DEPTH_DEG * Math.sin(Math.PI * f);
-      azDeg = 270 + 180 * f;
+      const f = ((((h - SUNSET) % 24) + 24) % 24) / NIGHT_HOURS;
+      out2[0] = -NIGHT_DEPTH_DEG * Math.sin(Math.PI * f);
+      out2[1] = 270 + 180 * f;
     }
-    this._sunElDeg = elDeg;
-    this._sunAzDeg = azDeg;
-    const el = elDeg * DEG2RAD, az = azDeg * DEG2RAD;
-    const ce = Math.cos(el);
-    this._sunDir.set(ce * Math.sin(az), Math.sin(el), -ce * Math.cos(az));
-    this._moonDir.copy(this._sunDir).negate();
+    return out2;
   }
 
-  // ---------------- HDRI band machinery ----------------
+  _dirFromElAz(elDeg, azDeg, out) {
+    const el = elDeg * DEG2RAD, az = azDeg * DEG2RAD;
+    const ce = Math.cos(el);
+    return out.set(ce * Math.sin(az), Math.sin(el), -ce * Math.cos(az));
+  }
 
-  // Which lighting band does the current sim state fall into?
-  // (Order matters and matches the spec: heavy rain always reads overcast.)
+  _computeSkyBodies(hours) {
+    const a = this._arcTmp || (this._arcTmp = [0, 0]);
+    this._arc(hours, a);
+    this._sunElDeg = a[0];
+    this._sunAzDeg = a[1];
+    this._dirFromElAz(a[0], a[1], this._sunDir);
+
+    // the moon walks the same arc half a day away, offset so its bright limb
+    // has a well-defined direction (an exactly anti-solar moon is degenerate)
+    this._arc(hours + 12 + MOON_OFFSET_HOURS, a);
+    this._moonElDeg = a[0];
+    this._moonAzDeg = a[1];
+    this._dirFromElAz(a[0], a[1], this._moonDir);
+  }
+
+  // ---------------- HDRI band machinery (opt-in path) ----------------
+
   _evaluateBand() {
     if (this._rain >= 0.5) return 'overcast';
     const el = this._sunElDeg;
@@ -542,14 +976,11 @@ export class Environment {
     return 'day';
   }
 
-  // Request that the background match the current band. Lazy + throttled:
-  // the actual load/swap never happens more than once per second, and only
-  // when the desired key actually differs from what is applied/attempted.
   _scheduleHDRISwap() {
     const key = (this._hdriBands && this._hdriBands[this._band]) || null;
     this._hdriDesiredKey = key;
     if (key === this._hdriKey) return;         // settled (incl. recorded misses)
-    if (this._hdriTimer !== null) return;      // pending swap will read the latest desire
+    if (this._hdriTimer !== null) return;      // pending swap reads the latest desire
     const wait = HDRI_SWAP_MIN_MS - (nowMs() - this._hdriLastSwap);
     if (wait <= 0) {
       this._beginHDRISwap();
@@ -563,7 +994,7 @@ export class Environment {
 
   async _beginHDRISwap() {
     const key = this._hdriDesiredKey;
-    if (key === this._hdriKey) return;         // desire settled while queued
+    if (key === this._hdriKey) return;
     this._hdriLastSwap = nowMs();
     const token = ++this._hdriToken;
     let tex = null;
@@ -582,31 +1013,22 @@ export class Environment {
     this._applyHDRI(key, tex);
   }
 
-  // Record the outcome of a swap and retune the whole atmosphere.
-  // tex === null records a miss (missing file / no assets): procedural path.
   // The HDRI texture itself is owned & cached by assetLib — never disposed
-  // here. PMREM render targets are cached per key; replaced entries are
-  // disposed, and dispose() releases them all.
+  // here. PMREM render targets are cached per key and released in dispose().
   _applyHDRI(key, tex) {
     this._hdriKey = key;
     this._hdriTex = tex || null;
     this._hdriApplied = !!tex;
     if (tex && this._pmrem && !this._hdriEnvRTs.has(key)) {
       try {
-        const rt = this._pmrem.fromEquirectangular(tex);
-        const old = this._hdriEnvRTs.get(key);
-        if (old && old !== rt) { try { old.dispose(); } catch (e) { /* noop */ } }
-        this._hdriEnvRTs.set(key, rt);
+        this._hdriEnvRTs.set(key, this._pmrem.fromEquirectangular(tex));
       } catch (e) {
         console.warn('[Environment] HDRI PMREM failed for', key, e);
-        // background still usable; scene.environment falls back to procedural RT
       }
     }
-    this._applyAtmosphere(); // no-op while indoor; state restores on setIndoor(false)
+    this._applyAtmosphere();
   }
 
-  // Background brightness within the active band (~1, dimming toward band
-  // edges; overcast additionally follows daylight so rainy nights stay dark).
   _hdriBackgroundIntensity(band, el, rain) {
     if (band === 'day')    return 0.85 + 0.15 * smoothstep(10, 26, el);
     if (band === 'sunset') return 0.88 + 0.12 * smoothstep(-6, 2, el);
@@ -615,7 +1037,6 @@ export class Environment {
     return (0.08 + 0.92 * dayl) * (1 - 0.2 * rain);
   }
 
-  // IBL ambient strength from the PMREM'd HDRI.
   _hdriEnvIntensity(band, el) {
     if (band === 'day')    return 0.9;
     if (band === 'sunset') return 0.8;
@@ -628,34 +1049,98 @@ export class Environment {
   _applyAtmosphere() {
     if (!this._ready || this._indoor) return;
     const h = this._hours;
-    this._computeSun(h);
+    this._computeSkyBodies(h);
     const el = this._sunElDeg;
     const rain = this._rain;
-    const dim = 1 - 0.45 * rain;
+    const wind = this._windSpeed;
     const scene = this.scene;
+    const dayl = smoothstep(-8, 5, el);
+    const dim = 1 - 0.45 * rain;
 
-    // ---------- band selection + lazy HDRI swap ----------
-    this._band = this._evaluateBand();
-    this._scheduleHDRISwap();                       // throttled; async; cheap no-op when settled
+    // ---------- photographic sky (opt-in only) ----------
+    let ibl = false;
+    if (this._photoSky) {
+      this._band = this._evaluateBand();
+      this._scheduleHDRISwap();
+      ibl = this._hdriApplied && !!this._hdriTex;
+    } else if (this._hdriApplied) {
+      this._hdriApplied = false;                 // dropped back to procedural
+      this._hdriTex = null;
+      this._hdriKey = null;
+      this._hdriDesiredKey = null;
+      this._envDirty = true;
+    }
     const band = this._band;
-    const ibl = this._hdriApplied && !!this._hdriTex;
-    const dayl = smoothstep(-8, 5, el);             // shared daylight factor
 
-    // ---------- sky shader (procedural path; harmless while hidden) ----------
+    // ==========================================================
+    // 1. the lit sky (Preetham), driven continuously by elevation
+    // ==========================================================
     const u = this.sky.material.uniforms;
     u.sunPosition.value.copy(this._sunDir);
-    u.turbidity.value = ramp(SKY_TURBIDITY, el) + rain * 4;
-    u.rayleigh.value = ramp(SKY_RAYLEIGH, el);
-    u.mieCoefficient.value = ramp(SKY_MIE_COEFF, el) + rain * 0.01;
-    u.mieDirectionalG.value = ramp(SKY_MIE_G, el);
+    // Weather: rain thickens and de-blues the air; a stiff dry breeze scours
+    // some of the haze out of it.
+    const windClear = 1 - 0.07 * clamp(wind / 15, 0, 1) * (1 - rain);
+    u.turbidity.value = (ramp(SKY_TURBIDITY, el) + rain * 9.0) * windClear;
+    u.rayleigh.value = ramp(SKY_RAYLEIGH, el) * (1 - 0.55 * rain);
+    u.mieCoefficient.value = ramp(SKY_MIE_COEFF, el) + rain * 0.020;
+    u.mieDirectionalG.value = ramp(SKY_MIE_G, el) - rain * 0.06;
+    const skyGain = ramp(SKY_GAIN, el) * (1 - 0.18 * rain);
+    if (this._skyGraded) {
+      u.pwGain.value = skyGain;
+      u.pwSat.value = ramp(SKY_SAT, el) * (1 - 0.48 * rain);
+    }
 
-    // ---------- background & environment (HDRI vs procedural) ----------
+    // ==========================================================
+    // 2. the night / weather dome
+    // ==========================================================
+    const du = this._domeU;
+    const nightA = smoothstep(2.5, -6.5, el);
+    const cloudA = smoothstep(0.02, 1.0, rain) * 0.88;
+
+    du.uSunDir.value.copy(this._sunDir);
+    du.uMoonDir.value.copy(this._moonDir);
+    du.uNight.value = nightA;
+    du.uCloud.value = cloudA;
+    du.uDetail.value = this._detail;
+
+    // NIGHT_LIFT keeps the night sky a readable deep blue rather than black:
+    // the ramps are authored as sRGB hexes, which land very low in linear
+    // space once ACES and the night exposure are applied.
+    rampColor(NIGHT_ZENITH, el, du.uZenith.value).multiplyScalar(NIGHT_LIFT);
+    rampColor(NIGHT_HORIZON, el, du.uHorizon.value).multiplyScalar(NIGHT_LIFT);
+    du.uGlowCol.value.copy(GLOW_COLOR);
+    du.uGlow.value = ramp(GLOW_STRENGTH, el) * (1 + 0.35 * rain);   // cloud bounces city light back down
+    rampColor(TWI_COLOR, el, du.uTwiCol.value);
+    du.uTwi.value = ramp(TWI_STRENGTH, el) * (1 - 0.35 * rain);
+    rampColor(TWI_HI_COLOR, el, du.uTwiHiCol.value);
+    du.uTwiHi.value = ramp(TWI_HI_STRENGTH, el) * (1 - 0.5 * rain);
+    du.uBeltCol.value.copy(BELT_COLOR);
+    du.uBelt.value = ramp(BELT_STRENGTH, el) * (1 - 0.85 * rain);
+    du.uMwCol.value.copy(MW_COLOR);
+    du.uMw.value = ramp(MW_STRENGTH, el) * (1 - rain);
+
+    // moon halo: only once the moon is actually up, scaled by its phase
+    const moonUp = clamp((this._moonElDeg + 1.5) / 5, 0, 1);
+    const moonSkyVis = smoothstep(2.5, -6.0, el);
+    const moonVis = moonUp * moonSkyVis * (1 - 0.9 * cloudA);
+    du.uMoonGlowCol.value.copy(MOON_GLOW_COLOR);
+    du.uMoonGlow.value = 0.30 * moonVis * this._moonIllum;
+
+    rampColor(CLOUD_TOP, el, du.uCloudTop.value);
+    rampColor(CLOUD_BOT, el, du.uCloudBot.value);
+    rampColor(CLOUD_SUN_COLOR, el, du.uCloudSunCol.value);
+    du.uCloudSun.value = ramp(CLOUD_SUN_STRENGTH, el);
+    this.nightDome.visible = (nightA + cloudA) > 0.002;
+
+    // ==========================================================
+    // 3. background & environment map
+    // ==========================================================
     if (ibl) {
-      this.sky.visible = false;                     // real sky photo replaces the dome
+      this.sky.visible = false;
+      this.nightDome.visible = false;
       scene.background = this._hdriTex;
       const rt = this._hdriEnvRTs.get(this._hdriKey);
       scene.environment = rt ? rt.texture : (this._envRT ? this._envRT.texture : null);
-      // rotate the panorama so its baked sun roughly tracks the computed one
       const rotY = (this._sunAzDeg - 90 - (HDRI_BAKED_SUN_AZ_DEG[this._hdriKey] || 0)) * DEG2RAD;
       try {
         if ('backgroundRotation' in scene) scene.backgroundRotation.set(0, rotY, 0);
@@ -668,95 +1153,121 @@ export class Environment {
         }
       } catch (e) { /* older three — background still works unrotated */ }
     } else {
-      this.sky.visible = true;
-      scene.background = null;                      // sky dome draws the backdrop
+      // once the night dome is fully opaque the Preetham pass is invisible —
+      // skip a full-screen shader for the whole of deep night
+      this.sky.visible = nightA < 0.995;
+      scene.background = null;                      // the domes draw the backdrop
       scene.environment = this._envRT ? this._envRT.texture : null;
       try {
         if ('backgroundRotation' in scene) scene.backgroundRotation.set(0, 0, 0);
         if ('environmentRotation' in scene) scene.environmentRotation.set(0, 0, 0);
         if ('backgroundIntensity' in scene) scene.backgroundIntensity = 1;
-        if ('environmentIntensity' in scene) scene.environmentIntensity = 0.5;
+        // the sky grade above scales the probe's energy down with it, so the
+        // IBL strength climbs to compensate and keep ambient bounce constant
+        if ('environmentIntensity' in scene) {
+          scene.environmentIntensity = ramp(ENV_INTENSITY, el) * (1 - 0.25 * rain);
+        }
       } catch (e) { /* noop */ }
+
+      // reflections follow the sky: mark dirty once the sun has moved enough
+      if (this._envBuiltHours === null) {
+        this._envDirty = true;
+      } else {
+        const d = Math.abs(h - this._envBuiltHours);
+        if (Math.min(d, 24 - d) > ENV_HOUR_EPS) this._envDirty = true;
+        if (Math.abs(rain - this._envBuiltRain) > ENV_RAIN_EPS) this._envDirty = true;
+      }
     }
 
-    // ---------- sun light (always the shadow caster) ----------
+    // ==========================================================
+    // 4. lights
+    // ==========================================================
     let sunI;
     if (ibl) {
       const tune = HDRI_SUN[band] || HDRI_SUN.day;
       sunI = tune.intensity * dim;
-      if (band === 'overcast') sunI *= dayl;        // rainy night stays dark
+      if (band === 'overcast') sunI *= dayl;
       this.sunLight.color.setHex(tune.color);
     } else {
-      sunI = ramp(SUN_INTENSITY, el) * dim;
+      // rain both dims the sun and drains the colour out of it
+      sunI = ramp(SUN_INTENSITY, el) * (1 - 0.78 * rain);
       rampColor(SUN_COLOR, el, this.sunLight.color);
+      this.sunLight.color.lerp(SUN_RAIN_COLOR, rain * 0.7);
     }
     this.sunLight.intensity = sunI;
     this.sunLight.visible = sunI > 0.01;
-    // sensible pose before the first per-frame shadow snap
     this.sunLight.position.copy(this._sunDir).multiplyScalar(SHADOW_DIST);
     this.sunLight.target.position.set(0, 0, 0);
 
-    // ---------- moon light ----------
-    const moonEl = -el;
-    const moonPeak = (ibl && band === 'night') ? 0.25 : 0.5;
-    const moonI = moonPeak * clamp((moonEl - 1) / 7, 0, 1) * dim;
+    // moonlight: real direction, phase-scaled, blocked by cloud
+    const moonPeak = (ibl && band === 'night') ? 0.28 : MOON_LIGHT_PEAK;
+    const moonI = moonPeak * this._moonIllum * moonUp * moonSkyVis * (1 - 0.55 * cloudA);
     this.moonLight.intensity = moonI;
     this.moonLight.visible = moonI > 0.01;
     this.moonLight.position.copy(this._moonDir).multiplyScalar(300);
 
-    // ---------- moon disc (hidden over HDRI skies — they're photographs) ----------
-    this._moonDisc.position.copy(this._moonDir);
-    this._tmpA.copy(this._moonDir).negate();
-    this._moonDisc.quaternion.setFromUnitVectors(Z_AXIS, this._tmpA);
-    const moonOp = ibl ? 0 : clamp((moonEl - 0.5) / 6, 0, 1) * (1 - 0.65 * rain);
-    this._moonMat.opacity = moonOp * 0.95;
-    this._moonDisc.visible = moonOp > 0.02;
-
-    // ---------- hemisphere ambient ----------
-    let hemiI = ramp(HEMI_INTENSITY, el) * (1 - 0.25 * rain);
+    // hemisphere ambient (overcast daylight is flat and bright, not dark)
+    let hemiI = ramp(HEMI_INTENSITY, el) * (1 - 0.12 * rain) + 0.30 * cloudA * dayl;
     rampColor(HEMI_SKY_COLOR, el, this.hemi.color);
     rampColor(HEMI_GROUND_COLOR, el, this.hemi.groundColor);
+    if (cloudA > 0) this.hemi.color.lerp(RAIN_FOG_GRAY, cloudA * 0.45 * dayl);
     if (ibl) {
-      hemiI *= 0.5;                                 // PMREM IBL now supplies most ambient
-      if (band === 'overcast') {
-        // soft shadowless look: lift ambient during overcast daylight
-        hemiI = Math.max(hemiI, 0.62 * dayl * (1 - 0.15 * rain));
-      }
+      hemiI *= 0.5;
+      if (band === 'overcast') hemiI = Math.max(hemiI, 0.62 * dayl * (1 - 0.15 * rain));
     }
     this.hemi.intensity = hemiI;
 
-    // ---------- fog ----------
+    // ==========================================================
+    // 5. moon disc
+    // ==========================================================
+    this._updateMoonDisc(moonVis);
+
+    // ==========================================================
+    // 6. fog / exposure / stars
+    // ==========================================================
     if (ibl) {
       this._fogBase.copy(HDRI_FOG[band] || HDRI_FOG.day);
       if (band === 'overcast') this._fogBase.multiplyScalar(0.15 + 0.85 * dayl);
     } else {
       rampColor(FOG_COLOR, el, this._fogBase);
+      if (cloudA > 0) {
+        // under cloud the horizon washes toward the deck's own colour
+        rampColor(CLOUD_BOT, el, this._tmpCol);
+        this._fogBase.lerp(this._tmpCol, cloudA * 0.55);
+      }
     }
     this._applyFog();
 
-    // ---------- exposure (ACES) ----------
     if (ibl) {
-      // recalibrated for HDRI backdrops: day ~0.75, sunset ~0.8, night ~0.5, overcast ~0.7
       const ex = (band === 'overcast') ? (0.5 + 0.2 * dayl) : ramp(HDRI_EXPOSURE, el);
       this.renderer.toneMappingExposure = ex * (1 - 0.08 * rain);
     } else {
-      // original procedural calibration (0.85 day -> 0.45 deep night)
-      const ex = 0.45 + 0.40 * smoothstep(-12, 10, el);
-      this.renderer.toneMappingExposure = ex * (1 - 0.08 * rain);
+      this.renderer.toneMappingExposure = ramp(EXPOSURE, el) * (1 - 0.22 * rain);
     }
 
-    // ---------- stars (faded in update(); HDRI skies have real stars baked) ----------
-    this._starTarget = ibl ? 0 : clamp((-el - 0.5) / 9, 0, 1) * (1 - 0.75 * rain);
+    // stars: fade in through twilight, killed by cloud
+    this._starTarget = ibl ? 0 : smoothstep(-3.0, -11.0, el) * (1 - 0.95 * cloudA);
+  }
 
-    // ---------- procedural environment reflections (skipped while HDRI IBL is live) ----------
-    if (!ibl) {
-      let need = this._envBuiltAt === null;
-      if (!need) {
-        const d = Math.abs(h - this._envBuiltAt);
-        need = Math.min(d, 24 - d) > 0.25;
-      }
-      if (need) this._rebuildEnvMap();
-    }
+  _updateMoonDisc(moonVis) {
+    const disc = this._moonDisc;
+    const mu = this._moonU;
+    disc.position.copy(this._moonDir);
+    this._tmpA.copy(this._moonDir).negate();
+    disc.quaternion.setFromUnitVectors(Z_AXIS, this._tmpA);
+
+    // bright-limb direction = the sun, projected into the disc's own plane
+    const rx = this._tmpB.copy(X_AXIS).applyQuaternion(disc.quaternion);
+    const ry = this._tmpC.copy(Y_AXIS).applyQuaternion(disc.quaternion);
+    let lx = this._sunDir.dot(rx);
+    let ly = this._sunDir.dot(ry);
+    const len = Math.hypot(lx, ly);
+    if (len > 1e-4) { lx /= len; ly /= len; } else { lx = 1; ly = 0; }
+    mu.uLit.value.set(lx, ly);
+    mu.uK.value = 1 - 2 * this._moonIllum;
+    mu.uGlow.value = 0.55 * this._moonIllum;
+    mu.uOpacity.value = moonVis;
+    disc.visible = moonVis > 0.01;
   }
 
   _applyFog() {
@@ -768,30 +1279,45 @@ export class Environment {
       this._fog.far = d * 0.95;
       return;
     }
-    this._fog.near = Math.max(8, d * 0.30 * (1 - 0.45 * rain));
-    this._fog.far = Math.max(this._fog.near + 20, d * 1.05 * (1 - 0.35 * rain));
-    this._fog.color.copy(this._fogBase).lerp(RAIN_FOG_GRAY, rain * 0.5);
+    this._fog.near = Math.max(8, d * 0.30 * (1 - 0.55 * rain));
+    this._fog.far = Math.max(this._fog.near + 20, d * 1.05 * (1 - 0.40 * rain));
+    this._fog.color.copy(this._fogBase).lerp(RAIN_FOG_GRAY, rain * 0.45);
   }
 
+  // Render the procedural sky (lit dome + night/weather dome) into a PMREM
+  // probe so reflections and IBL ambient track the real sky. Expensive, hence
+  // throttled by update(); both domes are temporarily reparented to a private
+  // scene at the origin so the probe is camera-independent.
   _rebuildEnvMap() {
+    const sky = this.sky;
+    const dome = this.nightDome;
+    const skyPos = this._tmpA.copy(sky.position);
+    const domePos = this._tmpB.copy(dome.position);
+    const skyVis = sky.visible;
+    const domeVis = dome.visible;
     try {
-      const sky = this.sky;
-      const px = sky.position.x, py = sky.position.y, pz = sky.position.z;
-      const wasVisible = sky.visible;
       sky.visible = true;
       sky.position.set(0, 0, 0);
-      this._envScene.add(sky);                 // reparents out of this.scene
+      dome.position.set(0, 0, 0);
+      this._envScene.add(sky);
+      this._envScene.add(dome);
       const rt = this._pmrem.fromScene(this._envScene);
-      this.scene.add(sky);                     // reparent back
-      sky.position.set(px, py, pz);
-      sky.visible = wasVisible;
-      if (this._envRT) this._envRT.dispose();  // dispose the replaced target
+      if (this._envRT) this._envRT.dispose();
       this._envRT = rt;
       if (!this._indoor && !this._hdriApplied) this.scene.environment = rt.texture;
-      this._envBuiltAt = this._hours;
     } catch (e) {
       console.warn('[Environment] env map rebuild failed', e);
-      this._envBuiltAt = this._hours;          // do not retry every call
+    } finally {
+      this.scene.add(sky);
+      this.scene.add(dome);
+      sky.position.copy(skyPos);
+      dome.position.copy(domePos);
+      sky.visible = skyVis;
+      dome.visible = domeVis;
+      this._envDirty = false;
+      this._envLastBuild = nowMs();
+      this._envBuiltHours = this._hours;
+      this._envBuiltRain = this._rain;
     }
   }
 
@@ -799,7 +1325,6 @@ export class Environment {
   // shadow-map texel grid in light space so edges don't shimmer as we fly.
   _snapShadow(camera) {
     const dir = this._sunDir;                  // unit, toward the sun
-    // light-space basis (sun elevation <= 70°, so cross with +Y is safe)
     const right = this._svRight.set(dir.z, 0, -dir.x).normalize();
     const up = this._svUp.crossVectors(dir, right);
     const texel = (SHADOW_HALF * 2) / this._shadowRes;
@@ -821,79 +1346,227 @@ export class Environment {
 
   // ---------------- builders ----------------
 
-  _buildStars(count, size, peakOpacity) {
-    const pos = new Float32Array(count * 3);
-    const col = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      // uniform band on the unit sphere, slightly past the horizon
-      const y = -0.08 + 1.08 * Math.random();
-      const a = Math.random() * Math.PI * 2;
-      const r = Math.sqrt(Math.max(0, 1 - y * y));
-      pos[i * 3] = r * Math.cos(a);
-      pos[i * 3 + 1] = y;
-      pos[i * 3 + 2] = r * Math.sin(a);
-
-      const pick = Math.random();
-      const b = 0.65 + 0.35 * Math.random();
-      let cr, cg, cb;
-      if (pick < 0.70)      { cr = b; cg = b; cb = b; }             // white
-      else if (pick < 0.90) { cr = 0.62 * b; cg = 0.72 * b; cb = b; } // cool blue
-      else                  { cr = b; cg = 0.83 * b; cb = 0.62 * b; } // warm
-      col[i * 3] = cr; col[i * 3 + 1] = cg; col[i * 3 + 2] = cb;
+  // Append a gain + saturation grade to the addons Sky fragment shader. The
+  // Preetham pass ends on pow(texColor, 1/2.4) — a gamma encode that lifts and
+  // desaturates the result, so straight out of the box the sky reads as white
+  // haze at any useful exposure. This edits the material's own shader source
+  // once, before it is ever compiled, and adds two uniforms driven by the
+  // SKY_GAIN / SKY_SAT ramps. If a future three.js changes that line the patch
+  // is skipped and the sky simply renders un-graded — never broken.
+  _patchSkyShader() {
+    const mat = this.sky.material;
+    const MARK = 'gl_FragColor = vec4( retColor, 1.0 );';
+    this._skyGraded = false;
+    try {
+      if (typeof mat.fragmentShader !== 'string' || mat.fragmentShader.indexOf(MARK) < 0) {
+        console.warn('[Environment] Sky shader grade hook not found — sky renders un-graded');
+        return;
+      }
+      mat.fragmentShader = 'uniform float pwGain;\nuniform float pwSat;\n' +
+        mat.fragmentShader.replace(MARK, [
+          'vec3 pwCol = retColor * pwGain;',
+          'float pwLum = dot( pwCol, vec3( 0.2126, 0.7152, 0.0722 ) );',
+          'pwCol = max( mix( vec3( pwLum ), pwCol, pwSat ), vec3( 0.0 ) );',
+          'gl_FragColor = vec4( pwCol, 1.0 );',
+        ].join('\n'));
+      mat.uniforms.pwGain = { value: 1 };
+      mat.uniforms.pwSat = { value: 1 };
+      mat.needsUpdate = true;
+      this._skyGraded = true;
+    } catch (e) {
+      console.warn('[Environment] Sky shader grade failed', e);
     }
+  }
+
+  _buildNightDome() {
+    this._domeU = {
+      uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+      uMoonDir: { value: new THREE.Vector3(0, -1, 0) },
+      uZenith: { value: new THREE.Color(0x0d1533) },
+      uHorizon: { value: new THREE.Color(0x141d38) },
+      uGlowCol: { value: GLOW_COLOR.clone() },
+      uGlow: { value: 0 },
+      uTwiCol: { value: new THREE.Color(0xcc5a2e) },
+      uTwi: { value: 0 },
+      uTwiHiCol: { value: new THREE.Color(0x4a2f64) },
+      uTwiHi: { value: 0 },
+      uBeltCol: { value: BELT_COLOR.clone() },
+      uBelt: { value: 0 },
+      uMwCol: { value: MW_COLOR.clone() },
+      // galactic pole: any fixed unit vector — tilted so the band crosses the
+      // sky diagonally instead of ringing the horizon
+      uMwAxis: { value: new THREE.Vector3(0.62, 0.55, -0.56).normalize() },
+      uMw: { value: 0 },
+      uMoonGlowCol: { value: MOON_GLOW_COLOR.clone() },
+      uMoonGlow: { value: 0 },
+      uNight: { value: 0 },
+      uCloudTop: { value: new THREE.Color(0x8f98a7) },
+      uCloudBot: { value: new THREE.Color(0xaaaeb5) },
+      uCloudSunCol: { value: new THREE.Color(0xd0c2ab) },
+      uCloudSun: { value: 0 },
+      uCloud: { value: 0 },
+      uCloudOfs: { value: new THREE.Vector3() },
+      uDetail: { value: 1 },
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: this._domeU,
+      vertexShader: DOME_VERT,
+      fragmentShader: DOME_FRAG,
+      side: THREE.BackSide,
+      depthWrite: false,
+      depthTest: true,
+      transparent: true,
+      premultipliedAlpha: true,
+      fog: false,
+    });
+    this.nightDome = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat);
+    this.nightDome.scale.setScalar(DOME_SCALE);
+    this.nightDome.frustumCulled = false;
+    this.nightDome.renderOrder = -1000;   // first of the transparents, behind everything
+    this.nightDome.visible = false;
+  }
+
+  _buildStars() {
+    const n = STAR_COUNT;
+    const rnd = mulberry32(0x5EED);
+    const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const size = new Float32Array(n);
+    const tw = new Float32Array(n);
+    const ph = new Float32Array(n);
+
+    // galactic plane basis (matches uMwAxis in the dome shader)
+    const axis = new THREE.Vector3(0.62, 0.55, -0.56).normalize();
+    const e1 = new THREE.Vector3(1, 0, 0).cross(axis).normalize();
+    const e2 = new THREE.Vector3().crossVectors(axis, e1).normalize();
+    const v = new THREE.Vector3();
+
+    for (let i = 0; i < n; i++) {
+      const inBand = rnd() < STAR_BAND_FRACTION;
+      if (inBand) {
+        // cluster near the great circle perpendicular to `axis`
+        const a = rnd() * Math.PI * 2;
+        let w = (rnd() + rnd() + rnd() - 1.5) * 0.20;     // ~gaussian, +-12 deg
+        v.copy(e1).multiplyScalar(Math.cos(a)).addScaledVector(e2, Math.sin(a));
+        v.addScaledVector(axis, w).normalize();
+        if (v.y < -0.06) v.y = -v.y * 0.5;                // keep them above the horizon
+        v.normalize();
+      } else {
+        const y = -0.06 + 1.06 * rnd();
+        const a = rnd() * Math.PI * 2;
+        const r = Math.sqrt(Math.max(0, 1 - y * y));
+        v.set(r * Math.cos(a), y, r * Math.sin(a));
+      }
+      pos[i * 3] = v.x; pos[i * 3 + 1] = v.y; pos[i * 3 + 2] = v.z;
+
+      // magnitude: a steep power law, so a handful are bright and most are faint
+      const m = Math.pow(rnd(), 2.7);
+      const bright = 0.16 + 0.94 * m;
+      size[i] = 1.05 + 3.6 * Math.pow(m, 1.35) * (inBand ? 0.75 : 1);
+
+      // spectral colour spread (B-V-ish)
+      const pick = rnd();
+      let cr, cg, cb;
+      if (pick < 0.16)      { cr = 0.68, cg = 0.78, cb = 1.00; }   // blue-white
+      else if (pick < 0.62) { cr = 0.95, cg = 0.97, cb = 1.00; }   // white
+      else if (pick < 0.86) { cr = 1.00, cg = 0.94, cb = 0.82; }   // yellow
+      else                  { cr = 1.00, cg = 0.80, cb = 0.63; }   // orange-red
+      col[i * 3] = cr * bright;
+      col[i * 3 + 1] = cg * bright;
+      col[i * 3 + 2] = cb * bright;
+
+      tw[i] = 1.1 + 3.4 * rnd();
+      ph[i] = rnd() * Math.PI * 2;
+    }
+
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const mat = new THREE.PointsMaterial({
-      size,
-      sizeAttenuation: false,
-      vertexColors: true,
+    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    geo.setAttribute('aTw', new THREE.BufferAttribute(tw, 1));
+    geo.setAttribute('aPh', new THREE.BufferAttribute(ph, 1));
+
+    this._starU = {
+      uTime: { value: 0 },
+      uOpacity: { value: 0 },
+      uPixelRatio: { value: 1 },
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: this._starU,
+      vertexShader: STAR_VERT,
+      fragmentShader: STAR_FRAG,
       transparent: true,
-      opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       fog: false,
     });
-    mat.userData.peak = peakOpacity;
-    this._starMats.push(mat);
-    const points = new THREE.Points(geo, mat);
-    points.frustumCulled = false;
-    points.visible = false;
-    points.renderOrder = 2;
-    return points;
+    this._stars = new THREE.Points(geo, mat);
+    this._stars.frustumCulled = false;
+    this._stars.visible = false;
+    this._stars.renderOrder = 2;
   }
 
+  // Albedo only — the phase, terminator and limb darkening live in the shader.
   _buildMoonDisc() {
     let tex = null;
     try {
+      const S = 256;
       const c = document.createElement('canvas');
-      c.width = c.height = 128;
+      c.width = c.height = S;
       const g = c.getContext('2d');
       if (g) {
-        const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-        grd.addColorStop(0.00, 'rgba(255,252,240,1)');
-        grd.addColorStop(0.28, 'rgba(240,244,255,0.95)');
-        grd.addColorStop(0.38, 'rgba(190,205,235,0.35)');
-        grd.addColorStop(0.70, 'rgba(150,170,210,0.08)');
-        grd.addColorStop(1.00, 'rgba(140,160,200,0)');
-        g.fillStyle = grd;
-        g.fillRect(0, 0, 128, 128);
+        const rnd = mulberry32(0x4D00);
+        g.fillStyle = '#cfccc3';
+        g.fillRect(0, 0, S, S);
+        // maria: a handful of soft dark basins
+        for (let i = 0; i < 16; i++) {
+          const x = rnd() * S, y = rnd() * S;
+          const r = S * (0.045 + 0.10 * rnd());
+          const shade = 150 + Math.floor(30 * rnd());
+          const grd = g.createRadialGradient(x, y, 0, x, y, r);
+          grd.addColorStop(0, `rgba(${shade},${shade + 2},${shade - 4},0.55)`);
+          grd.addColorStop(1, `rgba(${shade},${shade + 2},${shade - 4},0)`);
+          g.fillStyle = grd;
+          g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+        }
+        // craters: small bright rings with darker centres
+        for (let i = 0; i < 90; i++) {
+          const x = rnd() * S, y = rnd() * S;
+          const r = S * (0.006 + 0.022 * rnd() * rnd());
+          g.fillStyle = `rgba(240,238,230,${0.10 + 0.16 * rnd()})`;
+          g.beginPath(); g.arc(x, y, r * 1.6, 0, Math.PI * 2); g.fill();
+          g.fillStyle = `rgba(120,118,112,${0.10 + 0.18 * rnd()})`;
+          g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+        }
         tex = new THREE.CanvasTexture(c);
         tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.needsUpdate = true;
       }
     } catch (e) { tex = null; }
 
-    this._moonMat = new THREE.MeshBasicMaterial({
-      map: tex || null,
-      color: tex ? 0xffffff : 0xe8eeff,
+    this._moonU = {
+      uMap: { value: tex },
+      uLit: { value: new THREE.Vector2(1, 0) },
+      uK: { value: 1 - 2 * MOON_ILLUM },
+      uSpan: { value: MOON_SPAN },
+      uOpacity: { value: 0 },
+      uTint: { value: new THREE.Color(0xfdfbf2) },
+      uGlow: { value: 0.5 },
+      uEarth: { value: 0.045 },
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: this._moonU,
+      vertexShader: MOON_VERT,
+      fragmentShader: MOON_FRAG,
       transparent: true,
-      opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       fog: false,
     });
-    // unit celestial space; the group's scale keeps angular size constant
-    this._moonDisc = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.05), this._moonMat);
+    // unit celestial radius: the plane spans MOON_SPAN moon radii
+    const halfWorld = Math.tan(MOON_RADIUS_RAD * MOON_SPAN);
+    this._moonDisc = new THREE.Mesh(new THREE.PlaneGeometry(halfWorld * 2, halfWorld * 2), mat);
     this._moonDisc.frustumCulled = false;
     this._moonDisc.visible = false;
     this._moonDisc.renderOrder = 3;

@@ -4,9 +4,12 @@
 // "Thread the needle" is a number, not an opinion. This file measures it.
 //
 // It flies the ACTUAL airframe sphere through gaps of known width using a
-// faithful re-implementation of the resolution loop in js/physics/quad.js
-// (same substep rule, same two-deepest contact solve, same restitution and
-// friction constants), and reports:
+// faithful re-implementation of the resolution loop in js/physics/quad.js —
+// same substep rule, same two-deepest contact solve, same restitution,
+// friction and wedge-scrub constants — and measures the result at SUBSTEP
+// resolution, because at 60 m/s a whole physics step (150 mm) is wider than
+// the entire contact event and a per-step reading would grade the sample
+// rate rather than the solver. It reports:
 //
 //   * the MEASURED minimum passable gap vs the theoretical one (2 * radius),
 //     for eight shape types, flown dead centre and crabbing at 6 degrees,
@@ -78,6 +81,19 @@ class Rig {
     // quad.js scales the wedge scrub by wheelbase, not by airframe radius.
     this.wheelbase = radius / AIRFRAME_K;
     this.penDepth = 0;
+    /**
+     * Called with the RESOLVED centre after every substep of the collision
+     * march — i.e. at the same resolution the solver itself works at.
+     *
+     * A gap test judged on whole physics steps is quantised by the step
+     * length (150 mm at 60 m/s), which straddles the entire contact event:
+     * it reads the pre-contact position on one side and the pushed-clear
+     * position on the other, and interpolates a crossing that the airframe
+     * never occupied. Sampling here instead makes the measurement report the
+     * solver rather than the sample rate.
+     */
+    this.onSub = null;
+    this._subs = 0;
   }
 
   reset(px, py, pz, vx, vy, vz) {
@@ -94,7 +110,11 @@ class Rig {
     this.p.x += this.v.x * dt;
     this.p.y += this.v.y * dt;
     this.p.z += this.v.z * dt;
+    this._subs = 0;
     this._collide(dt);
+    // Free flight (no candidates, or a teleport) marches nothing — report the
+    // endpoint so the observer never misses a crossing.
+    if (!this._subs && this.onSub) this.onSub(this.p);
   }
 
   /** Mirror of Quad._collideBoxes. */
@@ -117,7 +137,12 @@ class Rig {
       if (sub < 2) sub = 2;
       if (sub > SWEEP_MAX_SUB) sub = SWEEP_MAX_SUB;
     }
-    if (sub === 1) { this._resolveAt(list, r, dt); return; }
+    if (sub === 1) {
+      this._resolveAt(list, r, dt);
+      this._subs = 1;
+      if (this.onSub) this.onSub(this.p);
+      return;
+    }
 
     const sdt = dt / sub;
     const tx = p.x, ty = p.y, tz = p.z;
@@ -132,6 +157,8 @@ class Rig {
       }
       const bx = p.x, by = p.y, bz = p.z;
       this._resolveAt(list, r, sdt);
+      this._subs++;
+      if (this.onSub) this.onSub(p);
       ax += p.x - bx; ay += p.y - by; az += p.z - bz;
     }
   }
@@ -231,11 +258,26 @@ const OBB_YAW = 0.5236;                                          // 30 deg
 const OBB_AXIS = { x: Math.sin(OBB_YAW), y: 0, z: Math.cos(OBB_YAW) };
 const OBB_SIDE = { x: Math.cos(OBB_YAW), y: 0, z: -Math.sin(OBB_YAW) };
 
-// `flatDepth` is how far the NARROWEST part of the aperture runs along the
-// flight axis. A doorway is flat for its whole thickness; a pole, a trunk, a
-// buoy or a round gate tube pinches at a single station, so their flat depth
-// is zero. It only matters for the crabbing test, where a flat aperture of
-// depth d costs a geometric d*tan(angle) of extra width no solver can refund.
+// Two fields describe what a CRABBED approach costs as pure geometry — the
+// width a straight tilted line needs over and above the airframe diameter,
+// which no solver can refund. Both are zero for a dead-centre approach.
+//
+//   `flatDepth`    how far the narrowest part of the aperture runs along the
+//                  flight axis. A doorway is flat for its whole thickness and
+//                  a tilted line loses flatDepth*tan(angle) of clear width.
+//                  A pole or a round gate tube pinches at a single station,
+//                  so its flat depth is zero.
+//
+//   `pinchRadius`  the radius of the obstacle's convex surface at the pinch.
+//                  Crabbing past a ROUND obstacle costs width too, and the
+//                  earlier model wrongly credited it as free: for a circle of
+//                  radius p the perpendicular distance from its centre to a
+//                  line tilted by A shrinks by cos(A), so a straight crabbed
+//                  line needs 2*[(R+p)/cos(A) - p] instead of 2R. That is
+//                  1.0 mm past a 5 cm pole and 17 mm past a 1.5 m boulder for
+//                  a whoop — small, but not zero, and pretending it is zero
+//                  turns honest geometry into a phantom solver bug.
+//                  null/0 = the obstacle is flat at the pinch.
 const SCENARIOS = [
   {
     key: 'aabb walls', axis: Z, side: X, flatDepth: OBST_LEN,
@@ -255,21 +297,21 @@ const SCENARIOS = [
     },
   },
   {
-    key: 'capsule poles r5cm', axis: Z, side: X, flatDepth: 0,
+    key: 'capsule poles r5cm', axis: Z, side: X, flatDepth: 0, pinchRadius: 0.05,
     build: (w) => [
       makeCapsuleY(-(w * 0.5 + 0.05), -5, 0, 0.05, 10),
       makeCapsuleY(+(w * 0.5 + 0.05), -5, 0, 0.05, 10),
     ],
   },
   {
-    key: 'cyl trunks r50cm', axis: Z, side: X, flatDepth: 0,
+    key: 'cyl trunks r50cm', axis: Z, side: X, flatDepth: 0, pinchRadius: 0.5,
     build: (w) => [
       makeCylinder(-(w * 0.5 + 0.5), -5, 0, 0.5, 10),
       makeCylinder(+(w * 0.5 + 0.5), -5, 0, 0.5, 10),
     ],
   },
   {
-    key: 'sphere pair r1.5m', axis: Z, side: X, flatDepth: 0,
+    key: 'sphere pair r1.5m', axis: Z, side: X, flatDepth: 0, pinchRadius: 1.5,
     build: (w) => [
       makeSphere(-(w * 0.5 + 1.5), 0, 0, 1.5),
       makeSphere(+(w * 0.5 + 1.5), 0, 0, 1.5),
@@ -282,13 +324,13 @@ const SCENARIOS = [
     build: (w) => [makeRing(0, 0, 0, w * 0.5 + 0.15, 0.15, 0.15, 0, 0, 1)],
   },
   {
-    key: 'torus gate (hole)', axis: Z, side: X, flatDepth: 0,
+    key: 'torus gate (hole)', axis: Z, side: X, flatDepth: 0, pinchRadius: 0.15,
     build: (w) => [makeTorus(0, 0, 0, w * 0.5 + 0.15, 0.15, 0, 0, 1)],
   },
   {
     // Pier: deck box on pylon cylinders. Flying UNDER the deck BETWEEN two
     // pylons is only possible because a compound leaves its gaps open.
-    key: 'compound pier pylons', axis: Z, side: X, flatDepth: 0,
+    key: 'compound pier pylons', axis: Z, side: X, flatDepth: 0, pinchRadius: 0.45,
     build: (w) => {
       const parts = [makeBox(0, 3, 0, 12, 0.6, 24)];
       for (let i = -1; i <= 1; i++) {
@@ -304,13 +346,18 @@ const SCENARIOS = [
  * Fly the airframe at an aperture of width `w` and report whether it went
  * THROUGH the gap.
  *
- * "Through" is judged at the pinch plane (along = 0), by linear
- * interpolation between the straddling steps: the airframe must CLEAR the
- * aperture there, i.e. |centre offset| <= w/2 - R. Reaching the far side is
- * not enough — squeezing through overlapping both walls, or being squirted
- * sideways past the obstacle, is not threading the needle. Note this makes
- * any w < 2R unpassable by construction, which is the point: the metric
- * being measured is how close to that hard floor the solver gets.
+ * "Through" is judged at the pinch plane (along = 0): the airframe must
+ * CLEAR the aperture there, i.e. |centre offset| <= w/2 - R. Reaching the
+ * far side is not enough — squeezing through overlapping both walls, or
+ * being squirted sideways past the obstacle, is not threading the needle.
+ * Note this makes any w < 2R unpassable by construction, which is the point:
+ * the metric being measured is how close to that hard floor the solver gets.
+ *
+ * The crossing is sampled at SUBSTEP resolution (rig.onSub), not once per
+ * physics step. At 60 m/s a physics step is 150 mm — wider than the entire
+ * contact event against a pole — so a per-step reading interpolates between
+ * the pre-contact position and the pushed-clear one and reports a crossing
+ * the airframe never occupied. That measures the sample rate, not the solver.
  *
  * `lateral0` is where the UNDISTURBED trajectory would cross the pinch
  * plane, so a crabbing entry is aimed at the same target as a straight one.
@@ -331,20 +378,26 @@ function flyGap(colliders, R, scn, w, o) {
   let prevAlong = START_S, prevAcross = latStart;
   let pinchAcross = null;
   let maxAcross = Math.abs(latStart);
-  let steps = 0;
-  for (; steps < maxSteps; steps++) {
-    rig.step(PHYS_DT);
-    const along = rig.p.x * ax.x + rig.p.z * ax.z;
-    const across = rig.p.x * sd.x + rig.p.z * sd.z;
+
+  // Substep observer: every resolved position the solver actually produced.
+  rig.onSub = (p) => {
+    const along = p.x * ax.x + p.z * ax.z;
+    const across = p.x * sd.x + p.z * sd.z;
     if (Math.abs(across) > maxAcross) maxAcross = Math.abs(across);
     if (pinchAcross === null && prevAlong < 0 && along >= 0) {
       const f = (along === prevAlong) ? 0 : (0 - prevAlong) / (along - prevAlong);
       pinchAcross = prevAcross + (across - prevAcross) * f;
     }
     prevAlong = along; prevAcross = across;
-    if (along >= END_S) break;
-    if (along < START_S - 3 || Math.abs(across) > 25) break;   // bounced / squirted out
+  };
+
+  let steps = 0;
+  for (; steps < maxSteps; steps++) {
+    rig.step(PHYS_DT);
+    if (prevAlong >= END_S) break;
+    if (prevAlong < START_S - 3 || Math.abs(prevAcross) > 25) break;   // bounced / squirted out
   }
+  rig.onSub = null;
   const reached = prevAlong >= END_S;
   const threaded = pinchAcross !== null && Math.abs(pinchAcross) <= w * 0.5 - R + 1e-12;
   return {
@@ -627,12 +680,28 @@ export function runCollisionTests(opts = {}) {
   //              the actual "clip the gap and keep going" case.
   //   angled   — crabbing at 6 degrees through the middle.
   const CRAB = 6 * Math.PI / 180;
+  const SOLVER_ALLOWANCE_MM = 2;
+
+  /**
+   * Extra width, over and above the airframe diameter, that a STRAIGHT line
+   * crabbing at `angle` needs to clear this aperture. Pure geometry — the
+   * solver cannot refund any of it, and the airframe is only allowed to need
+   * SOLVER_ALLOWANCE_MM more than this.
+   *
+   * A curved path can and does beat this bound (the solver deflects the
+   * airframe back onto a straighter line through the pinch), so it is a
+   * reference, not a floor. The only hard floor is 2R.
+   */
+  const geomExcess = (scn, angle) => {
+    if (!angle) return 0;
+    let e = (scn.flatDepth || 0) * Math.tan(angle);           // flat aperture, depth d
+    const rho = scn.pinchRadius;                              // convex obstacle, radius p
+    if (rho > 0) e += 2 * ((R + rho) / Math.cos(angle) - rho) - D;
+    return e;
+  };
   const APPROACHES = [
-    { name: 'centred', angle: 0, tol: () => 0.01 },
-    // A crab through a FLAT aperture of depth d costs d*tan(angle) of extra
-    // width as pure geometry, whatever the solver does; anything past that
-    // plus 4 mm is the solver failing to let the airframe slide.
-    { name: 'angled 6deg', angle: CRAB, tol: (scn) => scn.flatDepth * Math.tan(CRAB) * 1000 + 4 },
+    { name: 'centred', angle: 0 },
+    { name: 'angled 6deg', angle: CRAB },
   ];
 
   for (const scn of SCENARIOS) {
@@ -650,8 +719,8 @@ export function runCollisionTests(opts = {}) {
         if (res.min > worstMin) { worstMin = res.min; worstSpeed = speed; }
       }
       const excessMm = (worstMin - D) * 1000;
-      const tolMm = ap.tol(scn);
-      const geomMm = ap.angle ? scn.flatDepth * Math.tan(ap.angle) * 1000 : 0;
+      const geomMm = geomExcess(scn, ap.angle) * 1000;
+      const tolMm = ap.angle ? geomMm + SOLVER_ALLOWANCE_MM : 0.01;
       report.gaps.push({
         shape: scn.key,
         approach: ap.name,

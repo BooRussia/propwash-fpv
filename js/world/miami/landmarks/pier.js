@@ -4,7 +4,8 @@ import { plankTexture } from '../textures.js';
 
 /** Boardwalk + pier deck, pylons, pavilion. */
 export function buildPier(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, addCyl, setTag } = ctx;
+  setTag('pier');
   const woodTex = track(plankTexture(0x9a7247, 11, 512, 512, 18));
   woodTex.repeat.set(78, 1);       // boards run across the walk, ~0.45 m each
   {
@@ -26,7 +27,9 @@ export function buildPier(ctx) {
     root.add(deck);
     addCollider(PIER_X, 3.1, CITY_Z - 88, 12, 0.6, 165);
 
-    // pylons — pairs every 18m, leaving fly-under space
+    // pylons — pairs every 17 m, leaving fly-under space. Round timber piles
+    // get ROUND colliders: the old 0.9 m squares put 5 cm of phantom steel on
+    // each corner of a 0.4 m pile and squared off the gap a pilot threads.
     const pyGeo = track(new THREE.CylinderGeometry(0.35, 0.4, 10, 8));
     const pyMat = track(new THREE.MeshStandardMaterial({ color: 0x5c4a35, roughness: 1 }));
     const pylons = new THREE.InstancedMesh(pyGeo, pyMat, 20);
@@ -37,10 +40,11 @@ export function buildPier(ctx) {
       for (const dx of [-5, 5]) {
         m4.makeTranslation(PIER_X + dx, -1.5, z);
         pylons.setMatrixAt(pi++, m4);
-        addCollider(PIER_X + dx, -6, z, 0.9, 10, 0.9);
+        addCyl(PIER_X + dx, -6.5, z, 0.4, 10);
       }
     }
     pylons.castShadow = true;
+    pylons.name = 'pier-pylons';
     root.add(pylons);
 
     // pavilion at the end
@@ -56,9 +60,14 @@ export function buildPier(ctx) {
     roof.position.set(PIER_X, 10.5, CITY_Z - 168);
     roof.rotation.y = Math.PI / 4;
     root.add(roof);
-    addCollider(PIER_X, 3.7, CITY_Z - 168, 14, 9, 12);
+    // pavilion: the body box, then the pyramid roof as two stepped boxes
+    // instead of one 9 m block that swallowed the whole roof volume
+    addCollider(PIER_X, 3.7, CITY_Z - 168, 14, 5, 12);
+    addCollider(PIER_X, 8.75, CITY_Z - 168, 14.6, 1.5, 14.6);
+    addCollider(PIER_X, 10.25, CITY_Z - 168, 7.6, 2.0, 7.6);
     const pavLight = new THREE.PointLight(0xffd9a0, 30, 40);
     pavLight.position.set(PIER_X, 9, CITY_Z - 168);
     root.add(pavLight);
   }
+  setTag('world');
 }

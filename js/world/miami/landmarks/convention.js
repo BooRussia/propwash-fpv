@@ -35,7 +35,8 @@ function roofY(x, z) {
  * @returns {{ group: THREE.Group }}
  */
 export function buildConvention(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, setTag } = ctx;
+  setTag('convention');
   const regDN = ctx.regDN;
   const group = new THREE.Group();
   group.name = 'convention';

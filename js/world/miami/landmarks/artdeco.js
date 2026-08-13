@@ -35,7 +35,8 @@ const HOTELS = [
  * @returns {{ group: THREE.Group }}
  */
 export function buildArtDeco(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, setTag } = ctx;
+  setTag('artdeco');
   const regDN = ctx.regDN;
 
   const stucco = [];                 // pastel walls, eyebrows, fins, parapets

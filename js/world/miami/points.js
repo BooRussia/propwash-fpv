@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {
-  CITY_Y, CITY_Z, PIER_X, WHEEL_R, groundHeight,
+  CITY_Y, CITY_Z, PIER_X, WHEEL_X, WHEEL_Z, WHEEL_R, PLAZA_Y,
+  CINEMA_X, CINEMA_FRONT_Z, LUMMUS_Z, LUMMUS_Y, CLUB_X, MARINA_X,
+  groundHeight,
 } from './constants.js';
 import { buildHelipad } from '../helipad.js';
 
@@ -23,19 +25,21 @@ export function buildPoints(ctx, towerData) {
   // ---------------- race gates ----------------
   const G = (x, z, y, yawDeg, radius = 3.4) =>
     ({ position: new THREE.Vector3(x, y, z), yawRad: THREE.MathUtils.degToRad(yawDeg), radius });
+  const HUB_Y = PLAZA_Y + WHEEL_R + 4.6;
   const gates = [
     G(-40, 6, 5, 90),                                   // 1: down the beach
-    G(-100, 2, 4, 90),                                  // 2: low over sand
+    G(-95, LUMMUS_Z, LUMMUS_Y + 1.45, 90, 1.3),         // 2: THROUGH the pergola walk
     G(-150, -50, 1.8, 95, 3.0),                         // 3: UNDER the pier deck
     G(-185, -95, 6, 110),                               // 4: out over water
     G(-235, -30, 8, 160),                               // 5: bank back toward shore
-    G(-215, 42, CITY_Y + WHEEL_R + 4, 180, 3.0),        // 6: through the ferris wheel hub plane
+    G(WHEEL_X, WHEEL_Z, HUB_Y + 3.4, 0, 3.0),           // 6: through the wheel, over the axle
     G(-160, 44, 8, 90),                                 // 7: down Ocean Drive
     G(-60, 44, 6, 90),                                  // 8: street slalom
     G(30, 44, 8, 90),                                   // 9
     G(95, 100, 25, 45),                                 // 10: climb between towers
-    G(150, 60, 14, 130),                                // 11: back over boardwalk
-    G(82, 18, 10, 250, 3.2),                            // 12: past the MIAMI sign, home
+    G(CINEMA_X, 52.5, 9, 90, 3.2),                      // 11: past the cinema blade sign
+    G(154, 12, 4.5, 250, 3.0),                          // 12: slalom between volleyball courts
+    G(82, 18, 10, 250, 3.2),                            // 13: past the MIAMI sign, home
   ];
 
   // ---------------- retrieval points ----------------
@@ -52,8 +56,11 @@ export function buildPoints(ctx, towerData) {
     }
     retrievalPoints.push(new THREE.Vector3(PIER_X, 1.2, CITY_Z - 60));          // under the pier
     retrievalPoints.push(new THREE.Vector3(PIER_X, 12.4, CITY_Z - 168));        // pier pavilion roof
-    retrievalPoints.push(new THREE.Vector3(-430 + 165, groundHeight(-265, 12) + 6, 12)); // lifeguard hut roof
-    retrievalPoints.push(new THREE.Vector3(300, 1.6, -80));                      // marina dock end
+    retrievalPoints.push(new THREE.Vector3(-95, groundHeight(-95, 12) + 4.7, 12));  // lifeguard hut roof
+    retrievalPoints.push(new THREE.Vector3(WHEEL_X + 22, PLAZA_Y + 0.1, WHEEL_Z));  // Pier Park deck
+    retrievalPoints.push(new THREE.Vector3(MARINA_X, 1.6, -80));                 // marina dock end
+    retrievalPoints.push(new THREE.Vector3(CLUB_X, 10.0, 13));                   // yacht club roof
+    retrievalPoints.push(new THREE.Vector3(CINEMA_X, CITY_Y + 17.2, CINEMA_FRONT_Z + 22)); // cinema roof
     retrievalPoints.push(new THREE.Vector3(82, groundHeight(82, 14) + 11, 14));  // atop the MIAMI sign
     retrievalPoints.push(new THREE.Vector3(430, CITY_Y + 66, 70));               // helipad
   }

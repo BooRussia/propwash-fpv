@@ -30,8 +30,10 @@ const bandRadius = (t) => R_BOT + (R_TOP - R_BOT) * t;
  * @returns {{ group: THREE.Group, update: (dt:number)=>void }}
  */
 export function buildLighthouse(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, setTag } = ctx;
+  setTag('lighthouse');
   const regDN = ctx.regDN;
+  const regDNColor = ctx.regDNColor;
   const r = mulberry32(0x11614E);      // local stream — touches no layout rng
 
   const rock = [];        // jetty rubble + granite plinth
@@ -259,11 +261,13 @@ export function buildLighthouse(ctx) {
     const shaftGeo = track(new THREE.ConeGeometry(2.6, 90, 16, 1, true));
     shaftGeo.rotateZ(Math.PI / 2);      // point down +x
     shaftGeo.translate(45, 0, 0);
-    const shaftMat = regDN(track(new THREE.MeshStandardMaterial({
-      color: 0x000000, emissive: 0xfff0c0, emissiveIntensity: 1,
+    // unlit: a black standard material still picks up the HDRI specular and
+    // additive blending would leave the beam faintly visible at noon
+    const shaftMat = regDNColor(track(new THREE.MeshBasicMaterial({
+      color: 0x000000,
       transparent: true, opacity: 0.09, depthWrite: false,
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    })), 0.03, 1.15);
+    })), 0xfff0c0);
     const shaft = new THREE.Mesh(shaftGeo, shaftMat);
     beam.add(shaft);
     const shaft2 = new THREE.Mesh(shaftGeo, shaftMat);

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { groundHeight } from '../constants.js';
+import { groundHeight, SIGN_X, SIGN_Z } from '../constants.js';
 
 /** Neon MIAMI letter sign on the beach. */
 export function buildSign(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, setTag } = ctx;
+  setTag('sign');
   {
     const segGeo = track(new THREE.BoxGeometry(1, 1, 0.8));
     const segMat = track(new THREE.MeshStandardMaterial({ color: 0x2a1030, emissive: 0xff40c0, emissiveIntensity: 3.5, roughness: 0.4 }));
@@ -34,7 +35,6 @@ export function buildSign(ctx) {
     const merged = track(mergeGeometries(geos));
     geos.forEach(g => g.dispose());
     const sign = new THREE.Mesh(merged, segMat);
-    const SIGN_X = 60, SIGN_Z = 14;
     const WORD_W = ox - 2.5;                       // laid out along +x from 0
     const sy = groundHeight(SIGN_X + 22, SIGN_Z) + 2.4;
     // The glyphs read left-to-right when viewed from +z, i.e. from the city.
@@ -49,7 +49,12 @@ export function buildSign(ctx) {
       const post = new THREE.Mesh(postGeo, postMat);
       post.position.set(px, sy - 1.5, SIGN_Z);
       root.add(post);
+      ctx.addCollider(px, sy - 3, SIGN_Z, 0.7, 3, 0.7);
     }
-    addCollider(SIGN_X + WORD_W / 2, sy - 3, SIGN_Z, WORD_W + 2, 12, 1.6);
+    // the letter bank itself: glyph cells run y = sy-0.8 .. sy+7.6, 0.8 deep.
+    // The old box was 12 m tall and 1.6 m deep and reached down to the sand
+    // between the two posts.
+    addCollider(SIGN_X + WORD_W / 2 - 0.85, sy - 0.8, SIGN_Z, WORD_W + 0.9, 8.4, 0.9);
   }
+  setTag('world');
 }

@@ -1,12 +1,19 @@
 // ============================================================
 // PropWash FPV — Miami Skyline map (assembled)
 // Tropical high-rise beach city: ocean, beach, boardwalk, pier,
-// Ocean Drive, art-deco + glass skyline, ferris wheel, marina,
-// lighthouse, cable-stayed bridge and convention centre.
+// Ocean Drive, art-deco + glass skyline, the Pier Park ferris wheel,
+// Lummus Park pergola walk, volleyball courts, an art-deco cinema,
+// the marina with its yacht club and fuel dock, lighthouse and
+// convention centre.
 // Photoreal pass: CC0 PBR ground/road/facades via AssetLibrary,
 // photoscan rocks + tropical vegetation via vegetation.js.
 // Every asset degrades gracefully — with an empty assets/ folder
 // the map still builds with the original procedural look.
+//
+// BUILD ORDER MATTERS. Everything that scatters (palms, shrubs, rocks)
+// runs AFTER every structure has published its colliders, so each
+// position can be rejected against the real world instead of against a
+// hand-maintained list of exclusion zones.
 // ============================================================
 import * as THREE from 'three';
 import { settings, clamp } from '../../core/state.js';
@@ -18,7 +25,7 @@ import { createColliderBag } from './colliders.js';
 import { buildGround, buildOcean } from './terrain.js';
 import { buildPier } from './landmarks/pier.js';
 import { buildRoad } from './road.js';
-import { buildPalms } from './palms.js';
+import { planPalms, materializePalms } from './palms.js';
 import { buildBeachProps } from './landmarks/beachProps.js';
 import { buildStreet, buildStreetFurniture, buildBoardwalkEdge } from './street.js';
 import { buildSkyline, cullReserved, buildStreetLevel, buildHelipads } from './buildings.js';
@@ -27,8 +34,11 @@ import { buildSign } from './landmarks/sign.js';
 import { buildMarina } from './landmarks/marina.js';
 import { buildArtDeco } from './landmarks/artdeco.js';
 import { buildLighthouse } from './landmarks/lighthouse.js';
-import { buildBridge } from './landmarks/bridge.js';
 import { buildConvention } from './landmarks/convention.js';
+import { buildLummus } from './landmarks/lummus.js';
+import { buildVolleyball } from './landmarks/volleyball.js';
+import { buildCinema } from './landmarks/cinema.js';
+import { buildYachtClub } from './landmarks/yachtclub.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildPoints } from './points.js';
 
@@ -44,6 +54,10 @@ export async function buildMiami(scene, env) {
   // Fourth stream for the streetscape pass (vehicle kinds, furniture jitter,
   // landscaping, massing variants). rng/rng2/rng3 sequences stay untouched.
   const rng4 = mulberry32(0x0C0FFEE5);
+  // Fifth stream owned entirely by the placement-rejection pass: every re-roll
+  // of a palm/shrub that failed its collider test draws from here, so a
+  // rejection can never shift anything else in the map.
+  const rng5 = mulberry32(0x1EAFB0A7);
   const root = new THREE.Group();
   root.name = 'miami';
   scene.add(root);
@@ -51,7 +65,9 @@ export async function buildMiami(scene, env) {
   const disposables = [];   // geometries/materials/textures
   const scatterHandles = [];
   const track = (obj) => { disposables.push(obj); return obj; };
-  const { colliders, addCollider } = createColliderBag();
+  const {
+    colliders, addCollider, addCyl, addOBB, addSphere, setTag, blocked,
+  } = createColliderBag();
 
   // Materials whose emissive is a night-only effect: { mat, day, night }.
   // regDN() registers one and immediately parks it at its daylight value.
@@ -59,6 +75,22 @@ export async function buildMiami(scene, env) {
   const regDN = (mat, day, night) => {
     dayNight.push({ mat, day, night });
     mat.emissiveIntensity = day;
+    return mat;
+  };
+
+  // Additive light DECALS (lamp pools on the deck, the lighthouse beam shaft)
+  // must be UNLIT. A MeshStandardMaterial painted black still returns the
+  // dielectric specular term from the HDRI environment — roughly F0 = 0.04 of
+  // the sky — and additive blending then paints that as a pale disc floating
+  // over the scene in broad daylight. MeshBasicMaterial has no such term, so
+  // black really is nothing; the night effect rides on the COLOUR instead of
+  // on an emissive intensity.
+  const dayNightCol = [];
+  const regDNColor = (mat, nightHex, dayHex = 0x000000) => {
+    const day = new THREE.Color(dayHex);
+    const night = new THREE.Color(nightHex);
+    dayNightCol.push({ mat, day, night });
+    mat.color.copy(day);
     return mat;
   };
 
@@ -90,15 +122,17 @@ export async function buildMiami(scene, env) {
   ]);
 
   const ctx = {
-    root, track, addCollider, colliders, scatterHandles,
-    rng, rng2, rng3, rng4, regDN,
+    root, track, colliders, scatterHandles,
+    addCollider, addCyl, addOBB, addSphere, setTag, blocked,
+    rng, rng2, rng3, rng4, rng5, regDN, regDNColor,
     sandSet, sidewalkSet, asphaltSet, roadLinesSet,
     glassSet, glassDaySet, officeSet,
     // transparent slabs shared by the bus shelter + hotel entrance canopies;
     // merged into one draw call by buildStreetLevel()
     glassPanelGeos: [],
     propMat: null,
-    palmPlacements: null,
+    // curated palm rows requested by landmarks; resolved by materializePalms
+    extraPalms: [],
   };
 
   // ---------------- ground: beach mesh + city mesh ----------------
@@ -113,9 +147,8 @@ export async function buildMiami(scene, env) {
   // ---------------- Ocean Drive: road, curbs, crosswalks, cross streets ----------------
   await buildRoad(ctx);
 
-  // ---------------- palms ----------------
-  const { palms, palmPlacements } = await buildPalms(ctx);
-  ctx.palmPlacements = palmPlacements;
+  // ---------------- palms: PLAN only (holds the legacy rng draw order) ------
+  const palmPlan = planPalms(ctx);
 
   // ---------------- beach props: lifeguard towers + parasols + towels ----------------
   buildBeachProps(ctx);
@@ -129,32 +162,30 @@ export async function buildMiami(scene, env) {
 
   // ---------------- skyline ----------------
   const sky = buildSkyline(ctx);
-  // clear the two hero-landmark blocks before anything reads towerData
+  // clear the hero-landmark blocks before anything reads towerData
   cullReserved(ctx, sky);
 
   // ---------------- street level: storefronts, canopies, podiums, blocks ----------------
   const landscape = buildStreetLevel(ctx, sky, street);
 
+  // ---------------- landmarks ----------------
+  const { wheel } = buildFerris(ctx);
+  buildSign(ctx);
+  const { boats } = buildMarina(ctx);
+  buildHelipads(ctx, sky);
+  buildArtDeco(ctx);
+  const lighthouse = buildLighthouse(ctx);
+  buildConvention(ctx);
+  buildLummus(ctx);
+  buildVolleyball(ctx);
+  buildCinema(ctx);
+  buildYachtClub(ctx);
+
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);
 
-  // ---------------- ferris wheel ----------------
-  const { wheel } = buildFerris(ctx);
-
-  // ---------------- MIAMI sign ----------------
-  buildSign(ctx);
-
-  // ---------------- marina ----------------
-  const { boats } = buildMarina(ctx);
-
-  // ---------------- helipad towers ----------------
-  buildHelipads(ctx, sky);
-
-  // ---------------- hero landmarks ----------------
-  buildArtDeco(ctx);
-  const lighthouse = buildLighthouse(ctx);
-  buildBridge(ctx);
-  buildConvention(ctx);
+  // ---------------- palms: PLACE (rejection-tested against every collider) --
+  const { palms } = await materializePalms(ctx, palmPlan);
 
   // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------
   await buildDressing(ctx, sky.towerData, landscape.entranceShrubSpots);
@@ -172,6 +203,7 @@ export async function buildMiami(scene, env) {
     if (Math.abs(nightF - lastNightF) < 0.006) return;
     lastNightF = nightF;
     for (const d of dayNight) d.mat.emissiveIntensity = d.day + (d.night - d.day) * nightF;
+    for (const d of dayNightCol) d.mat.color.lerpColors(d.day, d.night, nightF);
   };
   applyDayNight();
 
@@ -194,7 +226,7 @@ export async function buildMiami(scene, env) {
         water.material.uniforms['sunColor'].value.setScalar(dayF);
         water.material.uniforms['waterColor'].value.setHex(0x00404f).multiplyScalar(0.12 + 0.88 * dayF);
       }
-      wheel.rotation.z += dt * 0.12;
+      wheel.rotation.z += dt * 0.1;
       // keep cabins upright
       for (const child of wheel.children) {
         if (child.userData.angle !== undefined) child.rotation.z = -wheel.rotation.z;

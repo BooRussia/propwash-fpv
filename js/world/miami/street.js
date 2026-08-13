@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createVehicleFleet } from '../vehicles.js';
 import {
-  CITY_Y, PIER_X, WHEEL_X, GAP_X, CROSS_X, groundHeight, stripY,
+  CITY_Y, PIER_X, GAP_X, CROSS_X, PLAZA_X0, PLAZA_X1, CLUB_X, groundHeight, stripY,
 } from './constants.js';
 import { colorFill, cBox, cCyl, cSph, tubeBetween } from './geo.js';
 
@@ -89,7 +89,8 @@ function buildBikeRackGeo() {
  * Returns { fleet, carSpots, shelterX } for the furniture pass + dispose.
  */
 export async function buildStreet(ctx) {
-  const { root, track, addCollider, rng, rng4 } = ctx;
+  const { root, track, addCollider, addCyl, setTag, rng, rng4 } = ctx;
+  setTag('streetlight');
 
   // curved-arm streetlight: pole + 2-segment gooseneck + fixture, merged;
   // the lamp head hangs from the arm tip out over the road
@@ -118,7 +119,11 @@ export async function buildStreet(ctx) {
     m4.setPosition(x, CITY_Y, z);
     lp.setMatrixAt(i, m4);
     lh.setMatrixAt(i, m4);
-    addCollider(x, CITY_Y, z, 0.35, 6.4, 0.35);
+    // the column IS a 0.11 m cylinder — the old 0.35 m box was three times
+    // the pole and squared off the gap between the column and the kerb
+    addCyl(x, CITY_Y, z, 0.12, 5.7);
+    // gooseneck + lamp head, out over the carriageway at 6.3 m
+    addCollider(x, CITY_Y + 5.55, z + (i % 2 ? 0.85 : -0.85), 0.24, 1.0, 1.9);
   }
   lp.instanceMatrix.needsUpdate = true;
   lh.instanceMatrix.needsUpdate = true;
@@ -126,6 +131,14 @@ export async function buildStreet(ctx) {
   root.add(lp); root.add(lh);
 
   // ---- vehicles: hi-fi fleet from vehicles.js, legacy box cars fallback ----
+  // Per-kind hull boxes measured off the vehicles.js profiles (length, height,
+  // width) instead of one 4.2 x 2.1 x 1.9 box for everything — a sports car is
+  // 0.6 m lower than an SUV and the bus is more than twice as long.
+  setTag('vehicle');
+  const CAR_BOX = {
+    sedan: [4.70, 1.50, 1.90], suv: [4.82, 1.75, 2.00], pickup: [5.40, 1.83, 2.02],
+    sports: [4.45, 1.28, 1.98], taxi: [4.70, 1.62, 1.90], bus: [10.75, 3.02, 2.56],
+  };
   const carSpots = [];
   const carCols = [0xff5c8a, 0x29d3ff, 0xf5e9d0, 0x9b5de5, 0x43d17a, 0xffffff, 0x22262e];
   const NC = 34;
@@ -140,8 +153,8 @@ export async function buildStreet(ctx) {
     if (i === BUS_I) { kind = 'bus'; colorHex = 0xe9eef2; }
     else if (i === TAXI_A || i === TAXI_B) { kind = 'taxi'; colorHex = 0xffc400; }
     carSpots.push({ x, z, rotY: i % 2 ? 0 : Math.PI, kind, colorHex });
-    if (i === BUS_I) addCollider(x, CITY_Y, z, 11.4, 3.1, 2.6);   // bus-sized
-    else addCollider(x, CITY_Y, z, 4.2, 2.1, 1.9);                // legacy per-car collider
+    const b = CAR_BOX[kind] || CAR_BOX.sedan;
+    addCollider(x, CITY_Y, z, b[0], b[1], b[2]);
   }
   const shelterX = carSpots[BUS_I].x + 2.2;
 
@@ -202,6 +215,7 @@ export async function buildStreet(ctx) {
     root.add(cars); root.add(cabs); root.add(wheels);
   }
 
+  setTag('world');
   return { fleet, carSpots, shelterX };
 }
 
@@ -210,8 +224,9 @@ export async function buildStreet(ctx) {
  * Every placement is baked into ONE merged mesh (rng4 stream only).
  */
 export function buildStreetFurniture(ctx, street) {
-  const { root, track, addCollider, rng4, glassPanelGeos } = ctx;
+  const { root, track, addCollider, addCyl, addOBB, setTag, rng4, glassPanelGeos } = ctx;
   const { carSpots, shelterX } = street;
+  setTag('furniture');
   const propMat = ctx.propMat || (ctx.propMat = track(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.72, metalness: 0.1,
   })));
@@ -230,10 +245,11 @@ export function buildStreetFurniture(ctx, street) {
   const rackGeo = buildBikeRackGeo();
   const blocked = (x) =>
     GAP_X.some((c) => Math.abs(x - c) < 6.5) || Math.abs(x - PIER_X) < 10 ||
-    Math.abs(x - WHEEL_X) < 14 || Math.abs(x - shelterX) < 4 || Math.abs(x) > 585;
+    Math.abs(x - shelterX) < 4 || Math.abs(x) > 585;
 
-  // benches (+ bins beside every other one); both sidewalks, facing -z
-  let benchColliders = 0;
+  // benches (+ bins beside every other one); both sidewalks, facing -z.
+  // EVERY piece of furniture is solid — the old pass gave colliders to six
+  // benches near spawn and left the other forty as ghosts.
   let benchIdx = 0;
   for (let x = -575; x <= 575; x += 47) {
     for (const side of [0, 1]) {
@@ -241,11 +257,13 @@ export function buildStreetFurniture(ctx, street) {
       if (blocked(bx)) continue;
       const bz = side ? 52.45 : 35.5;
       const by = stripY(bz);
-      stamp(benchGeo, bx, by, bz, (rng4() - 0.5) * 0.08);
-      if (benchIdx % 2 === 0) stamp(binGeo, bx + 2.5, stripY(bz), bz + (side ? 0.1 : -0.1), rng4() * Math.PI);
-      if (benchColliders < 6 && Math.abs(bx) < 70) {
-        addCollider(bx, by, bz, 1.9, 1.15, 0.75);
-        benchColliders++;
+      const yaw = (rng4() - 0.5) * 0.08;
+      stamp(benchGeo, bx, by, bz, yaw);
+      addOBB(bx, by, bz, 1.78, 0.99, 0.66, yaw);
+      if (benchIdx % 2 === 0) {
+        const binZ = bz + (side ? 0.1 : -0.1);
+        stamp(binGeo, bx + 2.5, stripY(bz), binZ, rng4() * Math.PI);
+        addCyl(bx + 2.5, stripY(bz), binZ, 0.28, 0.7);
       }
       benchIdx++;
     }
@@ -255,6 +273,7 @@ export function buildStreetFurniture(ctx, street) {
     const hx = x + (rng4() - 0.5) * 10;
     if (blocked(hx)) continue;
     stamp(hydGeo, hx, stripY(51.15), 51.15, rng4() * Math.PI);
+    addCyl(hx, stripY(51.15), 51.15, 0.2, 0.72);
   }
   // parking meters — one behind each curb-lane car
   for (const s of carSpots) {
@@ -262,12 +281,15 @@ export function buildStreetFurniture(ctx, street) {
     const mx = s.x + 2.1;
     if (blocked(mx)) continue;
     stamp(meterGeo, mx, stripY(51.35), 51.35, (rng4() - 0.5) * 0.2);
+    addCyl(mx, stripY(51.35), 51.35, 0.11, 1.42);
   }
   // bike racks — flanking the two crosswalks + by the bus stop
-  for (const cx of CROSS_X) {
-    for (const s of [-1, 1]) stamp(rackGeo, cx + s * 9, stripY(52.3), 52.3, 0);
-  }
-  stamp(rackGeo, shelterX + 5.2, stripY(52.3), 52.3, 0);
+  const rack = (rx) => {
+    stamp(rackGeo, rx, stripY(52.3), 52.3, 0);
+    addCollider(rx, stripY(52.3), 52.3, 1.16, 0.89, 0.72);
+  };
+  for (const cx of CROSS_X) for (const s of [-1, 1]) rack(cx + s * 9);
+  rack(shelterX + 5.2);
 
   // bus stop shelter beside the parked bus (one-off; collider). The bus needs
   // 10.6 m of clear kerb, so the shelter sits just behind its tail.
@@ -283,7 +305,7 @@ export function buildStreetFurniture(ctx, street) {
     oneOff.push(cBox(4.4, 0.1, 0.06, dark, shelterX, CITY_Y + 0.12, sz + 0.72));
     glassPanelGeos.push(new THREE.BoxGeometry(4.45, 0.05, 1.6).translate(shelterX, CITY_Y + 2.63, sz));
     glassPanelGeos.push(new THREE.BoxGeometry(4.35, 1.78, 0.04).translate(shelterX, CITY_Y + 1.06, sz + 0.72));
-    addCollider(shelterX, CITY_Y, sz, 4.7, 2.8, 1.9);
+    addCollider(shelterX, CITY_Y, sz + 0.06, 4.72, 2.7, 1.55);
   }
 
   const furnGeo = track(mergeGeometries(oneOff));
@@ -295,9 +317,20 @@ export function buildStreetFurniture(ctx, street) {
   root.add(furn);
 }
 
-/** Boardwalk seaward edge: dune fence, beach showers, warm lamp bollards. */
+/**
+ * Boardwalk seaward edge: dune fence, beach showers, warm lamp bollards.
+ *
+ * The bollards were broken: the emissive lens was a 0.075 m cylinder buried
+ * inside a 0.09–0.115 m opaque post, so the light source was literally inside
+ * the bollard and nothing lit up after dark. They are rebuilt as a proper
+ * luminaire — post, a lens ring that stands PROUD of the post, a dark cap
+ * over it and an additive pool of light on the deck — at half the old spacing
+ * and 1.05 m tall so they read from the air. Every emissive part is
+ * registered with regDN, so they are inert by day and blaze after dusk.
+ */
 export function buildBoardwalkEdge(ctx) {
-  const { root, track, rng4 } = ctx;
+  const { root, track, addCollider, addCyl, setTag, rng4 } = ctx;
+  setTag('boardwalk');
   const propMat = ctx.propMat || (ctx.propMat = track(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.72, metalness: 0.1,
   })));
@@ -306,10 +339,21 @@ export function buildBoardwalkEdge(ctx) {
   const FZ = 22.4;
   const fenceGap = (x) =>
     Math.abs(x) < 7 || Math.abs(x - PIER_X) < 11 ||
-    (x > 52 && x < 80) || ((x + 620) % 123) < 5 || Math.abs(x) > 578;
+    (x > 52 && x < 80) ||
+    (x > PLAZA_X0 - 2 && x < PLAZA_X1 + 2) ||            // amusement plaza entrance
+    (x > CLUB_X - 24 && x < CLUB_X + 24) ||              // yacht club forecourt
+    ((x + 620) % 123) < 5 || Math.abs(x) > 578;
   let prev = null;
+  let runStart = null;
+  const closeRun = (endX) => {
+    if (runStart === null || endX - runStart < 1) { runStart = null; return; }
+    // one thin box per continuous fence run instead of 400 post colliders
+    addCollider((runStart + endX) / 2, groundHeight((runStart + endX) / 2, FZ),
+      FZ, endX - runStart, 1.06, 0.14);
+    runStart = null;
+  };
   for (let x = -578; x <= 578; x += 2.9) {
-    if (fenceGap(x)) { prev = null; continue; }
+    if (fenceGap(x)) { prev = null; closeRun(x - 2.9); continue; }
     const y = groundHeight(x, FZ);
     const pg = new THREE.BoxGeometry(0.09, 1.15, 0.075);
     pg.rotateZ((rng4() - 0.5) * 0.12);
@@ -321,15 +365,25 @@ export function buildBoardwalkEdge(ctx) {
           new THREE.Vector3(prev.x, prev.y + ry, FZ),
           new THREE.Vector3(x, y + ry, FZ), 0.03, 5), railCol));
       }
+    } else {
+      runStart = x;
     }
     prev = { x, y };
   }
-  // warm lamp bollards on the boardwalk's seaward edge (deck top = CITY_Y+0.3)
+  closeRun(578);
+
+  // ---- lamp bollards along the boardwalk's seaward edge ----
+  // Deck top is CITY_Y + 0.3 = 1.8; the luminaire stands 1.05 m above it.
+  const DECK_TOP = CITY_Y + 0.3;
+  const BOLL_Z = 24.3;
   const bolls = [];
-  for (let x = -570; x <= 570; x += 31) {
-    if (Math.abs(x - PIER_X) < 10 || Math.abs(x) < 4) continue;
-    edgeGeos.push(cCyl(0.09, 0.115, 0.8, 8, 0x2c3339, x, CITY_Y + 0.7, 24.3));
+  for (let x = -572; x <= 572; x += 15.5) {
+    if (Math.abs(x - PIER_X) < 10 || Math.abs(x) < 4.5) continue;
+    edgeGeos.push(cCyl(0.075, 0.105, 0.86, 10, 0x2c3339, x, DECK_TOP + 0.43, BOLL_Z));
+    edgeGeos.push(cCyl(0.135, 0.135, 0.045, 10, 0x22282e, x, DECK_TOP + 0.865, BOLL_Z));  // lens shroud
+    edgeGeos.push(cCyl(0.15, 0.09, 0.13, 10, 0x363e45, x, DECK_TOP + 1.015, BOLL_Z));     // cap
     bolls.push(x);
+    addCyl(x, DECK_TOP, BOLL_Z, 0.15, 1.08);
   }
   // beach showers
   for (const sx of [-62, 132]) {
@@ -339,23 +393,57 @@ export function buildBoardwalkEdge(ctx) {
     edgeGeos.push(cBox(0.62, 0.06, 0.06, 0x3c444b, sx - 0.28, gy + 2.72, 21.4));
     edgeGeos.push(cCyl(0.16, 0.05, 0.1, 8, 0x8f979c, sx - 0.56, gy + 2.62, 21.4));
     edgeGeos.push(cCyl(0.03, 0.03, 0.3, 5, 0xcfd3d6, sx + 0.14, gy + 1.55, 21.4, 0, 0, 1.2));
+    addCyl(sx, gy, 21.4, 0.1, 2.78);
   }
   const edgeGeo = track(mergeGeometries(edgeGeos));
   edgeGeos.forEach((g) => g.dispose());
   const edgeMesh = new THREE.Mesh(edgeGeo, propMat);
+  edgeMesh.castShadow = true;
   edgeMesh.receiveShadow = true;
   root.add(edgeMesh);
 
-  const glowGeo = track(new THREE.CylinderGeometry(0.075, 0.075, 0.1, 8));
-  const glowMat = ctx.regDN(track(new THREE.MeshStandardMaterial({
-    color: 0xfff0d8, emissive: 0xffc37a, emissiveIntensity: 1.9,
-  })), 0.12, 2.1);
-  const glows = new THREE.InstancedMesh(glowGeo, glowMat, bolls.length);
-  const mGl = new THREE.Matrix4();
-  for (let i = 0; i < bolls.length; i++) {
-    mGl.makeTranslation(bolls[i], CITY_Y + 1.05, 24.3);
-    glows.setMatrixAt(i, mGl);
+  const m4 = new THREE.Matrix4();
+  // the lens: 0.155 m radius so it stands proud of the 0.075 m post top and
+  // is actually visible — the old 0.075 m lens sat inside the post
+  {
+    const lensGeo = track(new THREE.CylinderGeometry(0.155, 0.155, 0.145, 12));
+    const lensMat = ctx.regDN(track(new THREE.MeshStandardMaterial({
+      color: 0x2a2318, emissive: 0xffc37a, emissiveIntensity: 2.4, roughness: 0.5,
+    })), 0.05, 2.9);
+    const lens = new THREE.InstancedMesh(lensGeo, lensMat, bolls.length);
+    for (let i = 0; i < bolls.length; i++) {
+      m4.makeTranslation(bolls[i], DECK_TOP + 0.885, BOLL_Z);
+      lens.setMatrixAt(i, m4);
+    }
+    lens.instanceMatrix.needsUpdate = true;
+    lens.computeBoundingSphere();
+    lens.name = 'boardwalk-lamp-lens';
+    root.add(lens);
   }
-  glows.instanceMatrix.needsUpdate = true;
-  root.add(glows);
+  // Pool of light on the planks. UNLIT (MeshBasicMaterial): a black *standard*
+  // material still returns the dielectric specular term from the HDRI, and
+  // additive blending paints that as a pale disc hanging in mid-air all over
+  // the frame at noon. Basic + black is genuinely zero, and the night glow
+  // rides on the colour via regDNColor.
+  {
+    const poolGeo = track(new THREE.CircleGeometry(1.7, 18));
+    poolGeo.rotateX(-Math.PI / 2);
+    const poolMat = ctx.regDNColor(track(new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true, opacity: 0.85, depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+    })), 0x8c6437);
+    const pools = new THREE.InstancedMesh(poolGeo, poolMat, bolls.length);
+    for (let i = 0; i < bolls.length; i++) {
+      m4.makeTranslation(bolls[i], DECK_TOP + 0.02, BOLL_Z - 0.35);
+      pools.setMatrixAt(i, m4);
+    }
+    pools.instanceMatrix.needsUpdate = true;
+    pools.computeBoundingSphere();
+    pools.renderOrder = 3;
+    pools.name = 'boardwalk-lamp-pools';
+    root.add(pools);
+  }
+  setTag('world');
 }
