@@ -49,11 +49,11 @@ export async function buildAshPrairie(scene, env) {
   // Soft prairie haze — Environment has no setFog; shorten render distance slightly
   // so distance fog reads as warm basin air without killing tower silhouettes.
   if (typeof env.setRenderDistance === 'function') {
-    env.setRenderDistance(1250);
+    env.setRenderDistance(1050);
   }
   if (env._fogBase && env._fogBase.isColor) {
     // Hint warm dust haze; _applyAtmosphere still owns band colors each frame.
-    env._fogBase.lerp(new THREE.Color(0xb8a890), 0.25);
+    env._fogBase.lerp(new THREE.Color(0xb8a890), 0.4);
   }
 
   const mats = await buildMaterials(track);
