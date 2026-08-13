@@ -16,7 +16,7 @@ export function buildSiloLF(ctx) {
   // Tube wall: open-ended cylinder
   const wallH = S.depth + 1.5;
   const wallGeo = track(new THREE.CylinderGeometry(S.r, S.r, wallH, 36, 1, true));
-  const wallMat = mats.concreteDark.clone();
+  const wallMat = (mats.voidDark || mats.concreteDark).clone();
   track(wallMat);
   wallMat.side = THREE.DoubleSide;
   const wall = new THREE.Mesh(wallGeo, wallMat);
@@ -24,6 +24,15 @@ export function buildSiloLF(ctx) {
   wall.castShadow = true;
   wall.receiveShadow = true;
   root.add(wall);
+  // Outer concrete shell so lip reads from outside too
+  const outerGeo = track(new THREE.CylinderGeometry(S.r + 0.35, S.r + 0.35, wallH, 36, 1, true));
+  const outerMat = (mats.concreteTower || mats.concrete).clone();
+  track(outerMat);
+  outerMat.side = THREE.DoubleSide;
+  const outer = new THREE.Mesh(outerGeo, outerMat);
+  outer.position.copy(wall.position);
+  root.add(outer);
+
 
   // Overlapping wall ring with a vertical exit slit toward +X (blast door / apron).
   // Slit ~2.6 m wide so whoops and 5" can bail laterally — not a dead-end kill box.
@@ -73,6 +82,13 @@ export function buildSiloLF(ctx) {
   // Blast door leaf parked open (horizontal) — flyable gap beside
   addBox(ctx, mats, 'oxide', S.x + S.r + 3.5, GROUND_Y + 0.2, S.z, 6.5, 0.45, 6.5);
   addBox(ctx, mats, 'warnYellow', S.x + S.r + 3.5, GROUND_Y + 0.65, S.z, 6.2, 0.12, 0.3, { collide: false });
+  // Dashed warnYellow collar lip (4–6 segments — not continuous neon)
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.15;
+    const lx = S.x + Math.cos(a) * (S.r + 1.6);
+    const lz = S.z + Math.sin(a) * (S.r + 1.6);
+    addBox(ctx, mats, 'warnYellow', lx, GROUND_Y + S.collarH, lz, 1.1, 0.12, 0.35, { collide: false, rotY: -a });
+  }
 
   // Short exit apron pad outside the slit (clear bailout landing)
   addBox(ctx, mats, 'concrete', S.x + S.r + 1.6, GROUND_Y, S.z, 2.8, 0.18, 3.2, { collide: false });

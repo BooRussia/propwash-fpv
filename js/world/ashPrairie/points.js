@@ -1,7 +1,8 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import {
   groundHeight, SPAWN, PAD_Y, TOWER_SITES, CONTAINMENT, ELEVATORS,
   CONVEYOR, PIPE_RACK, SWITCHYARD, TURBINE, COOP, SILO_LF, STACK, DUMP_CANOPY,
+  ADMIN, ANTENNA_FARM, BUCKET_ELEV, RUINS,
 } from './constants.js';
 
 /** Spawn pad mesh + race gates + retrieval points. */
@@ -9,19 +10,21 @@ export function buildPoints(ctx) {
   const { root, track, mats } = ctx;
 
   const gy = groundHeight(SPAWN.x, SPAWN.z);
-  const spawnPos = new THREE.Vector3(SPAWN.x, gy + PAD_Y, SPAWN.z);
+  const padY = gy + PAD_Y;
+  // Hover spawn so pad FOV is not ground-grazing; pad mesh stays on ground.
+  const spawnPos = new THREE.Vector3(SPAWN.x, padY + 3.2, SPAWN.z);
   {
     const padGeo = track(new THREE.CircleGeometry(2.4, 28));
     const pad = new THREE.Mesh(padGeo, mats.pad);
     pad.rotation.x = -Math.PI / 2;
-    pad.position.copy(spawnPos).y += 0.02;
+    pad.position.set(SPAWN.x, padY + 0.02, SPAWN.z);
     root.add(pad);
     const ring = new THREE.Mesh(
       track(new THREE.RingGeometry(2.5, 2.85, 32)),
       track(new THREE.MeshStandardMaterial({ color: 0x8A7A2A, side: THREE.DoubleSide, roughness: 0.6 }))
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.copy(spawnPos).y += 0.03;
+    ring.position.set(SPAWN.x, padY + 0.03, SPAWN.z);
     root.add(ring);
   }
 
@@ -45,6 +48,11 @@ export function buildPoints(ctx) {
     G(COOP.x, COOP.z, 3.2, 90, 2.2),
     G(DUMP_CANOPY.x, DUMP_CANOPY.z, DUMP_CANOPY.h - 1.5, 0, 2.8),
     G(0, 140, 5, 180),
+    // v2 denser-zone freestyle gates
+    G(ADMIN.x, ADMIN.z, 2.4, 0, 2.0),
+    G(TURBINE.x, TURBINE.z, 8.5, 90, 2.2),
+    G((ANTENNA_FARM.x0 + ANTENNA_FARM.x1) / 2, (ANTENNA_FARM.z0 + ANTENNA_FARM.z1) / 2, 12, 45, 2.6),
+    G(BUCKET_ELEV.x, BUCKET_ELEV.z + 4, 20, 180, 2.4),
   ];
 
   const retrievalPoints = [
@@ -58,6 +66,9 @@ export function buildPoints(ctx) {
     new THREE.Vector3(SILO_LF.x, 1.5, SILO_LF.z + SILO_LF.r + 3),
     new THREE.Vector3(DUMP_CANOPY.x, DUMP_CANOPY.h + 0.8, DUMP_CANOPY.z),
     new THREE.Vector3(CONVEYOR.x0 + 40, CONVEYOR.y + 2.5, CONVEYOR.z),
+    new THREE.Vector3(ADMIN.x, ADMIN.h + 1.5, ADMIN.z),
+    new THREE.Vector3((ANTENNA_FARM.x0 + ANTENNA_FARM.x1) / 2, 44, (ANTENNA_FARM.z0 + ANTENNA_FARM.z1) / 2),
+    new THREE.Vector3(RUINS.x, 4, RUINS.z),
   ];
 
   return { spawnPos, gates, retrievalPoints };

@@ -48,13 +48,18 @@ export function buildRailCanal(ctx) {
     addBox(ctx, mats, 'warnYellow', x, GROUND_Y + 3.2, D.z, 5.2, 0.2, 5.2, { collide: false });
   }
 
-  // Small hopper car silhouettes on spur
-  for (let i = 0; i < 4; i++) {
-    const x = 10 + i * 14;
+  // Hopper cars on spur — shared silhouette + bay lids / slope sheets
+  for (let i = 0; i < 6; i++) {
+    const x = -20 + i * 14;
     addBox(ctx, mats, 'oxide', x, GROUND_Y + 0.4, RAIL.z, 10, 2.8, 2.6);
-    addCyl(ctx, mats, 'oxideDark', x - 3.5, GROUND_Y, RAIL.z + 1.1, 0.45, 0.45, 0.9, { seg: 10 });
-    addCyl(ctx, mats, 'oxideDark', x + 3.5, GROUND_Y, RAIL.z + 1.1, 0.45, 0.45, 0.9, { seg: 10 });
-    addCyl(ctx, mats, 'oxideDark', x - 3.5, GROUND_Y, RAIL.z - 1.1, 0.45, 0.45, 0.9, { seg: 10 });
-    addCyl(ctx, mats, 'oxideDark', x + 3.5, GROUND_Y, RAIL.z - 1.1, 0.45, 0.45, 0.9, { seg: 10 });
+    // Bay lids (visual ridge)
+    addBox(ctx, mats, 'oxideDark', x, GROUND_Y + 3.2, RAIL.z, 9.2, 0.25, 2.2);
+    addBox(ctx, mats, 'warnYellow', x, GROUND_Y + 3.45, RAIL.z, 9.0, 0.06, 0.12, { collide: false });
+    // Slope sheet underbelly (visual)
+    addBox(ctx, mats, 'oxideDark', x, GROUND_Y + 0.55, RAIL.z, 8.5, 0.35, 1.6, { collide: false });
+    for (const [wx, wz] of [[-3.5, 1.1], [3.5, 1.1], [-3.5, -1.1], [3.5, -1.1]]) {
+      addCyl(ctx, mats, 'oxideDark', x + wx, GROUND_Y, RAIL.z + wz, 0.45, 0.45, 0.9, { seg: 10 });
+    }
   }
 }
+
