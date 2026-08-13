@@ -81,18 +81,26 @@ export async function buildGround(ctx) {
   ground.receiveShadow = true;
   root.add(ground);
 
-  const apron = track(new THREE.PlaneGeometry(380, 280, 1, 1));
-  apron.rotateX(-Math.PI / 2);
+  // Small yard asphalt lots only — no full-width slab toward spawn (0,165).
   const aMat = mats.asphalt.clone();
   track(aMat);
   aMat.polygonOffset = true;
   aMat.polygonOffsetFactor = -1;
   aMat.polygonOffsetUnits = -1;
   capAnisotropy(aMat, 4);
-  const apronMesh = new THREE.Mesh(apron, aMat);
-  apronMesh.position.set(0, 0.04, -20);
-  apronMesh.receiveShadow = true;
-  root.add(apronMesh);
+  for (const [ax, az, aw, ad] of [
+    [-145, -15, 70, 55],
+    [40, 88, 32, 18],
+    [110, 55, 48, 32],
+    [-105, 35, 55, 28],
+  ]) {
+    const g = track(new THREE.PlaneGeometry(aw, ad));
+    g.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(g, aMat);
+    mesh.position.set(ax, 0.04, az);
+    mesh.receiveShadow = true;
+    root.add(mesh);
+  }
 
   // Moss patch decals on north concrete (towers / containment approach)
   const mossMat = (mats.moss || mats.grass).clone();
