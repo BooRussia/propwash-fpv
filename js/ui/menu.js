@@ -587,7 +587,7 @@ export class Menu {
     const aThumb = el('div', 'pwm-thumb ashPrairie', '🌾🏭');
     ash.appendChild(aThumb);
     ash.appendChild(el('div', 'pwm-card-title', 'Ash Prairie'));
-    ash.appendChild(el('div', 'pwm-desc', 'Decommissioned Great Plains nuclear yard + grain co-op. Dive cooling towers, thread pipe racks, whoop the truck alley.'));
+    ash.appendChild(el('div', 'pwm-desc', 'Decommissioned Great Plains nuclear yard + grain co-op. Dive cooling towers, thread pipe racks, whoop the turbine mezz / admin halls, rip the LF antenna farm.'));
     const pickAsh = () => {
       settings.map = 'ashPrairie';
       saveSettings();

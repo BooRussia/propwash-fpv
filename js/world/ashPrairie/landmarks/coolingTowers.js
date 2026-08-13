@@ -53,9 +53,9 @@ export function buildCoolingTowers(ctx) {
     const geo = track(new THREE.LatheGeometry(pts, 64));
     applyTowerUVs(geo, t.h, (t.baseR + t.throatR + t.topR) / 3);
 
-    const mat = mats.concrete.clone();
+    const mat = (mats.concreteTower || mats.concrete).clone();
     track(mat);
-    mat.color = mats.concrete.color.clone().offsetHSL(0, 0, -0.04 + (t.x * 0.0001));
+    mat.color = (mats.concreteTower || mats.concrete).color.clone().offsetHSL(0, 0, -0.04 + (t.x * 0.0001));
     if (mat.map) {
       mat.map = mat.map.clone();
       mat.map.wrapS = mat.map.wrapT = THREE.RepeatWrapping;
@@ -82,6 +82,17 @@ export function buildCoolingTowers(ctx) {
     }
     // Lip ring
     addShellRing(addCollider, t.x, t.z, GROUND_Y + t.h - 3, 3.2, t.topR, 3.2, 20);
+
+    // voidDark lip ring (visual only — commit-edge readability)
+    {
+      const lip = new THREE.Mesh(
+        track(new THREE.TorusGeometry(t.topR * 0.92, 0.35, 6, 28)),
+        mats.voidDark || mats.concreteDark
+      );
+      lip.position.set(t.x, GROUND_Y + t.h - 0.4, t.z);
+      lip.rotation.x = Math.PI / 2;
+      root.add(lip);
+    }
 
     // Base apron / fill basin rim (bailout shelf) — annular, not a solid plug
     const apron = new THREE.Mesh(

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   groundHeight, SPAWN, PAD_Y, TOWER_SITES, CONTAINMENT, ELEVATORS,
   CONVEYOR, PIPE_RACK, SWITCHYARD, TURBINE, COOP, SILO_LF, STACK, DUMP_CANOPY,
+  ADMIN, ANTENNA_FARM, BUCKET_ELEV, RUINS,
 } from './constants.js';
 
 /** Spawn pad mesh + race gates + retrieval points. */
@@ -45,6 +46,11 @@ export function buildPoints(ctx) {
     G(COOP.x, COOP.z, 3.2, 90, 2.2),
     G(DUMP_CANOPY.x, DUMP_CANOPY.z, DUMP_CANOPY.h - 1.5, 0, 2.8),
     G(0, 140, 5, 180),
+    // v2 denser-zone freestyle gates
+    G(ADMIN.x, ADMIN.z, 2.4, 0, 2.0),
+    G(TURBINE.x, TURBINE.z, 8.5, 90, 2.2),
+    G(ANTENNA_FARM.x + 8, ANTENNA_FARM.z, 12, 45, 2.6),
+    G(BUCKET_ELEV.x, BUCKET_ELEV.z + 4, 20, 180, 2.4),
   ];
 
   const retrievalPoints = [
@@ -58,6 +64,9 @@ export function buildPoints(ctx) {
     new THREE.Vector3(SILO_LF.x, 1.5, SILO_LF.z + SILO_LF.r + 3),
     new THREE.Vector3(DUMP_CANOPY.x, DUMP_CANOPY.h + 0.8, DUMP_CANOPY.z),
     new THREE.Vector3(CONVEYOR.x0 + 40, CONVEYOR.y + 2.5, CONVEYOR.z),
+    new THREE.Vector3(ADMIN.x, ADMIN.h + 1.5, ADMIN.z),
+    new THREE.Vector3(ANTENNA_FARM.x, 44, ANTENNA_FARM.z),
+    new THREE.Vector3(RUINS.x, 4, RUINS.z),
   ];
 
   return { spawnPos, gates, retrievalPoints };

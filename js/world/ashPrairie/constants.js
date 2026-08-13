@@ -27,6 +27,14 @@ export const CANAL = { z: 118, x0: -80, x1: 160, w: 18, depth: 2.4 };
 export const DUMP_CANOPY = { x: 40, z: 88, w: 28, d: 16, h: 7.5 };
 export const SILO_LF = { x: -185, z: -75, r: 4.8, depth: 22, collarH: 1.2 };
 
+// Ash Prairie v2 — Desi enrichment anchors (additive; keep z>145 & |x|>230 empty)
+export const ADMIN = { x: 130, z: 70, w: 20, d: 14, h: 5.2 }; // beside coop whoop-indoor
+export const ANTENNA_FARM = { x0: -210, x1: -195, z0: -90, z1: -60, mastN: 5 };
+export const BUCKET_ELEV = { x: 120, z: -10, w: 4.5, d: 4.5, h: 56 };
+export const RUINS = { x: 50, z: -130, w: 16, d: 12 }; // between T2 & containment
+export const RETENTION = { x: -60, z: -130, r: 14 };
+export const STEEL_BINS = { x: 160, z: -25, n: 3 };
+
 export const SPAWN = { x: 0, z: 165 };
 export const PAD_Y = 0.06;
 
@@ -88,4 +96,10 @@ export const PAL = {
   warnRed: 0x6E2E2E,
   warnYellow: 0x8A7A2A,
   water: 0x2C3538,
+  rust: 0x8B4513,
+  voidDark: 0x1A1816,
+  rustHot: 0x8B4513,
+  rustCool: 0x5C4033,
+  beaconAmber: 0xC4A35A,
+  beaconCool: 0xD8DCE0,
 };

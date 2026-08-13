@@ -44,7 +44,7 @@ export function buildSwitchyard(ctx) {
   // Turbine hall shell (open ends for freestyle)
   const T = TURBINE;
   // Floor slab
-  addBox(ctx, mats, 'concrete', T.x, GROUND_Y, T.z, T.w, 0.4, T.d);
+  addBox(ctx, mats, 'concretePad', T.x, GROUND_Y, T.z, T.w, 0.4, T.d);
   // Long walls with large aperture bays (sill depth)
   for (const side of [-1, 1]) {
     const z = T.z + side * (T.d / 2);

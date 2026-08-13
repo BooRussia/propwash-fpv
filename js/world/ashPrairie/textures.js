@@ -9,12 +9,12 @@ export function setAoUVs(geo) {
 }
 
 /**
- * Build shared industrial materials with AssetLibrary textureSet fallbacks.
- * Colour multipliers push scans toward the Ash Prairie Desi palette.
+ * Shared industrial materials — Desi enrichment + polish v2.
+ * Larger UV tiles > sharp normals (kill FPV crawl). Shared mat pool only.
  */
 export async function buildMaterials(track) {
   const [
-    gravelSet, asphaltSet, rockSet, grassSet, officeSet, sidewalkSet,
+    gravelSet, asphaltSet, rockSet, grassSet, officeSet, sidewalkSet, rockMacroSet,
   ] = await Promise.all([
     assetLib.textureSet('gravel'),
     assetLib.textureSet('asphalt'),
@@ -22,11 +22,13 @@ export async function buildMaterials(track) {
     assetLib.textureSet('grass_wild'),
     assetLib.textureSet('facade_office'),
     assetLib.textureSet('sidewalk'),
+    assetLib.textureSet('rock_macro'),
   ]);
 
   const std = (color, opts = {}) => track(new THREE.MeshStandardMaterial({
     color, roughness: opts.roughness ?? 0.92, metalness: opts.metalness ?? 0,
     side: opts.side ?? THREE.FrontSide,
+    emissive: opts.emissive, emissiveIntensity: opts.emissiveIntensity,
   }));
 
   async function pbrOr(key, set, color, repeat, extra = {}) {
@@ -43,24 +45,52 @@ export async function buildMaterials(track) {
     return std(color, extra);
   }
 
+  // Tower shells: ~8–10 m/tile → moderate repeat on sidewalk scan
+  const concreteTower = await pbrOr('sidewalk', sidewalkSet, PAL.concreteA, [2.2, 2.2], {
+    roughness: 0.82, metalness: 0.04,
+  });
+  const concretePad = await pbrOr('sidewalk', sidewalkSet, PAL.concreteB, [4, 4], {
+    roughness: 0.92, metalness: 0,
+  });
+  const concreteFine = await pbrOr('sidewalk', sidewalkSet, PAL.concreteA, [3.5, 3.5], {
+    roughness: 0.85, metalness: 0.02,
+  });
+
   const mats = {
-    gravelSet, asphaltSet, rockSet, grassSet, officeSet, sidewalkSet,
-    soil: await pbrOr('gravel', gravelSet, PAL.soilA, [40, 40]),
-    grass: await pbrOr('grass_wild', grassSet, PAL.grassA, [60, 60]),
-    concrete: await pbrOr('sidewalk', sidewalkSet, PAL.concreteA, [8, 8], { roughness: 0.88 }),
+    gravelSet, asphaltSet, rockSet, grassSet, officeSet, sidewalkSet, rockMacroSet,
+    // Prairie macro 12–20 m tiles (larger repeat numbers = smaller tiles on world plane
+    // — grass plane sets own repeat in terrain; these are for props)
+    soil: await pbrOr('gravel', gravelSet, PAL.soilA, [18, 18]),
+    grass: await pbrOr('grass_wild', grassSet, PAL.grassA, [16, 16]),
+    concrete: concreteTower, // alias — tower shells / legacy keys
+    concreteTower,
+    concretePad,
+    concreteFine,
     concreteDark: std(PAL.concreteB, { roughness: 0.9 }),
-    asphalt: await pbrOr('asphalt', asphaltSet, PAL.asphalt, [20, 20], { roughness: 0.95 }),
+    voidDark: std(PAL.voidDark ?? 0x1A1816, { roughness: 0.95 }),
+    asphalt: await pbrOr('asphalt', asphaltSet, PAL.asphalt, [10, 10], { roughness: 0.95 }),
     rock: await pbrOr('rock_cliff', rockSet, PAL.soilB, [6, 6]),
-    brick: await pbrOr('facade_office', officeSet, PAL.brick, [4, 3], { roughness: 0.85 }),
-    oxide: std(PAL.oxideA, { roughness: 0.78, metalness: 0.35 }),
-    oxideDark: std(PAL.oxideB, { roughness: 0.82, metalness: 0.4 }),
-    galv: std(PAL.galv, { roughness: 0.45, metalness: 0.75 }),
-    warnRed: std(PAL.warnRed, { roughness: 0.7 }),
-    warnYellow: std(PAL.warnYellow, { roughness: 0.7 }),
-    water: std(PAL.water, { roughness: 0.18, metalness: 0.55 }),
+    rockMacro: await pbrOr('rock_macro', rockMacroSet, PAL.soilB, [4, 4], { roughness: 0.9 }),
+    brick: await pbrOr('facade_office', officeSet, PAL.brick, [3, 2], { roughness: 0.85 }),
+    oxide: std(PAL.oxideA, { roughness: 0.8, metalness: 0.32 }),
+    oxideDark: std(PAL.oxideB, { roughness: 0.85, metalness: 0.38 }),
+    galv: std(PAL.galv, { roughness: 0.42, metalness: 0.78 }),
+    steel: std(0x8A9098, { roughness: 0.4, metalness: 0.8 }),
+    rust: std(PAL.rustHot ?? PAL.rust ?? 0x8B4513, { roughness: 0.9, metalness: 0.15 }),
+    rustHot: std(PAL.rustHot ?? 0x8B4513, { roughness: 0.9, metalness: 0.15 }),
+    rustCool: std(PAL.rustCool ?? 0x5C4033, { roughness: 0.92, metalness: 0.12 }),
+    warnRed: std(PAL.warnRed, { roughness: 0.65 }),
+    warnYellow: std(PAL.warnYellow, { roughness: 0.65 }),
+    hazardStripe: std(0x9A8628, { roughness: 0.55, metalness: 0.15 }),
+    water: std(PAL.water, { roughness: 0.12, metalness: 0.55 }),
     pad: track(new THREE.MeshStandardMaterial({
-      color: 0x2a2824, emissive: 0x8A7A2A, emissiveIntensity: 0.55, side: THREE.DoubleSide,
+      color: 0x2a2824, emissive: PAL.beaconAmber ?? 0xC4A35A, emissiveIntensity: 0.55, side: THREE.DoubleSide,
     })),
+    // Filled by nightLights.js — mats + PointLights
+    nightLights: [],
+    beacon: [],
+    nightEmit: [],
+    nightPointLights: [],
   };
   return mats;
 }

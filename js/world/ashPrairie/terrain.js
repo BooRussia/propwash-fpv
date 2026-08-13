@@ -4,7 +4,7 @@ import { assetLib } from '../../core/assets.js';
 import { meshHeight, CANAL, PAL, GROUND_Y } from './constants.js';
 import { setAoUVs } from './textures.js';
 
-/** Prairie ground plane with slight undulation + parcel tint. */
+/** Prairie ground plane with richer soil/grass patch variation (landmarks unchanged). */
 export async function buildGround(ctx) {
   const { root, track, mats, rng2 } = ctx;
   const SIZE = 900;
@@ -16,11 +16,20 @@ export async function buildGround(ctx) {
   const cA = new THREE.Color(PAL.grassA);
   const cB = new THREE.Color(PAL.grassB);
   const cSoil = new THREE.Color(PAL.soilA);
+  const cSoilB = new THREE.Color(PAL.soilB);
+  const cConc = new THREE.Color(PAL.concreteB);
   const tmp = new THREE.Color();
   const hash2 = (a, b) => {
     let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1);
     h = Math.imul(h ^ (h >>> 15), 0x2545f491);
     return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+  };
+  // Multi-frequency patch field — soil vs grass without shrinking landmarks
+  const patchF = (x, z) => {
+    const n1 = Math.sin(x * 0.018 + 0.4) * Math.cos(z * 0.015 - 0.7);
+    const n2 = Math.sin(x * 0.055 + z * 0.041) * 0.55;
+    const n3 = Math.sin(x * 0.12 - z * 0.09) * 0.25;
+    return n1 + n2 + n3;
   };
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
@@ -28,12 +37,23 @@ export async function buildGround(ctx) {
     pos.setY(i, y);
     const inYard = Math.abs(x) < 200 && z > -200 && z < 130;
     const r = hash2((x * 0.5) | 0, (z * 0.5) | 0);
+    const pf = patchF(x, z);
+    const soilAmt = THREE.MathUtils.clamp(0.45 + pf * 0.35 + (r - 0.5) * 0.2, 0, 1);
     if (inYard && Math.abs(y - GROUND_Y) < 0.8) {
-      tmp.copy(cSoil).lerp(new THREE.Color(PAL.concreteB), 0.35 + r * 0.25);
-      tmp.offsetHSL(0, 0, (rng2() - 0.5) * 0.04);
+      // Hardscape apron: soil → concrete dust
+      tmp.copy(cSoil).lerp(cConc, 0.28 + r * 0.3 + soilAmt * 0.15);
+      tmp.lerp(cSoilB, (1 - soilAmt) * 0.25);
+      tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.05);
     } else {
-      tmp.copy(cA).lerp(cB, r);
-      tmp.offsetHSL(0, 0, (rng2() - 0.5) * 0.03);
+      // Prairie: grass with soil scars / burn patches
+      tmp.copy(cA).lerp(cB, r * 0.7 + Math.max(0, pf) * 0.3);
+      if (soilAmt > 0.62) {
+        tmp.lerp(cSoil, (soilAmt - 0.62) * 1.6);
+      } else if (soilAmt < 0.32) {
+        tmp.lerp(cB, (0.32 - soilAmt) * 0.9);
+        tmp.offsetHSL(0.02, 0.04, -0.02); // slightly greener hollows
+      }
+      tmp.offsetHSL(0, 0, (rng2() - 0.5) * 0.035);
     }
     colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
   }
@@ -44,7 +64,7 @@ export async function buildGround(ctx) {
   let mat;
   if (mats.grassSet && mats.grassSet.map) {
     try {
-      mat = await assetLib.pbrMaterial('grass_wild', { repeat: [SIZE / 25, SIZE / 25], color: PAL.grassA });
+      mat = await assetLib.pbrMaterial('grass_wild', { repeat: [SIZE / 22, SIZE / 22], color: PAL.grassA });
       track(mat);
     } catch (e) { mat = null; }
   }
@@ -68,7 +88,7 @@ export async function buildGround(ctx) {
   root.add(apronMesh);
 }
 
-/** Canal / basin water — Y slightly below bank to avoid z-fight. */
+/** Canal / basin water — clearer reflections, soft sun response. */
 export async function buildWater(ctx) {
   const { root, track, mats } = ctx;
   const { x0, x1, z, w } = CANAL;
@@ -92,22 +112,33 @@ export async function buildWater(ctx) {
   if (normals) {
     track(normals);
     water = new Water(waterGeo, {
-      textureWidth: 256,
-      textureHeight: 256,
+      textureWidth: 512,
+      textureHeight: 512,
       waterNormals: normals,
-      sunDirection: new THREE.Vector3(0.55, 0.18, -0.4).normalize(),
-      sunColor: 0xffe2b0,
+      sunDirection: new THREE.Vector3(0.55, 0.22, -0.4).normalize(),
+      sunColor: 0xffe8c0,
       waterColor: PAL.water,
-      distortionScale: 1.6,
-      clipBias: 0.05,
+      distortionScale: 1.35,
+      clipBias: 0.04,
       fog: true,
+      alpha: 0.92,
     });
     water.rotation.x = -Math.PI / 2;
     water.position.set((x0 + x1) / 2, waterY, z);
     track(water.material);
+    // Slightly glossier basin when shader exposes roughness-like uniforms
+    if (water.material.uniforms) {
+      if (water.material.uniforms.size) water.material.uniforms.size.value = 1.35;
+    }
     root.add(water);
   } else {
-    const sea = new THREE.Mesh(waterGeo, mats.water);
+    // Fallback: lower roughness for better specular basin read
+    const wMat = mats.water.clone();
+    track(wMat);
+    wMat.roughness = 0.1;
+    wMat.metalness = 0.65;
+    wMat.needsUpdate = true;
+    const sea = new THREE.Mesh(waterGeo, wMat);
     sea.rotation.x = -Math.PI / 2;
     sea.position.set((x0 + x1) / 2, waterY, z);
     root.add(sea);
