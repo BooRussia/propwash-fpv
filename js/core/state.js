@@ -8,7 +8,7 @@ const STORAGE_KEY = 'propwash-settings-v1';
 
 export const DEFAULT_SETTINGS = {
   drone: 'meteor75',            // 'meteor75' | 'cinebot30' | 'nazgul5'
-  map: 'miami',                 // 'miami' | 'procedural'
+  map: 'miami',                 // 'miami' | 'ashPrairie' | 'procedural' | 'realworld'
   procedural: {
     setting: 'outdoor',         // 'indoor' | 'outdoor'
     locale: 'country',          // 'city' | 'country'  (outdoor only)
