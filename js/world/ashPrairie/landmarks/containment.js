@@ -9,12 +9,23 @@ export function buildContainment(ctx) {
 
   // Main cylinder shell (visual open-ended + ring colliders so door aperture is flyable)
   {
+    const wallMat = (mats.concreteTower || mats.concrete).clone();
+    track(wallMat);
+    wallMat.side = THREE.DoubleSide;
     const wallGeo = track(new THREE.CylinderGeometry(C.r, C.r, C.h, 40, 1, true));
-    const wall = new THREE.Mesh(wallGeo, mats.concrete);
+    const wall = new THREE.Mesh(wallGeo, wallMat);
     wall.position.set(C.x, GROUND_Y + C.h / 2, C.z);
     wall.castShadow = true;
     wall.receiveShadow = true;
     root.add(wall);
+    // Inner liner
+    const innerGeo = track(new THREE.CylinderGeometry(C.r - 1.6, C.r - 1.6, C.h - 0.5, 36, 1, true));
+    const innerMat = (mats.voidDark || mats.concreteDark).clone();
+    track(innerMat);
+    innerMat.side = THREE.DoubleSide;
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.position.set(C.x, GROUND_Y + C.h / 2, C.z);
+    root.add(inner);
     const sectors = 20;
     const doorA = Math.PI / 2; // +Z face
     for (let i = 0; i < sectors; i++) {
@@ -29,7 +40,10 @@ export function buildContainment(ctx) {
 
   // Domed roof (hemisphere)
   const domeGeo = track(new THREE.SphereGeometry(C.r * 0.98, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2));
-  const dome = new THREE.Mesh(domeGeo, mats.concreteDark);
+  const domeMat = (mats.concreteDark).clone();
+  track(domeMat);
+  domeMat.side = THREE.DoubleSide;
+  const dome = new THREE.Mesh(domeGeo, domeMat);
   dome.position.set(C.x, GROUND_Y + C.h, C.z);
   dome.castShadow = true;
   dome.receiveShadow = true;
@@ -41,7 +55,7 @@ export function buildContainment(ctx) {
   // Interior whoop: open door aperture with sill depth
   const doorW = 4.2, doorH = 5.5, sill = 0.45;
   // Punch visual by overlaying a dark recess (not boolean — sill lip boxes)
-  addBox(ctx, mats, 'oxideDark', C.x, GROUND_Y + sill, C.z + C.r - 0.3, doorW, doorH, 1.2, { collide: false });
+  addBox(ctx, mats, 'voidDark', C.x, GROUND_Y + sill, C.z + C.r - 0.3, doorW, doorH, 1.2, { collide: false });
   // Sill lip
   addBox(ctx, mats, 'concreteDark', C.x, GROUND_Y, C.z + C.r - 0.15, doorW + 0.6, sill, 1.4);
   // Door jambs (narrow colliders leave the aperture open)

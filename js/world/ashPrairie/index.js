@@ -2,7 +2,7 @@
 // PropWash FPV — Ash Prairie map (assembled)
 // Decommissioned Great Plains nuclear yard + grain co-op.
 // Dual-scale: true 5" industrial landmarks + whoop pipe/duct clutter.
-// v2: mezz / admin / antenna farm / night lights / accents + fidelity mats.
+// v2 + chernobyl wave1: undulation, mountain ring, interiors, instanced abandonment.
 // ============================================================
 import * as THREE from 'three';
 import { settings, clamp } from '../../core/state.js';
@@ -28,6 +28,8 @@ import { buildAntennaFarm } from './landmarks/antennaFarm.js';
 import { buildNightLights } from './landmarks/nightLights.js';
 import { buildAccents } from './landmarks/accents.js';
 import { buildRuins } from './landmarks/ruins.js';
+import { buildMountains } from './landmarks/mountains.js';
+import { buildAbandonment } from './landmarks/abandonment.js';
 
 export async function buildAshPrairie(scene, env) {
   const rng = mulberry32(0xA5B04A1E);
@@ -63,6 +65,7 @@ export async function buildAshPrairie(scene, env) {
   // Terrain
   await buildGround(ctx);
   const { water } = await buildWater(ctx);
+  buildMountains(ctx); // horizon ridges first
 
   // Landmarks — hierarchy: towers → containment → elevators → turbine/yard → racks → co-op
   buildCoolingTowers(ctx);
@@ -81,6 +84,7 @@ export async function buildAshPrairie(scene, env) {
   buildNightLights(ctx);
   buildAccents(ctx);
   buildRuins(ctx);
+  buildAbandonment(ctx); // instanced Chernobyl clutter wave
 
   const { spawnPos, gates, retrievalPoints } = buildPoints(ctx);
 

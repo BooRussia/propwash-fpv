@@ -55,6 +55,7 @@ export function buildCoolingTowers(ctx) {
 
     const mat = (mats.concreteTower || mats.concrete).clone();
     track(mat);
+    mat.side = THREE.DoubleSide; // interior readable when diving
     mat.color = (mats.concreteTower || mats.concrete).color.clone().offsetHSL(0, 0, -0.04 + (t.x * 0.0001));
     if (mat.map) {
       mat.map = mat.map.clone();
@@ -68,6 +69,19 @@ export function buildCoolingTowers(ctx) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     root.add(mesh);
+
+    // Inner shell (slightly inset) so walls read solid from inside
+    {
+      const innerPts = pts.map((p) => new THREE.Vector2(Math.max(1.5, p.x - 1.8), p.y));
+      const innerGeo = track(new THREE.LatheGeometry(innerPts, 48));
+      applyTowerUVs(innerGeo, t.h, (t.baseR + t.throatR + t.topR) / 3);
+      const innerMat = (mats.voidDark || mats.concreteDark).clone();
+      track(innerMat);
+      innerMat.side = THREE.DoubleSide;
+      const inner = new THREE.Mesh(innerGeo, innerMat);
+      inner.position.set(t.x, GROUND_Y, t.z);
+      root.add(inner);
+    }
 
     // Hollow shell: 3 stacked overlapping rings matching the hyperbola
     // (base / mid / throat→lip) so colliders hug visible concrete.

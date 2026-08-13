@@ -11,6 +11,15 @@ export function buildGrainElevators(ctx) {
   for (let i = 0; i < E.count; i++) {
     const x = startX + i * E.spacing;
     addCyl(ctx, mats, 'concrete', x, GROUND_Y, E.z, E.r, E.r, E.h, { seg: 24 });
+    // Interior-readable liner (DoubleSide)
+    {
+      const linGeo = track(new THREE.CylinderGeometry(E.r - 0.35, E.r - 0.35, E.h - 0.4, 20, 1, true));
+      const linMat = (mats.voidDark || mats.concreteDark).clone();
+      track(linMat); linMat.side = THREE.DoubleSide;
+      const lin = new THREE.Mesh(linGeo, linMat);
+      lin.position.set(x, GROUND_Y + E.h / 2, E.z);
+      root.add(lin);
+    }
     // Cap
     addCyl(ctx, mats, 'concreteDark', x, GROUND_Y + E.h, E.z, E.r * 0.95, E.r * 0.7, 1.2, { seg: 16 });
     // Manhole / whoop window mid-height with sill depth

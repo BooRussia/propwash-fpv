@@ -24,6 +24,15 @@ export function buildSiloLF(ctx) {
   wall.castShadow = true;
   wall.receiveShadow = true;
   root.add(wall);
+  // Outer concrete shell so lip reads from outside too
+  const outerGeo = track(new THREE.CylinderGeometry(S.r + 0.35, S.r + 0.35, wallH, 36, 1, true));
+  const outerMat = (mats.concreteTower || mats.concrete).clone();
+  track(outerMat);
+  outerMat.side = THREE.DoubleSide;
+  const outer = new THREE.Mesh(outerGeo, outerMat);
+  outer.position.copy(wall.position);
+  root.add(outer);
+
 
   // Overlapping wall ring with a vertical exit slit toward +X (blast door / apron).
   // Slit ~2.6 m wide so whoops and 5" can bail laterally — not a dead-end kill box.
