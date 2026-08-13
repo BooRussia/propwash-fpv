@@ -27,7 +27,7 @@ export const CANAL = { z: 118, x0: -80, x1: 160, w: 18, depth: 2.4 };
 export const DUMP_CANOPY = { x: 40, z: 88, w: 28, d: 16, h: 7.5 };
 export const SILO_LF = { x: -185, z: -75, r: 4.8, depth: 22, collarH: 1.2 };
 
-// Ash Prairie v2 — Desi enrichment anchors (additive; keep z>145 & |x|>230 empty)
+// Ash Prairie v2/chernobyl anchors (approach z>145 lighter density; |x|>230 far field)
 export const ADMIN = { x: 130, z: 70, w: 20, d: 14, h: 5.2 }; // beside coop whoop-indoor
 export const ANTENNA_FARM = { x0: -210, x1: -195, z0: -90, z1: -60, mastN: 5 };
 export const BUCKET_ELEV = { x: 120, z: -10, w: 4.5, d: 4.5, h: 56 };
@@ -38,10 +38,36 @@ export const STEEL_BINS = { x: 160, z: -25, n: 3 };
 export const SPAWN = { x: 0, z: 165 };
 export const PAD_Y = 0.06;
 
+/** Rolling prairie + berms. Amplitudes large enough to read from air (Chernobyl wave). */
 export function prairieNoise(x, z) {
-  return 0.35 * Math.sin(x * 0.021 + 0.7) * Math.sin(z * 0.017 + 1.3)
-       + 0.18 * Math.sin(x * 0.053 + 2.1) * Math.sin(z * 0.047)
-       + 0.08 * Math.sin(x * 0.11) * Math.cos(z * 0.09 + 0.4);
+  // Macro rolling hills (1.2–2.8 m)
+  const macro = 1.6 * Math.sin(x * 0.0085 + 0.4) * Math.sin(z * 0.0072 + 1.1)
+              + 1.1 * Math.sin(x * 0.014 + 2.0) * Math.cos(z * 0.011 + 0.6);
+  // Mid freckles
+  const mid = 0.55 * Math.sin(x * 0.032 + 0.9) * Math.sin(z * 0.028 + 1.7)
+            + 0.35 * Math.sin(x * 0.055 + 2.4) * Math.cos(z * 0.048);
+  // Fine ripples
+  const fine = 0.12 * Math.sin(x * 0.12) * Math.cos(z * 0.1 + 0.3);
+  // Soft berm rings near major landmarks (additive mounds)
+  let berm = 0;
+  const berms = [
+    [-90, -150, 55, 2.4], [-30, -165, 52, 2.2], [35, -148, 56, 2.5],
+    [75, -115, 40, 1.8], [145, -40, 35, 1.6], [-145, -15, 38, 1.5],
+    [110, 55, 30, 1.2], [40, 88, 22, 1.0],
+  ];
+  for (const [bx, bz, br, bh] of berms) {
+    const dx = x - bx, dz = z - bz;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d < br) {
+      const t = 1 - d / br;
+      berm += bh * t * t * (3 - 2 * t);
+    }
+  }
+  // Flatten spawn approach pad strip (z>150 near x=0) so takeoff stays honest
+  let flatten = 1;
+  if (z > 150 && Math.abs(x) < 40) flatten = 0.15;
+  else if (z > 140 && Math.abs(x) < 60) flatten = 0.35;
+  return (macro + mid + fine + berm) * flatten;
 }
 
 /** Physics / spawn ground height. Pads and hardscape sit at known elevations. */
