@@ -33,15 +33,19 @@ export function buildAbandonment(ctx) {
     pool.setMatrixAt(pool.count++, tmp.matrix);
   }
 
-  const carBody = makePool(new THREE.BoxGeometry(1, 1, 1), mats.rustHot || mats.oxide, 420, 'cars');
-  const carCab = makePool(new THREE.BoxGeometry(1, 1, 1), mats.oxideDark || mats.oxide, 420, 'cabs');
+  const carBodyA = makePool(new THREE.BoxGeometry(1, 1, 1), mats.carBodyA || mats.rustHot || mats.oxide, 200, 'carsA');
+  const carBodyB = makePool(new THREE.BoxGeometry(1, 1, 1), mats.carBodyB || mats.oxide, 160, 'carsB');
+  const carBodyC = makePool(new THREE.BoxGeometry(1, 1, 1), mats.carBodyC || mats.oxideDark, 160, 'carsC');
+  const carBodies = [carBodyA, carBodyB, carBodyC];
+  const carCab = makePool(new THREE.BoxGeometry(1, 1, 1), mats.glassDead || mats.voidDark || mats.oxideDark, 420, 'cabs');
   const wheel = makePool(new THREE.CylinderGeometry(0.5, 0.5, 0.35, 8), mats.voidDark || mats.concreteDark, 1600, 'wheels');
   const barrel = makePool(new THREE.CylinderGeometry(0.45, 0.5, 1.1, 8), mats.rustCool || mats.oxide, 800, 'barrels');
   const rubble = makePool(new THREE.BoxGeometry(1, 1, 1), mats.concreteDark || mats.concrete, 1200, 'rubble');
   const post = makePool(new THREE.BoxGeometry(0.12, 1, 0.12), mats.galv || mats.steel, 900, 'fencePosts');
   const pole = makePool(new THREE.CylinderGeometry(0.12, 0.16, 1, 6), mats.oxideDark || mats.oxide, 180, 'poles');
-  const shrub = makePool(new THREE.ConeGeometry(0.6, 1.2, 5), mats.grass || mats.soil, 2200, 'shrubs');
-  const weed = makePool(new THREE.BoxGeometry(0.15, 0.5, 0.15), mats.grass || mats.soil, 1800, 'weeds');
+  const shrub = makePool(new THREE.ConeGeometry(0.6, 1.2, 5), mats.overgrow || mats.grass || mats.soil, 2200, 'shrubs');
+  const weed = makePool(new THREE.BoxGeometry(0.15, 0.5, 0.15), mats.overgrowDark || mats.moss || mats.grass, 1800, 'weeds');
+  const mossClump = makePool(new THREE.SphereGeometry(0.4, 5, 4), mats.moss || mats.grass, 600, 'moss');
 
   function gy(x, z) {
     try { return groundHeight(x, z); } catch (e) { return GROUND_Y; }
@@ -52,7 +56,8 @@ export function buildAbandonment(ctx) {
     const L = truck ? 7.2 : 4.4;
     const W = truck ? 2.4 : 1.8;
     const H = truck ? 2.2 : 1.45;
-    addInstance(carBody, x, y + H * 0.45, z, L, H, W, rot);
+    const bodyPool = carBodies[(rng() * carBodies.length) | 0];
+    addInstance(bodyPool, x, y + H * 0.45, z, L, H, W, rot);
     addInstance(carCab, x + (truck ? -1.6 : -0.7) * Math.cos(rot), y + H * 0.95, z + (truck ? -1.6 : -0.7) * Math.sin(rot),
       truck ? 2.4 : 1.8, H * 0.7, W * 0.9, rot);
     // wheels
@@ -72,6 +77,11 @@ export function buildAbandonment(ctx) {
       const ox = x + (rng() - 0.5) * L;
       const oz = z + (rng() - 0.5) * W;
       addInstance(weed, ox, gy(ox, oz) + 0.2, oz, 0.8, 0.6 + rng(), 0.8, rng() * 6);
+    }
+    for (let i = 0; i < 3; i++) {
+      const ox = x + (rng() - 0.5) * L * 0.9;
+      const oz = z + (rng() - 0.5) * W * 0.9;
+      addInstance(mossClump, ox, gy(ox, oz) + 0.15, oz, 0.8 + rng(), 0.35, 0.8 + rng(), 0);
     }
   }
 

@@ -8,8 +8,8 @@ import { GROUND_Y, PAL } from '../constants.js';
 export function buildMountains(ctx) {
   const { root, track, addCollider, mats } = ctx;
 
-  const rockMat = mats.rock || mats.concreteDark;
-  const soilMat = mats.soil || mats.concreteDark;
+  const rockMat = mats.mountainFar || mats.rock || mats.concreteDark;
+  const soilMat = mats.mountainNear || mats.soil || mats.concreteDark;
 
   // Shared low-poly ridge segment (wedge)
   const ridgeGeo = track(new THREE.ConeGeometry(1, 1, 5));

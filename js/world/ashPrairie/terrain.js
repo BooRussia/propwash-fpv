@@ -15,6 +15,8 @@ export async function buildGround(ctx) {
   const colors = new Float32Array(pos.count * 3);
   const cA = new THREE.Color(PAL.grassA);
   const cB = new THREE.Color(PAL.grassB);
+  const cPoison = new THREE.Color(PAL.poisonGrass ?? 0x6B7054);
+  const cMoss = new THREE.Color(PAL.mossA ?? 0x3F4A32);
   const cSoil = new THREE.Color(PAL.soilA);
   const cSoilB = new THREE.Color(PAL.soilB);
   const cConc = new THREE.Color(PAL.concreteB);
@@ -45,15 +47,18 @@ export async function buildGround(ctx) {
       tmp.lerp(cSoilB, (1 - soilAmt) * 0.25);
       tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.05);
     } else {
-      // Prairie: grass with soil scars / burn patches
-      tmp.copy(cA).lerp(cB, r * 0.7 + Math.max(0, pf) * 0.3);
+      // Prairie → Desi poisonGrass documentary decay
+      tmp.copy(cA).lerp(cB, r * 0.5).lerp(cPoison, 0.35 + r * 0.25);
       if (soilAmt > 0.62) {
-        tmp.lerp(cSoil, (soilAmt - 0.62) * 1.6);
-      } else if (soilAmt < 0.32) {
-        tmp.lerp(cB, (0.32 - soilAmt) * 0.9);
-        tmp.offsetHSL(0.02, 0.04, -0.02); // slightly greener hollows
+        tmp.lerp(cSoil, (soilAmt - 0.62) * 1.4);
+      } else if (soilAmt < 0.28) {
+        tmp.lerp(cMoss, (0.28 - soilAmt) * 1.2); // moss hollows
       }
-      tmp.offsetHSL(0, 0, (rng2() - 0.5) * 0.035);
+      tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.03);
+    }
+    // North concrete / tower apron: moss patches on hardscape
+    if (inYard && z < -100 && Math.abs(y - GROUND_Y) < 1.2 && r > 0.55) {
+      tmp.lerp(cMoss, 0.25 + (r - 0.55) * 0.5);
     }
     colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
   }
@@ -88,6 +93,26 @@ export async function buildGround(ctx) {
   apronMesh.position.set(0, 0.04, -20);
   apronMesh.receiveShadow = true;
   root.add(apronMesh);
+
+  // Moss patch decals on north concrete (towers / containment approach)
+  const mossMat = (mats.moss || mats.grass).clone();
+  track(mossMat);
+  mossMat.polygonOffset = true;
+  mossMat.polygonOffsetFactor = -2;
+  mossMat.polygonOffsetUnits = -2;
+  mossMat.transparent = true;
+  mossMat.opacity = 0.85;
+  for (const [mx, mz, mw, md] of [
+    [-90, -150, 40, 36], [-30, -165, 36, 32], [35, -148, 42, 36],
+    [75, -115, 28, 28], [-60, -130, 22, 20],
+  ]) {
+    const g = track(new THREE.PlaneGeometry(mw, md));
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, mossMat);
+    m.position.set(mx, 0.07, mz);
+    m.receiveShadow = true;
+    root.add(m);
+  }
 }
 
 /** Canal / basin water — clearer reflections, soft sun response. */
