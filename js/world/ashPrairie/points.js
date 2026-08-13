@@ -10,7 +10,7 @@ export function buildPoints(ctx) {
   const { root, track, mats } = ctx;
 
   const gy = groundHeight(SPAWN.x, SPAWN.z);
-  const spawnPos = new THREE.Vector3(SPAWN.x, gy + PAD_Y, SPAWN.z);
+  const spawnPos = new THREE.Vector3(SPAWN.x, gy + PAD_Y + 3.2, SPAWN.z); // hover height so pad FOV is not ground-grazing
   {
     const padGeo = track(new THREE.CircleGeometry(2.4, 28));
     const pad = new THREE.Mesh(padGeo, mats.pad);
