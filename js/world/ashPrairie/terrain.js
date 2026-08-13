@@ -26,7 +26,7 @@ export async function buildGround(ctx) {
     h = Math.imul(h ^ (h >>> 15), 0x2545f491);
     return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
   };
-  // Multi-frequency patch field â€” soil vs grass without shrinking landmarks
+  // Multi-frequency patch field — soil vs grass without shrinking landmarks
   const patchF = (x, z) => {
     const n1 = Math.sin(x * 0.018 + 0.4) * Math.cos(z * 0.015 - 0.7);
     const n2 = Math.sin(x * 0.055 + z * 0.041) * 0.55;
@@ -42,12 +42,12 @@ export async function buildGround(ctx) {
     const pf = patchF(x, z);
     const soilAmt = THREE.MathUtils.clamp(0.45 + pf * 0.35 + (r - 0.5) * 0.2, 0, 1);
     if (inYard && Math.abs(y - GROUND_Y) < 0.8) {
-      // Hardscape apron: soil â†’ concrete dust
+      // Hardscape apron: soil → concrete dust
       tmp.copy(cSoil).lerp(cConc, 0.28 + r * 0.3 + soilAmt * 0.15);
       tmp.lerp(cSoilB, (1 - soilAmt) * 0.25);
       tmp.offsetHSL(0, -0.02, (rng2() - 0.5) * 0.05);
     } else {
-      // Prairie â†’ Desi poisonGrass documentary decay
+      // Prairie → Desi poisonGrass documentary decay
       tmp.copy(cA).lerp(cB, r * 0.5).lerp(cPoison, 0.35 + r * 0.25);
       if (soilAmt > 0.62) {
         tmp.lerp(cSoil, (soilAmt - 0.62) * 1.4);
@@ -81,8 +81,7 @@ export async function buildGround(ctx) {
   ground.receiveShadow = true;
   root.add(ground);
 
-  // Yard hardscape lots only — NEVER one full-width sheet (pad FOV ochre wall).
-  // Keep pad→yard corridor (z>~120, |x|<60) as open prairie.
+  // Small yard asphalt lots only — no full-width slab toward spawn (0,165).
   const aMat = mats.asphalt.clone();
   track(aMat);
   aMat.polygonOffset = true;
@@ -90,19 +89,17 @@ export async function buildGround(ctx) {
   aMat.polygonOffsetUnits = -1;
   capAnisotropy(aMat, 4);
   for (const [ax, az, aw, ad] of [
-    // tower / containment / switchyard / coop / turbine lots
-    [-90, -150, 70, 60], [-30, -165, 65, 55], [35, -148, 70, 60],
-    [75, -115, 50, 48], [-145, -15, 80, 60], [-105, 35, 70, 45],
-    [110, 55, 60, 45], [40, 88, 40, 28], [145, -40, 55, 40],
+    [-145, -15, 70, 55],
+    [40, 88, 32, 18],
+    [110, 55, 48, 32],
+    [-105, 35, 55, 28],
   ]) {
-    // Skip anything that would sit in the pad look-corridor
-    if (az > 110 && Math.abs(ax) < 70) continue;
-    const apron = track(new THREE.PlaneGeometry(aw, ad, 1, 1));
-    apron.rotateX(-Math.PI / 2);
-    const apronMesh = new THREE.Mesh(apron, aMat);
-    apronMesh.position.set(ax, 0.04, az);
-    apronMesh.receiveShadow = true;
-    root.add(apronMesh);
+    const g = track(new THREE.PlaneGeometry(aw, ad));
+    g.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(g, aMat);
+    mesh.position.set(ax, 0.04, az);
+    mesh.receiveShadow = true;
+    root.add(mesh);
   }
 
   // Moss patch decals on north concrete (towers / containment approach)
@@ -128,7 +125,7 @@ export async function buildGround(ctx) {
   }
 }
 
-/** Canal / basin water â€” clearer reflections, soft sun response. */
+/** Canal / basin water — clearer reflections, soft sun response. */
 export async function buildWater(ctx) {
   const { root, track, mats } = ctx;
   const { x0, x1, z, w } = CANAL;
