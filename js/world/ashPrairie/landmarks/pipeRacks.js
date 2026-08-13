@@ -109,9 +109,13 @@ export function buildPipeRacks(ctx) {
   }
 
   // End portal frames (readable silhouette) — keep collision
+  // Cut-tip-only hazard (Desi): no mid-span warnYellow arcade rails
   for (const z of [R.z0 - 1, R.z1 + 1]) {
     addBox(ctx, mats, 'oxide', R.x0, GROUND_Y, z, 0.5, 12, 0.5);
     addBox(ctx, mats, 'oxide', R.x1, GROUND_Y, z, 0.5, 12, 0.5);
-    addBox(ctx, mats, 'warnYellow', (R.x0 + R.x1) / 2, GROUND_Y + 11.5, z, width + 1, 0.4, 0.4);
+    addBox(ctx, mats, 'oxideDark', (R.x0 + R.x1) / 2, GROUND_Y + 11.5, z, width + 1, 0.35, 0.35);
+    // Small warnYellow tip caps only
+    addBox(ctx, mats, 'warnYellow', R.x0, GROUND_Y + 11.7, z, 0.55, 0.35, 0.55, { collide: false });
+    addBox(ctx, mats, 'warnYellow', R.x1, GROUND_Y + 11.7, z, 0.55, 0.35, 0.55, { collide: false });
   }
 }
