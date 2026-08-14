@@ -21,8 +21,8 @@
 // index.html importmap to the package's ESM build on jsdelivr,
 // whose only externals are 'three' and 'three/addons/*' — so it
 // shares the app's exact three.js 0.180 instance. The library is
-// imported lazily (only when an API key exists) and every failure
-// path degrades to a placard scene with a valid MapHandle.
+// imported lazily (only when an API key exists) and key-failure paths degrade to a quiet ground + settings-token
+// DOM card (no cyan canvas). Other failures still use the placard.
 // ============================================================
 import * as THREE from 'three';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
@@ -259,121 +259,9 @@ function ringPoints(count, radius, alt, groundFn) {
 }
 
 // ---------------------------------------------------------------
-// placard fallback scene — used when there is no API key, the key
-// is rejected, or the tiles/library fail. Always a valid handle.
+// Key-fail / no-key fallback is buildQuietGround + osd:flash.
+// The old cyan canvas placard is gone (Desi reject).
 // ---------------------------------------------------------------
-function textSprite(title, sub, hint) {
-  const c = document.createElement('canvas');
-  c.width = 2048; c.height = 512;
-  const g = c.getContext('2d');
-  g.clearRect(0, 0, c.width, c.height);
-  // dark backing panel so the message reads against any sky/sun
-  const rr = (x, y, w, h, r) => {
-    g.beginPath();
-    g.moveTo(x + r, y);
-    g.arcTo(x + w, y, x + w, y + h, r);
-    g.arcTo(x + w, y + h, x, y + h, r);
-    g.arcTo(x, y + h, x, y, r);
-    g.arcTo(x, y, x + w, y, r);
-    g.closePath();
-  };
-  rr(24, 24, 2000, 464, 46);
-  g.fillStyle = 'rgba(4, 11, 20, 0.82)';
-  g.fill();
-  g.lineWidth = 5;
-  g.strokeStyle = 'rgba(41, 211, 255, 0.55)';
-  g.stroke();
-  g.textAlign = 'center';
-  g.shadowColor = 'rgba(41,211,255,0.9)';
-  g.shadowBlur = 34;
-  g.fillStyle = '#8fefff';
-  g.font = '900 118px Consolas, monospace';
-  g.fillText(title, 1024, 178);
-  g.shadowBlur = 12;
-  g.shadowColor = 'rgba(0,0,0,0.9)';
-  g.fillStyle = '#eaf6fc';
-  g.font = '700 62px Consolas, monospace';
-  g.fillText(sub, 1024, 300);
-  if (hint) {
-    g.fillStyle = 'rgba(150,175,195,0.95)';
-    g.font = '600 44px Consolas, monospace';
-    g.fillText(hint, 1024, 408);
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
-}
-
-function buildPlacard(scene, env, title, sub, hint) {
-  try { env?.setHDRIBands?.({}); } catch (e) { /* noop */ }
-
-  const root = new THREE.Group();
-  root.name = 'realworld-placard';
-  const disposables = [];
-  const track = (r) => { disposables.push(r); return r; };
-
-  // dark ground slab
-  const groundGeo = track(new THREE.CircleGeometry(320, 64));
-  const groundMat = track(new THREE.MeshStandardMaterial({
-    color: 0x10151d, roughness: 0.95, metalness: 0.0,
-  }));
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = true;
-  root.add(ground);
-
-  // subtle nav grid
-  const grid = new THREE.GridHelper(640, 64, 0x1f4c5e, 0x122430);
-  grid.material.transparent = true;
-  grid.material.opacity = 0.5;
-  grid.position.y = 0.02;
-  track(grid.geometry); track(grid.material);
-  root.add(grid);
-
-  // glowing home pad
-  const padGeo = track(new THREE.RingGeometry(1.9, 2.2, 40));
-  const padMat = track(new THREE.MeshStandardMaterial({
-    color: 0x0d2b33, emissive: 0x29d3ff, emissiveIntensity: 0.55, side: THREE.DoubleSide,
-  }));
-  const pad = new THREE.Mesh(padGeo, padMat);
-  pad.rotation.x = -Math.PI / 2;
-  pad.position.y = 0.04;
-  root.add(pad);
-
-  // floating message
-  const tex = track(textSprite(title, sub, hint || ''));
-  const sprMat = track(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  const sprite = new THREE.Sprite(sprMat);
-  sprite.scale.set(44, 11, 1);
-  sprite.position.set(0, 8.5, -20);
-  root.add(sprite);
-
-  scene.add(root);
-
-  const spawnPos = new THREE.Vector3(0, 1, 0);
-  let time = 0;
-  return {
-    name: 'Real World',
-    spawn: { position: spawnPos, yawRad: 0 },
-    getGroundHeight: () => 0,
-    colliders: [],
-    gates: [],
-    retrievalPoints: [],
-    homePad: spawnPos.clone(),
-    setCamera() { /* no tiles to feed */ },
-    getAttributions() { return ''; },
-    update(dt) {
-      time += dt;
-      sprite.position.y = 8.5 + Math.sin(time * 0.8) * 0.35;
-      pad.material.emissiveIntensity = 0.55 + Math.sin(time * 2.2) * 0.2;
-    },
-    dispose(sceneRef) {
-      sceneRef.remove(root);
-      for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
-    },
-  };
-}
 
 // ---------------------------------------------------------------
 // real tiles world
@@ -431,7 +319,7 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
     const now = performance.now();
     if (now - lastErrFlash > 10000) {
       lastErrFlash = now;
-      emit('osd:flash', { text: 'TILE STREAM ERROR — CHECK KEY / QUOTA', ms: 2500 });
+      emit('osd:flash', { title: 'Tile stream error', body: 'Check the Maps key or quota.', level: 'error' });
     }
   };
 
@@ -466,7 +354,7 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
     });
     rootPromise.catch(() => {}); // avoid unhandled rejection when timing out
 
-    emit('osd:flash', { text: 'LOADING REAL WORLD TILES…', ms: 1500 });
+    emit('osd:flash', { title: 'Loading', body: 'Fetching 3D tiles.', ms: 1500 });
     const t0 = performance.now();
     let lastPulse = t0;
     let rootErr = null;
@@ -482,7 +370,7 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
       try { tiles.update(); } catch (e) { /* first updates can race the root */ }
       if (performance.now() - lastPulse > 3000) {
         lastPulse = performance.now();
-        emit('osd:flash', { text: 'LOADING REAL WORLD TILES…', ms: 1500 });
+        emit('osd:flash', { title: 'Loading', body: 'Fetching 3D tiles.', ms: 1500 });
       }
       await nextFrame();
     }
@@ -524,7 +412,7 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
       if (performance.now() - lastPulse > 3000) {
         lastPulse = performance.now();
         const pct = Math.round((typeof tiles.loadProgress === 'number' ? tiles.loadProgress : 0) * 100);
-        emit('osd:flash', { text: `LOADING REAL WORLD TILES… ${pct}%`, ms: 1500 });
+        emit('osd:flash', { title: 'Loading', body: `Fetching 3D tiles · ${pct}%.`, ms: 1500 });
       }
       await nextFrame();
     }
@@ -564,7 +452,7 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
     }
 
     tiles.addEventListener('load-error', onRuntimeError);
-    emit('osd:flash', { text: 'REAL WORLD READY — FLY', ms: 1600 });
+    emit('osd:flash', { title: 'Ready', body: 'Real World is live.', ms: 1600 });
 
     // ---- per-frame state ----
     let attribTimer = 0;
@@ -649,13 +537,200 @@ async function buildTilesWorld(scene, env, lib, apiKey, latDeg, lonDeg) {
   }
 }
 
+
+// ---------------------------------------------------------------
+// Map Tiles key-failure diagnostics
+// Browser-download only (serve.ps1 is static — no logs/ write).
+// Fingerprint is length + last 4. Never the raw key.
+// ---------------------------------------------------------------
+function keyFingerprint(key) {
+  const s = String(key || '');
+  return `len=${s.length} last4=${s ? s.slice(-4) : ''}`;
+}
+
+function downloadTilesErrorFile(text) {
+  try {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'propwash-map-tiles-error.txt';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(a.href); } catch (e) { /* noop */ } }, 2000);
+  } catch (e) {
+    console.warn('[realworld] could not download error file');
+  }
+}
+
+function failRecord(klass, title, body, next, steps, extra) {
+  const x = extra || {};
+  return {
+    ok: false,
+    klass,
+    title,
+    body,
+    next,
+    detail: body,
+    hint: next,
+    steps,
+    httpStatus: x.httpStatus == null ? null : x.httpStatus,
+    googleStatus: x.googleStatus || '',
+    googleMessage: x.googleMessage || '',
+    googleReason: x.googleReason || '',
+  };
+}
+
+const STEPS_NOT_FOUND = [
+  'Same Cloud project that owns this key: enable Map Tiles API (APIs & Services → Library).',
+  'Link a billing account to that project (Billing). Free credit still applies.',
+  'Application restrictions: None, or HTTP referrers that include this origin.',
+  'API restrictions must include Map Tiles API (not only Maps JavaScript API).',
+  'New keys can take up to ~60 minutes to become live for Photorealistic 3D Tiles.',
+  'Select-all when pasting the key so it is not truncated and has no stray space.',
+];
+const STEPS_REFERRER = [
+  'Google Cloud → Credentials → this key → Application restrictions.',
+  'Use Website restrictions (HTTP referrers), or set restrictions to None.',
+  'Add this origin (and localhost if you serve locally), e.g. this host plus /*.',
+  'Save, wait a minute, select-all paste the key again.',
+];
+const STEPS_DISABLED = [
+  'Open the Cloud project that owns this key.',
+  'APIs & Services → enable Map Tiles API.',
+  'Confirm the key’s API restrictions include Map Tiles API.',
+  'Select-all paste the key and fly again.',
+];
+const STEPS_BILLING = [
+  'Google Cloud → Billing → link an account to this project.',
+  'Photorealistic 3D Tiles will not serve without billing linked (free credit still applies).',
+  'Wait a few minutes, then fly again.',
+];
+const STEPS_INVALID = [
+  'Open Maps → Real World.',
+  'Select-all in the key field and paste the full key (starts with AIza).',
+  'Check for a typo, stray space, or truncated paste.',
+  'Confirm the key is from the project where Map Tiles API is enabled.',
+];
+const STEPS_NETWORK = [
+  'Check your connection.',
+  'Disable ad-blockers / privacy extensions for this origin.',
+  'Confirm tile.googleapis.com is not blocked.',
+  'Fly again.',
+];
+const STEPS_HTTP = [
+  'Confirm Map Tiles API is enabled on the same project as this key.',
+  'Confirm billing is linked.',
+  'Application restrictions: None, or this origin.',
+  'API restrictions include Map Tiles API.',
+  'New keys can take ~60 min to become live.',
+  'Select-all paste the key.',
+];
+
+function showKeyErrorCard(pre) {
+  emit('osd:flash', {
+    title: pre.title,
+    body: pre.body || pre.detail,
+    next: pre.next || pre.hint,
+    nextEvent: { name: 'menu:goto', detail: { tab: 'maps', realworld: true } },
+    level: 'error',
+  });
+}
+
+function writeTilesErrorFile(pre, apiKey) {
+  const origin = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
+  const lines = [
+    'PropWash Map Tiles error',
+    '========================',
+    `timestamp: ${new Date().toISOString()}`,
+    `http_status: ${pre.httpStatus == null ? '' : pre.httpStatus}`,
+    `google_status: ${pre.googleStatus || ''}`,
+    `google_message: ${pre.googleMessage || ''}`,
+    `google_reason: ${pre.googleReason || ''}`,
+    `origin: ${origin}`,
+    `key_fingerprint: ${keyFingerprint(apiKey)}`,
+    `class: ${pre.klass || 'unknown'}`,
+    '',
+    pre.title || '',
+    pre.detail || '',
+    pre.hint || '',
+    '',
+    'Fix steps',
+    '---------',
+    ...(pre.steps || []).map((s, i) => `${i + 1}. ${s}`),
+    '',
+    'The raw API key is never written to this file.',
+  ];
+  downloadTilesErrorFile(lines.join('\n'));
+}
+
+function reportKeyFailure(pre, apiKey) {
+  writeTilesErrorFile(pre, apiKey);
+  showKeyErrorCard(pre);
+}
+
+/** Dark ground + pad, no cyan canvas placard. Card lives in #ui-root. */
+function buildQuietGround(scene, env) {
+  try { env?.setHDRIBands?.({}); } catch (e) { /* noop */ }
+
+  const root = new THREE.Group();
+  root.name = 'realworld-keyfail';
+  const disposables = [];
+  const track = (r) => { disposables.push(r); return r; };
+
+  const groundGeo = track(new THREE.CircleGeometry(320, 64));
+  const groundMat = track(new THREE.MeshStandardMaterial({
+    color: 0x10151d, roughness: 0.95, metalness: 0.0,
+  }));
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  root.add(ground);
+
+  const grid = new THREE.GridHelper(640, 64, 0x2a2a32, 0x16161c);
+  grid.material.transparent = true;
+  grid.material.opacity = 0.35;
+  grid.position.y = 0.02;
+  track(grid.geometry); track(grid.material);
+  root.add(grid);
+
+  const padGeo = track(new THREE.RingGeometry(1.9, 2.2, 40));
+  const padMat = track(new THREE.MeshStandardMaterial({
+    color: 0x1a1a1e, emissive: 0x3a3a42, emissiveIntensity: 0.25, side: THREE.DoubleSide,
+  }));
+  const pad = new THREE.Mesh(padGeo, padMat);
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.y = 0.04;
+  root.add(pad);
+
+  scene.add(root);
+  const spawnPos = new THREE.Vector3(0, 1, 0);
+  return {
+    name: 'Real World',
+    spawn: { position: spawnPos, yawRad: 0 },
+    getGroundHeight: () => 0,
+    colliders: [],
+    gates: [],
+    retrievalPoints: [],
+    homePad: spawnPos.clone(),
+    setCamera() { /* no tiles */ },
+    getAttributions() { return ''; },
+    update() { /* quiet */ },
+    dispose(sceneRef) {
+      sceneRef.remove(root);
+      for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
+    },
+  };
+}
+
 // ---------------------------------------------------------------
 // public entry
 // ---------------------------------------------------------------
 /**
  * Ask Google for the 3D Tiles root with the user's key and translate whatever
- * comes back into something actionable. Returns {ok:true} or
- * {ok:false, title, detail, hint}.
+ * comes back into something actionable. Returns {ok:true} or a fail record
+ * (klass, title, detail, hint, steps, http/google fields). Never includes the key.
  */
 async function preflightKey(apiKey) {
   const url = `https://tile.googleapis.com/v1/3dtiles/root.json?key=${encodeURIComponent(apiKey)}`;
@@ -663,70 +738,104 @@ async function preflightKey(apiKey) {
   try {
     res = await fetch(url, { method: 'GET' });
   } catch (e) {
-    return {
-      ok: false,
-      title: 'CANNOT REACH GOOGLE',
-      detail: 'NETWORK OR BROWSER BLOCKED THE TILE REQUEST',
-      hint: 'CHECK YOUR CONNECTION / AD-BLOCKER, THEN FLY AGAIN',
-    };
+    return failRecord(
+      'network',
+      "Can't reach Google",
+      'The tile request was blocked by the network or browser.',
+      'Check your connection, then fly again',
+      STEPS_NETWORK,
+    );
   }
   if (res.ok) return { ok: true };
 
   let reason = '';
   let message = '';
+  let status = '';
   try {
     const body = await res.json();
     const err = body && body.error;
     message = String((err && err.message) || '');
+    status = String((err && err.status) || '');
     const details = (err && err.details) || [];
     for (const d of details) {
       if (d && d.reason) { reason = String(d.reason); break; }
     }
-    if (!reason && err && err.status) reason = String(err.status);
+    if (!reason && status) reason = status;
   } catch (e) { /* non-JSON error body */ }
 
   const short = (message || `HTTP ${res.status}`).toUpperCase().slice(0, 62);
+  const extra = {
+    httpStatus: res.status,
+    googleStatus: status,
+    googleMessage: message,
+    googleReason: reason,
+  };
 
   // Referrer restriction is the single most common cause once the API is on:
   // the key is fine, it just is not allowed to be used from this site.
   if (/REFERR|REFERER/i.test(reason) || /referer/i.test(message)) {
-    return {
-      ok: false,
-      title: 'KEY BLOCKED FOR THIS SITE',
-      detail: `ADD ${location.host.toUpperCase()}/* TO THE KEY'S WEBSITE RESTRICTIONS`,
-      hint: 'GOOGLE CLOUD > CREDENTIALS > YOUR KEY > WEBSITE RESTRICTIONS',
-    };
+    return failRecord(
+      'referrer',
+      'Key blocked for this site',
+      'This origin is not allowed to use the key.',
+      'Add this site to the key restrictions',
+      STEPS_REFERRER,
+      extra,
+    );
   }
   if (/SERVICE_DISABLED|PERMISSION_DENIED|API_NOT/i.test(reason) || /has not been used|is disabled/i.test(message)) {
-    return {
-      ok: false,
-      title: 'MAP TILES API NOT ENABLED',
-      detail: short,
-      hint: 'GOOGLE CLOUD > APIS & SERVICES > ENABLE "MAP TILES API"',
-    };
+    return failRecord(
+      'api_disabled',
+      'Map Tiles API is off',
+      'This project has not enabled Map Tiles API.',
+      'Enable Map Tiles API, then fly again',
+      STEPS_DISABLED,
+      extra,
+    );
   }
   if (/BILLING/i.test(reason) || /billing/i.test(message)) {
-    return {
-      ok: false,
-      title: 'BILLING NOT ENABLED',
-      detail: 'GOOGLE REQUIRES A BILLING ACCOUNT (FREE CREDIT STILL APPLIES)',
-      hint: 'GOOGLE CLOUD > BILLING > LINK AN ACCOUNT TO THIS PROJECT',
-    };
+    return failRecord(
+      'billing',
+      'Billing is not linked',
+      'Google needs a billing account on this project.',
+      'Link billing, then fly again',
+      STEPS_BILLING,
+      extra,
+    );
   }
-  if (/API_KEY_INVALID/i.test(reason)) {
-    return {
-      ok: false,
-      title: 'API KEY NOT VALID',
-      detail: 'THE KEY WAS NOT ACCEPTED — CHECK FOR A TYPO OR STRAY SPACE',
-      hint: 'ESC > MAPS > REAL WORLD TO PASTE IT AGAIN',
-    };
+  if (/API_KEY_INVALID/i.test(reason) || /API_KEY_INVALID/i.test(status)) {
+    return failRecord(
+      'invalid',
+      'API key not accepted',
+      'The key was rejected. Check for a typo or stray space.',
+      'Paste the key again in Maps',
+      STEPS_INVALID,
+      extra,
+    );
   }
-  return {
-    ok: false,
-    title: `TILE REQUEST FAILED (${res.status})`,
-    detail: short,
-    hint: reason ? `REASON: ${reason}` : 'SEE THE BROWSER CONSOLE FOR THE FULL ERROR',
-  };
+  // Google uses 404 + NOT_FOUND (not always API_KEY_INVALID) when the key
+  // is not live for Photorealistic 3D Tiles / Map Tiles API.
+  const notFound = res.status === 404 && (
+    /NOT_FOUND/i.test(reason) || /NOT_FOUND/i.test(status) || /not found/i.test(message)
+  );
+  if (notFound) {
+    return failRecord(
+      'not_found',
+      '3D tiles unavailable',
+      'Google did not serve 3D tiles for this key.',
+      'Check the Maps key and billing, or fly a built map',
+      STEPS_NOT_FOUND,
+      extra,
+    );
+  }
+  return failRecord(
+    'http',
+    '3D tiles unavailable',
+    'Google did not serve 3D tiles for this key.',
+    'Check the Maps key and billing, or fly a built map',
+    STEPS_HTTP,
+    extra,
+  );
 }
 
 export async function buildRealWorld(scene, env, opts) {
@@ -742,10 +851,14 @@ export async function buildRealWorld(scene, env, opts) {
   const lon = Number.isFinite(Number(o.lon)) ? Number(o.lon) : -80.13;
 
   if (!apiKey) {
-    return buildPlacard(scene, env,
-      'REAL WORLD MODE',
-      'ADD YOUR FREE GOOGLE MAPS API KEY IN ESC > MAPS',
-      'CONSOLE.CLOUD.GOOGLE.COM · ENABLE "MAP TILES API"');
+    emit('osd:flash', {
+      title: 'Maps key needed',
+      body: 'Real World uses your Google Map Tiles key.',
+      next: 'Add a key in Maps, or fly a built map',
+      nextEvent: { name: 'menu:goto', detail: { tab: 'maps', realworld: true } },
+      level: 'error',
+    });
+    return buildQuietGround(scene, env);
   }
 
   // Preflight the key ourselves so we can report Google's ACTUAL reason.
@@ -754,8 +867,13 @@ export async function buildRealWorld(scene, env, opts) {
   // restrictions or a project without billing enabled.
   const pre = await preflightKey(apiKey);
   if (!pre.ok) {
-    console.error('[realworld] key preflight failed:', pre);
-    return buildPlacard(scene, env, pre.title, pre.detail, pre.hint);
+    console.error('[realworld] key preflight failed:', {
+      klass: pre.klass, title: pre.title, httpStatus: pre.httpStatus,
+      googleStatus: pre.googleStatus, googleReason: pre.googleReason,
+      fingerprint: keyFingerprint(apiKey),
+    });
+    reportKeyFailure(pre, apiKey);
+    return buildQuietGround(scene, env);
   }
 
   let lib = null;
@@ -763,27 +881,41 @@ export async function buildRealWorld(scene, env, opts) {
     lib = await loadTilesLib();
   } catch (err) {
     console.error('[realworld] tiles library failed to load:', err);
-    return buildPlacard(scene, env,
-      'REAL WORLD MODE',
-      'TILE ENGINE FAILED TO LOAD — CHECK CONNECTION',
-      'RELOAD THE MAP FROM ESC > MAPS TO RETRY');
+    emit('osd:flash', {
+      title: '3D tiles unavailable',
+      body: 'The tile engine failed to load.',
+      next: 'Check your connection, then fly again',
+      nextEvent: { name: 'menu:goto', detail: { tab: 'maps', realworld: true } },
+      level: 'error',
+    });
+    return buildQuietGround(scene, env);
   }
 
   try {
     return await buildTilesWorld(scene, env, lib, apiKey, lat, lon);
   } catch (err) {
-    console.error('[realworld] tile world failed:', err);
+    console.error('[realworld] tile world failed:', err && err.message);
     const msg = String((err && err.message) || err);
     const rejected = /\b4\d\d\b/.test(msg);
     if (rejected) {
-      return buildPlacard(scene, env,
-        'API KEY REJECTED',
-        'CHECK "MAP TILES API" IS ENABLED FOR YOUR KEY',
-        'ESC > MAPS TO FIX THE KEY, THEN FLY AGAIN');
+      const late = failRecord(
+        'http',
+        '3D tiles unavailable',
+        'Google did not serve 3D tiles for this key.',
+        'Check the Maps key and billing, or fly a built map',
+        STEPS_HTTP,
+        { httpStatus: 400, googleMessage: msg },
+      );
+      reportKeyFailure(late, apiKey);
+      return buildQuietGround(scene, env);
     }
-    return buildPlacard(scene, env,
-      'REAL WORLD UNAVAILABLE',
-      err && err.timeout ? 'TILES TIMED OUT — CHECK CONNECTION' : 'TILES FAILED TO LOAD — CHECK CONNECTION',
-      'RELOAD THE MAP FROM ESC > MAPS TO RETRY');
+    emit('osd:flash', {
+      title: '3D tiles unavailable',
+      body: err && err.timeout ? 'Tiles timed out. Check your connection.' : 'Tiles failed to load.',
+      next: 'Check your connection, then fly again',
+      nextEvent: { name: 'menu:goto', detail: { tab: 'maps', realworld: true } },
+      level: 'error',
+    });
+    return buildQuietGround(scene, env);
   }
 }

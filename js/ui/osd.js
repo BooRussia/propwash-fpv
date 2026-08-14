@@ -4,7 +4,7 @@
 // elements. Cheap per-frame updates: every value is quantized,
 // cached, and only written to the DOM when it actually changes.
 // ============================================================
-import { on, clamp } from '../core/state.js';
+import { on, emit, clamp } from '../core/state.js';
 
 const FLIGHT_MODE_LABEL = { acro: 'ACRO', angle: 'ANGLE', horizon: 'HRZN' };
 const RAD2DEG = 180 / Math.PI;
@@ -126,15 +126,66 @@ const OSD_CSS = `
 .pw-osd .osd-cross-tick.l { left: 0; }
 .pw-osd .osd-cross-tick.r { right: 0; }
 
-/* ---- flash messages ---- */
+/* ---- flash / preflight (settings tokens, ghost outline, no cyan) ---- */
 .pw-osd .osd-flash {
-  position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
-  font-size: 26px; font-weight: 700; letter-spacing: 4px;
-  text-align: center; white-space: nowrap; max-width: 92%;
+  position: absolute; top: 12%; left: 50%; transform: translateX(-50%);
+  width: min(92vw, 420px);
+  padding: 12px 16px;
+  background: var(--pw-bg, rgba(0, 0, 0, 0.86));
+  border: 1px solid var(--pw-accent, #c4c4cc);
+  border-radius: var(--pw-radius, 2px);
+  color: var(--pw-text, #f0f0fa);
+  text-align: left;
+  text-transform: none;
+  text-shadow: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 400;
+  font-family: var(--pw-font, "Segoe UI", system-ui, sans-serif);
+  white-space: normal;
   overflow: hidden;
-  opacity: 0; transition: opacity 0.4s ease;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
-.pw-osd .osd-flash.show { opacity: 1; transition: opacity 0.1s ease; }
+.pw-osd .osd-flash.show { opacity: 1; transition: opacity 0.12s ease; }
+.pw-osd .osd-flash.show,
+.pw-osd .osd-flash.show * { pointer-events: auto; }
+.pw-osd .osd-flash-label {
+  font-family: var(--pw-mono, "Consolas", "Cascadia Mono", monospace);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pw-accent, #c4c4cc);
+  line-height: 1.3;
+}
+.pw-osd .osd-flash-body {
+  margin-top: 6px;
+  color: var(--pw-text, #f0f0fa);
+  font-size: 13px;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.pw-osd .osd-flash-next {
+  display: inline-block;
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--pw-accent, #c4c4cc);
+  color: var(--pw-text, #f0f0fa);
+  border-radius: var(--pw-radius, 2px);
+  padding: 6px 11px;
+  font-size: 12px;
+  font-family: var(--pw-font, "Segoe UI", system-ui, sans-serif);
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.pw-osd .osd-flash-next:hover { background: rgba(240, 240, 250, 0.06); }
+.pw-osd .osd-flash.error .osd-flash-label { color: var(--pw-warn, #b8a46a); }
 
 /* ---- persistent hint line ---- */
 .pw-osd .osd-hint {
@@ -155,13 +206,16 @@ export class OSD {
     this._visible = true;
     this._flashShown = false;
     this._flashUntil = 0;
+    this._flashSticky = false;
+    this._flashEsc = null;
+    this._flashNext = null;
     this._objectiveText = '';
 
     this._build();
 
     // self-subscription on the app bus
     on('mode:objective', (d) => this.setObjective(d && typeof d.text === 'string' ? d.text : ''));
-    on('osd:flash', (d) => { if (d && d.text != null) this.flash(String(d.text), d.ms); });
+    on('osd:flash', (d) => { if (d) this.flash(d); });
   }
 
   // ---------------- construction ----------------
@@ -267,12 +321,88 @@ export class OSD {
     this.objectiveEl.style.display = s ? '' : 'none';
   }
 
-  flash(text, ms) {
-    this.flashEl.textContent = text == null ? '' : String(text);
+  _clearFlashEsc() {
+    if (this._flashEsc) {
+      window.removeEventListener('keydown', this._flashEsc, true);
+      this._flashEsc = null;
+    }
+  }
+
+  dismissFlash() {
+    this._flashShown = false;
+    this._flashSticky = false;
+    this._flashUntil = 0;
+    this._flashNext = null;
+    this._clearFlashEsc();
+    this.flashEl.classList.remove('show', 'error');
+    this.flashEl.replaceChildren();
+  }
+
+  /**
+   * Settings-token toast. Info auto-dismisses. Errors stay until
+   * dismiss (Esc / click-away next) or the next flash.
+   * Accepts a string, or { text, title, body, next, nextEvent, level, ms }.
+   */
+  flash(d, ms) {
+    if (d == null) return;
+    if (typeof d === 'string') d = { text: d, ms };
+    const title = d.title != null ? String(d.title) : '';
+    const body = d.body != null ? String(d.body) : (d.text != null ? String(d.text) : '');
+    const next = d.next != null ? String(d.next) : '';
+    const level = d.level === 'error' ? 'error' : 'info';
+    const sticky = level === 'error' || d.sticky === true;
+
+    this._clearFlashEsc();
+    this.flashEl.replaceChildren();
+    this.flashEl.className = 'osd-flash' + (level === 'error' ? ' error' : '');
+
+    if (title) {
+      const lab = document.createElement('div');
+      lab.className = 'osd-flash-label';
+      lab.textContent = title;
+      this.flashEl.appendChild(lab);
+    }
+    if (body) {
+      const b = document.createElement('div');
+      b.className = 'osd-flash-body';
+      b.textContent = body;
+      this.flashEl.appendChild(b);
+    }
+    this._flashNext = d.nextEvent || null;
+    if (next) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'osd-flash-next';
+      btn.textContent = next;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const ev = this._flashNext;
+        this.dismissFlash();
+        if (ev && ev.name) {
+          try { emit(ev.name, ev.detail || {}); } catch (err) { /* noop */ }
+        }
+      });
+      this.flashEl.appendChild(btn);
+    }
+
     this.flashEl.classList.add('show');
     this._flashShown = true;
-    const dur = (typeof ms === 'number' && isFinite(ms) && ms > 0) ? ms : 1500;
-    this._flashUntil = performance.now() + dur;
+    this._flashSticky = sticky;
+    if (sticky) {
+      this._flashUntil = Infinity;
+      this._flashEsc = (e) => {
+        if (e.code !== 'Escape' && e.key !== 'Escape') return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.dismissFlash();
+      };
+      window.addEventListener('keydown', this._flashEsc, true);
+    } else {
+      const dur = (typeof d.ms === 'number' && isFinite(d.ms) && d.ms > 0)
+        ? d.ms
+        : ((typeof ms === 'number' && isFinite(ms) && ms > 0) ? ms : 1800);
+      this._flashUntil = performance.now() + dur;
+    }
   }
 
   setVisible(visible) {
@@ -287,9 +417,8 @@ export class OSD {
     const c = this._c;
 
     // ---- flash expiry (runs even while hidden so it doesn't get stuck) ----
-    if (this._flashShown && performance.now() >= this._flashUntil) {
-      this._flashShown = false;
-      this.flashEl.classList.remove('show');
+    if (this._flashShown && !this._flashSticky && performance.now() >= this._flashUntil) {
+      this.dismissFlash();
     }
 
     // ---- top-left: name / flight mode / game mode ----

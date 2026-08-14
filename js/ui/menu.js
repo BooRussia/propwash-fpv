@@ -224,6 +224,18 @@ export class Menu {
     // TrailSystem answers 'trail:list' with 'trail:list:result'
     on('trail:list:result', (d) => this._onTrails(d));
 
+    // Real World key-error card: Maps → Real World
+    on('menu:goto', (d) => {
+      this.open();
+      if (d && d.tab) this._selectTab(d.tab);
+      if (d && d.realworld) {
+        this._rwOpen = true;
+        this._wizardOpen = false;
+        try { this._paintWizard(); } catch (e) { /* noop */ }
+        try { this._rwPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) { /* noop */ }
+      }
+    });
+
     const mount = document.getElementById('ui-root') || document.body;
     mount.appendChild(this.backdrop);
     this._selectTab('fly');
