@@ -14,7 +14,8 @@
 //   sticks → Actual or Betaflight rates (js/input/rates.js) → setpoints (rad/s)
 //   torque-limited P controller toward setpoint (responseTau)
 //   first-order motor lag on torque & thrust (spec.motorTau)
-//   thrust ∝ throttle^2 * battery voltage factor, air-mode idle floor
+//   thrust ∝ (raw stick after expo)^2 * battery voltage factor
+//   air-mode idle spins motors (audio/feel) but adds no vertical force
 //   battery: rest-voltage discharge + throttle^2 sag → punch fade
 //   per-axis quadratic aero drag (front/top/side CdA), wind aware
 //   prop wash wobble when descending into own wake, ground effect,
@@ -322,7 +323,9 @@ export class Quad {
     const mtx = Math.max(1e-9, mt.x), mty = Math.max(1e-9, mt.y), mtz = Math.max(1e-9, mt.z);
     const aM = 1 - Math.exp(-dt / Math.max(1e-4, spec.motorTau)); // motor-lag blend
 
-    // Throttle expo (Liftoff Mid curve) then air-mode idle floor (per-drone feel).
+    // Throttle expo (Liftoff Mid curve). Air-mode idle still spins the motors
+    // for audio / authority feel, but lift is raw stick after expo — a zero
+    // stick is a dead drop, not a 15% residual hover.
     let thrStick = this._input.throttle;
     const thrExpo = clamp(Number(settings.throttleExpo) || 0, 0, 1);
     if (thrExpo > 0) thrStick = thrStick * (1 - thrExpo) + thrStick * thrStick * thrStick * thrExpo;
@@ -330,6 +333,7 @@ export class Quad {
       ? spec.feel.idleMotorThrottle
       : (Number.isFinite(spec.idleMotorThrottle) ? spec.idleMotorThrottle : AIRMODE_IDLE);
     const thrIn = armed ? Math.max(thrStick, idle) : 0;
+    const thrForce = armed ? thrStick : 0;
 
     // ---------------- battery ----------------
     if (armed) {
@@ -472,7 +476,7 @@ export class Quad {
     // ---------------- thrust ----------------
     // Chipped props bite less air: total lift scales with the mean prop health.
     const thrustCmd = armed
-      ? effectiveMaxThrustN(spec) * this._voltFactor * (0.02 + 0.98 * thrIn * thrIn) * this._thrustMul
+      ? effectiveMaxThrustN(spec) * this._voltFactor * (thrForce * thrForce) * this._thrustMul
       : 0;
     this._thrust += (thrustCmd - this._thrust) * aM;
     let thrust = this._thrust;
