@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { buildPalm, createPalms } from '../vegetation.js';
 import {
-  PIER_X, ROAD_Z0, ROAD_Z1, CURB_Z0, CURB_Z1,
-  groundHeight, stripY, inKeepout,
+  PIER_X, ROAD_Z0, ROAD_Z1,
+  groundHeight, stripY, inKeepout, onPavement,
 } from './constants.js';
 
 // ============================================================
@@ -16,8 +16,10 @@ import {
 //
 // A palm is rejected when its TRUNK would stand inside anything solid, when
 // its CROWN would push into a structure (1.2 m of clearance is demanded, per
-// the crown radius), when it lands in the carriageway / curb strips / a
-// ground keep-out, or when it would clip a palm already placed.
+// the crown radius), when it lands on pavement (boardwalk / Ocean Drive /
+// cross-street / Lummus walk) or a ground keep-out, or when it would clip a
+// palm already placed. Pavement fails DROP the candidate — they are never
+// nudged onto the deck. Colliders are trunk cylinders only.
 // ============================================================
 
 const CROWN_MARGIN = 1.2;      // metres of air demanded around the crown
@@ -54,11 +56,6 @@ export function planPalms(ctx) {
   return plan;
 }
 
-/** Carriageway, curb strips and the raised paver bands are never plantable. */
-function onRoadway(z) {
-  return (z > CURB_Z0 - 1.2 && z < CURB_Z1 + 1.2 && !(z > 35.6 && z < 37.4) && !(z > 50.6 && z < 52.4));
-}
-
 /**
  * Accept/reject one palm position.
  * Two probes: a trunk probe at ground level and a wider crown probe up in the
@@ -67,7 +64,9 @@ function onRoadway(z) {
  */
 function palmFits(ctx, x, z, sc, taken, curated) {
   if (Math.abs(x) > 600) return 0;
-  if (onRoadway(z)) return 0;
+  // pavement (boardwalk, carriageway, cross-street, Lummus walk) is a hard
+  // drop for everyone — including curated rows and the spawn-side heroes
+  if (onPavement(x, z)) return 0;
   // curated rows requested by a landmark are exempt from the ground keep-outs
   // (they belong to the feature that owns that ground) but still have to pass
   // the collider test like everything else

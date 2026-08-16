@@ -19,7 +19,7 @@ import * as THREE from 'three';
 import { settings, clamp } from '../../core/state.js';
 import { assetLib } from '../../core/assets.js';
 
-import { groundHeight } from './constants.js';
+import { groundHeight, cameraFloor } from './constants.js';
 import { mulberry32 } from './rng.js';
 import { createColliderBag } from './colliders.js';
 import { buildGround, buildOcean } from './terrain.js';
@@ -211,6 +211,7 @@ export async function buildMiami(scene, env) {
     name: 'Miami Skyline',
     spawn: { position: spawnPos, yawRad: Math.PI / 2 },
     getGroundHeight: groundHeight,
+    getCameraFloor: cameraFloor,
     colliders,
     gates,
     retrievalPoints,

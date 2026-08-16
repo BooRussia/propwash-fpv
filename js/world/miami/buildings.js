@@ -4,8 +4,8 @@ import {
   CITY_Y, GAP_X, XS_HALF, XS_Z0, XS_Z1, CINEMA_X, CINEMA_W,
   stripY, reservedOverlap,
 } from './constants.js';
-import { windowTexture, decoFacadeTextures, setAoUVs } from './textures.js';
-import { facadeUV, colorFill, cBox, cCyl } from './geo.js';
+import { windowTexture, decoFacadeTextures, setAoUVs, roofTexture } from './textures.js';
+import { facadeUV, stripBoxCaps, roofSlabGeo, colorFill, cBox, cCyl } from './geo.js';
 
 // Deterministic 2D hash — used where a per-tower choice must NOT consume a
 // draw from any layout stream (facade variant picking).
@@ -92,6 +92,24 @@ export function buildSkyline(ctx) {
   const DECO_TILE_U = 14.4, DECO_TILE_V = 14;
   const hasGlassTex = !!glassSet.map || hasGlassDay;
   const regDN = ctx.regDN;
+
+  // Roof lids — tile / TPO / standing-seam. Shared across the skyline so a
+  // still never shows the wall/window atlas on a top face.
+  const tileRoofTex = track(roofTexture('tile', 1));
+  const tpoRoofTex = track(roofTexture('tpo', 2));
+  const metalRoofTex = track(roofTexture('metal', 3));
+  tileRoofTex.repeat.set(4, 4);
+  tpoRoofTex.repeat.set(3, 3);
+  metalRoofTex.repeat.set(6, 4);
+  const tileRoofMat = track(new THREE.MeshStandardMaterial({
+    map: tileRoofTex, color: 0xffffff, roughness: 0.78, metalness: 0.04,
+  }));
+  const tpoRoofMat = track(new THREE.MeshStandardMaterial({
+    map: tpoRoofTex, color: 0xffffff, roughness: 0.88, metalness: 0.02,
+  }));
+  const metalRoofMat = track(new THREE.MeshStandardMaterial({
+    map: metalRoofTex, color: 0xffffff, roughness: 0.42, metalness: 0.55,
+  }));
 
   // ---- glass curtain wall ----
   // Daylight albedo comes from facade_glass_day (a DAY photo). facade_glass is
@@ -203,11 +221,20 @@ export function buildSkyline(ctx) {
         const th = h * (t === 0 ? 0.55 : 0.45 / (tiers - 1));
         const geo = track(new THREE.BoxGeometry(tw, th, td));
         facadeUV(geo, tw, th, td, DECO_TILE_U, DECO_TILE_V, offU, offV);
+        stripBoxCaps(geo);
         setAoUVs(geo);
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(x, y + th / 2, z);
         mesh.castShadow = true;
         add(mesh);
+        // terracotta lid on every tier — setbacks leave the lower tops exposed
+        {
+          const lid = new THREE.Mesh(track(roofSlabGeo(tw, td)), tileRoofMat);
+          lid.position.set(x, y + th, z);
+          lid.castShadow = true;
+          lid.receiveShadow = true;
+          add(lid);
+        }
         solid(tw, th, td, 0, y - CITY_Y, 0);
         y += th;
         tw *= 0.72; td *= 0.72;
@@ -223,6 +250,12 @@ export function buildSkyline(ctx) {
       const cap = new THREE.Mesh(capGeo, mat);
       cap.position.set(x, y + 1.7, z);
       add(cap);
+      {
+        const capR = Math.min(tw, td) * 0.42;
+        const lid = new THREE.Mesh(track(new THREE.CylinderGeometry(capR + 0.06, capR + 0.06, 0.16, 12)), tileRoofMat);
+        lid.position.set(x, y + 3.45, z);
+        add(lid);
+      }
       entry.cap = { r: Math.min(tw, td) * 0.42, y0: y - CITY_Y - 0.05, h: 3.6 };
       // neon accent strip
       if (rng() < 0.6) {
@@ -247,6 +280,15 @@ export function buildSkyline(ctx) {
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
       add(mesh);
+      {
+        const lid = new THREE.Mesh(
+          track(new THREE.CylinderGeometry(w / 2 + 0.08, w / 2 + 0.08, 0.2, 18)),
+          metalRoofMat
+        );
+        lid.position.set(x, CITY_Y + h + 0.1, z);
+        lid.castShadow = true;
+        add(lid);
+      }
       d = w;
       entry.d = w;
       entry.cylR = w / 2;
@@ -265,6 +307,7 @@ export function buildSkyline(ctx) {
       const mv = z > 100 && rng4() < 0.42 ? 1 + ((rng4() * 3) | 0) : 0;
       entry.mv = mv;
       const boxes = [];
+      const roofs = [];
       const addBox = (bw, bh, bd, bx, by, bz, ry = 0) => {
         const g = new THREE.BoxGeometry(bw, bh, bd);
         if (textured) {
@@ -274,10 +317,12 @@ export function buildSkyline(ctx) {
           const su = Math.max(1, bw / 14), sv = Math.max(1, bh / 26);
           for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
         }
+        stripBoxCaps(g);
         setAoUVs(g);
         if (ry) g.rotateY(ry);
         g.translate(bx, by, bz);
         boxes.push(g);
+        roofs.push(roofSlabGeo(bw, bd, bx, by + bh / 2, bz, ry));
         if (ry) obbs.push([bw, bh, bd, bx, by - bh / 2, bz, ry]);
         else solid(bw, bh, bd, bx, by - bh / 2, bz);
       };
@@ -309,6 +354,17 @@ export function buildSkyline(ctx) {
       mesh.position.set(x, CITY_Y, z);
       mesh.castShadow = true;
       add(mesh);
+      if (roofs.length) {
+        const rg = roofs.length > 1 ? track(mergeGeometries(roofs)) : track(roofs[0]);
+        if (roofs.length > 1) roofs.forEach((g) => g.dispose());
+        const lidMat = useOffice || hash01((x * 3) | 0, (z * 5) | 0) >= 0.4
+          ? tpoRoofMat : metalRoofMat;
+        const lid = new THREE.Mesh(rg, lidMat);
+        lid.position.set(x, CITY_Y, z);
+        lid.castShadow = true;
+        lid.receiveShadow = true;
+        add(lid);
+      }
       // roof details
       if (rng() < 0.5) {
         const acGeo = track(new THREE.BoxGeometry(w * 0.25, 2.5, d * 0.25));
@@ -437,6 +493,7 @@ export function buildHelipads(ctx, sky) {
       const uv = geo.attributes.uv;
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / 26));
     }
+    stripBoxCaps(geo);
     setAoUVs(geo);
     const mesh = new THREE.Mesh(geo, glassMat);
     mesh.position.set(hx, CITY_Y + h / 2, hz);

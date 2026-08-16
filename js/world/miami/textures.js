@@ -244,6 +244,48 @@ export function stuccoTexture() {
   return tex;
 }
 
+/** Roof albedo — tile / TPO membrane / standing-seam metal. Never windows. */
+export function roofTexture(kind = 'tpo', seed = 1) {
+  const r = mulberry32(0x400f0000 + (seed | 0) + (kind === 'tile' ? 17 : kind === 'metal' ? 41 : 3));
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  if (kind === 'tile') {
+    g.fillStyle = '#8a3d32'; g.fillRect(0, 0, 128, 128);
+    const rows = 10, cols = 8;
+    for (let j = 0; j < rows; j++) {
+      for (let i = -1; i < cols; i++) {
+        const x = (i + (j % 2) * 0.5) * (128 / cols);
+        const y = j * (128 / rows);
+        g.fillStyle = `rgb(${130 + (r() * 40) | 0},${50 + (r() * 28) | 0},${40 + (r() * 22) | 0})`;
+        g.fillRect(x + 1, y + 1, 128 / cols - 2, 128 / rows - 2);
+      }
+    }
+  } else if (kind === 'metal') {
+    g.fillStyle = '#7d868e'; g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 8; i++) {
+      const x = i * 16;
+      g.fillStyle = `rgba(255,255,255,${0.06 + r() * 0.05})`;
+      g.fillRect(x, 0, 12, 128);
+      g.fillStyle = 'rgba(20,24,28,0.28)';
+      g.fillRect(x + 12, 0, 2, 128);
+    }
+  } else {
+    g.fillStyle = '#c8c2b4'; g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 200; i++) {
+      g.fillStyle = `rgba(0,0,0,${r() * 0.04})`;
+      g.fillRect(r() * 128, r() * 128, 2, 2);
+    }
+    g.fillStyle = 'rgba(90,88,80,0.22)';
+    for (let i = 0; i < 4; i++) g.fillRect(i * 32, 0, 1, 128);
+    for (let j = 0; j < 4; j++) g.fillRect(0, j * 32, 128, 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 // aoMap UVs: three r180 samples aoMap through texture.channel (default 0 → 'uv'),
 // but we alias uv1/uv2 too so any channel choice — and older code paths — resolve.
 export function setAoUVs(geo) {
