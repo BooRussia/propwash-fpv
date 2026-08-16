@@ -52,7 +52,8 @@ export const DRONES = {
     motorTau: 0.022,
     inertia:   { x: 2.36e-5, y: 3.54e-5, z: 2.36e-5 },
     maxTorque: { x: 3.1e-3,  y: 1.5e-3,  z: 3.1e-3 },
-    dragArea:  { front: 0.0023, top: 0.0058, side: 0.0027 },
+    // Belly CdA: whoop stays draggy-er than the 5″ (dead-stick vt ≈ 21 m/s).
+    dragArea:  { front: 0.0023, top: 0.0012, side: 0.0027 },
     battWh: 1.976,               // 520 mAh × 3.8 V
     sagVoltsPerCell: 0.50,       // Ri 0.2 Ω 1S — punches sag hard
     camTiltDefaultDeg: 30,
@@ -114,7 +115,8 @@ export const DRONES = {
     motorTau: 0.045,
     inertia:   { x: 8.3e-4, y: 1.24e-3, z: 8.3e-4 },
     maxTorque: { x: 0.131,  y: 0.062,   z: 0.131 },
-    dragArea:  { front: 0.020, top: 0.034, side: 0.022 },
+    // Ducted cinewhoop: draggy-er than a 5″, vt ≈ 26 m/s belly-on.
+    dragArea:  { front: 0.020, top: 0.010, side: 0.022 },
     battWh: 12.6,
     sagVoltsPerCell: 0.16,
     camTiltDefaultDeg: 25,
@@ -156,7 +158,8 @@ export const DRONES = {
     motorTau: 0.055,
     inertia:   { x: 2.73e-3, y: 4.10e-3, z: 2.73e-3 },
     maxTorque: { x: 0.95,    y: 0.32,    z: 0.95 },
-    dragArea:  { front: 0.028, top: 0.050, side: 0.032 },
+    // 5″ belly CdA lets a zero-throttle dive pass ~25–40 m/s (vt ≈ 39 m/s).
+    dragArea:  { front: 0.028, top: 0.0045, side: 0.032 },
     battWh: 22.2,                // 1500 mAh × 14.8 V
     sagVoltsPerCell: 0.12,       // cellRi 0.003 Ω, C85
     camTiltDefaultDeg: 30,
