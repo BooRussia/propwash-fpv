@@ -400,6 +400,8 @@ renderer.setAnimationLoop(() => {
       menuOpen: menu.isOpen,
       osd,
       renderPass,
+      getGroundHeight: mapHandle ? mapHandle.getGroundHeight : null,
+      getCameraFloor: mapHandle ? mapHandle.getCameraFloor : null,
     });
   }
 

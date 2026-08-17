@@ -77,6 +77,10 @@ export async function buildGround(ctx) {
     }
     mat.vertexColors = true;
     mat.needsUpdate = true;
+    // pull the sand in front of the water plane at the shoreline
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -1;
+    mat.polygonOffsetUnits = -1;
     const beach = new THREE.Mesh(geo, mat);
     beach.receiveShadow = true;
     // the two ground slabs are flat and mostly inland, so the reflection
@@ -283,7 +287,16 @@ export async function buildOcean(ctx) {
         fog: true,
       });
       water.rotation.x = -Math.PI / 2;
-      water.position.set(0, -0.09, -1700);
+      // Sit below the beach / boardwalk so a crash skim cannot z-fight the
+      // deck or show the water plane punching through the sand. Do not
+      // rewrite the stock Water shader — just the plane and depth bias.
+      water.position.set(0, -0.18, -1700);
+      water.renderOrder = -2;
+      if (water.material) {
+        water.material.polygonOffset = true;
+        water.material.polygonOffsetFactor = 2;
+        water.material.polygonOffsetUnits = 2;
+      }
       track(water.material);
 
       // Bracket the addon's reflection render. Water keeps its virtual camera
@@ -326,7 +339,11 @@ export async function buildOcean(ctx) {
       }
       const sea = new THREE.Mesh(waterGeo, seaMat);
       sea.rotation.x = -Math.PI / 2;
-      sea.position.set(0, -0.05, -1700);
+      sea.position.set(0, -0.16, -1700);
+      sea.renderOrder = -2;
+      seaMat.polygonOffset = true;
+      seaMat.polygonOffsetFactor = 2;
+      seaMat.polygonOffsetUnits = 2;
       if (normals) {
         const t0 = performance.now();
         sea.onBeforeRender = () => {

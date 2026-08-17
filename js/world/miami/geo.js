@@ -66,15 +66,19 @@ export function cTube(p0, p1, r, seg, hex) {
   return colorFill(tubeBetween(p0, p1, r, seg), hex);
 }
 
-// Physically scaled facade UVs for a BoxGeometry: every face maps the texture
-// at a constant tileU x tileV meters, so window size is identical across all
-// towers regardless of their dimensions. offU/offV decorrelate the pattern
-// between neighbouring buildings.
+// Physically scaled facade UVs for a BoxGeometry: SIDE faces only. ±y (the
+// lid and the soffit) stay at a degenerate UV so a leftover cap cannot show
+// windows — roofs are a separate mesh with their own material.
+// Every side maps the texture at a constant tileU x tileV meters.
 export function facadeUV(geo, w, h, d, tileU, tileV, offU, offV) {
   const uv = geo.attributes.uv;
   if (uv.count === 24) {
     const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];   // ±x, ±y, ±z faces
     for (let f = 0; f < 6; f++) {
+      if (f === 2 || f === 3) {                         // +y / -y: never the wall atlas
+        for (let k = 0; k < 4; k++) uv.setXY(f * 4 + k, 0, 0);
+        continue;
+      }
       const du = dims[f][0], dv = dims[f][1];
       for (let k = 0; k < 4; k++) {
         const i = f * 4 + k;
@@ -87,4 +91,27 @@ export function facadeUV(geo, w, h, d, tileU, tileV, offU, offV) {
     }
   }
   uv.needsUpdate = true;
+}
+
+/** Drop +y/-y faces from a BoxGeometry so the wall atlas cannot wrap the lid. */
+export function stripBoxCaps(geo) {
+  if (!geo.index || !geo.groups || geo.groups.length < 6) return geo;
+  const src = geo.index.array;
+  const dst = new src.constructor(24);
+  let o = 0;
+  for (const f of [0, 1, 4, 5]) {
+    const start = geo.groups[f].start;
+    for (let k = 0; k < 6; k++) dst[o++] = src[start + k];
+  }
+  geo.setIndex(new THREE.BufferAttribute(dst, 1));
+  geo.clearGroups();
+  return geo;
+}
+
+/** Thin roof slab. Origin at the wall-box TOP centre; grows upward. */
+export function roofSlabGeo(w, d, x = 0, yTop = 0, z = 0, ry = 0, thick = 0.22) {
+  const g = new THREE.BoxGeometry(w + 0.14, thick, d + 0.14);
+  if (ry) g.rotateY(ry);
+  g.translate(x, yTop + thick / 2, z);
+  return g;
 }

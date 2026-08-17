@@ -8,6 +8,9 @@ import * as THREE from 'three';
 import { settings, clamp } from '../core/state.js';
 import { applyStabilization, dampShake } from './stabilization.js';
 import { sampleShutter } from './shutter.js';
+import { clampCameraToFloor } from './floor.js';
+
+export { CAM_FLOOR_SLACK, minCameraY, clampCameraToFloor } from './floor.js';
 
 const tiltQuat = new THREE.Quaternion();
 const shakeQuat = new THREE.Quaternion();
@@ -61,6 +64,13 @@ export function updateCameraPose(cams, t, ctx) {
   applyStabilization(fpvCam, quad);
   camOffset.set(0, 0.02, -0.04).applyQuaternion(quad.quaternion);
   fpvCam.position.copy(quad.position).add(camOffset);
+  // Crash / near-ground: never punch the near plane through a deck or the
+  // terrain into the water. Maps may supply getCameraFloor (decks + ground);
+  // otherwise getGroundHeight is the floor.
+  {
+    const getFloor = ctx.getCameraFloor || ctx.getGroundHeight;
+    clampCameraToFloor(fpvCam.position, getFloor, fpvCam.near);
+  }
 
   // Shutter hook (no visual change at defaults; reserved for blur/exposure)
   sampleShutter(fpvCam);

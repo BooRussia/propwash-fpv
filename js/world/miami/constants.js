@@ -52,6 +52,24 @@ export const GAP_X = [-501, -315, -129, 57, 243, 429];    // cross-street column
 export const XS_HALF = 6.5;        // cross-street half width
 export const XS_Z0 = 52.9, XS_Z1 = 268;
 
+// ---- boardwalk + pier deck (visuals in landmarks/pier.js) ----
+// Boardwalk: Box 1240 × 0.5 × 8 at (0, CITY_Y+0.05, CITY_Z-3).
+// Pier deck: Box 12 × 0.6 × 165 at (PIER_X, 3.4, CITY_Z-88). Top = 3.7.
+export const BOARDWALK_Z = CITY_Z - 3;
+export const BOARDWALK_W = 1240;
+export const BOARDWALK_D = 8;
+export const BOARDWALK_H = 0.5;
+export const BOARDWALK_Y = CITY_Y + 0.05;                 // mesh centre
+export const BOARDWALK_TOP = BOARDWALK_Y + BOARDWALK_H / 2; // 1.8
+export const BOARDWALK_SHOULDER = 1.2;                    // palm reject only
+export const PIER_DECK_W = 12;
+export const PIER_DECK_D = 165;
+export const PIER_DECK_H = 0.6;
+export const PIER_DECK_Y = 3.4;                           // mesh centre
+export const PIER_DECK_TOP = PIER_DECK_Y + PIER_DECK_H / 2; // 3.7
+export const PIER_DECK_Z = CITY_Z - 88;
+export const PAVILION_Z = CITY_Z - 168;
+
 // Street furniture rests on the raised curb strips, everything else on the slab.
 export function stripY(z) {
   return ((z > 35.1 && z < 37.5) || (z > 50.5 && z < 52.9)) ? CITY_Y + 0.13 : CITY_Y;
@@ -118,6 +136,62 @@ export function inKeepout(x, z, margin = 0) {
         z >= k.z0 - margin && z <= k.z1 + margin) return true;
   }
   return false;
+}
+
+/** Carriageway + curb strips. Sidewalk planting rows (36.5 / 51.5) stay open. */
+export function onRoadway(z) {
+  return (z > CURB_Z0 - 1.2 && z < CURB_Z1 + 1.2 && !(z > 35.6 && z < 37.4) && !(z > 50.6 && z < 52.4));
+}
+
+/** Boardwalk deck strip plus the ~1.2 m shoulder. Drop, never nudge. */
+export function onBoardwalk(x, z) {
+  return Math.abs(x) <= BOARDWALK_W / 2
+      && Math.abs(z - BOARDWALK_Z) <= BOARDWALK_D / 2 + BOARDWALK_SHOULDER;
+}
+
+/** Asphalt columns of the cross streets (GAP_X × XS_Z0..XS_Z1). */
+export function onCrossStreet(x, z) {
+  if (z < XS_Z0 || z > XS_Z1) return false;
+  for (let i = 0; i < GAP_X.length; i++) {
+    if (Math.abs(x - GAP_X[i]) <= XS_HALF) return true;
+  }
+  return false;
+}
+
+/** Lummus pergola walk (paver terrace between the post rows). */
+export function onLummusWalk(x, z) {
+  return x >= LUMMUS_X0 && x <= LUMMUS_X1
+      && Math.abs(z - LUMMUS_Z) <= LUMMUS_HALF + 1.2;
+}
+
+/**
+ * Hard pavement: palms that fail this are dropped, never slid onto the deck.
+ * inKeepout is a separate test (plaza / pier / spawn / marina…).
+ */
+export function onPavement(x, z) {
+  return onRoadway(z) || onBoardwalk(x, z) || onCrossStreet(x, z) || onLummusWalk(x, z);
+}
+
+/** Top of the boardwalk or pier deck at (x,z), or -Infinity if over neither. */
+export function deckTop(x, z) {
+  let top = -Infinity;
+  if (Math.abs(x) <= BOARDWALK_W / 2 && Math.abs(z - BOARDWALK_Z) <= BOARDWALK_D / 2) {
+    top = BOARDWALK_TOP;
+  }
+  if (Math.abs(x - PIER_X) <= PIER_DECK_W / 2 && Math.abs(z - PIER_DECK_Z) <= PIER_DECK_D / 2) {
+    if (PIER_DECK_TOP > top) top = PIER_DECK_TOP;
+  }
+  return top;
+}
+
+/**
+ * Surface the FPV camera must stay above: terrain / water plane, or the
+ * boardwalk / pier deck top when the probe is over those colliders.
+ */
+export function cameraFloor(x, z) {
+  const g = groundHeight(x, z);
+  const d = deckTop(x, z);
+  return d > g ? d : g;
 }
 
 export function sandNoise(x, z) {

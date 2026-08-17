@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   CITY_Y, CITY_Z, PIER_X, WHEEL_X, WHEEL_Z, WHEEL_R, PLAZA_Y,
   CINEMA_X, CINEMA_FRONT_Z, LUMMUS_Z, LUMMUS_Y, CLUB_X, MARINA_X,
-  groundHeight,
+  PAVILION_Z, groundHeight,
 } from './constants.js';
 import { buildHelipad } from '../helipad.js';
 
@@ -55,7 +55,7 @@ export function buildPoints(ctx, towerData) {
       }
     }
     retrievalPoints.push(new THREE.Vector3(PIER_X, 1.2, CITY_Z - 60));          // under the pier
-    retrievalPoints.push(new THREE.Vector3(PIER_X, 12.4, CITY_Z - 168));        // pier pavilion roof
+    retrievalPoints.push(new THREE.Vector3(PIER_X, 10.6, PAVILION_Z));          // pier pavilion hip
     retrievalPoints.push(new THREE.Vector3(-95, groundHeight(-95, 12) + 4.7, 12));  // lifeguard hut roof
     retrievalPoints.push(new THREE.Vector3(WHEEL_X + 22, PLAZA_Y + 0.1, WHEEL_Z));  // Pier Park deck
     retrievalPoints.push(new THREE.Vector3(MARINA_X, 1.6, -80));                 // marina dock end
