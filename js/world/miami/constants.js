@@ -116,6 +116,48 @@ export const GARAGE_AISLE_W = 6.40;  // clear between inner jambs
 export const GARAGE_SOFFIT = 3.60;
 export const GARAGE_ROOF_H = 0.28;
 
+// ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
+// Vacant city parcel east of the cinema, west of GAP 243. Not a street
+// and not the boardwalk. Scatter still uses tryPlace — this reservation
+// is one more keepout, not a second placer.
+export const ABANDO_X = 224;
+export const ABANDO_Z = 84;
+export const ABANDO_W = 14.0;
+export const ABANDO_D = 9.2;
+export const ABANDO_H = 7.40;
+export const ABANDO_WALL = 0.32;
+export const ABANDO_PAD_H = 0.08;
+export const ABANDO_ROOF_H = 0.16;
+// 5″ through-bays (locked 1.2–2.4 m). Whoop sash is the smaller punch.
+export const ABANDO_BAY_W = 2.20;
+export const ABANDO_BAY_H = 2.36;
+export const ABANDO_BAY_SILL = 0.46;
+export const ABANDO_SASH_W = 1.24;
+export const ABANDO_SASH_H = 1.36;
+export const ABANDO_SASH_SILL = 4.15;
+export const ABANDO_BAY_XS = [220.35, 227.65];
+export const ABANDO_SASH_XS = [219.10, 224.00, 228.90];
+// Stair clear 0.91–1.12 m (whoop). Stringers are the collider, not a box.
+export const ABANDO_STAIR_CLEAR = 1.02;
+export const ABANDO_STAIR_T = 0.10;
+export const ABANDO_STAIR_RISE = 0.24;
+export const ABANDO_STAIR_RUN = 0.24;
+export const ABANDO_STAIR_TREAD = 0.04;
+// Silo weenie + Ø0.61 m crown manhole. Wall is a ring, never a filled cyl.
+export const ABANDO_SILO_DX = 8.55;
+export const ABANDO_SILO_R = 2.06;
+export const ABANDO_SILO_WALL = 0.28;
+export const ABANDO_SILO_H = 14.6;
+export const ABANDO_MANHOLE = 0.61;
+export const ABANDO_CROWN_H = 0.22;
+export const ABANDO_STACK_H = 4.8;
+export const ABANDO_SILO_X = ABANDO_X + ABANDO_SILO_DX;
+export const ABANDO_SILO_Z = ABANDO_Z;
+export const ABANDO_X0 = ABANDO_X - ABANDO_W / 2;
+export const ABANDO_X1 = ABANDO_X + ABANDO_W / 2;
+export const ABANDO_Z0 = ABANDO_Z - ABANDO_D / 2;
+export const ABANDO_Z1 = ABANDO_Z + ABANDO_D / 2;
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -137,6 +179,8 @@ export const RESERVED = [
   { x0: -112, x1: 16, z0: 104, z1: 166, tag: 'convention' },
   { x0: 126, x1: 208, z0: 55.6, z1: 100, tag: 'cinema' },
   { x0: 190, x1: 210, z0: 54.4, z1: 72.4, tag: 'garage' },
+  { x0: ABANDO_X0 - 2.6, x1: ABANDO_SILO_X + ABANDO_SILO_R + 0.7,
+    z0: ABANDO_Z0 - 1.6, z1: ABANDO_Z1 + 1.4, tag: 'abando' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -185,6 +229,8 @@ export const KEEPOUT = [
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'boardwalk-gate' },
   { x0: GARAGE_X - GARAGE_W / 2 - 0.6, x1: GARAGE_X + GARAGE_W / 2 + 0.6,
     z0: GARAGE_FRONT_Z - 0.8, z1: GARAGE_FRONT_Z + GARAGE_D + 0.6, tag: 'garage' },
+  { x0: ABANDO_X0 - 2.4, x1: ABANDO_SILO_X + ABANDO_SILO_R + 0.55,
+    z0: ABANDO_Z0 - 1.4, z1: ABANDO_Z1 + 1.2, tag: 'abando' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -425,6 +471,230 @@ export function installFlyColliders(addCyl, addCollider, tag) {
     if (tag && s.tag !== tag) continue;
     if (s.type === 'cyl') addCyl(s.x, s.y0, s.z, s.r, s.h);
     else addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * Abando reserved voids. Collider is the jamb / stringer / silo lip —
+ * never a box that fills a bay, stair, or manhole.
+ */
+export function abandoVoids() {
+  const yBay = CITY_Y + ABANDO_BAY_SILL + ABANDO_BAY_H * 0.48;
+  const ySash = CITY_Y + ABANDO_SASH_SILL + ABANDO_SASH_H * 0.48;
+  const voids = [];
+  for (let i = 0; i < ABANDO_BAY_XS.length; i++) {
+    const x = ABANDO_BAY_XS[i];
+    voids.push({
+      id: `abando-bay-ocean-${i}`, kind: 'bay',
+      x, z: ABANDO_Z0 + ABANDO_WALL * 0.5, y: yBay,
+      x0: x - ABANDO_BAY_W / 2, x1: x + ABANDO_BAY_W / 2,
+      z0: ABANDO_Z0 - 0.2, z1: ABANDO_Z0 + ABANDO_WALL + 0.2,
+      y0: CITY_Y + ABANDO_BAY_SILL, y1: CITY_Y + ABANDO_BAY_SILL + ABANDO_BAY_H,
+      openW: ABANDO_BAY_W, openH: ABANDO_BAY_H, probe: 0.20,
+    });
+    voids.push({
+      id: `abando-bay-inland-${i}`, kind: 'bay',
+      x, z: ABANDO_Z1 - ABANDO_WALL * 0.5, y: yBay,
+      x0: x - ABANDO_BAY_W / 2, x1: x + ABANDO_BAY_W / 2,
+      z0: ABANDO_Z1 - ABANDO_WALL - 0.2, z1: ABANDO_Z1 + 0.2,
+      y0: CITY_Y + ABANDO_BAY_SILL, y1: CITY_Y + ABANDO_BAY_SILL + ABANDO_BAY_H,
+      openW: ABANDO_BAY_W, openH: ABANDO_BAY_H, probe: 0.20,
+    });
+  }
+  for (let i = 0; i < ABANDO_SASH_XS.length; i++) {
+    const x = ABANDO_SASH_XS[i];
+    voids.push({
+      id: `abando-sash-ocean-${i}`, kind: 'sash',
+      x, z: ABANDO_Z0 + ABANDO_WALL * 0.5, y: ySash,
+      x0: x - ABANDO_SASH_W / 2, x1: x + ABANDO_SASH_W / 2,
+      z0: ABANDO_Z0 - 0.15, z1: ABANDO_Z0 + ABANDO_WALL + 0.15,
+      y0: CITY_Y + ABANDO_SASH_SILL, y1: CITY_Y + ABANDO_SASH_SILL + ABANDO_SASH_H,
+      openW: ABANDO_SASH_W, openH: ABANDO_SASH_H, probe: 0.08,
+    });
+  }
+  voids.push({
+    id: 'abando-bay-silo', kind: 'bay',
+    x: ABANDO_X1 - ABANDO_WALL * 0.5, z: ABANDO_Z, y: yBay,
+    x0: ABANDO_X1 - ABANDO_WALL - 0.2, x1: ABANDO_X1 + 0.2,
+    z0: ABANDO_Z - ABANDO_BAY_W / 2, z1: ABANDO_Z + ABANDO_BAY_W / 2,
+    y0: CITY_Y + ABANDO_BAY_SILL, y1: CITY_Y + ABANDO_BAY_SILL + ABANDO_BAY_H,
+    openW: ABANDO_BAY_W, openH: ABANDO_BAY_H, probe: 0.20,
+  });
+  const stair = abandoStairGeom();
+  const step = Math.floor(stair.nRise * 0.42);
+  const treadY = CITY_Y + step * ABANDO_STAIR_RISE;
+  const riserGap = ABANDO_STAIR_RISE - ABANDO_STAIR_TREAD;
+  voids.push({
+    id: 'abando-stair', kind: 'stair',
+    x: stair.clearX, z: stair.z0 + step * ABANDO_STAIR_RUN,
+    y: treadY + ABANDO_STAIR_TREAD + riserGap * 0.5,
+    x0: stair.outerX + ABANDO_STAIR_T, x1: stair.innerX,
+    z0: stair.z0 + 0.15, z1: stair.z0 + stair.length - 0.15,
+    y0: CITY_Y + 0.12, y1: CITY_Y + ABANDO_H - 0.2,
+    openW: ABANDO_STAIR_CLEAR, openH: ABANDO_H - 0.3, probe: 0.08,
+  });
+  const mhR = ABANDO_MANHOLE / 2;
+  voids.push({
+    id: 'abando-manhole', kind: 'manhole',
+    x: ABANDO_SILO_X, z: ABANDO_SILO_Z,
+    y: CITY_Y + ABANDO_SILO_H + ABANDO_CROWN_H * 0.5,
+    x0: ABANDO_SILO_X - mhR, x1: ABANDO_SILO_X + mhR,
+    z0: ABANDO_SILO_Z - mhR, z1: ABANDO_SILO_Z + mhR,
+    y0: CITY_Y + ABANDO_SILO_H - 0.15,
+    y1: CITY_Y + ABANDO_SILO_H + ABANDO_CROWN_H + 0.25,
+    openW: ABANDO_MANHOLE, openH: ABANDO_CROWN_H + 0.4, probe: 0.10,
+  });
+  return voids;
+}
+
+/** Exterior west-face stair. Clear sits between the two stringers. */
+export function abandoStairGeom() {
+  const nRise = Math.round(ABANDO_H / ABANDO_STAIR_RISE);
+  const length = (nRise - 1) * ABANDO_STAIR_RUN;
+  const innerX = ABANDO_X0 - 0.02;
+  const outerX = innerX - ABANDO_STAIR_CLEAR - ABANDO_STAIR_T;
+  const clearX = innerX - ABANDO_STAIR_CLEAR / 2;
+  const z0 = ABANDO_Z0 + 0.55;
+  return { nRise, length, innerX, outerX, clearX, z0 };
+}
+
+function pushAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'abando', x, z, sx, sz, y0, sy });
+}
+
+function wallBand(shapes, x0, x1, z, sz, y0, sy) {
+  const w = x1 - x0;
+  if (w <= 0.04) return;
+  pushAabb(shapes, (x0 + x1) / 2, z, w, sz, y0, sy);
+}
+
+/** Punch one axis-aligned face into jamb / sill / lintel boxes. */
+function punchFaceX(shapes, z, openings, y0, y1, faceY0, faceY1) {
+  const zs = ABANDO_WALL;
+  const sorted = openings.slice().sort((a, b) => a.x - b.x);
+  let cursor = ABANDO_X0;
+  for (let i = 0; i < sorted.length; i++) {
+    const o = sorted[i];
+    wallBand(shapes, cursor, o.x - o.w / 2, z, zs, y0, y1 - y0);
+    cursor = o.x + o.w / 2;
+  }
+  wallBand(shapes, cursor, ABANDO_X1, z, zs, y0, y1 - y0);
+  for (let i = 0; i < sorted.length; i++) {
+    const o = sorted[i];
+    if (o.sill > faceY0 + 0.02) {
+      pushAabb(shapes, o.x, z, o.w, zs, faceY0, o.sill - faceY0);
+    }
+    const lintelY = o.sill + o.h;
+    if (faceY1 - lintelY > 0.04) {
+      pushAabb(shapes, o.x, z, o.w, zs, lintelY, faceY1 - lintelY);
+    }
+  }
+}
+
+/** Jamb / lip / ring shapes. Never a filled opening. */
+export function abandoColliderShapes() {
+  const shapes = [];
+  const y0 = CITY_Y;
+  const yRoof = CITY_Y + ABANDO_H;
+  const oceanZ = ABANDO_Z0 + ABANDO_WALL / 2;
+  const inlandZ = ABANDO_Z1 - ABANDO_WALL / 2;
+  const bays = ABANDO_BAY_XS.map((x) => ({
+    x, w: ABANDO_BAY_W, h: ABANDO_BAY_H, sill: y0 + ABANDO_BAY_SILL,
+  }));
+  const sashes = ABANDO_SASH_XS.map((x) => ({
+    x, w: ABANDO_SASH_W, h: ABANDO_SASH_H, sill: y0 + ABANDO_SASH_SILL,
+  }));
+
+  // Ocean / inland faces — punched bands, not a filled wall box.
+  punchFaceX(shapes, oceanZ, bays, y0, y0 + ABANDO_BAY_SILL + ABANDO_BAY_H, y0, y0 + ABANDO_BAY_SILL + ABANDO_BAY_H);
+  punchFaceX(shapes, oceanZ, sashes, y0 + ABANDO_SASH_SILL, y0 + ABANDO_SASH_SILL + ABANDO_SASH_H,
+    y0 + ABANDO_SASH_SILL, y0 + ABANDO_SASH_SILL + ABANDO_SASH_H);
+  wallBand(shapes, ABANDO_X0, ABANDO_X1, oceanZ, ABANDO_WALL,
+    y0 + ABANDO_BAY_SILL + ABANDO_BAY_H,
+    ABANDO_SASH_SILL - (ABANDO_BAY_SILL + ABANDO_BAY_H));
+  wallBand(shapes, ABANDO_X0, ABANDO_X1, oceanZ, ABANDO_WALL,
+    y0 + ABANDO_SASH_SILL + ABANDO_SASH_H,
+    yRoof - (y0 + ABANDO_SASH_SILL + ABANDO_SASH_H));
+
+  punchFaceX(shapes, inlandZ, bays, y0, y0 + ABANDO_BAY_SILL + ABANDO_BAY_H, y0, y0 + ABANDO_BAY_SILL + ABANDO_BAY_H);
+  wallBand(shapes, ABANDO_X0, ABANDO_X1, inlandZ, ABANDO_WALL,
+    y0 + ABANDO_BAY_SILL + ABANDO_BAY_H, yRoof - (y0 + ABANDO_BAY_SILL + ABANDO_BAY_H));
+
+  // West wall (solid). Stair is outside this plane.
+  pushAabb(shapes, ABANDO_X0 + ABANDO_WALL / 2, ABANDO_Z, ABANDO_WALL, ABANDO_D, y0, ABANDO_H);
+
+  // East wall — one punched bay into the silo, jambs only.
+  const eastX = ABANDO_X1 - ABANDO_WALL / 2;
+  const eastBayW = ABANDO_BAY_W;
+  const eastJambD = (ABANDO_D - eastBayW) / 2;
+  pushAabb(shapes, eastX, ABANDO_Z0 + eastJambD / 2,
+    ABANDO_WALL, eastJambD, y0, ABANDO_BAY_SILL + ABANDO_BAY_H);
+  pushAabb(shapes, eastX, ABANDO_Z1 - eastJambD / 2,
+    ABANDO_WALL, eastJambD, y0, ABANDO_BAY_SILL + ABANDO_BAY_H);
+  pushAabb(shapes, eastX, ABANDO_Z, ABANDO_WALL, eastBayW, y0, ABANDO_BAY_SILL);
+  pushAabb(shapes, eastX, ABANDO_Z, ABANDO_WALL, eastBayW,
+    y0 + ABANDO_BAY_SILL + ABANDO_BAY_H,
+    ABANDO_H - (ABANDO_BAY_SILL + ABANDO_BAY_H));
+
+  // Floor pad + roof lid. Neither fills the volume.
+  pushAabb(shapes, ABANDO_X, ABANDO_Z, ABANDO_W + 0.2, ABANDO_D + 0.2, y0, ABANDO_PAD_H);
+  pushAabb(shapes, ABANDO_X, ABANDO_Z, ABANDO_W + 0.16, ABANDO_D + 0.16, yRoof, ABANDO_ROOF_H);
+
+  // Weenie stack on the roof — solid, no opening.
+  pushAabb(shapes, ABANDO_X0 + 2.1, ABANDO_Z1 - 2.0, 0.62, 0.62, yRoof, ABANDO_STACK_H);
+
+  // Stair stringers + thin treads. Clear between stringers is empty.
+  const st = abandoStairGeom();
+  pushAabb(shapes, st.innerX + ABANDO_STAIR_T / 2, st.z0 + st.length / 2,
+    ABANDO_STAIR_T, st.length + 0.12, y0, ABANDO_H);
+  pushAabb(shapes, st.outerX + ABANDO_STAIR_T / 2, st.z0 + st.length / 2,
+    ABANDO_STAIR_T, st.length + 0.12, y0, ABANDO_H);
+  for (let i = 0; i < st.nRise; i++) {
+    const tz = st.z0 + i * ABANDO_STAIR_RUN;
+    const ty = y0 + i * ABANDO_STAIR_RISE;
+    pushAabb(shapes, st.clearX, tz, ABANDO_STAIR_CLEAR, ABANDO_STAIR_RUN * 0.72,
+      ty, ABANDO_STAIR_TREAD);
+  }
+
+  // Silo wall ring — sector AABBs. Interior + manhole stay open.
+  const sectors = 12;
+  const openWest = 0.62; // skip sectors facing the east-wall bay
+  const wallR = ABANDO_SILO_R - ABANDO_SILO_WALL / 2;
+  const chord = 2 * ABANDO_SILO_R * Math.sin(Math.PI / sectors);
+  for (let i = 0; i < sectors; i++) {
+    const a = (i / sectors) * Math.PI * 2;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    if (ca < -openWest) continue;
+    const cx = ABANDO_SILO_X + ca * wallR;
+    const cz = ABANDO_SILO_Z + sa * wallR;
+    const thick = ABANDO_SILO_WALL + 0.04;
+    const along = chord * 0.88;
+    const sx = Math.abs(ca) >= Math.abs(sa) ? thick : along;
+    const sz = Math.abs(ca) >= Math.abs(sa) ? along : thick;
+    pushAabb(shapes, cx, cz, sx, sz, y0, ABANDO_SILO_H);
+  }
+
+  // Crown lid: four cardinal slabs around the Ø0.61 m hole. Never a filled cap.
+  const mhR = ABANDO_MANHOLE / 2;
+  const lidOuter = ABANDO_SILO_R + 0.04;
+  const lidDepth = lidOuter - mhR;
+  const lidMid = mhR + lidDepth / 2;
+  const crownY = y0 + ABANDO_SILO_H;
+  const span = lidOuter * 2;
+  pushAabb(shapes, ABANDO_SILO_X, ABANDO_SILO_Z + lidMid, span, lidDepth, crownY, ABANDO_CROWN_H);
+  pushAabb(shapes, ABANDO_SILO_X, ABANDO_SILO_Z - lidMid, span, lidDepth, crownY, ABANDO_CROWN_H);
+  pushAabb(shapes, ABANDO_SILO_X + lidMid, ABANDO_SILO_Z, lidDepth, ABANDO_MANHOLE, crownY, ABANDO_CROWN_H);
+  pushAabb(shapes, ABANDO_SILO_X - lidMid, ABANDO_SILO_Z, lidDepth, ABANDO_MANHOLE, crownY, ABANDO_CROWN_H);
+  return shapes;
+}
+
+/** Push abando jamb / lip colliders. Same bag as the fly-through kit. */
+export function installAbandoColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = abandoColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
   }
 }
 
