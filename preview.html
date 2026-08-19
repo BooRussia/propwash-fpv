@@ -2,55 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PropWash FPV — PR #23 preview</title>
-  <base href="https://cdn.jsdelivr.net/gh/BooRussia/propwash-fpv@4c515e8c80839a55f21097644637ba7531753cbb/">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚁</text></svg>">
-  <link rel="stylesheet" href="css/base.css">
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
-      "3d-tiles-renderer": "https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.5.1/build/index.js",
-      "3d-tiles-renderer/plugins": "https://cdn.jsdelivr.net/npm/3d-tiles-renderer@0.5.1/build/index.plugins.js"
-    }
-  }
-  </script>
+  <meta http-equiv="refresh" content="0; url=./">
+  <title>PropWash FPV</title>
+  <script>location.replace("./");</script>
 </head>
 <body>
-  <div id="app"></div>
-  <div id="fx-root"></div>
-  <div id="osd-root"></div>
-  <div id="ui-root"></div>
-
-  <div id="loading">
-    <div class="load-inner">
-      <div class="load-logo">PROP<span>WASH</span></div>
-      <div class="load-sub">FPV FLIGHT SIMULATOR</div>
-      <div class="load-bar"><div id="load-fill"></div></div>
-      <div id="load-status">Initializing…</div>
-    </div>
-  </div>
-
-  <div id="boot-error" style="display:none">
-    <div class="pw-panel">
-      <h2>Failed to start</h2>
-      <p id="boot-error-msg"></p>
-      <p class="dim">Check the browser console (F12) for details. An internet connection is
-      required on first load to fetch the three.js library from CDN.</p>
-    </div>
-  </div>
-
-  <script type="module">
-    import('./js/main.js').catch(err => {
-      console.error(err);
-      const el = document.getElementById('boot-error');
-      document.getElementById('boot-error-msg').textContent = String(err && err.message || err);
-      el.style.display = 'flex';
-      const l = document.getElementById('loading');
-      if (l) l.style.display = 'none';
-    });
-  </script>
+  <p><a href="./">Continue to PropWash FPV</a></p>
 </body>
 </html>
