@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CITY_Y,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
+  LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z,
   LEFTOVER_LOT_GATE_W,
   LEFTOVER_LOT_WALK_W, LEFTOVER_LOT_WALK_H,
   LEFTOVER_LOT_SHED_DOOR_W, LEFTOVER_LOT_SHED_DOOR_H,
@@ -14,11 +15,11 @@ import { tryPlace } from '../planting.js';
 import { cBox, cCyl, stripBoxCaps, roofSlabGeo } from '../geo.js';
 
 /**
- * leftoverLot — leftover-city vacant parcel on the Miami tryPlace graph.
+ * leftoverLot — leftover-city vacant parcels on the Miami tryPlace graph.
  *
  * Not leftover-dirt hulls. Not OSM. Not a fifth haunt. Not follow-mode restack.
  * Keepout is published in constants.js before scatter; tryPlace drops palms /
- * blades on this cell. Palms and weeds grow-to-gap inside the lot, lean at
+ * blades on these cells. Palms and weeds grow-to-gap inside the lot, lean at
  * the fence, tryPlace-drop off pavement and the gate void. Reject-or-drop,
  * never nudge. Colliders are fence posts + thin mesh plane + gate jambs —
  * never a lot-AABB, never a box in the gate.
@@ -26,6 +27,8 @@ import { cBox, cCyl, stripBoxCaps, roofSlabGeo } from '../geo.js';
  * Kit: chain-link, one street-front vehicle gate, optional CMU shed, optional
  * dumpster. Ground is leftover-city grade (CITY_Y / crushed limestone +
  * patchy grass). weenie is the ocean-face vehicle gate (z0, facing −Z).
+ * Lot B is the same leftoverLotGeom kit at the signed 295/84 cell — not a
+ * leftoverLotBGeom fork, not a restack of #34 at 258/84.
  */
 
 const STEEL = 0x7a8078;
@@ -49,8 +52,7 @@ function lotPlantDrop(ctx, x, z) {
   return groundHeight(x, z);
 }
 
-function buildPad(parts) {
-  const g = leftoverLotGeom();
+function buildPad(parts, g) {
   const y = CITY_Y + 0.012;
   const cols = 7, rows = 6;
   const cw = LEFTOVER_LOT_W / cols;
@@ -67,8 +69,7 @@ function buildPad(parts) {
   }
 }
 
-function buildFence(steel, rust) {
-  const g = leftoverLotGeom();
+function buildFence(steel, rust, g) {
   const y0 = CITY_Y;
   const midY = y0 + g.h / 2;
   for (let i = 0; i < g.posts.length; i++) {
@@ -112,8 +113,7 @@ function buildFence(steel, rust) {
     g.walkX, y0 + LEFTOVER_LOT_WALK_H + 0.04, g.walkZ));
 }
 
-function buildMeshPlanes(root, track) {
-  const g = leftoverLotGeom();
+function buildMeshPlanes(root, track, g) {
   const y0 = CITY_Y;
   const mat = track(new THREE.MeshStandardMaterial({
     color: 0x8a9088, roughness: 0.42, metalness: 0.55,
@@ -141,8 +141,7 @@ function buildMeshPlanes(root, track) {
   }
 }
 
-function buildShed(cmu, lidParts) {
-  const g = leftoverLotGeom();
+function buildShed(cmu, lidParts, g) {
   const y0 = CITY_Y;
   const wt = LEFTOVER_LOT_WALL;
   const midY = y0 + g.shedH / 2;
@@ -183,8 +182,7 @@ function buildShed(cmu, lidParts) {
   lidParts.push(lid);
 }
 
-function buildDumpster(parts) {
-  const g = leftoverLotGeom();
+function buildDumpster(parts, g) {
   const y0 = CITY_Y;
   parts.push(cBox(g.dumpW, g.dumpH, g.dumpD, DUMP,
     g.dumpX, y0 + g.dumpH / 2, g.dumpZ));
@@ -207,7 +205,7 @@ function buildWeeds(parts, spots) {
 }
 
 /**
- * Build one leftoverLot kit on the leftover-city parcel. Rejects if the
+ * Instance the leftoverLot kit on each leftover-city parcel. Rejects if the
  * lot is pavement. Never remaps x/z. Scatter stays on tryPlace.
  */
 export function buildLeftoverLot(ctx) {
@@ -222,25 +220,34 @@ export function buildLeftoverLot(ctx) {
   const lid = [];
   const dump = [];
   const weeds = [];
-  buildPad(pad);
-  buildFence(steel, rust);
-  buildShed(cmu, lid);
-  buildDumpster(dump);
-
-  const plants = leftoverLotPlantSpots();
   const keptWeeds = [];
-  for (let i = 0; i < plants.weeds.length; i++) {
-    const p = plants.weeds[i];
-    if (!lotPlantDrop(ctx, p.x, p.z)) continue;
-    keptWeeds.push(p);
+
+  const lots = [leftoverLotGeom()];
+  if (!onPavement(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)) {
+    lots.push(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z));
+  }
+
+  for (let n = 0; n < lots.length; n++) {
+    const g = lots[n];
+    buildPad(pad, g);
+    buildFence(steel, rust, g);
+    buildShed(cmu, lid, g);
+    buildDumpster(dump, g);
+    buildMeshPlanes(root, track, g);
+
+    const plants = leftoverLotPlantSpots(g);
+    for (let i = 0; i < plants.weeds.length; i++) {
+      const p = plants.weeds[i];
+      if (!lotPlantDrop(ctx, p.x, p.z)) continue;
+      keptWeeds.push(p);
+    }
+    for (let i = 0; i < plants.palms.length; i++) {
+      const p = plants.palms[i];
+      if (!lotPlantDrop(ctx, p.x, p.z)) continue;
+      ctx.extraPalms.push({ x: p.x, z: p.z, sc: p.sc });
+    }
   }
   buildWeeds(weeds, keptWeeds);
-
-  for (let i = 0; i < plants.palms.length; i++) {
-    const p = plants.palms[i];
-    if (!lotPlantDrop(ctx, p.x, p.z)) continue;
-    ctx.extraPalms.push({ x: p.x, z: p.z, sc: p.sc });
-  }
 
   const mergeAdd = (geos, name, extra = {}) => {
     if (!geos.length) return null;
@@ -275,7 +282,6 @@ export function buildLeftoverLot(ctx) {
   }
   mergeAdd(dump, 'leftoverLot-dumpster', { roughness: 0.72, metalness: 0.18 });
   mergeAdd(weeds, 'leftoverLot-weeds', { roughness: 1, metalness: 0 });
-  buildMeshPlanes(root, track);
 
   installLeftoverLotColliders(addCyl, addCollider);
   setTag('world');
