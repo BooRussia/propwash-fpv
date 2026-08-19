@@ -269,6 +269,81 @@ export function warehouseSashXs() {
   return [g.narrowX, g.vnaX];
 }
 
+// ---- house haunt kit (leftover residential; hall + stair well; jambs / leaf) ----
+// Vacant residential parcel inland of the cinema, west of GAP 243.
+// Leftover house / leftover city — not a street, boardwalk, or path.
+// Scatter still uses tryPlace; this reservation is one more keepout, not a
+// second placer. Whoop flies the sash / stair; 5″ flies the hall / door.
+// Weenie is the stair well. Collider is the jamb / open leaf / stringer —
+// never a filled room, hall, or door.
+export const HOUSE_X = 166;
+export const HOUSE_Z = 132;
+export const HOUSE_WALL = 0.16;
+export const HOUSE_HALL = 1.00;
+export const HOUSE_STAIR = 0.91;
+export const HOUSE_ROOM = 2.70;
+export const HOUSE_INNER_D = 10.20;
+export const HOUSE_W = 2 * HOUSE_WALL + HOUSE_ROOM + HOUSE_STAIR + HOUSE_HALL + HOUSE_ROOM;
+export const HOUSE_D = 2 * HOUSE_WALL + HOUSE_INNER_D;
+export const HOUSE_STORY = 3.06;
+export const HOUSE_H = 6.20;
+export const HOUSE_PAD_H = 0.08;
+export const HOUSE_ROOF_H = 0.16;
+export const HOUSE_SLAB = 0.14;
+export const HOUSE_DOOR_W = 0.81;
+export const HOUSE_DOOR_H = 1.98;
+export const HOUSE_WIN_W = 0.56;
+export const HOUSE_WIN_H = 0.66;
+export const HOUSE_WIN_SILL = 0.91;
+export const HOUSE_LEAF_T = 0.04;
+export const HOUSE_STAIR_T = 0.08;
+export const HOUSE_STAIR_RISE = 0.18;
+export const HOUSE_STAIR_RUN = 0.25;
+export const HOUSE_STAIR_TREAD = 0.04;
+export const HOUSE_X0 = HOUSE_X - HOUSE_W / 2;
+export const HOUSE_X1 = HOUSE_X + HOUSE_W / 2;
+export const HOUSE_Z0 = HOUSE_Z - HOUSE_D / 2;
+export const HOUSE_Z1 = HOUSE_Z + HOUSE_D / 2;
+
+/**
+ * Hall / stair-well / door / leaf. Rooms are leftover voids beside the hall.
+ * Never remaps x/z. Scatter stays on tryPlace.
+ */
+export function housePlanGeom() {
+  const west = HOUSE_X0 + HOUSE_WALL;
+  const east = HOUSE_X1 - HOUSE_WALL;
+  const ocean = HOUSE_Z0 + HOUSE_WALL;
+  const inland = HOUSE_Z1 - HOUSE_WALL;
+  const westRoomX1 = west + HOUSE_ROOM;
+  const stairX0 = westRoomX1;
+  const stairX1 = stairX0 + HOUSE_STAIR;
+  const hallX0 = stairX1;
+  const hallX1 = hallX0 + HOUSE_HALL;
+  const hallX = (hallX0 + hallX1) / 2;
+  const stairX = (stairX0 + stairX1) / 2;
+  const nRise = Math.round(HOUSE_STORY / HOUSE_STAIR_RISE);
+  const stairLen = (nRise - 1) * HOUSE_STAIR_RUN;
+  const stairZ0 = ocean + 0.45;
+  const stairZ1 = stairZ0 + stairLen;
+  const stairZ = (stairZ0 + stairZ1) / 2;
+  const doorX = hallX;
+  const doorZ = HOUSE_Z0 + HOUSE_WALL / 2;
+  const winX = hallX;
+  const winZ = HOUSE_Z1 - HOUSE_WALL / 2;
+  // Open leaf parked 180° against the interior ocean wall, east of the jamb.
+  const leafX = doorX + HOUSE_DOOR_W;
+  const leafZ = ocean + HOUSE_LEAF_T / 2;
+  return {
+    west, east, ocean, inland,
+    westRoomX1, stairX0, stairX1, stairX,
+    hallX0, hallX1, hallX,
+    stairZ0, stairZ1, stairZ, stairLen, nRise,
+    doorX, doorZ, winX, winZ, leafX, leafZ,
+    midZ: (ocean + inland) / 2,
+    innerD: inland - ocean,
+  };
+}
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -296,6 +371,8 @@ export const RESERVED = [
     z0: DROP_Z0 - 1.5, z1: DROP_Z1 + 1.4, tag: 'drop' },
   { x0: WAREHOUSE_X0 - 2.2, x1: WAREHOUSE_X1 + 1.8,
     z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.5, z1: WAREHOUSE_Z1 + 1.4, tag: 'warehouse' },
+  { x0: HOUSE_X0 - 2.2, x1: HOUSE_X1 + 1.8,
+    z0: HOUSE_Z0 - 1.5, z1: HOUSE_Z1 + 1.4, tag: 'house' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -350,6 +427,8 @@ export const KEEPOUT = [
     z0: DROP_Z0 - 1.3, z1: DROP_Z1 + 1.2, tag: 'drop' },
   { x0: WAREHOUSE_X0 - 2.0, x1: WAREHOUSE_X1 + 1.6,
     z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.3, z1: WAREHOUSE_Z1 + 1.2, tag: 'warehouse' },
+  { x0: HOUSE_X0 - 2.0, x1: HOUSE_X1 + 1.6,
+    z0: HOUSE_Z0 - 1.3, z1: HOUSE_Z1 + 1.2, tag: 'house' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1071,6 +1150,145 @@ export function warehouseColliderShapes() {
 export function installWarehouseColliders(addCyl, addCollider) {
   void addCyl;
   const shapes = warehouseColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * House reserved voids. Collider is the jamb / open leaf / stringer —
+ * never a box that fills a room, hall, stair well, or door.
+ */
+export function houseVoids() {
+  const g = housePlanGeom();
+  const y0 = CITY_Y;
+  const step = Math.floor(g.nRise * 0.42);
+  const treadY = y0 + step * HOUSE_STAIR_RISE;
+  const riserGap = HOUSE_STAIR_RISE - HOUSE_STAIR_TREAD;
+  return [
+    {
+      id: 'house-door', kind: 'door',
+      x: g.doorX, z: g.doorZ, y: y0 + HOUSE_DOOR_H * 0.48,
+      x0: g.doorX - HOUSE_DOOR_W / 2, x1: g.doorX + HOUSE_DOOR_W / 2,
+      z0: HOUSE_Z0 - 0.2, z1: HOUSE_Z0 + HOUSE_WALL + 0.2,
+      y0: y0 + 0.04, y1: y0 + HOUSE_DOOR_H,
+      openW: HOUSE_DOOR_W, openH: HOUSE_DOOR_H, probe: 0.08,
+    },
+    {
+      id: 'house-hall', kind: 'hall',
+      x: g.hallX, z: g.midZ, y: y0 + 1.15,
+      x0: g.hallX0, x1: g.hallX1, z0: g.ocean, z1: g.inland,
+      y0: y0 + HOUSE_PAD_H + 0.08, y1: y0 + HOUSE_H - 0.3,
+      openW: HOUSE_HALL, openH: HOUSE_H - 0.4, probe: 0.12,
+    },
+    {
+      id: 'house-stair', kind: 'stair',
+      x: g.stairX, z: g.stairZ0 + step * HOUSE_STAIR_RUN,
+      y: treadY + HOUSE_STAIR_TREAD + riserGap * 0.5,
+      x0: g.stairX0, x1: g.stairX1,
+      z0: g.stairZ0 + 0.12, z1: g.stairZ1 - 0.12,
+      y0: y0 + 0.12, y1: y0 + HOUSE_H - 0.2,
+      openW: HOUSE_STAIR, openH: HOUSE_H - 0.3, probe: 0.08,
+    },
+    {
+      id: 'house-window', kind: 'window',
+      x: g.winX, z: g.winZ, y: y0 + HOUSE_WIN_SILL + HOUSE_WIN_H * 0.48,
+      x0: g.winX - HOUSE_WIN_W / 2, x1: g.winX + HOUSE_WIN_W / 2,
+      z0: HOUSE_Z1 - HOUSE_WALL - 0.15, z1: HOUSE_Z1 + 0.15,
+      y0: y0 + HOUSE_WIN_SILL, y1: y0 + HOUSE_WIN_SILL + HOUSE_WIN_H,
+      openW: HOUSE_WIN_W, openH: HOUSE_WIN_H, probe: 0.08,
+    },
+  ];
+}
+
+function pushHouseAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'house', x, z, sx, sz, y0, sy });
+}
+
+function houseBand(shapes, x0, x1, z, sz, y0, sy) {
+  const w = x1 - x0;
+  if (w <= 0.04) return;
+  pushHouseAabb(shapes, (x0 + x1) / 2, z, w, sz, y0, sy);
+}
+
+/** Jamb / open-leaf / stringer shapes. Never a filled room or door. */
+export function houseColliderShapes() {
+  const shapes = [];
+  const g = housePlanGeom();
+  const y0 = CITY_Y;
+  const yRoof = y0 + HOUSE_H;
+  const zs = HOUSE_WALL;
+
+  // Ocean face — egress door punched. Jambs + lintel only; mouth stays open.
+  const doorLeft = g.doorX - HOUSE_DOOR_W / 2;
+  const doorRight = g.doorX + HOUSE_DOOR_W / 2;
+  houseBand(shapes, HOUSE_X0, doorLeft, g.doorZ, zs, y0, HOUSE_DOOR_H);
+  houseBand(shapes, doorRight, HOUSE_X1, g.doorZ, zs, y0, HOUSE_DOOR_H);
+  houseBand(shapes, HOUSE_X0, HOUSE_X1, g.doorZ, zs,
+    y0 + HOUSE_DOOR_H, yRoof - (y0 + HOUSE_DOOR_H));
+
+  // Inland face — whoop egress sash punched. Sill + jambs + lintel.
+  const winLeft = g.winX - HOUSE_WIN_W / 2;
+  const winRight = g.winX + HOUSE_WIN_W / 2;
+  const sill = y0 + HOUSE_WIN_SILL;
+  const win1 = sill + HOUSE_WIN_H;
+  houseBand(shapes, HOUSE_X0, HOUSE_X1, g.winZ, zs, y0, HOUSE_WIN_SILL);
+  houseBand(shapes, HOUSE_X0, winLeft, g.winZ, zs, sill, HOUSE_WIN_H);
+  houseBand(shapes, winRight, HOUSE_X1, g.winZ, zs, sill, HOUSE_WIN_H);
+  houseBand(shapes, HOUSE_X0, HOUSE_X1, g.winZ, zs, win1, yRoof - win1);
+
+  // Side walls — solid. Hall runs ±Z between the partitions, not through these.
+  pushHouseAabb(shapes, HOUSE_X0 + HOUSE_WALL / 2, HOUSE_Z, HOUSE_WALL, HOUSE_D, y0, HOUSE_H);
+  pushHouseAabb(shapes, HOUSE_X1 - HOUSE_WALL / 2, HOUSE_Z, HOUSE_WALL, HOUSE_D, y0, HOUSE_H);
+
+  // Floor pad + roof lid. Neither fills the volume.
+  pushHouseAabb(shapes, HOUSE_X, HOUSE_Z, HOUSE_W + 0.2, HOUSE_D + 0.2, y0, HOUSE_PAD_H);
+  pushHouseAabb(shapes, HOUSE_X, HOUSE_Z, HOUSE_W + 0.16, HOUSE_D + 0.16, yRoof, HOUSE_ROOF_H);
+
+  // Open leaf — parked against the interior ocean wall, east of the jamb.
+  pushHouseAabb(shapes, g.leafX, g.leafZ, HOUSE_DOOR_W, HOUSE_LEAF_T, y0, HOUSE_DOOR_H);
+
+  // West partition (room / stair). East partition starts after the leaf.
+  pushHouseAabb(shapes, g.stairX0, HOUSE_Z, HOUSE_WALL, HOUSE_D - 2 * HOUSE_WALL, y0, HOUSE_H);
+  const eastZ0 = g.ocean + HOUSE_LEAF_T + 0.08;
+  const eastD = g.inland - eastZ0;
+  pushHouseAabb(shapes, g.hallX1, (eastZ0 + g.inland) / 2, HOUSE_WALL, eastD, y0, HOUSE_H);
+
+  // Stair stringers + thin treads. Well between stringers stays open.
+  pushHouseAabb(shapes, g.stairX1, g.stairZ, HOUSE_STAIR_T, g.stairLen + 0.12, y0, HOUSE_H);
+  for (let i = 0; i < g.nRise - 1; i++) {
+    const tz = g.stairZ0 + i * HOUSE_STAIR_RUN;
+    const ty = y0 + i * HOUSE_STAIR_RISE;
+    pushHouseAabb(shapes, g.stairX, tz, HOUSE_STAIR - 0.04, HOUSE_STAIR_RUN * 0.72,
+      ty, HOUSE_STAIR_TREAD);
+  }
+
+  // Second-floor leftover slabs — rooms only. Hall + well stay open.
+  const slabY0 = y0 + HOUSE_STORY - HOUSE_SLAB;
+  const westCx = (HOUSE_X0 + g.stairX0) / 2;
+  const westSx = g.stairX0 - HOUSE_X0;
+  pushHouseAabb(shapes, westCx, HOUSE_Z, westSx, HOUSE_D, slabY0, HOUSE_SLAB);
+  const eastCx = (g.hallX1 + HOUSE_X1) / 2;
+  const eastSx = HOUSE_X1 - g.hallX1;
+  pushHouseAabb(shapes, eastCx, HOUSE_Z, eastSx, HOUSE_D, slabY0, HOUSE_SLAB);
+  const southD = g.stairZ0 - HOUSE_Z0;
+  const northD = HOUSE_Z1 - g.stairZ1;
+  if (southD > 0.08) {
+    pushHouseAabb(shapes, g.stairX, (HOUSE_Z0 + g.stairZ0) / 2, HOUSE_STAIR, southD,
+      slabY0, HOUSE_SLAB);
+  }
+  if (northD > 0.08) {
+    pushHouseAabb(shapes, g.stairX, (g.stairZ1 + HOUSE_Z1) / 2, HOUSE_STAIR, northD,
+      slabY0, HOUSE_SLAB);
+  }
+  return shapes;
+}
+
+/** Push house jamb / leaf colliders. Same bag as the fly-through kit. */
+export function installHouseColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = houseColliderShapes();
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
