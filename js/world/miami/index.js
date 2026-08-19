@@ -42,6 +42,7 @@ import { buildYachtClub } from './landmarks/yachtclub.js';
 import { buildFlythrough } from './landmarks/flythrough.js';
 import { buildAbando } from './landmarks/abando.js';
 import { buildDrop } from './landmarks/drop.js';
+import { buildWarehouse } from './landmarks/warehouse.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
@@ -191,6 +192,8 @@ export async function buildMiami(scene, env) {
   buildAbando(ctx);
   // ---------------- drop haunt (leftover roof; same graph; well / door jambs) --
   buildDrop(ctx);
+  // ---------------- warehouse haunt (leftover industrial; aisles + dock jambs) --
+  buildWarehouse(ctx);
 
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);
