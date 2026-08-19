@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CITY_Y,
-  DROP_X, DROP_Z, DROP_W, DROP_D, DROP_H,
+  DROP_X, DROP_Z, DROP_W, DROP_D, DROP_H, DROP_X0, DROP_Z0,
   DROP_HOIST_W, DROP_HOIST_D, DROP_DOOR_W, DROP_DOOR_H,
   DROP_PARAPET, DROP_PARAPET_T, DROP_SETBACK, DROP_WALL, DROP_ROOF_Y,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
@@ -133,7 +133,7 @@ export function runMiamiDropTests() {
   const index = readFileSync(join(here, 'index.js'), 'utf8');
   const blades = readFileSync(join(here, 'blades.js'), 'utf8');
   const water = readFileSync(join(here, 'bayWater.js'), 'utf8');
-  const preview = readFileSync(join(here, '../../preview.html'), 'utf8');
+  const preview = readFileSync(join(here, '../../../preview.html'), 'utf8');
 
   ok('tryPlace is still the placer', planting.includes('export function tryPlace'));
   ok('drop is not a second scatterer',
