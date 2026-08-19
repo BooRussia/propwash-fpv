@@ -69,7 +69,7 @@ function palmFits(ctx, x, z, sc, taken, curated) {
   if (onPavement(x, z)) return 0;
   // curated rows requested by a landmark are exempt from the ground keep-outs
   // (they belong to the feature that owns that ground) but still have to pass
-  // the collider test like everything else
+  // the collider test like everything else. Never nudge onto the walk.
   if (!curated && inKeepout(x, z, 1.0)) return 0;
   const y = groundHeight(x, z);
   if (y < 0.1) return 0;
@@ -116,7 +116,8 @@ export async function materializePalms(ctx, plan) {
       // re-roll on the dedicated stream so no other layout shifts
       x = (rng5() - 0.5) * 1180;
       z = rng5() < 0.72 ? 26 + rng5() * 32 : 6 + rng5() * 18;
-      if (z > ROAD_Z0 && z < ROAD_Z1) z = z < 44 ? 34.4 : 53.6;
+      // planting row, never the sidewalk slab — drop via onPavement if it still fails
+      if (z > ROAD_Z0 && z < ROAD_Z1) z = z < 44 ? 36.5 : 51.5;
       sc = 0.8 + rng5() * 0.55;
       y = palmFits(ctx, x, z, sc, palmPlacements);
     }

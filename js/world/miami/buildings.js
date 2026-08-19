@@ -528,7 +528,7 @@ export function buildHelipads(ctx, sky) {
  * (the planting is materialised there so the vegetation lives in one module).
  */
 export function buildStreetLevel(ctx, sky, street) {
-  const { root, track, addCollider, setTag, rng4, glassPanelGeos } = ctx;
+  const { root, track, addCollider, addCyl, setTag, rng4, glassPanelGeos } = ctx;
   setTag('streetlevel');
   const { towerData } = sky;
   const { shelterX } = street;
@@ -706,8 +706,11 @@ export function buildStreetLevel(ctx, sky, street) {
       for (const s of [-1, 1]) {
         shopOpaque.push(cCyl(0.09, 0.11, t.podiumH + 0.55, 8, POSTC, t.x + s * 3.1, CITY_Y + (t.podiumH + 0.55) / 2, frontZ - depth + 0.35));
         shopOpaque.push(cCyl(0.2, 0.24, 0.16, 8, 0x8c9298, t.x + s * 3.1, CITY_Y + 0.08, frontZ - depth + 0.35));
+        // post only — never a box filling the canopy bay
+        addCyl(t.x + s * 3.1, CITY_Y, frontZ - depth + 0.35, 0.11, t.podiumH + 0.55);
       }
       glassPanelGeos.push(new THREE.BoxGeometry(7.4, 0.1, depth + 0.5).translate(t.x, cy0, frontZ - depth / 2 + 0.1));
+      addCollider(t.x, cy0 - 0.05, frontZ - depth / 2 + 0.1, 7.4, 0.12, depth + 0.5);
       shopOpaque.push(cBox(7.6, 0.16, 0.16, POSTC, t.x, cy0 + 0.06, frontZ - depth - 0.13));
       shopOpaque.push(cBox(7.6, 0.14, 0.5, POSTC, t.x, cy0 + 0.05, frontZ - 0.2));
       shopOpaque.push(cBox(4.8, 0.16, 1.3, STEP, t.x, CITY_Y + 0.08, frontZ - 0.9));

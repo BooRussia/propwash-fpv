@@ -1,5 +1,6 @@
 // Headless checks for the Miami reject ticket: palms off pavement,
-// crash-cam floor, deck tops. No three.js, no game state.
+// crash-cam floor, deck tops, sidewalks, fly-through voids.
+// No three.js, no game state.
 //
 //   node ./js/world/miami/rejectsTest.js
 
@@ -7,18 +8,47 @@ import {
   CITY_Z, CITY_Y, PIER_X, GAP_X, XS_HALF, XS_Z0, XS_Z1,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_HALF,
   ROAD_Z, BOARDWALK_Z, BOARDWALK_TOP, PIER_DECK_TOP, PIER_DECK_Z, PAVILION_Z,
+  PLANT_BEACH_Z, PLANT_CITY_Z, CROSS_X,
+  SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1,
+  GATE_POST_R, GARAGE_AISLE_W,
   onPavement, onRoadway, onBoardwalk, onCrossStreet, onLummusWalk,
-  inKeepout, groundHeight, deckTop, cameraFloor,
+  onSidewalk, onCurb, onPlantingRow, sidewalkInterrupted, sidewalkRuns,
+  inKeepout, inFlyVoid, FLY_VOIDS, flyColliderShapes, pierFlyShapes,
+  groundHeight, deckTop, cameraFloor,
 } from './constants.js';
 import { minCameraY, clampCameraToFloor, CAM_FLOOR_SLACK } from '../../camera/floor.js';
 
 const fails = [];
+let passedCount = 0;
 const ok = (name, cond, detail) => {
   if (!cond) fails.push(detail ? `${name}: ${detail}` : name);
+  else passedCount++;
 };
+
+/** 3D probe against published jamb/post/beam shapes. Allocation-free. */
+function probeBlocked(shapes, x, y, z, r) {
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    const y0 = s.y0;
+    const y1 = y0 + (s.h !== undefined ? s.h : s.sy);
+    if (y + r < y0 || y - r > y1) continue;
+    if (s.type === 'cyl') {
+      const dx = x - s.x, dz = z - s.z;
+      if (Math.sqrt(dx * dx + dz * dz) < s.r + r) return s;
+    } else {
+      const ex = Math.abs(x - s.x) - s.sx / 2;
+      const ez = Math.abs(z - s.z) - s.sz / 2;
+      if (ex <= 0 && ez <= 0) return s;
+      const gx = Math.max(ex, 0), gz = Math.max(ez, 0);
+      if (Math.sqrt(gx * gx + gz * gz) < r) return s;
+    }
+  }
+  return null;
+}
 
 export function runMiamiRejectsTests() {
   fails.length = 0;
+  passedCount = 0;
 
   // ---- 1. pavement reject ------------------------------------------------
   ok('boardwalk centre is pavement', onPavement(0, BOARDWALK_Z));
@@ -75,11 +105,71 @@ export function runMiamiRejectsTests() {
 
   ok('CITY_Y unchanged', CITY_Y === 1.5);
 
+  // ---- 3. sidewalks are not onRoadway planting rows -----------------------
+  ok('planting 36.5 is a planting row', onPlantingRow(PLANT_BEACH_Z));
+  ok('planting 51.5 is a planting row', onPlantingRow(PLANT_CITY_Z));
+  ok('planting row is not roadway', !onRoadway(PLANT_BEACH_Z) && !onRoadway(PLANT_CITY_Z));
+  ok('planting row is not sidewalk', !onSidewalk(0, PLANT_BEACH_Z) && !onSidewalk(0, PLANT_CITY_Z));
+  ok('planting row is not pavement', !onPavement(0, PLANT_BEACH_Z) && !onPavement(0, PLANT_CITY_Z));
+  ok('beach walk is sidewalk', onSidewalk(0, (SW_BEACH_Z0 + SW_BEACH_Z1) / 2));
+  ok('city walk is sidewalk', onSidewalk(0, (SW_CITY_Z0 + SW_CITY_Z1) / 2));
+  ok('sidewalk is pavement (drop, never nudge)',
+    onPavement(0, (SW_BEACH_Z0 + SW_BEACH_Z1) / 2)
+    && onPavement(0, (SW_CITY_Z0 + SW_CITY_Z1) / 2));
+  ok('sidewalk is not roadway',
+    !onRoadway((SW_BEACH_Z0 + SW_BEACH_Z1) / 2)
+    && !onRoadway((SW_CITY_Z0 + SW_CITY_Z1) / 2));
+  ok('curb is not a planting row', !onPlantingRow((37.14 + 37.52) / 2) && onCurb(37.33));
+  ok('crosswalk cut is not a sidewalk wall',
+    sidewalkInterrupted(CROSS_X[0]) && sidewalkInterrupted(CROSS_X[1]));
+  ok('walk runs skip every GAP_X', sidewalkRuns().every((run) =>
+    !GAP_X.some((cx) => cx >= run.x0 && cx <= run.x1)));
+  ok('sidewalk slab misses the planting row',
+    SW_BEACH_Z1 < PLANT_BEACH_Z && SW_CITY_Z0 > PLANT_CITY_Z);
+  ok('legacy 34.4/53.6 remap would be sidewalk — do not snap there',
+    onSidewalk(0, 34.4) && onSidewalk(0, 53.6));
+  ok('plan snap 36.5/51.5 stays off the walk',
+    !onSidewalk(0, 36.5) && !onSidewalk(0, 51.5) && !onPavement(0, 36.5));
+
+  // ---- 4. fly-through voids stay open; jambs smaller than the opening -----
+  const kit = flyColliderShapes();
+  const pier = pierFlyShapes();
+  const all = kit.concat(pier);
+  const kitVoids = FLY_VOIDS.filter((v) => v.kind === 'kit');
+  ok('two new kit fly-throughs', kitVoids.length >= 2);
+  ok('pier lines still listed',
+    FLY_VOIDS.some((v) => v.id === 'pier-undercroft')
+    && FLY_VOIDS.some((v) => v.id === 'pier-pavilion'));
+
+  for (const v of FLY_VOIDS) {
+    const hit = probeBlocked(all, v.x, v.y, v.z, 0.28);
+    ok(`${v.id} bay centre open`, !hit, hit ? `blocked by ${hit.tag} ${hit.type}` : '');
+    ok(`${v.id} keepout reserved`, !!inKeepout(v.x, v.z) || v.kind === 'existing');
+    ok(`${v.id} inFlyVoid`, !!inFlyVoid(v.x, v.z));
+    ok(`${v.id} opening is flyable`, v.openW >= 1.15 && v.openH >= 2.0);
+  }
+
+  const gatePosts = kit.filter((s) => s.tag === 'boardwalk-gate' && s.type === 'cyl');
+  const garageWalls = kit.filter((s) => s.tag === 'garage' && s.type === 'aabb' && s.sy > 2);
+  ok('gate has post colliders', gatePosts.length === 4);
+  ok('gate posts smaller than sash',
+    gatePosts.every((p) => p.r * 2 < 2.0 - 1e-6) && GATE_POST_R * 2 < 2.0);
+  ok('gate post occupies its own footprint',
+    !!probeBlocked(kit, gatePosts[0].x, gatePosts[0].y0 + 1.0, gatePosts[0].z, 0.02));
+  ok('garage has jamb masses', garageWalls.length === 2);
+  ok('garage jamb thinner than aisle',
+    garageWalls.every((w) => w.sx < GARAGE_AISLE_W - 0.5));
+  ok('garage jamb exists beside the mouth',
+    !!probeBlocked(kit, garageWalls[0].x, CITY_Y + 1.6, garageWalls[0].z, 0.05));
+  const pylon = pier.find((s) => s.tag === 'pier' && s.type === 'cyl' && s.y0 < 0);
+  ok('pier pylon collider exists', !!pylon && pylon.r === 0.4);
+  ok('pier pylon smaller than bay', pylon && pylon.r * 2 < 8.8);
+
   if (fails.length) {
     console.error('[miami-rejects] FAIL');
     for (const f of fails) console.error('  -', f);
   } else {
-    console.log('[miami-rejects] ok', 24, 'checks');
+    console.log('[miami-rejects] ok', passedCount, 'checks');
   }
   return { passed: fails.length === 0, fails };
 }

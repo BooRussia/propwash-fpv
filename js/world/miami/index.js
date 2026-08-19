@@ -39,6 +39,7 @@ import { buildLummus } from './landmarks/lummus.js';
 import { buildVolleyball } from './landmarks/volleyball.js';
 import { buildCinema } from './landmarks/cinema.js';
 import { buildYachtClub } from './landmarks/yachtclub.js';
+import { buildFlythrough } from './landmarks/flythrough.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildPoints } from './points.js';
 
@@ -180,6 +181,9 @@ export async function buildMiami(scene, env) {
   buildVolleyball(ctx);
   buildCinema(ctx);
   buildYachtClub(ctx);
+
+  // ---------------- fly-through kit (voids already in KEEPOUT; colliders now) --
+  buildFlythrough(ctx);
 
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);

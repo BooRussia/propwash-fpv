@@ -23,6 +23,7 @@ export async function buildLandscaping(ctx, spots) {
   // probe up in the canopy band.
   const treeFits = (s) => {
     const sc = s.sc || 1;
+    if (inKeepout(s.x, s.z, 0.6)) return false;
     if (blocked(s.x, s.z, 0.75, CITY_Y - 0.2, CITY_Y + 2.2)) return false;
     if (blocked(s.x, s.z, 3.45 * sc, CITY_Y + 3.4, CITY_Y + 7.6 * sc)) return false;
     return true;
