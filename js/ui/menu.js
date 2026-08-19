@@ -1686,7 +1686,7 @@ export class Menu {
     };
     key('ESC', 'Open / close this menu');
     key('SPACE', 'Arm / disarm motors');
-    key('R', 'Reset drone to spawn');
+    key('R', 'Reset to last haunt checkpoint (or spawn)');
     key('V', 'Toggle FPV / line-of-sight view');
     key('C', 'Toggle static overlay');
     key('↑ / ↓', 'Camera tilt down / up');

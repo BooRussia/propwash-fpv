@@ -27,6 +27,7 @@ import { buildMiami } from './world/miami.js';
 import { buildAshPrairie } from './world/ashPrairie.js';
 import { buildProcedural } from './world/procedural.js';
 import { buildRealWorld } from './world/realworld.js';
+import { createHauntLine } from './world/miami/checkpoints.js';
 import { ModeManager } from './modes/modes.js';
 import { MotorAudio } from './audio/engine.js';
 
@@ -142,7 +143,9 @@ function buildQuad() {
 
 // ---------------- map lifecycle ----------------
 let mapHandle = null;
+let hauntLine = null;
 let pilotPos = new THREE.Vector3(0, 1.7, 0);
+const _hauntRestart = new THREE.Vector3();
 
 async function loadMap() {
   const el = document.getElementById('loading');
@@ -153,8 +156,10 @@ async function loadMap() {
   try {
     modeManager.dispose();
     if (mapHandle) { mapHandle.dispose(scene); mapHandle = null; }
+    hauntLine = null;
     if (settings.map === 'miami') {
       mapHandle = await buildMiami(scene, env);
+      hauntLine = createHauntLine();
     } else if (settings.map === 'ashPrairie') {
       mapHandle = await buildAshPrairie(scene, env);
     } else if (settings.map === 'realworld') {
@@ -181,10 +186,19 @@ function respawn() {
   if (!quad || !mapHandle) return;
   // Following a trail? Start the drone at that trail's first sample.
   const o = trails.getSpawnOverride();
-  quad.reset(
-    o ? o.position.clone() : mapHandle.spawn.position.clone(),
-    o ? o.yawRad : (mapHandle.spawn.yawRad || 0)
-  );
+  if (o) {
+    quad.reset(o.position.clone(), o.yawRad);
+  } else {
+    // Haunt line: crash / R sits 0.6 m past the last cleared lip.
+    // No checkpoint yet → map pad. Never invent a second spawn graph.
+    const pose = hauntLine && hauntLine.restartPose();
+    if (pose) {
+      _hauntRestart.set(pose.x, pose.y, pose.z);
+      quad.reset(_hauntRestart, pose.yawRad);
+    } else {
+      quad.reset(mapHandle.spawn.position.clone(), mapHandle.spawn.yawRad || 0);
+    }
+  }
   armed = false;
   flightTimer = 0;
 }
@@ -380,6 +394,10 @@ renderer.setAnimationLoop(() => {
 
   if (!paused && quad && mapHandle) {
     stepPhysics(dt);
+    if (hauntLine && !quad.crashed) {
+      const cleared = hauntLine.notePosition(quad.position.x, quad.position.y, quad.position.z);
+      if (cleared) emit('osd:flash', { text: 'CHECKPOINT', ms: 800 });
+    }
     colliderDebug.update(quad.position);
     if (armed && !quad.crashed) flightTimer += dt;
     modeManager.update(dt, quad);
@@ -470,6 +488,7 @@ console.info('[PropWash] ready. ESC = menu, Space = arm, R = reset, V = LOS, C =
 window.__pw = {
   get quad() { return quad; },
   get map() { return mapHandle; },
+  get hauntLine() { return hauntLine; },
   get armed() { return armed; },
   get sigLoss() { return cameras.sigLoss; },
   get cameras() { return cameras; },
