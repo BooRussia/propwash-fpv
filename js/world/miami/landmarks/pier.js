@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import {
-  CITY_Z, PIER_X,
+  PIER_X,
   BOARDWALK_Z, BOARDWALK_W, BOARDWALK_D, BOARDWALK_H, BOARDWALK_Y,
   PIER_DECK_W, PIER_DECK_D, PIER_DECK_H, PIER_DECK_Y, PIER_DECK_Z, PIER_DECK_TOP,
   PAVILION_Z,
+  PIER_PYLON_DX, PIER_PYLON_R, PIER_PYLON_H, PIER_PYLON_Y0,
+  PIER_PYLON_Z0, PIER_PYLON_STEP, PIER_PYLON_COUNT,
+  PAVILION_POST_R, PAVILION_POST_H, PAVILION_POST_XS, PAVILION_POST_ZS,
 } from '../constants.js';
 import { plankTexture } from '../textures.js';
 
@@ -43,12 +46,13 @@ export function buildPier(ctx) {
     const pylons = new THREE.InstancedMesh(pyGeo, pyMat, 20);
     const m4 = new THREE.Matrix4();
     let pi = 0;
-    for (let i = 0; i < 10; i++) {
-      const z = CITY_Z - 16 - i * 17;
-      for (const dx of [-5, 5]) {
-        m4.makeTranslation(PIER_X + dx, -1.5, z);
+    for (let i = 0; i < PIER_PYLON_COUNT; i++) {
+      const z = PIER_PYLON_Z0 - i * PIER_PYLON_STEP;
+      for (const s of [-1, 1]) {
+        const dx = s * PIER_PYLON_DX;
+        m4.makeTranslation(PIER_X + dx, PIER_PYLON_Y0 + PIER_PYLON_H / 2, z);
         pylons.setMatrixAt(pi++, m4);
-        addCyl(PIER_X + dx, -6.5, z, 0.4, 10);
+        addCyl(PIER_X + dx, PIER_PYLON_Y0, z, PIER_PYLON_R, PIER_PYLON_H);
       }
     }
     pylons.castShadow = true;
@@ -78,10 +82,10 @@ function buildPavilion(ctx) {
 
   // Posts sit on the deck top (3.7). Six piles — two rows of three — leave
   // a flyable bay down the centre (~8.8 m × 3.6 m, 3.35 m to the soffit).
-  const POST_R = 0.20;
-  const POST_H = 3.35;
-  const xs = [-4.4, 4.4];
-  const zs = [-3.8, 0, 3.8];
+  const POST_R = PAVILION_POST_R;
+  const POST_H = PAVILION_POST_H;
+  const xs = PAVILION_POST_XS;
+  const zs = PAVILION_POST_ZS;
   const postGeo = track(new THREE.CylinderGeometry(POST_R, POST_R + 0.03, POST_H, 10));
   postGeo.translate(0, PIER_DECK_TOP + POST_H / 2, 0);
   const posts = new THREE.InstancedMesh(postGeo, timber, 6);

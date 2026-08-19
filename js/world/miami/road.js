@@ -2,17 +2,21 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { assetLib } from '../../core/assets.js';
 import {
-  CITY_Y, ROAD_Z, CROSS_X, GAP_X, XS_HALF, XS_Z0, XS_Z1, CURB_Z0, CURB_Z1,
+  CITY_Y, ROAD_Z, CROSS_X, GAP_X, XS_HALF, XS_Z0, XS_Z1,
+  CURB_BEACH_Z0, CURB_BEACH_Z1, CURB_CITY_Z0, CURB_CITY_Z1, CURB_H,
+  SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1, SW_H,
+  sidewalkRuns,
 } from './constants.js';
 import { roadTexture, setAoUVs } from './textures.js';
 
 /**
- * Ocean Drive: asphalt + centre line, raised curb strips, zebra crosswalks,
+ * Ocean Drive: asphalt + centre line, thin curbs, dedicated sidewalk slabs
+ * (collider matches the visual slab, planting rows left open), zebra paint,
  * storm drains, and the cross streets running inland at every street gap.
  * Consumes no rng draws — safe to build at any point in the sequence.
  */
 export async function buildRoad(ctx) {
-  const { root, track, asphaltSet, roadLinesSet, sidewalkSet } = ctx;
+  const { root, track, addCollider, setTag, asphaltSet, roadLinesSet, sidewalkSet } = ctx;
 
   // ---- carriageway ----
   {
@@ -88,24 +92,68 @@ export async function buildRoad(ctx) {
     // (canvas roadTexture fallback already carries baked markings)
   }
 
-  // ---- raised paver curb strips (0.13 m) along both road edges ----
+  // ---- thin curbs + dedicated sidewalk slabs ----
+  // The old 2.4 m "curb" was a fat shoulder: roadway-adjacent atlas wrapping
+  // the walk and a collider (once added) that blocked the 36.5 / 51.5 planting
+  // row. Curb is now a 0.38 m face; the walk is its own paver slab whose
+  // collider matches the visual. Cross streets cut both so CROSS_X stays paint.
   {
-    const curbGeos = [
-      new THREE.BoxGeometry(1240, 0.13, 2.4).translate(0, CITY_Y + 0.065, CURB_Z0),
-      new THREE.BoxGeometry(1240, 0.13, 2.4).translate(0, CITY_Y + 0.065, CURB_Z1),
-    ];
-    const curbGeo = track(mergeGeometries(curbGeos));
-    curbGeos.forEach((g) => g.dispose());
-    setAoUVs(curbGeo);
-    let curbMat;
-    if (sidewalkSet.map) {
-      curbMat = await assetLib.pbrMaterial('sidewalk', { repeat: [620, 1.2] });
-    } else {
-      curbMat = track(new THREE.MeshStandardMaterial({ color: 0x9b9b97, roughness: 0.95 }));
+    const runs = sidewalkRuns();
+    const curbGeos = [];
+    const swGeos = [];
+    const addRun = (geos, x0, x1, z0, z1, h) => {
+      const len = x1 - x0, depth = z1 - z0;
+      if (len < 1.2 || depth < 0.12) return;
+      geos.push(new THREE.BoxGeometry(len, h, depth)
+        .translate((x0 + x1) / 2, CITY_Y + h / 2, (z0 + z1) / 2));
+    };
+    setTag('curb');
+    for (const run of runs) {
+      addRun(curbGeos, run.x0, run.x1, CURB_BEACH_Z0, CURB_BEACH_Z1, CURB_H);
+      addRun(curbGeos, run.x0, run.x1, CURB_CITY_Z0, CURB_CITY_Z1, CURB_H);
+      addCollider((run.x0 + run.x1) / 2, CITY_Y, (CURB_BEACH_Z0 + CURB_BEACH_Z1) / 2,
+        run.x1 - run.x0, CURB_H, CURB_BEACH_Z1 - CURB_BEACH_Z0);
+      addCollider((run.x0 + run.x1) / 2, CITY_Y, (CURB_CITY_Z0 + CURB_CITY_Z1) / 2,
+        run.x1 - run.x0, CURB_H, CURB_CITY_Z1 - CURB_CITY_Z0);
     }
-    const curbs = new THREE.Mesh(curbGeo, curbMat);
-    curbs.receiveShadow = true;
-    root.add(curbs);
+    setTag('sidewalk');
+    for (const run of runs) {
+      addRun(swGeos, run.x0, run.x1, SW_BEACH_Z0, SW_BEACH_Z1, SW_H);
+      addRun(swGeos, run.x0, run.x1, SW_CITY_Z0, SW_CITY_Z1, SW_H);
+      addCollider((run.x0 + run.x1) / 2, CITY_Y, (SW_BEACH_Z0 + SW_BEACH_Z1) / 2,
+        run.x1 - run.x0, SW_H, SW_BEACH_Z1 - SW_BEACH_Z0);
+      addCollider((run.x0 + run.x1) / 2, CITY_Y, (SW_CITY_Z0 + SW_CITY_Z1) / 2,
+        run.x1 - run.x0, SW_H, SW_CITY_Z1 - SW_CITY_Z0);
+    }
+    if (curbGeos.length) {
+      const curbGeo = track(mergeGeometries(curbGeos));
+      curbGeos.forEach((g) => g.dispose());
+      setAoUVs(curbGeo);
+      const curbMat = track(new THREE.MeshStandardMaterial({
+        color: 0x7a7670, roughness: 0.92, metalness: 0.02,
+      }));
+      const curbs = new THREE.Mesh(curbGeo, curbMat);
+      curbs.receiveShadow = true;
+      curbs.name = 'ocean-drive-curbs';
+      root.add(curbs);
+    }
+    if (swGeos.length) {
+      const swGeo = track(mergeGeometries(swGeos));
+      swGeos.forEach((g) => g.dispose());
+      setAoUVs(swGeo);
+      let swMat;
+      if (sidewalkSet.map) {
+        // paver scale ~0.55 m — not the city-plateau 2 m tile, not asphalt
+        swMat = await assetLib.pbrMaterial('sidewalk', { repeat: [1240 / 0.55, 1.9 / 0.55] });
+      } else {
+        swMat = track(new THREE.MeshStandardMaterial({ color: 0xb4b0a6, roughness: 0.94 }));
+      }
+      const walks = new THREE.Mesh(swGeo, swMat);
+      walks.receiveShadow = true;
+      walks.name = 'ocean-drive-sidewalks';
+      root.add(walks);
+    }
+    setTag('world');
   }
 
   // ---- zebra crosswalks — thin opaque bars flush on the asphalt ----
