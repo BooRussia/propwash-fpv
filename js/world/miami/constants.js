@@ -372,22 +372,40 @@ export const LEFTOVER_LOT_MESH_T = 0.04;
 export const LEFTOVER_LOT_JAMB = 0.10;
 export const LEFTOVER_LOT_WALL = 0.15;
 
+// ---- leftoverLot B (second leftover-city vacant parcel; same schema) ----
+// Vacant city parcel east of warehouse RESERVED (WAREHOUSE_X1+1.8 ≈ 286.33),
+// west of helipadE (408), same inland band as leftoverLot #34 / drop / abando
+// (z=84). 1.7 m gap off the warehouse keepout, same as #34 sat off GAP 243.
+// Desi signed the cell. Do not invent or slide x/z. Do not grow the plate.
+// Same leftoverLotGeom / leftoverLotColliderShapes / leftoverLotVoids — not
+// leftoverLotBGeom, not OSM, not a fifth haunt.
+export const LEFTOVER_LOT_B_X = 295;
+export const LEFTOVER_LOT_B_Z = 84;
+export const LEFTOVER_LOT_B_W = 14.0;
+export const LEFTOVER_LOT_B_D = 12.0;
+export const LEFTOVER_LOT_B_X0 = 288;
+export const LEFTOVER_LOT_B_X1 = 302;
+export const LEFTOVER_LOT_B_Z0 = 78;
+export const LEFTOVER_LOT_B_Z1 = 90;
+
 /**
- * Fence / gate / shed / dumpster on the signed leftover-city plate.
+ * Fence / gate / shed / dumpster on a signed leftover-city plate.
+ * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
+ * LEFTOVER_LOT_B_Z) for lot B. Same schema — never leftoverLotBGeom.
  * Never remaps x/z. Scatter stays on tryPlace.
  */
-export function leftoverLotGeom() {
-  const x0 = LEFTOVER_LOT_X0;
-  const x1 = LEFTOVER_LOT_X1;
-  const z0 = LEFTOVER_LOT_Z0;
-  const z1 = LEFTOVER_LOT_Z1;
+export function leftoverLotGeom(cx = LEFTOVER_LOT_X, cz = LEFTOVER_LOT_Z) {
+  const x0 = cx - LEFTOVER_LOT_W / 2;
+  const x1 = cx + LEFTOVER_LOT_W / 2;
+  const z0 = cz - LEFTOVER_LOT_D / 2;
+  const z1 = cz + LEFTOVER_LOT_D / 2;
   const y0 = CITY_Y;
   const h = LEFTOVER_LOT_FENCE_H;
-  const gateX = LEFTOVER_LOT_X;
+  const gateX = cx;
   const gateZ = z0;
   const gateLeft = gateX - LEFTOVER_LOT_GATE_W / 2;
   const gateRight = gateX + LEFTOVER_LOT_GATE_W / 2;
-  const walkX = LEFTOVER_LOT_X + 3.55;
+  const walkX = cx + 3.55;
   const walkZ = z1;
   const walkLeft = walkX - LEFTOVER_LOT_WALK_W / 2;
   const walkRight = walkX + LEFTOVER_LOT_WALK_W / 2;
@@ -403,7 +421,7 @@ export function leftoverLotGeom() {
   const dumpD = 0.92;
   const dumpH = 1.12;
   const dumpX = x1 - LEFTOVER_LOT_MESH_T - 0.22 - dumpW / 2;
-  const dumpZ = LEFTOVER_LOT_Z + 1.85;
+  const dumpZ = cz + 1.85;
   const postStep = 2.45;
   const meshRuns = [
     { axis: 'x', x0, x1: gateLeft, z: z0 },
@@ -454,8 +472,7 @@ export function leftoverLotGeom() {
 }
 
 /** Street-front vehicle gate + secondary walk gate. Empty air. */
-export function inLeftoverLotGate(x, z, margin = 0.15) {
-  const g = leftoverLotGeom();
+function leftoverLotGateAt(g, x, z, margin) {
   const inVehicle = x >= g.gateLeft - margin && x <= g.gateRight + margin
     && Math.abs(z - g.gateZ) <= LEFTOVER_LOT_MESH_T + 0.55 + margin;
   const inWalk = x >= g.walkLeft - margin && x <= g.walkRight + margin
@@ -463,12 +480,17 @@ export function inLeftoverLotGate(x, z, margin = 0.15) {
   return inVehicle || inWalk;
 }
 
+export function inLeftoverLotGate(x, z, margin = 0.15) {
+  return leftoverLotGateAt(leftoverLotGeom(), x, z, margin)
+    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z), x, z, margin);
+}
+
 /**
  * Palms + weeds grow-to-gap inside the lot, lean at the fence.
  * tryPlace-drop off pavement and the gate void. Reject-or-drop, never nudge.
+ * Default is leftoverLot #34. Pass leftoverLotGeom(B) for lot B.
  */
-export function leftoverLotPlantSpots() {
-  const g = leftoverLotGeom();
+export function leftoverLotPlantSpots(g = leftoverLotGeom()) {
   const palms = [
     { x: g.x0 + 1.15, z: g.z0 + 3.60, sc: 0.72, lean: 0.18 },
     { x: g.x1 - 1.15, z: g.z1 - 3.40, sc: 0.68, lean: -0.16 },
@@ -524,6 +546,8 @@ export const RESERVED = [
     z0: HOUSE_Z0 - 1.5, z1: HOUSE_Z1 + 1.4, tag: 'house' },
   { x0: LEFTOVER_LOT_X0 - 2.2, x1: LEFTOVER_LOT_X1 + 1.8,
     z0: LEFTOVER_LOT_Z0 - 1.5, z1: LEFTOVER_LOT_Z1 + 1.4, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_B_X0 - 2.2, x1: LEFTOVER_LOT_B_X1 + 1.8,
+    z0: LEFTOVER_LOT_B_Z0 - 1.5, z1: LEFTOVER_LOT_B_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -582,6 +606,8 @@ export const KEEPOUT = [
     z0: HOUSE_Z0 - 1.3, z1: HOUSE_Z1 + 1.2, tag: 'house' },
   { x0: LEFTOVER_LOT_X0 - 2.0, x1: LEFTOVER_LOT_X1 + 1.6,
     z0: LEFTOVER_LOT_Z0 - 1.3, z1: LEFTOVER_LOT_Z1 + 1.2, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_B_X0 - 2.0, x1: LEFTOVER_LOT_B_X1 + 1.6,
+    z0: LEFTOVER_LOT_B_Z0 - 1.3, z1: LEFTOVER_LOT_B_Z1 + 1.2, tag: 'leftoverLot' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1447,9 +1473,9 @@ export function installHouseColliders(addCyl, addCollider) {
 /**
  * leftoverLot reserved voids. Collider is the fence post / thin mesh /
  * gate jamb — never a lot-AABB, never a box in the gate.
+ * No-arg covers #34 and lot B via leftoverLotGeom. Pass a geom for one plate.
  */
-export function leftoverLotVoids() {
-  const g = leftoverLotGeom();
+function leftoverLotVoidsAt(g) {
   const y0 = CITY_Y;
   return [
     {
@@ -1480,6 +1506,14 @@ export function leftoverLotVoids() {
   ];
 }
 
+export function leftoverLotVoids(g) {
+  if (g === undefined) {
+    return leftoverLotVoidsAt(leftoverLotGeom())
+      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)));
+  }
+  return leftoverLotVoidsAt(g);
+}
+
 function pushLotAabb(shapes, x, z, sx, sz, y0, sy) {
   shapes.push({ type: 'aabb', tag: 'leftoverLot', x, z, sx, sz, y0, sy });
 }
@@ -1489,9 +1523,7 @@ function pushLotCyl(shapes, x, z, r, y0, h) {
 }
 
 /** Posts + thin mesh + gate jambs + shed/dumpster. Never a lot-AABB. */
-export function leftoverLotColliderShapes() {
-  const shapes = [];
-  const g = leftoverLotGeom();
+function leftoverLotColliderShapesAt(shapes, g) {
   const y0 = CITY_Y;
   const postR = LEFTOVER_LOT_POST / 2;
 
@@ -1551,6 +1583,18 @@ export function leftoverLotColliderShapes() {
 
   // Dumpster — ⊆ dumpster visual, against the east fence, never in the gate.
   pushLotAabb(shapes, g.dumpX, g.dumpZ, g.dumpW - 0.08, g.dumpD - 0.08, y0, g.dumpH);
+}
+
+/** Posts + thin mesh + gate jambs + shed/dumpster. Never a lot-AABB.
+ *  No-arg covers #34 and lot B via leftoverLotGeom. Pass a geom for one plate. */
+export function leftoverLotColliderShapes(g) {
+  const shapes = [];
+  if (g === undefined) {
+    leftoverLotColliderShapesAt(shapes, leftoverLotGeom());
+    leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z));
+  } else {
+    leftoverLotColliderShapesAt(shapes, g);
+  }
   return shapes;
 }
 
