@@ -198,6 +198,77 @@ export function dropHoistGeom() {
   return { holeX0, holeX1, holeZ0, holeZ1, x, z, eastX };
 }
 
+// ---- warehouse haunt kit (leftover industrial; aisles + dock; jambs / racks) ----
+// Vacant industrial parcel east of GAP 243, inland of the hotel strip.
+// Leftover industrial / leftover city — not a street, boardwalk, or path.
+// Scatter still uses tryPlace; this reservation is one more keepout, not a
+// second placer. Whoop flies the VNA / sash; 5″ flies the wide aisle / dock.
+// Weenie is the dock mouth. Collider is the jamb / rack upright / leveler
+// lip — never a filled aisle or door.
+export const WAREHOUSE_X = 278;
+export const WAREHOUSE_Z = 108;
+export const WAREHOUSE_WALL = 0.28;
+export const WAREHOUSE_RACK = 1.05;
+export const WAREHOUSE_UPRIGHT = 0.10;
+export const WAREHOUSE_BEAM = 0.08;
+export const WAREHOUSE_WIDE = 4.00;
+export const WAREHOUSE_NARROW = 2.70;
+export const WAREHOUSE_VNA = 1.60;
+export const WAREHOUSE_W = 2 * WAREHOUSE_WALL + 4 * WAREHOUSE_RACK
+  + WAREHOUSE_WIDE + WAREHOUSE_NARROW + WAREHOUSE_VNA;
+export const WAREHOUSE_D = 15.60;
+export const WAREHOUSE_H = 7.20;
+export const WAREHOUSE_PAD_H = 0.08;
+export const WAREHOUSE_ROOF_H = 0.18;
+export const WAREHOUSE_RACK_H = 6.40;
+export const WAREHOUSE_DOOR_W = 2.70;
+export const WAREHOUSE_DOOR_H = 3.00;
+export const WAREHOUSE_LEVELER = 1.22;
+export const WAREHOUSE_LEVELER_T = 0.12;
+export const WAREHOUSE_SASH_W = 1.36;
+export const WAREHOUSE_SASH_H = 1.40;
+export const WAREHOUSE_SASH_SILL = 3.85;
+export const WAREHOUSE_LIP = 0.08;
+export const WAREHOUSE_X0 = WAREHOUSE_X - WAREHOUSE_W / 2;
+export const WAREHOUSE_X1 = WAREHOUSE_X + WAREHOUSE_W / 2;
+export const WAREHOUSE_Z0 = WAREHOUSE_Z - WAREHOUSE_D / 2;
+export const WAREHOUSE_Z1 = WAREHOUSE_Z + WAREHOUSE_D / 2;
+
+/** Aisle centres + dock mouth. Racks sit in the leftover strips, not the clear. */
+export function warehouseAisleGeom() {
+  const west = WAREHOUSE_X0 + WAREHOUSE_WALL;
+  const r = WAREHOUSE_RACK;
+  const wideX0 = west + r;
+  const wideX1 = wideX0 + WAREHOUSE_WIDE;
+  const narrowX0 = wideX1 + r;
+  const narrowX1 = narrowX0 + WAREHOUSE_NARROW;
+  const vnaX0 = narrowX1 + r;
+  const vnaX1 = vnaX0 + WAREHOUSE_VNA;
+  const z0 = WAREHOUSE_Z0 + WAREHOUSE_WALL;
+  const z1 = WAREHOUSE_Z1 - WAREHOUSE_WALL;
+  return {
+    wideX0, wideX1, wideX: (wideX0 + wideX1) / 2,
+    narrowX0, narrowX1, narrowX: (narrowX0 + narrowX1) / 2,
+    vnaX0, vnaX1, vnaX: (vnaX0 + vnaX1) / 2,
+    z0, z1, midZ: (z0 + z1) / 2, aisleD: z1 - z0,
+    dockX: (wideX0 + wideX1) / 2,
+    oceanZ: WAREHOUSE_Z0 + WAREHOUSE_WALL / 2,
+    inlandZ: WAREHOUSE_Z1 - WAREHOUSE_WALL / 2,
+    rackBays: [
+      [wideX0 - r, wideX0],
+      [wideX1, wideX1 + r],
+      [narrowX1, narrowX1 + r],
+      [vnaX1, vnaX1 + r],
+    ],
+  };
+}
+
+/** Whoop sashes on the inland wall, centred on the narrow + VNA aisles. */
+export function warehouseSashXs() {
+  const g = warehouseAisleGeom();
+  return [g.narrowX, g.vnaX];
+}
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -223,6 +294,8 @@ export const RESERVED = [
     z0: ABANDO_Z0 - 1.6, z1: ABANDO_Z1 + 1.4, tag: 'abando' },
   { x0: DROP_X0 - 2.2, x1: DROP_X1 + 1.8,
     z0: DROP_Z0 - 1.5, z1: DROP_Z1 + 1.4, tag: 'drop' },
+  { x0: WAREHOUSE_X0 - 2.2, x1: WAREHOUSE_X1 + 1.8,
+    z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.5, z1: WAREHOUSE_Z1 + 1.4, tag: 'warehouse' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -275,6 +348,8 @@ export const KEEPOUT = [
     z0: ABANDO_Z0 - 1.4, z1: ABANDO_Z1 + 1.2, tag: 'abando' },
   { x0: DROP_X0 - 2.0, x1: DROP_X1 + 1.6,
     z0: DROP_Z0 - 1.3, z1: DROP_Z1 + 1.2, tag: 'drop' },
+  { x0: WAREHOUSE_X0 - 2.0, x1: WAREHOUSE_X1 + 1.6,
+    z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.3, z1: WAREHOUSE_Z1 + 1.2, tag: 'warehouse' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -861,6 +936,144 @@ export function installDropColliders(addCyl, addCollider) {
     const s = shapes[i];
     if (s.type === 'cyl') addCyl(s.x, s.y0, s.z, s.r, s.h);
     else addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * Warehouse reserved voids. Collider is the jamb / rack upright / leveler
+ * lip — never a box that fills an aisle, sash, or the dock mouth.
+ */
+export function warehouseVoids() {
+  const g = warehouseAisleGeom();
+  const yFly = CITY_Y + 1.55;
+  const y0 = CITY_Y + 0.16;
+  const y1 = CITY_Y + WAREHOUSE_H - 0.3;
+  const aisles = [
+    { id: 'warehouse-aisle-wide', kind: 'wide', x: g.wideX, x0: g.wideX0, x1: g.wideX1,
+      openW: WAREHOUSE_WIDE, probe: 0.22 },
+    { id: 'warehouse-aisle-narrow', kind: 'narrow', x: g.narrowX, x0: g.narrowX0, x1: g.narrowX1,
+      openW: WAREHOUSE_NARROW, probe: 0.16 },
+    { id: 'warehouse-aisle-vna', kind: 'vna', x: g.vnaX, x0: g.vnaX0, x1: g.vnaX1,
+      openW: WAREHOUSE_VNA, probe: 0.08 },
+  ];
+  const voids = aisles.map((a) => ({
+    ...a,
+    z: g.midZ, y: yFly,
+    z0: g.z0, z1: g.z1, y0, y1,
+    openH: WAREHOUSE_H - 0.5,
+  }));
+  voids.push({
+    id: 'warehouse-dock', kind: 'dock',
+    x: g.dockX, z: g.oceanZ, y: CITY_Y + WAREHOUSE_DOOR_H * 0.48,
+    x0: g.dockX - WAREHOUSE_DOOR_W / 2, x1: g.dockX + WAREHOUSE_DOOR_W / 2,
+    z0: WAREHOUSE_Z0 - 0.2, z1: WAREHOUSE_Z0 + WAREHOUSE_WALL + 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + WAREHOUSE_DOOR_H,
+    openW: WAREHOUSE_DOOR_W, openH: WAREHOUSE_DOOR_H, probe: 0.20,
+  });
+  const sashXs = warehouseSashXs();
+  const ySash = CITY_Y + WAREHOUSE_SASH_SILL + WAREHOUSE_SASH_H * 0.48;
+  for (let i = 0; i < sashXs.length; i++) {
+    const x = sashXs[i];
+    voids.push({
+      id: `warehouse-sash-inland-${i}`, kind: 'sash',
+      x, z: g.inlandZ, y: ySash,
+      x0: x - WAREHOUSE_SASH_W / 2, x1: x + WAREHOUSE_SASH_W / 2,
+      z0: WAREHOUSE_Z1 - WAREHOUSE_WALL - 0.15, z1: WAREHOUSE_Z1 + 0.15,
+      y0: CITY_Y + WAREHOUSE_SASH_SILL, y1: CITY_Y + WAREHOUSE_SASH_SILL + WAREHOUSE_SASH_H,
+      openW: WAREHOUSE_SASH_W, openH: WAREHOUSE_SASH_H, probe: 0.08,
+    });
+  }
+  return voids;
+}
+
+function pushWhAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'warehouse', x, z, sx, sz, y0, sy });
+}
+
+function whBand(shapes, x0, x1, z, sz, y0, sy) {
+  const w = x1 - x0;
+  if (w <= 0.04) return;
+  pushWhAabb(shapes, (x0 + x1) / 2, z, w, sz, y0, sy);
+}
+
+/** Jamb / rack / leveler-lip shapes. Never a filled aisle or dock. */
+export function warehouseColliderShapes() {
+  const shapes = [];
+  const g = warehouseAisleGeom();
+  const y0 = CITY_Y;
+  const yRoof = CITY_Y + WAREHOUSE_H;
+  const zs = WAREHOUSE_WALL;
+
+  // Ocean face — dock punched. Jambs + lintel only; mouth stays open.
+  const doorLeft = g.dockX - WAREHOUSE_DOOR_W / 2;
+  const doorRight = g.dockX + WAREHOUSE_DOOR_W / 2;
+  whBand(shapes, WAREHOUSE_X0, doorLeft, g.oceanZ, zs, y0, WAREHOUSE_DOOR_H);
+  whBand(shapes, doorRight, WAREHOUSE_X1, g.oceanZ, zs, y0, WAREHOUSE_DOOR_H);
+  whBand(shapes, WAREHOUSE_X0, WAREHOUSE_X1, g.oceanZ, zs,
+    y0 + WAREHOUSE_DOOR_H, yRoof - (y0 + WAREHOUSE_DOOR_H));
+
+  // Inland face — whoop sashes punched. Sill + jambs + lintel.
+  const sashXs = warehouseSashXs();
+  const sill = y0 + WAREHOUSE_SASH_SILL;
+  const sash1 = sill + WAREHOUSE_SASH_H;
+  whBand(shapes, WAREHOUSE_X0, WAREHOUSE_X1, g.inlandZ, zs, y0, WAREHOUSE_SASH_SILL);
+  let cursor = WAREHOUSE_X0;
+  for (let i = 0; i < sashXs.length; i++) {
+    const x = sashXs[i];
+    whBand(shapes, cursor, x - WAREHOUSE_SASH_W / 2, g.inlandZ, zs, sill, WAREHOUSE_SASH_H);
+    cursor = x + WAREHOUSE_SASH_W / 2;
+  }
+  whBand(shapes, cursor, WAREHOUSE_X1, g.inlandZ, zs, sill, WAREHOUSE_SASH_H);
+  whBand(shapes, WAREHOUSE_X0, WAREHOUSE_X1, g.inlandZ, zs, sash1, yRoof - sash1);
+
+  // Side walls — solid. Aisles run ±Z between the racks, not through these.
+  pushWhAabb(shapes, WAREHOUSE_X0 + WAREHOUSE_WALL / 2, WAREHOUSE_Z,
+    WAREHOUSE_WALL, WAREHOUSE_D, y0, WAREHOUSE_H);
+  pushWhAabb(shapes, WAREHOUSE_X1 - WAREHOUSE_WALL / 2, WAREHOUSE_Z,
+    WAREHOUSE_WALL, WAREHOUSE_D, y0, WAREHOUSE_H);
+
+  // Floor pad + roof lid. Neither fills the volume.
+  pushWhAabb(shapes, WAREHOUSE_X, WAREHOUSE_Z,
+    WAREHOUSE_W + 0.2, WAREHOUSE_D + 0.2, y0, WAREHOUSE_PAD_H);
+  pushWhAabb(shapes, WAREHOUSE_X, WAREHOUSE_Z,
+    WAREHOUSE_W + 0.16, WAREHOUSE_D + 0.16, yRoof, WAREHOUSE_ROOF_H);
+
+  // Dock leveler — thin apron outside the mouth, not a box in the door.
+  pushWhAabb(shapes, g.dockX, WAREHOUSE_Z0 - WAREHOUSE_LEVELER / 2,
+    WAREHOUSE_DOOR_W, WAREHOUSE_LEVELER, y0, WAREHOUSE_LEVELER_T);
+
+  // Rack uprights + beam lips. Stay inside the rack bay; aisles stay empty.
+  const nPost = 5;
+  const beamY0 = [1.35, 2.85, 4.35];
+  for (let b = 0; b < g.rackBays.length; b++) {
+    const bay = g.rackBays[b];
+    const xW = bay[0] + WAREHOUSE_UPRIGHT / 2;
+    const xE = bay[1] - WAREHOUSE_UPRIGHT / 2;
+    for (let i = 0; i < nPost; i++) {
+      const t = nPost === 1 ? 0.5 : i / (nPost - 1);
+      const z = g.z0 + 0.45 + t * (g.aisleD - 0.90);
+      pushWhAabb(shapes, xW, z, WAREHOUSE_UPRIGHT, WAREHOUSE_UPRIGHT, y0, WAREHOUSE_RACK_H);
+      pushWhAabb(shapes, xE, z, WAREHOUSE_UPRIGHT, WAREHOUSE_UPRIGHT, y0, WAREHOUSE_RACK_H);
+    }
+    const faceW = bay[0] + WAREHOUSE_BEAM / 2;
+    const faceE = bay[1] - WAREHOUSE_BEAM / 2;
+    for (let k = 0; k < beamY0.length; k++) {
+      pushWhAabb(shapes, faceW, g.midZ, WAREHOUSE_BEAM, g.aisleD - 0.35,
+        y0 + beamY0[k], WAREHOUSE_BEAM);
+      pushWhAabb(shapes, faceE, g.midZ, WAREHOUSE_BEAM, g.aisleD - 0.35,
+        y0 + beamY0[k], WAREHOUSE_BEAM);
+    }
+  }
+  return shapes;
+}
+
+/** Push warehouse jamb / rack colliders. Same bag as the fly-through kit. */
+export function installWarehouseColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = warehouseColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
   }
 }
 
