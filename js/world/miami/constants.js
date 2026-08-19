@@ -344,6 +344,155 @@ export function housePlanGeom() {
   };
 }
 
+// ---- leftoverLot (leftover-city vacant parcel; not a haunt; not dirt hulls) ----
+// Vacant city parcel east of GAP 243 (243+XS_HALF=249.5), west of the
+// warehouse keepout (~269.5), same inland band as drop/abando (z=84).
+// Desi re-signed the cell. Do not invent or slide x/z. Do not grow the plate.
+// Scatter still uses tryPlace; this reservation is one more keepout, not a
+// second placer. Not a fifth haunt. Not leftover-dirt hulls. Not OSM.
+export const LEFTOVER_LOT_X = 258;
+export const LEFTOVER_LOT_Z = 84;
+export const LEFTOVER_LOT_W = 14.0;
+export const LEFTOVER_LOT_D = 12.0;
+export const LEFTOVER_LOT_X0 = 251;
+export const LEFTOVER_LOT_X1 = 265;
+export const LEFTOVER_LOT_Z0 = 78;
+export const LEFTOVER_LOT_Z1 = 90;
+// Fence H 1.83 m. Industrial leftover may jitter to 2.13, never under 1.70.
+export const LEFTOVER_LOT_FENCE_H = 1.83;
+export const LEFTOVER_LOT_FENCE_H_MIN = 1.70;
+export const LEFTOVER_LOT_FENCE_H_MAX = 2.13;
+export const LEFTOVER_LOT_GATE_W = 3.66;
+export const LEFTOVER_LOT_WALK_W = 1.07;
+export const LEFTOVER_LOT_WALK_H = 1.83;
+export const LEFTOVER_LOT_SHED_DOOR_W = 0.91;
+export const LEFTOVER_LOT_SHED_DOOR_H = 2.03;
+export const LEFTOVER_LOT_POST = 0.08;
+export const LEFTOVER_LOT_MESH_T = 0.04;
+export const LEFTOVER_LOT_JAMB = 0.10;
+export const LEFTOVER_LOT_WALL = 0.15;
+
+/**
+ * Fence / gate / shed / dumpster on the signed leftover-city plate.
+ * Never remaps x/z. Scatter stays on tryPlace.
+ */
+export function leftoverLotGeom() {
+  const x0 = LEFTOVER_LOT_X0;
+  const x1 = LEFTOVER_LOT_X1;
+  const z0 = LEFTOVER_LOT_Z0;
+  const z1 = LEFTOVER_LOT_Z1;
+  const y0 = CITY_Y;
+  const h = LEFTOVER_LOT_FENCE_H;
+  const gateX = LEFTOVER_LOT_X;
+  const gateZ = z0;
+  const gateLeft = gateX - LEFTOVER_LOT_GATE_W / 2;
+  const gateRight = gateX + LEFTOVER_LOT_GATE_W / 2;
+  const walkX = LEFTOVER_LOT_X + 3.55;
+  const walkZ = z1;
+  const walkLeft = walkX - LEFTOVER_LOT_WALK_W / 2;
+  const walkRight = walkX + LEFTOVER_LOT_WALK_W / 2;
+  const shedW = 2.40;
+  const shedD = 2.10;
+  const shedH = 2.24;
+  const shedInset = 0.42 + LEFTOVER_LOT_MESH_T;
+  const shedX = x0 + shedInset + shedW / 2;
+  const shedZ = z1 - shedInset - shedD / 2;
+  const shedDoorX = shedX + shedW / 2;
+  const shedDoorZ = shedZ;
+  const dumpW = 1.68;
+  const dumpD = 0.92;
+  const dumpH = 1.12;
+  const dumpX = x1 - LEFTOVER_LOT_MESH_T - 0.22 - dumpW / 2;
+  const dumpZ = LEFTOVER_LOT_Z + 1.85;
+  const postStep = 2.45;
+  const meshRuns = [
+    { axis: 'x', x0, x1: gateLeft, z: z0 },
+    { axis: 'x', x0: gateRight, x1, z: z0 },
+    { axis: 'x', x0, x1: walkLeft, z: z1 },
+    { axis: 'x', x0: walkRight, x1, z: z1 },
+    { axis: 'z', z0, z1, x: x0 },
+    { axis: 'z', z0, z1, x: x1 },
+  ];
+  const rawPosts = [
+    { x: x0, z: z0 }, { x: x1, z: z0 }, { x: x0, z: z1 }, { x: x1, z: z1 },
+    { x: gateLeft, z: gateZ }, { x: gateRight, z: gateZ },
+    { x: walkLeft, z: walkZ }, { x: walkRight, z: walkZ },
+  ];
+  for (let i = 0; i < meshRuns.length; i++) {
+    const run = meshRuns[i];
+    if (run.axis === 'x') {
+      const span = run.x1 - run.x0;
+      const n = Math.max(1, Math.round(span / postStep));
+      for (let k = 0; k <= n; k++) {
+        rawPosts.push({ x: run.x0 + (span * k) / n, z: run.z });
+      }
+    } else {
+      const span = run.z1 - run.z0;
+      const n = Math.max(1, Math.round(span / postStep));
+      for (let k = 0; k <= n; k++) {
+        rawPosts.push({ x: run.x, z: run.z0 + (span * k) / n });
+      }
+    }
+  }
+  const seen = new Set();
+  const posts = [];
+  for (let i = 0; i < rawPosts.length; i++) {
+    const p = rawPosts[i];
+    const key = `${p.x.toFixed(3)},${p.z.toFixed(3)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    posts.push(p);
+  }
+  return {
+    x0, x1, z0, z1, y0, h,
+    gateX, gateZ, gateLeft, gateRight,
+    walkX, walkZ, walkLeft, walkRight,
+    shedW, shedD, shedH, shedX, shedZ, shedDoorX, shedDoorZ,
+    dumpW, dumpD, dumpH, dumpX, dumpZ,
+    meshRuns, posts,
+  };
+}
+
+/** Street-front vehicle gate + secondary walk gate. Empty air. */
+export function inLeftoverLotGate(x, z, margin = 0.15) {
+  const g = leftoverLotGeom();
+  const inVehicle = x >= g.gateLeft - margin && x <= g.gateRight + margin
+    && Math.abs(z - g.gateZ) <= LEFTOVER_LOT_MESH_T + 0.55 + margin;
+  const inWalk = x >= g.walkLeft - margin && x <= g.walkRight + margin
+    && Math.abs(z - g.walkZ) <= LEFTOVER_LOT_MESH_T + 0.45 + margin;
+  return inVehicle || inWalk;
+}
+
+/**
+ * Palms + weeds grow-to-gap inside the lot, lean at the fence.
+ * tryPlace-drop off pavement and the gate void. Reject-or-drop, never nudge.
+ */
+export function leftoverLotPlantSpots() {
+  const g = leftoverLotGeom();
+  const palms = [
+    { x: g.x0 + 1.15, z: g.z0 + 3.60, sc: 0.72, lean: 0.18 },
+    { x: g.x1 - 1.15, z: g.z1 - 3.40, sc: 0.68, lean: -0.16 },
+    { x: g.x0 + 1.20, z: g.z1 - 4.80, sc: 0.64, lean: 0.14 },
+  ];
+  const weeds = [];
+  for (let x = g.x0 + 0.55; x <= g.x1 - 0.55; x += 1.55) {
+    for (let z = g.z0 + 0.55; z <= g.z1 - 0.55; z += 1.45) {
+      if (onPavement(x, z) || inLeftoverLotGate(x, z, 0.35)) continue;
+      if (Math.abs(x - g.shedX) < g.shedW / 2 + 0.22
+        && Math.abs(z - g.shedZ) < g.shedD / 2 + 0.22) continue;
+      if (Math.abs(x - g.dumpX) < g.dumpW / 2 + 0.16
+        && Math.abs(z - g.dumpZ) < g.dumpD / 2 + 0.16) continue;
+      const toFence = Math.min(x - g.x0, g.x1 - x, z - g.z0, g.z1 - z);
+      let h = Math.imul(Math.round(x * 10), 0x27d4eb2d) ^ Math.imul(Math.round(z * 10), 0x165667b1);
+      h = Math.imul(h ^ (h >>> 15), 0x2545f491);
+      const u = ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+      if (toFence > 2.8 && u > 0.34) continue;
+      weeds.push({ x, z, lean: toFence < 1.1 ? 0.22 : 0.04, sc: 0.7 + u * 0.45 });
+    }
+  }
+  return { palms, weeds };
+}
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -373,6 +522,8 @@ export const RESERVED = [
     z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.5, z1: WAREHOUSE_Z1 + 1.4, tag: 'warehouse' },
   { x0: HOUSE_X0 - 2.2, x1: HOUSE_X1 + 1.8,
     z0: HOUSE_Z0 - 1.5, z1: HOUSE_Z1 + 1.4, tag: 'house' },
+  { x0: LEFTOVER_LOT_X0 - 2.2, x1: LEFTOVER_LOT_X1 + 1.8,
+    z0: LEFTOVER_LOT_Z0 - 1.5, z1: LEFTOVER_LOT_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -429,6 +580,8 @@ export const KEEPOUT = [
     z0: WAREHOUSE_Z0 - WAREHOUSE_LEVELER - 1.3, z1: WAREHOUSE_Z1 + 1.2, tag: 'warehouse' },
   { x0: HOUSE_X0 - 2.0, x1: HOUSE_X1 + 1.6,
     z0: HOUSE_Z0 - 1.3, z1: HOUSE_Z1 + 1.2, tag: 'house' },
+  { x0: LEFTOVER_LOT_X0 - 2.0, x1: LEFTOVER_LOT_X1 + 1.6,
+    z0: LEFTOVER_LOT_Z0 - 1.3, z1: LEFTOVER_LOT_Z1 + 1.2, tag: 'leftoverLot' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1288,6 +1441,126 @@ export function installHouseColliders(addCyl, addCollider) {
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * leftoverLot reserved voids. Collider is the fence post / thin mesh /
+ * gate jamb — never a lot-AABB, never a box in the gate.
+ */
+export function leftoverLotVoids() {
+  const g = leftoverLotGeom();
+  const y0 = CITY_Y;
+  return [
+    {
+      id: 'leftoverLot-gate', kind: 'gate',
+      x: g.gateX, z: g.gateZ, y: y0 + g.h * 0.48,
+      x0: g.gateLeft, x1: g.gateRight,
+      z0: g.gateZ - 0.25, z1: g.gateZ + 0.25,
+      y0: y0 + 0.04, y1: y0 + g.h,
+      openW: LEFTOVER_LOT_GATE_W, openH: LEFTOVER_LOT_FENCE_H, probe: 0.16,
+    },
+    {
+      id: 'leftoverLot-walk', kind: 'walk',
+      x: g.walkX, z: g.walkZ, y: y0 + LEFTOVER_LOT_WALK_H * 0.48,
+      x0: g.walkLeft, x1: g.walkRight,
+      z0: g.walkZ - 0.22, z1: g.walkZ + 0.22,
+      y0: y0 + 0.04, y1: y0 + LEFTOVER_LOT_WALK_H,
+      openW: LEFTOVER_LOT_WALK_W, openH: LEFTOVER_LOT_WALK_H, probe: 0.08,
+    },
+    {
+      id: 'leftoverLot-shed-door', kind: 'shed-door',
+      x: g.shedDoorX, z: g.shedDoorZ, y: y0 + LEFTOVER_LOT_SHED_DOOR_H * 0.48,
+      x0: g.shedDoorX - 0.08, x1: g.shedDoorX + 0.08,
+      z0: g.shedDoorZ - LEFTOVER_LOT_SHED_DOOR_W / 2,
+      z1: g.shedDoorZ + LEFTOVER_LOT_SHED_DOOR_W / 2,
+      y0: y0 + 0.04, y1: y0 + LEFTOVER_LOT_SHED_DOOR_H,
+      openW: LEFTOVER_LOT_SHED_DOOR_W, openH: LEFTOVER_LOT_SHED_DOOR_H, probe: 0.08,
+    },
+  ];
+}
+
+function pushLotAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'leftoverLot', x, z, sx, sz, y0, sy });
+}
+
+function pushLotCyl(shapes, x, z, r, y0, h) {
+  shapes.push({ type: 'cyl', tag: 'leftoverLot', x, z, r, y0, h });
+}
+
+/** Posts + thin mesh + gate jambs + shed/dumpster. Never a lot-AABB. */
+export function leftoverLotColliderShapes() {
+  const shapes = [];
+  const g = leftoverLotGeom();
+  const y0 = CITY_Y;
+  const postR = LEFTOVER_LOT_POST / 2;
+
+  for (let i = 0; i < g.posts.length; i++) {
+    const p = g.posts[i];
+    pushLotCyl(shapes, p.x, p.z, postR, y0, g.h);
+  }
+
+  for (let i = 0; i < g.meshRuns.length; i++) {
+    const run = g.meshRuns[i];
+    if (run.axis === 'x') {
+      const w = run.x1 - run.x0;
+      if (w <= 0.04) continue;
+      pushLotAabb(shapes, (run.x0 + run.x1) / 2, run.z, w, LEFTOVER_LOT_MESH_T, y0, g.h);
+    } else {
+      const d = run.z1 - run.z0;
+      if (d <= 0.04) continue;
+      pushLotAabb(shapes, run.x, (run.z0 + run.z1) / 2, LEFTOVER_LOT_MESH_T, d, y0, g.h);
+    }
+  }
+
+  // Vehicle-gate jambs + lintel. Opening stays empty air.
+  pushLotAabb(shapes, g.gateLeft, g.gateZ, LEFTOVER_LOT_JAMB, LEFTOVER_LOT_JAMB, y0, g.h);
+  pushLotAabb(shapes, g.gateRight, g.gateZ, LEFTOVER_LOT_JAMB, LEFTOVER_LOT_JAMB, y0, g.h);
+  pushLotAabb(shapes, g.gateX, g.gateZ, LEFTOVER_LOT_GATE_W + LEFTOVER_LOT_JAMB,
+    LEFTOVER_LOT_JAMB, y0 + g.h, 0.08);
+
+  // Walk-gate jambs + lintel. Secondary only.
+  pushLotAabb(shapes, g.walkLeft, g.walkZ, LEFTOVER_LOT_JAMB, LEFTOVER_LOT_JAMB, y0, LEFTOVER_LOT_WALK_H);
+  pushLotAabb(shapes, g.walkRight, g.walkZ, LEFTOVER_LOT_JAMB, LEFTOVER_LOT_JAMB, y0, LEFTOVER_LOT_WALK_H);
+  pushLotAabb(shapes, g.walkX, g.walkZ, LEFTOVER_LOT_WALK_W + LEFTOVER_LOT_JAMB,
+    LEFTOVER_LOT_JAMB, y0 + LEFTOVER_LOT_WALK_H, 0.08);
+
+  // CMU shed — walls + honest lid. Door jamb only; interior stays open.
+  const wt = LEFTOVER_LOT_WALL;
+  pushLotAabb(shapes, g.shedX - g.shedW / 2 + wt / 2, g.shedZ, wt, g.shedD, y0, g.shedH);
+  pushLotAabb(shapes, g.shedX, g.shedZ + g.shedD / 2 - wt / 2, g.shedW, wt, y0, g.shedH);
+  pushLotAabb(shapes, g.shedX, g.shedZ - g.shedD / 2 + wt / 2, g.shedW, wt, y0, g.shedH);
+  const doorLeft = g.shedDoorZ - LEFTOVER_LOT_SHED_DOOR_W / 2;
+  const doorRight = g.shedDoorZ + LEFTOVER_LOT_SHED_DOOR_W / 2;
+  const eastX = g.shedX + g.shedW / 2 - wt / 2;
+  const southJamb = doorLeft - (g.shedZ - g.shedD / 2);
+  const northJamb = (g.shedZ + g.shedD / 2) - doorRight;
+  if (southJamb > 0.04) {
+    pushLotAabb(shapes, eastX, g.shedZ - g.shedD / 2 + southJamb / 2, wt, southJamb, y0,
+      LEFTOVER_LOT_SHED_DOOR_H);
+  }
+  if (northJamb > 0.04) {
+    pushLotAabb(shapes, eastX, g.shedZ + g.shedD / 2 - northJamb / 2, wt, northJamb, y0,
+      LEFTOVER_LOT_SHED_DOOR_H);
+  }
+  const lintel = g.shedH - LEFTOVER_LOT_SHED_DOOR_H;
+  if (lintel > 0.04) {
+    pushLotAabb(shapes, eastX, g.shedZ, wt, g.shedD, y0 + LEFTOVER_LOT_SHED_DOOR_H, lintel);
+  }
+  pushLotAabb(shapes, g.shedX, g.shedZ, g.shedW + 0.10, g.shedD + 0.10, y0 + g.shedH, 0.12);
+
+  // Dumpster — ⊆ dumpster visual, against the east fence, never in the gate.
+  pushLotAabb(shapes, g.dumpX, g.dumpZ, g.dumpW - 0.08, g.dumpD - 0.08, y0, g.dumpH);
+  return shapes;
+}
+
+/** Push leftoverLot post / mesh / jamb colliders. Same bag as the haunt kits. */
+export function installLeftoverLotColliders(addCyl, addCollider) {
+  const shapes = leftoverLotColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    if (s.type === 'cyl') addCyl(s.x, s.y0, s.z, s.r, s.h);
+    else addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
   }
 }
 

@@ -44,6 +44,7 @@ import { buildAbando } from './landmarks/abando.js';
 import { buildDrop } from './landmarks/drop.js';
 import { buildWarehouse } from './landmarks/warehouse.js';
 import { buildHouse } from './landmarks/house.js';
+import { buildLeftoverLot } from './landmarks/leftoverLot.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
@@ -197,6 +198,8 @@ export async function buildMiami(scene, env) {
   buildWarehouse(ctx);
   // ---------------- house haunt (leftover residential; hall / stair / leaf) --
   buildHouse(ctx);
+  // ---------------- leftover-city vacant lot (not a fifth haunt; tryPlace) --
+  buildLeftoverLot(ctx);
 
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);
