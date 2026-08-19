@@ -40,6 +40,7 @@ import { buildVolleyball } from './landmarks/volleyball.js';
 import { buildCinema } from './landmarks/cinema.js';
 import { buildYachtClub } from './landmarks/yachtclub.js';
 import { buildFlythrough } from './landmarks/flythrough.js';
+import { buildAbando } from './landmarks/abando.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
@@ -185,6 +186,8 @@ export async function buildMiami(scene, env) {
 
   // ---------------- fly-through kit (voids already in KEEPOUT; colliders now) --
   buildFlythrough(ctx);
+  // ---------------- abando haunt (same keepout / tryPlace graph; jambs only) --
+  buildAbando(ctx);
 
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);
