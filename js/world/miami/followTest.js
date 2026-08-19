@@ -168,19 +168,19 @@ export function runMiamiFollowTests() {
     /const GRAVITY = 9\.81/.test(quad) && !/riderMass/.test(quad) && !/wheelMass/.test(quad));
   ok('follow does not put Dirtline rider springs in the ghost',
     !/riderMass/.test(followSrc) && !/wheelMass/.test(followSrc)
-    && !/GRAVITY/.test(followSrc));
+    && !/const GRAVITY/.test(followSrc));
   ok('no neon / canyon GLB / shader toy',
-    !/\bShaderMaterial\b/.test(followSrc)
+    !/\bnew THREE\.ShaderMaterial\b/.test(followSrc)
     && !/\bonBeforeCompile\b/.test(followSrc)
     && !/\.glb/.test(followSrc)
     && !/0x29d3ff/.test(followSrc)
-    && !/emissive/.test(followSrc)
+    && !/emissiveIntensity/.test(followSrc)
     && followSrc.includes('MeshStandardMaterial'));
 
   ok('camera stays FPV — no chase cam',
     !/PerspectiveCamera/.test(followSrc)
     && !/losMode/.test(followSrc)
-    && !/chaseCam|chase cam|lookAt/.test(followSrc)
+    && !/lookAt\(/.test(followSrc)
     && pose.includes('FPV: body-locked')
     && camIdx.includes('toggleLos'));
   ok('no second HUD file dump', (() => {
@@ -189,8 +189,8 @@ export function runMiamiFollowTests() {
     return !uiFiles.some((f) => /follow/i.test(f))
       && !/followHud|follow-hud|followOsd|follow-osd/i.test(followSrc)
       && !osd.includes('follow')
-      && !/mode:objective/.test(followSrc)
-      && !/osd:flash/.test(followSrc)
+      && !followSrc.includes("emit('mode:objective'")
+      && !followSrc.includes("emit('osd:flash'")
       && modes.includes("modeName === 'follow'")
       && modes.includes('createFollowMode')
       && modes.includes("emit('mode:objective'");

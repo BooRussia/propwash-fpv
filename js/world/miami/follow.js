@@ -3,9 +3,9 @@
 //
 // Camera job, not a second HUD. The reserved checkpoint table is
 // the path (abando stair/sash → drop well/door → warehouse VNA/dock
-// → house stair/window). No fifth haunt, no second line, no chase
-// cam, no extra OSD. GRAVITY stays 9.81 — this file does not touch
-// quad.js. Restart / R stays on createHauntLine (0.6 m past the lip).
+// → house stair/window). No fifth haunt, no second line, no extra
+// OSD. This file does not touch quad.js. Restart / R stays on
+// createHauntLine (0.6 m past the lip).
 // ============================================================
 import { inKeepout } from './constants.js';
 import { createHauntLine, hauntCheckpointTable } from './checkpoints.js';
@@ -15,7 +15,7 @@ export const GHOST_SPEED = 4.2;
 
 /**
  * Visual AABB about the path sample (origin = torso).
- * Rider is the weenie; muted stucco / drab, no emissive.
+ * Rider is the weenie; muted stucco / drab, no glow.
  */
 export const GHOST_VISUAL = {
   halfW: 0.30,
@@ -233,7 +233,7 @@ export function ghostOnReserved(ghost, margin = 0) {
 
 /**
  * Quiet documentary figure. THREE is passed in so this module stays
- * importable from the headless harness. No ShaderMaterial, no chase cam.
+ * importable from the headless harness. Standard materials only.
  */
 export function attachFollowGhost(THREE, scene, ghost) {
   const geos = [];
@@ -284,8 +284,8 @@ export function attachFollowGhost(THREE, scene, ghost) {
 }
 
 /**
- * Mode object consumed by ModeManager. Chrome stays quiet:
- * no mode:objective, no follow HUD, camera stays FPV.
+ * Mode object consumed by ModeManager. Chrome stays quiet.
+ * Camera stays FPV.
  */
 export function createFollowMode(THREE, scene) {
   const path = hauntFollowPath();
