@@ -41,6 +41,7 @@ import { buildCinema } from './landmarks/cinema.js';
 import { buildYachtClub } from './landmarks/yachtclub.js';
 import { buildFlythrough } from './landmarks/flythrough.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
+import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
 
 export async function buildMiami(scene, env) {
@@ -194,6 +195,9 @@ export async function buildMiami(scene, env) {
   // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------
   await buildDressing(ctx, sky.towerData, landscape.entranceShrubSpots);
 
+  // ---------------- leftover-dirt blades (tryPlace, after every reserve) ----------
+  const blades = await buildBlades(ctx);
+
   // ---------------- spawn / gates / retrieval ----------------
   const { spawnPos, gates, retrievalPoints } = buildPoints(ctx, sky.towerData);
 
@@ -220,7 +224,7 @@ export async function buildMiami(scene, env) {
     gates,
     retrievalPoints,
     homePad: spawnPos.clone(),
-    update(dt) {
+    update(dt, extras = {}) {
       time += dt;
       applyDayNight();
       wheel.rotation.z += dt * 0.1;
@@ -242,11 +246,18 @@ export async function buildMiami(scene, env) {
       lighthouse.update(dt);
       if (palms) palms.update(dt);
       if (palmsEntry) palmsEntry.update(dt);
+      // extras.craft is the drone — blades write that into the gust uniform.
+      // A Vector3 second arg (legacy camera pos) is not a craft.
+      if (blades) {
+        const craft = extras && extras.isVector3 ? null : extras.craft;
+        blades.update(dt, craft);
+      }
     },
     dispose(sceneRef) {
       sceneRef.remove(root);
       try { palms?.dispose?.(); } catch (e) { /* noop */ }
       try { palmsEntry?.dispose?.(); } catch (e) { /* noop */ }
+      try { blades?.dispose?.(); } catch (e) { /* noop */ }
       try { street.fleet?.dispose?.(); } catch (e) { /* noop */ }
       for (const h of scatterHandles) { try { h.dispose?.(); } catch (e) { /* noop */ } }
       for (const d of disposables) { try { d.dispose?.(); } catch (e) { /* noop */ } }
