@@ -408,7 +408,7 @@ renderer.setAnimationLoop(() => {
   const activeCam = cameras.activeCam;
   env.update(dt, activeCam);
   mapHandle?.setCamera?.(activeCam);
-  mapHandle?.update?.(dt, activeCam.position);
+  mapHandle?.update?.(dt, { camera: activeCam, craft: quad ? quad.position : null });
 
   cameras.updateFeed(dt, { menuOpen: menu.isOpen });
 
