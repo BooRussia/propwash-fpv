@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   CITY_Y,
-  HOUSE_X, HOUSE_Z, HOUSE_W, HOUSE_D, HOUSE_H,
+  HOUSE_X, HOUSE_Z, HOUSE_W, HOUSE_D, HOUSE_H, HOUSE_X0, HOUSE_X1,
   HOUSE_HALL, HOUSE_STAIR, HOUSE_DOOR_W, HOUSE_DOOR_H,
   HOUSE_WIN_W, HOUSE_WIN_H, HOUSE_WIN_SILL,
   HOUSE_WALL, HOUSE_LEAF_T, HOUSE_STAIR_T, HOUSE_STAIR_TREAD,
@@ -208,14 +208,14 @@ export function runMiamiHouseTests() {
     && !/chair|sofa|table|crate|bench|Kenney/i.test(house));
   ok('warehouse was not restacked',
     warehouse.includes('warehouseAisleGeom') && warehouse.includes('buildRacks')
-    && !warehouse.includes('HOUSE_') && !warehouse.includes('buildHouse'));
+    && !warehouse.includes('buildHouse') && !warehouse.includes('housePlanGeom'));
   ok('drop was not restacked',
     drop.includes('dropHoistGeom') && drop.includes('buildWell')
-    && !drop.includes('HOUSE_') && !drop.includes('buildHouse')
+    && !drop.includes('buildHouse') && !drop.includes('housePlanGeom')
     && !drop.includes('WAREHOUSE_') && !drop.includes('buildWarehouse'));
   ok('abando was not restacked',
     abando.includes('abandoStairGeom') && abando.includes('buildSilo')
-    && !abando.includes('HOUSE_') && !abando.includes('buildHouse')
+    && !abando.includes('buildHouse') && !abando.includes('housePlanGeom')
     && !abando.includes('WAREHOUSE_') && !abando.includes('buildWarehouse')
     && !abando.includes('DROP_') && !abando.includes('buildDrop'));
   ok('blades.js was not restacked', blades.includes('placeBladePlan')

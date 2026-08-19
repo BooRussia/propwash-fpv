@@ -1163,9 +1163,6 @@ export function installWarehouseColliders(addCyl, addCollider) {
 export function houseVoids() {
   const g = housePlanGeom();
   const y0 = CITY_Y;
-  const step = Math.floor(g.nRise * 0.42);
-  const treadY = y0 + step * HOUSE_STAIR_RISE;
-  const riserGap = HOUSE_STAIR_RISE - HOUSE_STAIR_TREAD;
   return [
     {
       id: 'house-door', kind: 'door',
@@ -1184,12 +1181,11 @@ export function houseVoids() {
     },
     {
       id: 'house-stair', kind: 'stair',
-      x: g.stairX, z: g.stairZ0 + step * HOUSE_STAIR_RUN,
-      y: treadY + HOUSE_STAIR_TREAD + riserGap * 0.5,
+      x: g.stairX, z: g.stairZ, y: y0 + HOUSE_STORY + 1.15,
       x0: g.stairX0, x1: g.stairX1,
       z0: g.stairZ0 + 0.12, z1: g.stairZ1 - 0.12,
-      y0: y0 + 0.12, y1: y0 + HOUSE_H - 0.2,
-      openW: HOUSE_STAIR, openH: HOUSE_H - 0.3, probe: 0.08,
+      y0: y0 + HOUSE_STORY + 0.08, y1: y0 + HOUSE_H - 0.2,
+      openW: HOUSE_STAIR, openH: HOUSE_H - HOUSE_STORY - 0.3, probe: 0.08,
     },
     {
       id: 'house-window', kind: 'window',

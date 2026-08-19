@@ -25,6 +25,8 @@ import { cBox } from '../geo.js';
  * Weenie is the stair well.
  */
 
+// Stair well — weenie void, never a filled shaft.
+
 const STUCCO = 0xb8a888;
 const STUCCO2 = 0xa09078;
 const STUCCO3 = 0x8a7a64;
