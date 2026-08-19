@@ -223,14 +223,6 @@ export async function buildMiami(scene, env) {
     update(dt) {
       time += dt;
       applyDayNight();
-      if (water) {
-        water.material.uniforms['time'].value += dt * 0.6;
-        // water must go dark at night — the Water shader has its own sun
-        const tod = settings.environment.timeOfDay;
-        const dayF = Math.max(0.03, Math.sin(Math.PI * clamp((tod - 6.2) / 13.2, 0, 1)));
-        water.material.uniforms['sunColor'].value.setScalar(dayF);
-        water.material.uniforms['waterColor'].value.setHex(0x00404f).multiplyScalar(0.12 + 0.88 * dayF);
-      }
       wheel.rotation.z += dt * 0.1;
       // keep cabins upright
       for (const child of wheel.children) {
@@ -239,6 +231,13 @@ export async function buildMiami(scene, env) {
       for (const b of boats) {
         b.position.y = 0.35 + Math.sin(time * 1.1 + b.userData.phase) * 0.12;
         b.rotation.x = Math.sin(time * 0.9 + b.userData.phase) * 0.03;
+      }
+      // wakes stamp after the reserved-corridor bob — do not retarget boats
+      if (water && typeof water.update === 'function') {
+        water.update(dt, {
+          boats,
+          timeOfDay: settings.environment.timeOfDay,
+        });
       }
       lighthouse.update(dt);
       if (palms) palms.update(dt);
