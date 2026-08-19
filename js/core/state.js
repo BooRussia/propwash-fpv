@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS = {
     lat: 25.7907,
     lon: -80.13,
   },
-  gameMode: 'freestyle',        // 'freestyle' | 'racing' | 'retrieval'
+  gameMode: 'freestyle',        // 'freestyle' | 'racing' | 'retrieval' | 'follow'
   flightMode: 'acro',           // 'acro' | 'angle' | 'horizon'
   // Nested rate profiles (Actual + Betaflight). Legacy flat
   // {roll,pitch,yaw} is migrated in load() → rates.actual.

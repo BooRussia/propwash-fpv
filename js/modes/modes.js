@@ -1,5 +1,5 @@
 // ============================================================
-// PropWash FPV — game modes: freestyle / racing / retrieval
+// PropWash FPV — game modes: freestyle / racing / retrieval / follow
 //
 // Consumed by main.js as:
 //   const modeManager = new ModeManager(scene);
@@ -14,6 +14,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { emit, clamp } from '../core/state.js';
+import { createFollowMode } from '../world/miami/follow.js';
 
 // ---------------- shared scratch (no per-frame allocations) ----------------
 const _vA = new THREE.Vector3();
@@ -610,6 +611,8 @@ export class ModeManager {
         this.active = new RacingMode(this.scene, mapHandle);
       } else if (modeName === 'retrieval') {
         this.active = new RetrievalMode(this.scene, mapHandle);
+      } else if (modeName === 'follow') {
+        this.active = createFollowMode(THREE, this.scene);
       } else {
         this.active = new FreestyleMode();
       }

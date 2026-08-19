@@ -164,6 +164,7 @@ const GAME_MODES = [
   { value: 'freestyle', title: 'Freestyle', desc: 'Open flight. Explore the map, dive buildings, rip proximity lines.' },
   { value: 'racing', title: 'Racing', desc: 'Fly the gate course against the clock — best lap wins.' },
   { value: 'retrieval', title: 'Retrieval', desc: 'Locate scattered packages and carry them home to the pad.' },
+  { value: 'follow', title: 'Follow', desc: 'Miami haunt line. You are the lens — chase the rider. Camera stays FPV.' },
 ];
 
 const FLIGHT_MODES = [
