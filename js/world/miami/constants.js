@@ -158,6 +158,46 @@ export const ABANDO_X1 = ABANDO_X + ABANDO_W / 2;
 export const ABANDO_Z0 = ABANDO_Z - ABANDO_D / 2;
 export const ABANDO_Z1 = ABANDO_Z + ABANDO_D / 2;
 
+// ---- drop haunt kit (leftover roof; hoistway well; jambs / lip only) ----
+// Vacant city parcel west of the cinema, east of GAP 57. Leftover roof
+// on leftover city — not a street, boardwalk, or path. Scatter still
+// uses tryPlace; this reservation is one more keepout, not a second placer.
+// Whoop flies the 1.07 × 2.13 m door; 5″ drops the ~2.5 × 2.0 m well.
+export const DROP_X = 92;
+export const DROP_Z = 84;
+export const DROP_W = 15.2;
+export const DROP_D = 11.0;
+export const DROP_H = 12.4;
+export const DROP_WALL = 0.28;
+export const DROP_SLAB = 0.18;
+export const DROP_PARAPET = 1.05;
+export const DROP_PARAPET_T = 0.15;
+export const DROP_SETBACK = 2.15;
+export const DROP_HOIST_W = 2.50;
+export const DROP_HOIST_D = 2.00;
+export const DROP_DOOR_W = 1.07;
+export const DROP_DOOR_H = 2.13;
+export const DROP_PENT_H = 2.50;
+export const DROP_COL_R = 0.16;
+export const DROP_LIP = 0.08;
+export const DROP_X0 = DROP_X - DROP_W / 2;
+export const DROP_X1 = DROP_X + DROP_W / 2;
+export const DROP_Z0 = DROP_Z - DROP_D / 2;
+export const DROP_Z1 = DROP_Z + DROP_D / 2;
+export const DROP_ROOF_Y = CITY_Y + DROP_H;
+
+/** Hoistway well — set back from the ocean / west parapet. Open top. */
+export function dropHoistGeom() {
+  const holeX0 = DROP_X0 + DROP_PARAPET_T + DROP_SETBACK;
+  const holeZ0 = DROP_Z0 + DROP_PARAPET_T + DROP_SETBACK;
+  const holeX1 = holeX0 + DROP_HOIST_W;
+  const holeZ1 = holeZ0 + DROP_HOIST_D;
+  const x = (holeX0 + holeX1) / 2;
+  const z = (holeZ0 + holeZ1) / 2;
+  const eastX = holeX1 + DROP_WALL / 2;
+  return { holeX0, holeX1, holeZ0, holeZ1, x, z, eastX };
+}
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -181,6 +221,8 @@ export const RESERVED = [
   { x0: 190, x1: 210, z0: 54.4, z1: 72.4, tag: 'garage' },
   { x0: ABANDO_X0 - 2.6, x1: ABANDO_SILO_X + ABANDO_SILO_R + 0.7,
     z0: ABANDO_Z0 - 1.6, z1: ABANDO_Z1 + 1.4, tag: 'abando' },
+  { x0: DROP_X0 - 2.2, x1: DROP_X1 + 1.8,
+    z0: DROP_Z0 - 1.5, z1: DROP_Z1 + 1.4, tag: 'drop' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -231,6 +273,8 @@ export const KEEPOUT = [
     z0: GARAGE_FRONT_Z - 0.8, z1: GARAGE_FRONT_Z + GARAGE_D + 0.6, tag: 'garage' },
   { x0: ABANDO_X0 - 2.4, x1: ABANDO_SILO_X + ABANDO_SILO_R + 0.55,
     z0: ABANDO_Z0 - 1.4, z1: ABANDO_Z1 + 1.2, tag: 'abando' },
+  { x0: DROP_X0 - 2.0, x1: DROP_X1 + 1.6,
+    z0: DROP_Z0 - 1.3, z1: DROP_Z1 + 1.2, tag: 'drop' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -695,6 +739,128 @@ export function installAbandoColliders(addCyl, addCollider) {
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * Drop reserved voids. Collider is the jamb / parapet / well lip —
+ * never a box that fills the hoistway, door, or roof hole.
+ */
+export function dropVoids() {
+  const h = dropHoistGeom();
+  const roofY = DROP_ROOF_Y;
+  return [
+    {
+      id: 'drop-hoistway', kind: 'hoistway',
+      x: h.x, z: h.z, y: CITY_Y + DROP_H * 0.48,
+      x0: h.holeX0, x1: h.holeX1, z0: h.holeZ0, z1: h.holeZ1,
+      y0: CITY_Y + 0.16, y1: roofY - 0.04,
+      openW: DROP_HOIST_W, openH: DROP_HOIST_D, probe: 0.20,
+    },
+    {
+      id: 'drop-well', kind: 'well',
+      x: h.x, z: h.z, y: roofY,
+      x0: h.holeX0, x1: h.holeX1, z0: h.holeZ0, z1: h.holeZ1,
+      y0: roofY - DROP_SLAB - 0.04, y1: roofY + DROP_PENT_H,
+      openW: DROP_HOIST_W, openH: DROP_HOIST_D, probe: 0.20,
+    },
+    {
+      id: 'drop-door', kind: 'door',
+      x: h.eastX, z: h.z, y: roofY + DROP_DOOR_H * 0.48,
+      x0: h.eastX - DROP_WALL, x1: h.eastX + DROP_WALL,
+      z0: h.z - DROP_DOOR_W / 2, z1: h.z + DROP_DOOR_W / 2,
+      y0: roofY, y1: roofY + DROP_DOOR_H,
+      openW: DROP_DOOR_W, openH: DROP_DOOR_H, probe: 0.08,
+    },
+  ];
+}
+
+function pushDropAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'drop', x, z, sx, sz, y0, sy });
+}
+
+function pushDropCyl(shapes, x, z, r, y0, h) {
+  shapes.push({ type: 'cyl', tag: 'drop', x, z, r, y0, h });
+}
+
+function dropBand(shapes, x0, x1, z, sz, y0, sy) {
+  const w = x1 - x0;
+  if (w <= 0.04) return;
+  pushDropAabb(shapes, (x0 + x1) / 2, z, w, sz, y0, sy);
+}
+
+/** Jamb / parapet / lip shapes. Never a filled well or door. */
+export function dropColliderShapes() {
+  const shapes = [];
+  const h = dropHoistGeom();
+  const y0 = CITY_Y;
+  const roofY = DROP_ROOF_Y;
+  const pt = DROP_PARAPET_T;
+  const slabY0 = roofY - DROP_SLAB;
+
+  // Parapet ring — thin bands on the leftover roof edge, not a filled deck.
+  dropBand(shapes, DROP_X0, DROP_X1, DROP_Z0 + pt / 2, pt, roofY, DROP_PARAPET);
+  dropBand(shapes, DROP_X0, DROP_X1, DROP_Z1 - pt / 2, pt, roofY, DROP_PARAPET);
+  pushDropAabb(shapes, DROP_X0 + pt / 2, DROP_Z, pt, DROP_D - 2 * pt, roofY, DROP_PARAPET);
+  pushDropAabb(shapes, DROP_X1 - pt / 2, DROP_Z, pt, DROP_D - 2 * pt, roofY, DROP_PARAPET);
+
+  // Roof slab punched around the well. Four leftovers, never a filled lid.
+  dropBand(shapes, DROP_X0, DROP_X1, (DROP_Z0 + h.holeZ0) / 2, h.holeZ0 - DROP_Z0, slabY0, DROP_SLAB);
+  dropBand(shapes, DROP_X0, DROP_X1, (h.holeZ1 + DROP_Z1) / 2, DROP_Z1 - h.holeZ1, slabY0, DROP_SLAB);
+  dropBand(shapes, DROP_X0, h.holeX0, (h.holeZ0 + h.holeZ1) / 2, DROP_HOIST_D, slabY0, DROP_SLAB);
+  dropBand(shapes, h.holeX1, DROP_X1, (h.holeZ0 + h.holeZ1) / 2, DROP_HOIST_D, slabY0, DROP_SLAB);
+
+  // Hoistway walls — shaft from grade to penthouse. Interior stays open.
+  const shaftH = DROP_H + DROP_PENT_H;
+  pushDropAabb(shapes, h.holeX0 - DROP_WALL / 2, h.z, DROP_WALL, DROP_HOIST_D, y0, shaftH);
+  pushDropAabb(shapes, h.x, h.holeZ0 - DROP_WALL / 2, DROP_HOIST_W, DROP_WALL, y0, shaftH);
+  pushDropAabb(shapes, h.x, h.holeZ1 + DROP_WALL / 2, DROP_HOIST_W, DROP_WALL, y0, shaftH);
+
+  // East wall: solid below the deck; door punched at roof (jambs + lintel).
+  pushDropAabb(shapes, h.eastX, h.z, DROP_WALL, DROP_HOIST_D, y0, DROP_H);
+  const jamb = (DROP_HOIST_D - DROP_DOOR_W) / 2;
+  pushDropAabb(shapes, h.eastX, h.holeZ0 + jamb / 2, DROP_WALL, jamb, roofY, DROP_DOOR_H);
+  pushDropAabb(shapes, h.eastX, h.holeZ1 - jamb / 2, DROP_WALL, jamb, roofY, DROP_DOOR_H);
+  const lintel = DROP_PENT_H - DROP_DOOR_H;
+  if (lintel > 0.04) {
+    pushDropAabb(shapes, h.eastX, h.z, DROP_WALL, DROP_HOIST_D, roofY + DROP_DOOR_H, lintel);
+  }
+
+  // Well lip at the deck — curb outside the opening.
+  const lip = DROP_LIP;
+  pushDropAabb(shapes, h.x, h.holeZ0 - lip / 2, DROP_HOIST_W, lip, roofY, lip);
+  pushDropAabb(shapes, h.x, h.holeZ1 + lip / 2, DROP_HOIST_W, lip, roofY, lip);
+  pushDropAabb(shapes, h.holeX0 - lip / 2, h.z, lip, DROP_HOIST_D, roofY, lip);
+  pushDropAabb(shapes, h.holeX1 + lip / 2, h.z, lip, DROP_HOIST_D, roofY, lip);
+
+  // Open-top penthouse rim — weenie crown, not a cap.
+  const rimY = roofY + DROP_PENT_H;
+  pushDropAabb(shapes, h.x, h.holeZ0 - DROP_WALL / 2, DROP_HOIST_W + DROP_WALL, DROP_WALL, rimY, lip);
+  pushDropAabb(shapes, h.x, h.holeZ1 + DROP_WALL / 2, DROP_HOIST_W + DROP_WALL, DROP_WALL, rimY, lip);
+  pushDropAabb(shapes, h.holeX0 - DROP_WALL / 2, h.z, DROP_WALL, DROP_HOIST_D, rimY, lip);
+  pushDropAabb(shapes, h.holeX1 + DROP_WALL / 2, h.z, DROP_WALL, DROP_HOIST_D, rimY, lip);
+
+  // Corner columns hold the leftover slab. Thin, not a filled volume.
+  const inset = 0.42;
+  const cols = [
+    [DROP_X0 + inset, DROP_Z0 + inset],
+    [DROP_X1 - inset, DROP_Z0 + inset],
+    [DROP_X0 + inset, DROP_Z1 - inset],
+    [DROP_X1 - inset, DROP_Z1 - inset],
+  ];
+  for (let i = 0; i < cols.length; i++) {
+    pushDropCyl(shapes, cols[i][0], cols[i][1], DROP_COL_R, y0, DROP_H);
+  }
+  return shapes;
+}
+
+/** Push drop jamb / lip colliders. Same bag as the fly-through kit. */
+export function installDropColliders(addCyl, addCollider) {
+  const shapes = dropColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    if (s.type === 'cyl') addCyl(s.x, s.y0, s.z, s.r, s.h);
+    else addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
   }
 }
 
