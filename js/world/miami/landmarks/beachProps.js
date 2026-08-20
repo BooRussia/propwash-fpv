@@ -114,13 +114,12 @@ export function buildBeachProps(ctx) {
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     }));
     const towelCols = [0xff7096, 0x37c4e0, 0xffe08a, 0x59d98c, 0xb08ae6, 0xf2f2f2, 0xff8c42];
-    const NT = 46;
+    const NT = 60;
     const towels = new THREE.InstancedMesh(towelGeo, towelMat, NT);
     const up = new THREE.Vector3(0, 1, 0);
     const nrm = new THREE.Vector3();
     let ti = 0;
     for (let i = 0; i < NU && ti < NT; i++) {
-      if (rng3() < 0.35) continue;
       const u = umbSpots[i];
       const a = rng3() * Math.PI * 2;
       const dist = 1.3 + rng3() * 1.7;
