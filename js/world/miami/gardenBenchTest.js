@@ -18,6 +18,13 @@ import {
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_X0, LEFTOVER_LOT_X1,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, LEFTOVER_LOT_B_X0, LEFTOVER_LOT_B_X1,
   LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z, LEFTOVER_LOT_C_X0, LEFTOVER_LOT_C_X1,
+  LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, LEFTOVER_LOT_D_X0, LEFTOVER_LOT_D_X1,
+  PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_YAW, PARK_BENCH_W,
+  PARK_BENCH_DEPTH, PARK_BENCH_SEAT_H, PARK_BENCH_BACK_H, PARK_BENCH_UNDER_CLEAR,
+  PARK_BENCH_X0, PARK_BENCH_X1, PARK_BENCH_Z0, PARK_BENCH_Z1,
+  POCKET_PARK_X, POCKET_PARK_Z, POCKET_PARK_W, POCKET_PARK_D,
+  POCKET_PARK_X0, POCKET_PARK_X1, POCKET_PARK_Z0, POCKET_PARK_Z1,
+  LEFTOVER_GRASS_X0, LEFTOVER_GRASS_X1, LEFTOVER_GRASS_Z0, LEFTOVER_GRASS_Z1,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
   inKeepout, inReserved, reservedOverlap, streetOverlap, groundHeight,
   leftoverLotGeom,
@@ -127,6 +134,7 @@ export function runMiamiGardenBenchTests() {
   ok('leftoverLot A stays 258/84', LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84);
   ok('leftoverLot B stays 295/84', LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84);
   ok('leftoverLot C stays 313/84', LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84);
+  ok('leftoverLot D stays 330/84', LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84);
   ok('path sits off leftoverLot A x1=265',
     GARDEN_PATH_X0 >= LEFTOVER_LOT_X1 && LEFTOVER_LOT_X1 === 265);
   ok('path sits off leftoverLot B x0=288',
@@ -136,15 +144,25 @@ export function runMiamiGardenBenchTests() {
     && !inLeftoverLotReserved(GARDEN_BENCH_X, GARDEN_BENCH_Z)
     && !inLeftoverLotReserved(GARDEN_BENCH_X0, GARDEN_BENCH_Z)
     && !inLeftoverLotReserved(GARDEN_BENCH_X1, GARDEN_BENCH_Z));
-  ok('leftoverLot A/B/C geometry was not slid',
+  ok('leftoverLot A/B/C/D geometry was not slid',
     LEFTOVER_LOT_X0 === 251 && LEFTOVER_LOT_X1 === 265
     && LEFTOVER_LOT_B_X0 === 288 && LEFTOVER_LOT_B_X1 === 302
     && LEFTOVER_LOT_C_X0 === 306 && LEFTOVER_LOT_C_X1 === 320
+    && LEFTOVER_LOT_D_X0 === 323 && LEFTOVER_LOT_D_X1 === 337
     && geomA.x0 === LEFTOVER_LOT_X0 && geomA.x1 === LEFTOVER_LOT_X1);
-  ok('tryPlace still drops leftoverLot A/B/C',
+  ok('tryPlace still drops leftoverLot A/B/C/D',
     tryPlace(ctx, LEFTOVER_LOT_X, LEFTOVER_LOT_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === 0
-    && tryPlace(ctx, LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z) === 0);
+    && tryPlace(ctx, LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z) === 0
+    && tryPlace(ctx, LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) === 0);
+  ok('leftoverGrass stays 267–285 / 81–86',
+    LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
+    && LEFTOVER_GRASS_Z0 === 81.0 && LEFTOVER_GRASS_Z1 === 86.0);
+  ok('pocket park stays 276/92, 16×8 (268–284 × 88–96)',
+    POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_W === 16 && POCKET_PARK_D === 8
+    && POCKET_PARK_X0 === 268 && POCKET_PARK_X1 === 284
+    && POCKET_PARK_Z0 === 88 && POCKET_PARK_Z1 === 96);
   ok('tryPlace still drops the garden path',
     tryPlace(ctx, GARDEN_PATH_X, GARDEN_PATH_Z) === 0);
   ok('tryPlace still drops pavement / street',
@@ -161,6 +179,126 @@ export function runMiamiGardenBenchTests() {
   ok('bench footprint does not overlap a slab',
     !gardenPathSlabOverlap(GARDEN_BENCH_X, GARDEN_BENCH_Z,
       GARDEN_BENCH_W, GARDEN_BENCH_DEPTH, 0));
+
+  // ---- park bench (same kit at signed 276 / 90; yaw −Z to the walk) ------
+  const geomP = gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z);
+  const partsP = gardenBenchParts(PARK_BENCH_X, PARK_BENCH_Z);
+  const voidsP = gardenBenchVoids(geomP);
+  const shapesP = gardenBenchColliderShapes(geomP);
+  ok('park bench cell is signed 276 / 90', PARK_BENCH_X === 276 && PARK_BENCH_Z === 90);
+  ok('park bench x/z were not invented or slid',
+    geomP.x === 276 && geomP.z === 90
+    && geomP.x === PARK_BENCH_X && geomP.z === PARK_BENCH_Z
+    && GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
+  ok('park bench yaw faces −Z / south toward the walk',
+    PARK_BENCH_YAW === Math.PI && geomP.yaw === PARK_BENCH_YAW
+    && geomP.yaw === Math.PI);
+  ok('park bench is the same 1.8 m 3-seat kit',
+    PARK_BENCH_W === 1.8 && PARK_BENCH_W === GARDEN_BENCH_W
+    && geomP.w === GARDEN_BENCH_W);
+  ok('park bench seat H is 0.43–0.46 m',
+    PARK_BENCH_SEAT_H >= 0.43 && PARK_BENCH_SEAT_H <= 0.46
+    && PARK_BENCH_SEAT_H === GARDEN_BENCH_SEAT_H
+    && geomP.seatH === GARDEN_BENCH_SEAT_H);
+  ok('park bench depth is ~0.45 m',
+    Math.abs(PARK_BENCH_DEPTH - 0.45) < 1e-9
+    && PARK_BENCH_DEPTH === GARDEN_BENCH_DEPTH
+    && geomP.depth === GARDEN_BENCH_DEPTH);
+  ok('park bench back crown is 0.80–0.90 m',
+    PARK_BENCH_BACK_H >= 0.80 && PARK_BENCH_BACK_H <= 0.90
+    && PARK_BENCH_BACK_H === GARDEN_BENCH_BACK_H
+    && geomP.backH === GARDEN_BENCH_BACK_H);
+  ok('park bench under-slat clear is ~0.40 m',
+    Math.abs(PARK_BENCH_UNDER_CLEAR - 0.40) < 1e-9
+    && PARK_BENCH_UNDER_CLEAR === GARDEN_BENCH_UNDER_CLEAR
+    && geomP.underClear === GARDEN_BENCH_UNDER_CLEAR);
+  ok('park bench geom matches signed constants',
+    geomP.x === 276 && geomP.z === 90 && geomP.w === 1.8
+    && Math.abs(geomP.x0 - PARK_BENCH_X0) < 1e-9
+    && Math.abs(geomP.x1 - PARK_BENCH_X1) < 1e-9
+    && Math.abs(geomP.z0 - PARK_BENCH_Z0) < 1e-9
+    && Math.abs(geomP.z1 - PARK_BENCH_Z1) < 1e-9);
+  ok('garden bench at 276 / 82.4 was not slid',
+    gardenBenchGeom().x === 276 && gardenBenchGeom().z === 82.4
+    && gardenBenchGeom().yaw === 0
+    && GARDEN_BENCH_Z === 82.4);
+  ok('park bench sits inland of path z1=84.8',
+    PARK_BENCH_Z0 > GARDEN_PATH_Z1 && GARDEN_PATH_Z1 === 84.8);
+  ok('park bench is not pavement', !onPavement(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench is not boardwalk', !onBoardwalk(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench is not roadway', !onRoadway(PARK_BENCH_Z));
+  ok('park bench is not a cross-street', !onCrossStreet(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench is not a sidewalk slab', !onSidewalk(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench sits on leftover-city grade',
+    groundHeight(PARK_BENCH_X, PARK_BENCH_Z) === CITY_Y);
+  ok('park bench is reserved', inReserved(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench is a keepout', inKeepout(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('reservedOverlap covers the park slat',
+    reservedOverlap(PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_W, PARK_BENCH_DEPTH, 0.15));
+  ok('tryPlace drops the reserved park bench',
+    tryPlace(ctx, PARK_BENCH_X, PARK_BENCH_Z) === 0);
+  ok('tryPlace does not remap the park bench',
+    tryPlace(ctx, PARK_BENCH_X, PARK_BENCH_Z) === 0);
+  ok('park bench cell is not rejected',
+    !gardenBenchRejected(PARK_BENCH_X, PARK_BENCH_Z));
+  ok('park bench footprint is not in the street',
+    !streetOverlap(PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_W, PARK_BENCH_DEPTH));
+  ok('inGardenBench covers the park plate',
+    inGardenBench(PARK_BENCH_X, PARK_BENCH_Z)
+    && inGardenBench(PARK_BENCH_X0, PARK_BENCH_Z)
+    && inGardenBench(PARK_BENCH_X1, PARK_BENCH_Z));
+  ok('park bench does not overlap leftoverLot A/B/C/D reserved',
+    !leftoverLotOverlap(PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_W, PARK_BENCH_DEPTH, 0.15)
+    && !inLeftoverLotReserved(PARK_BENCH_X, PARK_BENCH_Z)
+    && !inLeftoverLotReserved(PARK_BENCH_X0, PARK_BENCH_Z)
+    && !inLeftoverLotReserved(PARK_BENCH_X1, PARK_BENCH_Z));
+  ok('park bench does not kiss a garden-path slab',
+    !inGardenPathSlab(PARK_BENCH_X, PARK_BENCH_Z)
+    && !inGardenPathSlab(PARK_BENCH_X0, PARK_BENCH_Z0)
+    && !inGardenPathSlab(PARK_BENCH_X1, PARK_BENCH_Z0)
+    && !inGardenPathSlab(PARK_BENCH_X0, PARK_BENCH_Z1)
+    && !inGardenPathSlab(PARK_BENCH_X1, PARK_BENCH_Z1)
+    && !gardenPathSlabOverlap(PARK_BENCH_X, PARK_BENCH_Z,
+      PARK_BENCH_W, PARK_BENCH_DEPTH, 0));
+  ok('park bench back sits inland (+Z) so the seat faces −Z',
+    partsP.backs.every((b) => b.z > geomP.z)
+    && partsP.legs.filter((l) => l.sy === geomP.backH).every((l) => l.z > geomP.z)
+    && partsP.zBack > partsP.zFront);
+  ok('park bench slats are the same 40–50 mm kit',
+    partsP.slats.length === 8
+    && partsP.slats.every((s) => Math.abs(s.sz - GARDEN_BENCH_SLAT) < 1e-9));
+  const aabbsP = shapesP.filter((s) => s.tag === 'gardenBench' && s.type === 'aabb');
+  const meshPartsP = partsP.legs.concat(partsP.slats, partsP.backs);
+  ok('park bench one collider per leg / slat / back', aabbsP.length === meshPartsP.length);
+  ok('park bench colliders are only legs + slats + back',
+    aabbsP.every((s) => s.part === 'leg' || s.part === 'slat' || s.part === 'back'));
+  ok('park bench has no filled sit AABB',
+    !aabbsP.some((s) => s.y0 >= CITY_Y + PARK_BENCH_SEAT_H - 0.02
+      && s.sy >= 0.20 && s.sz >= 0.20 && s.sx >= 1.0));
+  for (let i = 0; i < meshPartsP.length; i++) {
+    const p = meshPartsP[i];
+    const hit = aabbsP[i];
+    ok(`park ${p.id} collider ⊆ part ±0.15`,
+      !!hit
+      && hit.sx <= p.sx + GARDEN_BENCH_COLLIDER_PAD
+      && hit.sz <= p.sz + GARDEN_BENCH_COLLIDER_PAD
+      && Math.abs(hit.x - p.x) <= GARDEN_BENCH_COLLIDER_PAD
+      && Math.abs(hit.z - p.z) <= GARDEN_BENCH_COLLIDER_PAD
+      && hit.sx <= p.sx && hit.sz <= p.sz);
+    const onPart = probeBlocked(shapesP, p.x, p.y0 + Math.min(0.06, p.sy / 2), p.z, 0.015);
+    ok(`park ${p.id} collider exists`, !!onPart);
+  }
+  const underP = voidsP.find((v) => v.id === 'gardenBench-under');
+  const sitP = voidsP.find((v) => v.id === 'gardenBench-sit');
+  ok('park bench ships under-clear + sit voids', !!underP && !!sitP);
+  for (const v of voidsP) {
+    const hit = probeBlocked(shapesP, v.x, v.y, v.z, v.probe);
+    ok(`park ${v.id} is flyable`, !hit, hit ? `blocked by ${hit.tag} ${hit.part || hit.type}` : '');
+  }
+  ok('park sit-box is a void', sitP && sitP.kind === 'sit'
+    && sitP.y > CITY_Y + PARK_BENCH_SEAT_H);
+  ok('park sit-box is in front of the back (−Z of centre)',
+    sitP && sitP.z < geomP.z);
 
   // ---- slats 40–50 mm / gaps 10–15 mm ------------------------------------
   ok('slat width is 40–50 mm',
@@ -229,6 +367,8 @@ export function runMiamiGardenBenchTests() {
   const bench = readFileSync(join(here, 'landmarks/gardenBench.js'), 'utf8');
   const garden = readFileSync(join(here, 'landmarks/gardenPath.js'), 'utf8');
   const leftover = readFileSync(join(here, 'landmarks/leftoverLot.js'), 'utf8');
+  const grass = readFileSync(join(here, 'landmarks/leftoverGrass.js'), 'utf8');
+  const park = readFileSync(join(here, 'landmarks/pocketPark.js'), 'utf8');
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
   const house = readFileSync(join(here, 'landmarks/house.js'), 'utf8');
   const warehouse = readFileSync(join(here, 'landmarks/warehouse.js'), 'utf8');
@@ -254,6 +394,16 @@ export function runMiamiGardenBenchTests() {
     && bench.includes('if (onPavement(GARDEN_BENCH_X, GARDEN_BENCH_Z))')
     && !/GARDEN_BENCH_X\s*=/.test(bench)
     && !/GARDEN_BENCH_Z\s*=/.test(bench));
+  ok('park bench reuses gardenBenchGeom, no gardenBenchBGeom fork',
+    bench.includes('gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z)')
+    && bench.includes('gardenBenchParts(PARK_BENCH_X, PARK_BENCH_Z)')
+    && bench.includes('onPavement(PARK_BENCH_X, PARK_BENCH_Z)')
+    && !/function gardenBenchBGeom/.test(bench)
+    && !/gardenBenchBGeom\(/.test(bench)
+    && constants.includes('export function gardenBenchGeom')
+    && constants.includes('276 / 90')
+    && !/export function gardenBenchBGeom/.test(constants)
+    && !/gardenBenchBGeom\(/.test(constants));
   ok('index builds gardenBench on the keepout path after gardenPath',
     index.includes("from './landmarks/gardenBench.js'")
     && index.includes('buildGardenBench(ctx)')
@@ -279,13 +429,25 @@ export function runMiamiGardenBenchTests() {
     && garden.includes('268') && garden.includes('Desi')
     && !garden.includes('gardenBench') && !garden.includes('GARDEN_BENCH_')
     && !/chair|sofa|table|crate|bench|Kenney/i.test(garden));
-  ok('leftoverLot A/B/C were not restacked',
-    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)')
+  ok('leftoverGrass was not restacked',
+    grass.includes('Tiny Glade') && grass.includes('grow-to-gap')
+    && grass.includes('leftover-city') && grass.includes('267')
+    && !grass.includes('PARK_BENCH_') && !grass.includes('parkBench')
+    && !grass.includes('gardenBenchBGeom'));
+  ok('pocketPark was not restacked',
+    park.includes('Tiny Glade') && park.includes('grow-to-gap')
+    && park.includes('276') && park.includes('Desi')
+    && !park.includes('PARK_BENCH_') && !park.includes('parkBench')
+    && !park.includes('gardenBenchBGeom'));
+  ok('leftoverLot A/B/C/D were not restacked',
+    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z)')
+    && leftover.includes('leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)')
     && leftover.includes('chain-link') && leftover.includes('weenie')
     && !leftover.includes('gardenBench') && !leftover.includes('GARDEN_BENCH_')
     && !leftover.includes('gardenPath') && !leftover.includes('GARDEN_PATH_')
     && constants.includes('258/84') && constants.includes('295/84')
-    && constants.includes('313/84') && constants.includes('268→284')
+    && constants.includes('313/84') && constants.includes('330/84')
+    && constants.includes('268→284')
     && constants.includes('276 / 82.4'));
   ok('house was not restacked',
     house.includes('housePlanGeom') && house.includes('weenie')

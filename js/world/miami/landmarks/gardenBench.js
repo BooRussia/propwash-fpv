@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   GARDEN_BENCH_X, GARDEN_BENCH_Z,
-  gardenBenchParts, gardenBenchRejected,
+  PARK_BENCH_X, PARK_BENCH_Z,
+  gardenBenchGeom, gardenBenchParts, gardenBenchRejected,
   installGardenBenchColliders, onPavement,
 } from '../constants.js';
 import { tryPlace } from '../planting.js';
@@ -21,9 +22,12 @@ import { cBox } from '../geo.js';
  * do not add a new grass file).
  *
  * Shared kit, not a second scatterer. Reject-or-drop: pavement,
- * streetOverlap, leftoverLot A/B/C reserved, garden-path slab kiss.
- * Never nudge. Signed 276 / 82.4 (Desi + Reesy). 0.8 m ocean of path
- * z0=83.2. Path stays 268→284 / z=84 / 1.6 m.
+ * streetOverlap, leftoverLot A/B/C/D reserved, garden-path slab kiss.
+ * Never nudge. Signed 276 / 82.4 (Desi + Reesy). Signed 276 / 90
+ * park bench reuses gardenBenchGeom / gardenBenchParts — not a
+ * gardenBenchBGeom, not a slide of 276 / 82.4. Yaw faces −Z toward
+ * the walk at z=84. 0.8 m ocean of path z0=83.2. Path stays
+ * 268→284 / z=84 / 1.6 m.
  */
 
 const WOOD = 0xb08958;
@@ -47,10 +51,24 @@ function buildPart(parts, p, hex) {
   parts.push(cBox(p.sx, p.sy, p.sz, hex, p.x, p.y0 + p.sy / 2, p.z));
 }
 
+function appendBenchWood(wood, parts) {
+  for (let i = 0; i < parts.legs.length; i++) {
+    buildPart(wood, parts.legs[i], hexFor('leg', i));
+  }
+  for (let i = 0; i < parts.slats.length; i++) {
+    buildPart(wood, parts.slats[i], hexFor('slat', i));
+  }
+  for (let i = 0; i < parts.backs.length; i++) {
+    buildPart(wood, parts.backs[i], hexFor('back', i));
+  }
+}
+
 /**
- * Instance the Tiny Glade 3-seat slat on the signed cell. Rejects if the
- * cell is pavement, a street, leftoverLot A/B/C reserved, or kisses a
+ * Instance the Tiny Glade 3-seat slat on the signed cells. Rejects if the
+ * cell is pavement, a street, leftoverLot A/B/C/D reserved, or kisses a
  * garden-path slab. Never remaps x/z. Scatter stays on tryPlace.
+ * Park bench is gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z) — not a
+ * gardenBenchBGeom.
  */
 export function buildGardenBench(ctx) {
   if (gardenBenchRejected()) return null;
@@ -61,16 +79,14 @@ export function buildGardenBench(ctx) {
   const { root, track, addCollider, addCyl, setTag } = ctx;
   setTag('gardenBench');
 
-  const parts = gardenBenchParts();
   const wood = [];
-  for (let i = 0; i < parts.legs.length; i++) {
-    buildPart(wood, parts.legs[i], hexFor('leg', i));
-  }
-  for (let i = 0; i < parts.slats.length; i++) {
-    buildPart(wood, parts.slats[i], hexFor('slat', i));
-  }
-  for (let i = 0; i < parts.backs.length; i++) {
-    buildPart(wood, parts.backs[i], hexFor('back', i));
+  appendBenchWood(wood, gardenBenchParts());
+  const parkGeom = gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z);
+  if (!gardenBenchRejected(parkGeom.x, parkGeom.z)
+      && !onPavement(PARK_BENCH_X, PARK_BENCH_Z)) {
+    appendBenchWood(wood, gardenBenchParts(PARK_BENCH_X, PARK_BENCH_Z));
+  } else if (onPavement(PARK_BENCH_X, PARK_BENCH_Z)) {
+    tryPlace(ctx, PARK_BENCH_X, PARK_BENCH_Z);
   }
 
   const mergeAdd = (geos, name, extra = {}) => {
