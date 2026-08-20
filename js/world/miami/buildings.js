@@ -258,18 +258,6 @@ export function buildSkyline(ctx) {
         add(lid);
       }
       entry.cap = { r: Math.min(tw, td) * 0.42, y0: y - CITY_Y - 0.05, h: 3.6 };
-      // neon accent strip
-      if (rng() < 0.6) {
-        const neonGeo = track(new THREE.BoxGeometry(w * 1.02, 0.5, 0.3));
-        const neonMat = regDN(track(new THREE.MeshStandardMaterial({
-          color: 0x111111,
-          emissive: rng() < 0.5 ? 0x29d3ff : 0xff5c8a,
-          emissiveIntensity: 3.2,
-        })), 0.9, 3.6);   // neon tubes wash out in full sun, blaze at night
-        const neon = new THREE.Mesh(neonGeo, neonMat);
-        neon.position.set(x, CITY_Y + h * 0.5, z - d / 2 - 0.2);
-        add(neon);
-      }
     } else if (style === 'cyl') {
       const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18));
       const uv = geo.attributes.uv;
