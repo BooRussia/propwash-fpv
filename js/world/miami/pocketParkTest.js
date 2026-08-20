@@ -961,12 +961,14 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_G_X === 381 && POCKET_PARK_G_Z === 96);
   ok('G plant from the grid',
     fieldG.cells.length === plannedG && fieldG.cells.length > 0);
-  ok('G empty-hull leftover is 10000–13000, 13k is a ceiling, not a forced 12800 band',
+  ok('G leftover after the 373→389 / z=96 spine is 10000–13000, below 12800',
     fieldG.placed.length >= POCKET_PARK_G_INSTANCES_MIN
     && fieldG.placed.length <= POCKET_PARK_G_INSTANCES_MAX
     && POCKET_PARK_G_INSTANCES_MIN === 10000
     && POCKET_PARK_G_INSTANCES_MAX === 13000
     && fieldG.placed.length !== POCKET_PARK_G_INSTANCES_MAX
+    && fieldG.placed.length < 12800
+    && fieldG.placed.length !== 12800
     && plannedG >= POCKET_PARK_G_INSTANCES_MIN
     && plannedG <= POCKET_PARK_G_INSTANCES_MAX
     && plannedG === 12800,
