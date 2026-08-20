@@ -446,7 +446,12 @@ export const LEFTOVER_LOT_E_Z1 = 90;
 // convention. 2 m east of E-park x1=355 and 2 m ocean of E-park
 // z0=92 (F z1=90). Not a leftoverLotOverlap kiss of the park
 // (1 m leftover apron is the E-park vs E rule; F vs E-park is a
-// 2 m gap). West of helipadE (408), same inland band as leftoverLot
+// 2 m gap). F-park at signed 364/96 sits 2 m inland of this lot
+// (F z1=90, park z0=92). x 356–372 is 1 m past F’s 357–371 —
+// leftoverLotOverlap of F reserved is 0 (oz = −0.6 vs z1+1.4
+// = 91.4), not a kiss. E-park x1=355 must not merge with
+// F-park x0=356 (1 m west gap, same z band). West of helipadE
+// (408), same inland band as leftoverLot
 // #34 / #35 / C / D / E / drop / abando (z=84). Helipad E stays
 // ~59 m east at 430/70 (from F x1=371). Desi + Reesy signed the
 // cell. Do not invent or slide x/z. Do not grow the plate.
@@ -730,17 +735,25 @@ export const LEFTOVER_GRASS_AABB = false;
 // ---- pocketPark (Tiny Glade grow-to-gap; leftover-city plate) ----
 // Signed centre 276/92, plate 16×8, bounds x0=268 x1=284 z0=88 z1=96.
 // Second hull at signed 347/96, same 16×8 kit, bounds 339–355 × 92–100.
-// Same pocketParkHull — never pocketParkEGeom, never a slide of 276.
-// Desi + Reesy signed both cells. Do not invent or slide x/z. Two
-// hulls inland of the garden strip / leftoverLot E, not OSM, not
-// leftover-dirt 190k, not a leftoverLot / path / bench / leftoverGrass
-// restack. Path stays 268→284 / z=84 / 1.6 m (z1=84.8). 276 z0=88
-// sits inland of the path — do not slide that hull onto the path.
+// Third hull at signed 364/96, same 16×8 kit, bounds 356–372 × 92–100.
+// Same pocketParkHull — never pocketParkEGeom, never pocketParkFGeom,
+// never a slide of 276. Desi + Reesy signed all three cells. Do not
+// invent or slide x/z. Three hulls inland of the garden strip /
+// leftoverLot E / leftoverLot F, not OSM, not leftover-dirt 190k,
+// not a leftoverLot / path / bench / leftoverGrass restack. Path
+// stays 268→284 / z=84 / 1.6 m (z1=84.8). 276 z0=88 sits inland
+// of the path — do not slide that hull onto the path.
 // leftoverLot A 258/84, B 295/84, C 313/84, D 330/84, E 347/84,
 // F 364/84.
 // E park sits 2 m inland of leftoverLot E (E z1=90, park z0=92).
 // x 339–355 is a 1 m leftover apron past E’s 340–354 — not a
-// leftoverLotOverlap kiss. 276 park stays (x1=284 < 339). Bench
+// leftoverLotOverlap kiss. F park sits 2 m inland of leftoverLot F
+// (F z1=90, park z0=92). x 356–372 is 1 m past F’s 357–371 —
+// leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not
+// a kiss; oz = −0.6 vs reserved z1+1.4 = 91.4). E-park x1=355
+// must not merge with this hull (F x0=356, 1 m west gap, same z
+// band). Do not merge the two hulls into one plate. 276 park
+// stays (x1=284 < 339). 347 park stays (x1=355 < 356). Bench
 // stays 276 / 82.4. leftoverGrass stays 267–285 / 81–86. Scatter
 // stays on tryPlace; this reservation is one more keepout, not a
 // second placer. Blade H 0.12–0.22 m (unmowed St. Augustine) so it
@@ -758,11 +771,15 @@ export const LEFTOVER_GRASS_AABB = false;
 // same ~0.8 m² — do not restack the grass floor. Do not
 // backfill to 12800. Do not change
 // MIN/MAX. POCKET_PARK_E_INSTANCES is that leftover
-// band (8000–11000), not the empty 10000–13000. 13k is still a
-// ceiling, not a goal.
+// band (8000–11000), not the empty 10000–13000. F is still an
+// empty hull — leftover 10000–13000 (128 m²). 13k is a ceiling,
+// not a goal. Do not backfill. Do not change E leftover
+// 8000–11000. POCKET_PARK_F_INSTANCES is that empty leftover
+// band (10000–13000).
 // Lean at nearest leftoverLot fence (including E, 2 m inland, and
-// F, 2 m east / 2 m ocean of the E-park) or garden path if it
-// reaches. Collider is the thin grade hull only.
+// F, 2 m inland of F-park / 2 m east / 2 m ocean of the E-park)
+// or garden path if it reaches. Collider is the thin grade hull
+// only.
 // Blades are visual.
 // A 0.3 m pad AABB fails. Never per-blade colliders.
 export const POCKET_PARK_X0 = 268;
@@ -790,6 +807,16 @@ export const POCKET_PARK_E_W = 16;
 export const POCKET_PARK_E_D = 8;
 export const POCKET_PARK_E_INSTANCES_MIN = 8000;
 export const POCKET_PARK_E_INSTANCES_MAX = 11000;
+export const POCKET_PARK_F_X0 = 356;
+export const POCKET_PARK_F_X1 = 372;
+export const POCKET_PARK_F_Z0 = 92;
+export const POCKET_PARK_F_Z1 = 100;
+export const POCKET_PARK_F_X = 364;
+export const POCKET_PARK_F_Z = 96;
+export const POCKET_PARK_F_W = 16;
+export const POCKET_PARK_F_D = 8;
+export const POCKET_PARK_F_INSTANCES_MIN = 10000;
+export const POCKET_PARK_F_INSTANCES_MAX = 13000;
 export const POCKET_PARK_HULL_H = 0.014;
 export const POCKET_PARK_HULL_COLLIDER = 'ground';
 export const POCKET_PARK_PAD_AABB = 0.3;
@@ -1771,6 +1798,8 @@ export const RESERVED = [
     z0: LEFTOVER_LOT_F_Z0 - 1.5, z1: LEFTOVER_LOT_F_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: POCKET_PARK_E_X0 - 2.2, x1: POCKET_PARK_E_X1 + 1.8,
     z0: POCKET_PARK_E_Z0 - 1.5, z1: POCKET_PARK_E_Z1 + 1.4, tag: 'pocketPark' },
+  { x0: POCKET_PARK_F_X0 - 2.2, x1: POCKET_PARK_F_X1 + 1.8,
+    z0: POCKET_PARK_F_Z0 - 1.5, z1: POCKET_PARK_F_Z1 + 1.4, tag: 'pocketPark' },
   { x0: GARDEN_PATH_X0 - 2.2, x1: GARDEN_PATH_X1 + 1.8,
     z0: GARDEN_PATH_Z0 - 1.5, z1: GARDEN_PATH_Z1 + 1.4, tag: 'gardenPath' },
   { x0: PARK_WALK_X0 - 2.2, x1: PARK_WALK_X1 + 1.8,
@@ -2197,11 +2226,15 @@ export function leftoverGrassRejected() {
 /**
  * One leftover-city plate at grade. Default is 276/92 (268–284 / 88–96).
  * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for the signed 347/96 hull
- * (339–355 / 92–100). Same schema — never pocketParkEGeom.
- * Never remaps x/z. Scatter stays on tryPlace. 276 z0=88 sits inland
- * of path z1=84.8 — do not slide that hull onto the path. E z0=92
- * sits 2 m inland of leftoverLot E (z1=90). Collider is the ground /
- * thin grade hull.
+ * (339–355 / 92–100). Pass (POCKET_PARK_F_X, POCKET_PARK_F_Z) for
+ * the signed 364/96 hull (356–372 / 92–100). Same schema — never
+ * pocketParkEGeom, never pocketParkFGeom. Never remaps x/z. Scatter
+ * stays on tryPlace. 276 z0=88 sits inland of path z1=84.8 — do
+ * not slide that hull onto the path. E z0=92 sits 2 m inland of
+ * leftoverLot E (z1=90). F z0=92 sits 2 m inland of leftoverLot F
+ * (z1=90). leftoverLotOverlap of F reserved is 0 (1 m leftover
+ * apron, not a kiss). E-park x1=355 must not merge with this hull
+ * (F x0=356). Collider is the ground / thin grade hull.
  */
 export function pocketParkHull(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const w = POCKET_PARK_W;
@@ -2210,13 +2243,18 @@ export function pocketParkHull(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const x1 = cx + w / 2;
   const z0 = cz - d / 2;
   const z1 = cz + d / 2;
+  const seed = (cx === POCKET_PARK_X && cz === POCKET_PARK_Z)
+    ? 0x70
+    : (cx === POCKET_PARK_E_X && cz === POCKET_PARK_E_Z)
+      ? 0x71
+      : 0x72;
   return {
     tag: 'pocketPark',
     x0, x1, z0, z1,
     x: cx, z: cz,
     w, d,
     y0: CITY_Y,
-    seed: (cx === POCKET_PARK_X && cz === POCKET_PARK_Z) ? 0x70 : 0x71,
+    seed,
     collider: POCKET_PARK_HULL_COLLIDER,
   };
 }
@@ -2233,7 +2271,8 @@ function inPocketParkHull(g, x, z, margin) {
 
 export function inPocketPark(x, z, margin = 0) {
   return inPocketParkHull(pocketParkHull(), x, z, margin)
-    || inPocketParkHull(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z), x, z, margin);
+    || inPocketParkHull(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z), x, z, margin)
+    || inPocketParkHull(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z), x, z, margin);
 }
 
 /**
@@ -2254,8 +2293,9 @@ export function pocketParkDrop(x, z) {
  * Lean at the nearest leftoverLot fence (A/B/C/D/E/F) or garden path if
  * it reaches. 276 z0=88 sits inland of path z1=84.8 — do not slide.
  * E sits 2 m inland of leftoverLot E (z1=90) — lean if the fence
- * reaches. F sits 2 m east / 2 m ocean of the E-park — lean if the
- * fence reaches.
+ * reaches. F-park sits 2 m inland of leftoverLot F (z1=90) — lean
+ * if the fence reaches. Lot F also sits 2 m east / 2 m ocean of
+ * the E-park — lean if that fence reaches.
  */
 export function pocketParkLean(x, z) {
   let d = distToAabb(
@@ -2289,8 +2329,10 @@ export function pocketParkLean(x, z) {
  * MIN/MAX 8000–11000 is the 276 placed floor after walks, not this
  * clamp. E leftover placed band after the 348.8→355 / z=98.5 east
  * walk is 8000–11000 (~8.2k expected). 12800 placed on E after this
- * walk is a fail. Do not backfill. 13k is still a ceiling, not a goal.
- * Not leftover-dirt 3.36 / 190k. Do not raise cover.
+ * walk is a fail. F leftover placed band is the empty hull
+ * 10000–13000 (do not force 13k). Do not backfill. 13k is still a
+ * ceiling, not a goal. Not leftover-dirt 3.36 / 190k. Do not raise
+ * cover.
  */
 export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const area = pocketParkArea(cx, cz);
@@ -2299,10 +2341,13 @@ export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
 
 /**
  * Reject-or-drop for a signed pocket-park plate. Default is 276/92.
- * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for 347/96. Fail if
+ * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for 347/96. Pass
+ * (POCKET_PARK_F_X, POCKET_PARK_F_Z) for 364/96. Fail if
  * pavement, streetOverlap, leftoverLot A–F reserved, warehouse
  * reserved, helipad E reserved, or the 268→284 / z=84 garden path.
- * Park-walk spines live on the hulls by design and are not a fail.
+ * leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not
+ * a kiss). E-park x1=355 must not merge with this hull. Park-walk
+ * spines live on the hulls by design and are not a fail.
  * Never nudges x/z. Each hull is rejected independently.
  */
 export function pocketParkRejected(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
@@ -2498,6 +2543,8 @@ export const KEEPOUT = [
     z0: POCKET_PARK_Z0, z1: POCKET_PARK_Z1, tag: 'pocketPark' },
   { x0: POCKET_PARK_E_X0, x1: POCKET_PARK_E_X1,
     z0: POCKET_PARK_E_Z0, z1: POCKET_PARK_E_Z1, tag: 'pocketPark' },
+  { x0: POCKET_PARK_F_X0, x1: POCKET_PARK_F_X1,
+    z0: POCKET_PARK_F_Z0, z1: POCKET_PARK_F_Z1, tag: 'pocketPark' },
   { x0: PARK_PERGOLA_X - GATE_HALF_X - 0.8, x1: PARK_PERGOLA_X + GATE_HALF_X + 0.8,
     z0: PARK_PERGOLA_Z - GATE_HALF_Z - 0.8, z1: PARK_PERGOLA_Z + GATE_HALF_Z + 0.8,
     tag: 'boardwalk-gate' },
@@ -3765,14 +3812,16 @@ export function installLeftoverGrassColliders(addCyl, addCollider) {
 }
 
 /**
- * Thin grade hulls. No-arg covers 276/92 and 347/96 via pocketParkHull.
- * Blades are visual. Never a 0.3 m pad AABB. Never per-blade
- * colliders. Collider is the ground hull.
+ * Thin grade hulls. No-arg covers 276/92, 347/96, and 364/96 via
+ * pocketParkHull. Do not merge E x1=355 with F x0=356 into one
+ * plate. Blades are visual. Never a 0.3 m pad AABB. Never
+ * per-blade colliders. Collider is the ground hull.
  */
 export function pocketParkColliderShapes() {
   const cells = [
     pocketParkHull(),
     pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z),
+    pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z),
   ];
   const shapes = [];
   for (let i = 0; i < cells.length; i++) {
