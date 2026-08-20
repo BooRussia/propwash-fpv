@@ -58,8 +58,8 @@ export function runBayWaterTests() {
   ok('SSR off', BAY_PRESET.ssr === false);
   ok('TMA depth is bay-shallow', BAY_PRESET.depthM <= 8 && BAY_PRESET.depthM >= 2);
   ok('gravity is 9.81', G === 9.81);
-  ok('foam threshold is a fold, not a 2–4 m flat',
-    BAY_PRESET.jThresh <= 0.50 && BAY_PRESET.jThresh >= 0.35);
+  ok('foam threshold is NVIDIA M≤0.3, not Abyssal 0.62',
+    BAY_PRESET.jThresh <= 0.30 && BAY_PRESET.jThresh >= 0.20);
 
   // ---- spectrum ----------------------------------------------------------
   const jp = jonswapParams(BAY_PRESET.windMs, BAY_PRESET.fetchM);
@@ -120,11 +120,15 @@ export function runBayWaterTests() {
     if (ah > maxAbsH) maxAbsH = ah;
   }
   ok('Jacobian field is live', Number.isFinite(minJ) && minJ < 1.05);
-  ok('fold foam appears at the waterline', maxFoam > 0.02);
   let foamCells = 0;
   for (let i = 0; i < sim.n * sim.n; i++) {
     if (sim.foam[i] > 0.002) foamCells++;
   }
+  // min J on this 19 m plate is ~0.37. M=0.30 means fold foam is none
+  // unless a cell actually folds. Do not require a dotted bay.
+  ok('flats have no foam / foam is stream-or-none',
+    minJ >= BAY_PRESET.jThresh ? maxFoam <= 1e-6
+      : foamCells / (sim.n * sim.n) < 0.04);
   ok('foam is sparse breaking, not salt-and-pepper',
     foamCells / (sim.n * sim.n) < 0.04);
   ok('displacement stays under the deck (no punch-through)', maxAbsH < 1.2);
