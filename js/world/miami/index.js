@@ -16,7 +16,7 @@
 // hand-maintained list of exclusion zones.
 // ============================================================
 import * as THREE from 'three';
-import { settings, clamp } from '../../core/state.js';
+import { settings } from '../../core/state.js';
 import { assetLib } from '../../core/assets.js';
 
 import { groundHeight, cameraFloor } from './constants.js';
@@ -232,9 +232,9 @@ export async function buildMiami(scene, env) {
   let time = 0;
   let lastNightF = -1;
   const applyDayNight = () => {
-    const tod = settings.environment.timeOfDay;
-    const dayF = Math.sin(Math.PI * clamp((tod - 6.2) / 13.2, 0, 1));
-    const nightF = clamp(1 - dayF * 2.1, 0, 1);
+    // Existing street / lot / waterline emissives: on at sun el < -1.
+    // The env clock advances from the 15.5 start hour; do not park the plate.
+    const nightF = env && env.nightLightsOn ? 1 : 0;
     if (Math.abs(nightF - lastNightF) < 0.006) return;
     lastNightF = nightF;
     for (const d of dayNight) d.mat.emissiveIntensity = d.day + (d.night - d.day) * nightF;
