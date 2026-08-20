@@ -241,10 +241,9 @@ export function createBaySim(opts = {}) {
         const c = src[idx];
         const n4 = src[j * n + ip] + src[j * n + im] + src[jp * n + i] + src[jm * n + i];
         const diffused = (1 - blur) * c + blur * n4 * 0.25;
-        // Crest-only: a 2–4 m flat whose J dips under 0.58 used to seed
-        // specks; require a raised surface so foam is a breaking crest.
-        const fold = (jacobian[idx] < jThresh && height[idx] > 0.06)
-          ? (jThresh - jacobian[idx]) * foamGain : 0;
+        // Plate never Tessendorf-folds (J<0). Flats-off is a mask, not a
+        // lower M. Skip J<M paint. Wake stamps still ride this ping-pong.
+        const fold = 0;
         let v = decay * diffused + fold * Math.min(1, dt * 8);
         if (v < 0) v = 0;
         else if (v > 1) v = 1;
