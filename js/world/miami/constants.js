@@ -539,7 +539,8 @@ export const LEFTOVER_GRASS_AABB = false;
 // 267–285 / 81–86. Scatter stays on tryPlace; this reservation is one
 // more keepout, not a second placer. Blade H 0.12–0.22 m (unmowed
 // St. Augustine) so it reads at 8–25 m. A 50 mm lawn disappears — do
-// not ship that. Cell is ~10–13k instances. Lean at nearest leftoverLot
+// not ship that. Empty-park 10–13k is dead. Leftover after walks is
+// the honest cell: 8000–11000. Lean at nearest leftoverLot
 // fence or garden path if it reaches. Collider is the thin grade hull
 // only. Blades are visual. A 0.3 m pad AABB fails. Never per-blade
 // colliders.
@@ -556,8 +557,8 @@ export const POCKET_PARK_H_MIN = 0.12;
 export const POCKET_PARK_H_MAX = 0.22;
 export const POCKET_PARK_LAWN_H = 0.05;
 export const POCKET_PARK_COVER = 10;
-export const POCKET_PARK_INSTANCES_MIN = 10000;
-export const POCKET_PARK_INSTANCES_MAX = 13000;
+export const POCKET_PARK_INSTANCES_MIN = 8000;
+export const POCKET_PARK_INSTANCES_MAX = 11000;
 export const POCKET_PARK_HULL_H = 0.014;
 export const POCKET_PARK_HULL_COLLIDER = 'ground';
 export const POCKET_PARK_PAD_AABB = 0.3;
@@ -1680,15 +1681,13 @@ export function pocketParkLean(x, z) {
 }
 
 /**
- * n = area × cover², clamped to 10–13k. Not leftover-dirt 3.36 / 190k.
+ * n = area × cover². Empty-park grid stays cover=10 (12800). Leftover
+ * MIN/MAX 8000–11000 is the placed floor after walks, not this clamp.
+ * Not leftover-dirt 3.36 / 190k. Do not raise cover.
  */
 export function pocketParkPlannedCount() {
-  const raw = Math.round(
+  return Math.round(
     POCKET_PARK_AREA * POCKET_PARK_COVER * POCKET_PARK_COVER,
-  );
-  return Math.min(
-    POCKET_PARK_INSTANCES_MAX,
-    Math.max(POCKET_PARK_INSTANCES_MIN, raw),
   );
 }
 
