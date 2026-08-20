@@ -199,23 +199,26 @@ export function runMiamiPocketParkTests() {
     && !inGardenPath(276, 92) && !inLeftoverLotReserved(276, 92)
     && !inWarehouseReserved(276, 92));
 
-  // ---- plant from the grid; 10–13k; not leftover-dirt density ------------
+  // ---- plant from the grid; leftover 8–11k after walks; not dirt ---------
   const plannedN = pocketParkPlannedCount();
   const raw = Math.round(POCKET_PARK_AREA * POCKET_PARK_COVER * POCKET_PARK_COVER);
   ok('density is area × cover², not dirt 3.36',
     POCKET_PARK_COVER === 10
-    && raw >= POCKET_PARK_INSTANCES_MIN
-    && raw <= POCKET_PARK_INSTANCES_MAX
-    && plannedN === raw);
+    && raw === 12800
+    && plannedN === raw
+    && POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_W === 16 && POCKET_PARK_D === 8);
   ok('planned count is a grid over the signed plate',
     plannedN === Math.round(POCKET_PARK_AREA * POCKET_PARK_COVER * POCKET_PARK_COVER));
 
   const field = placePocketPark(ctx);
   ok('plant from the grid',
     field.cells.length === plannedN && field.cells.length > 0);
-  ok('placed instances are ~10–13k',
+  ok('placed instances are leftover ~8–11k',
     field.placed.length >= POCKET_PARK_INSTANCES_MIN
-    && field.placed.length <= POCKET_PARK_INSTANCES_MAX,
+    && field.placed.length <= POCKET_PARK_INSTANCES_MAX
+    && POCKET_PARK_INSTANCES_MIN === 8000
+    && POCKET_PARK_INSTANCES_MAX === 11000,
     `placed=${field.placed.length} planned=${plannedN}`);
   ok('no placed blade on a lot / warehouse / path / pavement',
     field.placed.every((p) => !pocketParkDrop(p.x, p.z)
@@ -227,7 +230,7 @@ export function runMiamiPocketParkTests() {
     field.placed.every((p) => inPocketPark(p.x, p.z)));
   ok('not leftover-dirt 190k',
     field.placed.length < 20000 && plannedN < 20000
-    && POCKET_PARK_INSTANCES_MAX === 13000);
+    && POCKET_PARK_INSTANCES_MAX === 11000);
 
   // ---- blade H 0.12–0.22 m; 50 mm lawn disappears ------------------------
   ok('blade H is 0.12–0.22 m',
