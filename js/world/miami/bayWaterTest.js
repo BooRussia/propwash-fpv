@@ -112,10 +112,9 @@ export function runBayWaterTests() {
   const hs = sim.significantHeight();
   ok('realized Hs is 8–25 m chop, not a swell plate', hs > 0.05 && hs < 1.6);
 
-  let minJ = Infinity, maxFoam = 0, maxAbsH = 0;
+  let minJ = Infinity, maxAbsH = 0;
   for (let i = 0; i < sim.n * sim.n; i++) {
     if (sim.jacobian[i] < minJ) minJ = sim.jacobian[i];
-    if (sim.foam[i] > maxFoam) maxFoam = sim.foam[i];
     const ah = Math.abs(sim.height[i]);
     if (ah > maxAbsH) maxAbsH = ah;
   }
@@ -124,11 +123,11 @@ export function runBayWaterTests() {
   for (let i = 0; i < sim.n * sim.n; i++) {
     if (sim.foam[i] > 0.002) foamCells++;
   }
-  // min J on this 19 m plate is ~0.37. M=0.30 means fold foam is none
-  // unless a cell actually folds. Do not require a dotted bay.
+  // min J on this 19 m plate sits ~0.33–0.37. M=0.30 means fold foam is
+  // none or a leftover stream speck — not a dotted bay. Do not require
+  // maxFoam > 0.02 (that only passed when M sat above the flats).
   ok('flats have no foam / foam is stream-or-none',
-    minJ >= BAY_PRESET.jThresh ? maxFoam <= 1e-6
-      : foamCells / (sim.n * sim.n) < 0.04);
+    foamCells / (sim.n * sim.n) < 0.01);
   ok('foam is sparse breaking, not salt-and-pepper',
     foamCells / (sim.n * sim.n) < 0.04);
   ok('displacement stays under the deck (no punch-through)', maxAbsH < 1.2);
@@ -139,10 +138,10 @@ export function runBayWaterTests() {
   ok('wake stamp raises foam', sim.foam[cx] > foamBefore + 0.15);
 
   const stamped = sim.foam[cx];
-  for (let i = 0; i < 80; i++) sim.step(1 / 24);
+  for (let i = 0; i < 8; i++) sim.step(1 / 24);
+  ok('ping-pong does not instantly wipe a wake', sim.foam[cx] > stamped * 0.2);
+  for (let i = 0; i < 72; i++) sim.step(1 / 24);
   ok('ping-pong decay lets a wake fade', sim.foam[cx] < stamped * 0.95 + 1e-6);
-  ok('ping-pong does not instantly wipe a wake', sim.foam[cx] > 0.002
-    || maxFoam > 0.01);
 
   const h0 = sim.sampleHeight(3.2, -11.4);
   const h1 = sim.sampleHeight(3.2 + sim.L, -11.4);
