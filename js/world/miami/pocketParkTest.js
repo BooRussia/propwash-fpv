@@ -1232,13 +1232,14 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_H_X === 398 && POCKET_PARK_H_Z === 96);
   ok('H plant from the grid',
     fieldH.cells.length === plannedH && fieldH.cells.length > 0);
-  ok('H leftover empty-hull is 10000–13000, 13k is a ceiling',
+  ok('H leftover after the 381 kit +17 m walks is 8000–11000, below 12800',
     fieldH.placed.length >= POCKET_PARK_H_INSTANCES_MIN
     && fieldH.placed.length <= POCKET_PARK_H_INSTANCES_MAX
-    && POCKET_PARK_H_INSTANCES_MIN === 10000
-    && POCKET_PARK_H_INSTANCES_MAX === 13000
+    && POCKET_PARK_H_INSTANCES_MIN === 8000
+    && POCKET_PARK_H_INSTANCES_MAX === 11000
     && fieldH.placed.length !== POCKET_PARK_H_INSTANCES_MAX
-    && fieldH.placed.length <= 13000
+    && fieldH.placed.length < 12800
+    && fieldH.placed.length !== 12800
     && plannedH === 12800,
     `placedH=${fieldH.placed.length} plannedH=${plannedH}`);
   ok('G leftover floor stays 8000–11000 after walks',
@@ -1320,10 +1321,10 @@ export function runMiamiPocketParkTests() {
     && constants.includes('never pocketParkHGeom')
     && constants.includes('leftoverLotOverlap of H reserved is 0')
     && constants.includes('G-park x1=389 must not merge'));
-  ok('no kit on this file (spine is a later file)',
+  ok('H-park spine stays 390→406 / z=96; kit is not on pocketPark.js',
     constants.includes('PARK_WALK_HH_X0 = 390')
-    && !constants.includes('PARK_BENCH_HH')
-    && !constants.includes('PARK_PERGOLA_HH')
+    && constants.includes('PARK_WALK_HH_X1 = 406')
+    && constants.includes('PARK_WALK_HH_Z = 96')
     && !park.includes('PARK_WALK_HH')
     && !park.includes('PARK_BENCH_HH')
     && !park.includes('PARK_PERGOLA_HH'));
