@@ -48,6 +48,7 @@ import { buildLeftoverLot } from './landmarks/leftoverLot.js';
 import { buildGardenPath } from './landmarks/gardenPath.js';
 import { buildGardenBench } from './landmarks/gardenBench.js';
 import { buildLeftoverGrass } from './landmarks/leftoverGrass.js';
+import { buildPocketPark } from './landmarks/pocketPark.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
@@ -209,6 +210,8 @@ export async function buildMiami(scene, env) {
   buildGardenBench(ctx);
   // ---------------- Tiny Glade leftover-city grass (tryPlace; one hull; not a path restack) --
   buildLeftoverGrass(ctx);
+  // ---------------- Tiny Glade pocket park (tryPlace; one hull; not a leftoverGrass restack) --
+  buildPocketPark(ctx);
 
   // ---------------- planting (hedges, beds, lawns, entrance palms) ----------------
   const { palmsEntry } = await buildLandscaping(ctx, landscape);

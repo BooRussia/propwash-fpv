@@ -508,6 +508,41 @@ export const LEFTOVER_GRASS_HULL_COLLIDER = 'ground';
 export const LEFTOVER_GRASS_PAD_AABB = 0.3;
 export const LEFTOVER_GRASS_AABB = false;
 
+// ---- pocketPark (Tiny Glade grow-to-gap; leftover-city plate) ----
+// Signed centre 276/92, plate 16×8, bounds x0=268 x1=284 z0=88 z1=96.
+// Desi + Reesy signed the cell. Do not invent or slide x/z. One hull
+// inland of the garden strip, not OSM, not leftover-dirt 190k, not a
+// leftoverLot / path / bench / leftoverGrass restack. Path stays
+// 268→284 / z=84 / 1.6 m (z1=84.8). z0=88 sits inland of the path —
+// do not slide the hull onto the path. leftoverLot A 258/84, B 295/84,
+// C 313/84, D 330/84. Bench stays 276 / 82.4. leftoverGrass stays
+// 267–285 / 81–86. Scatter stays on tryPlace; this reservation is one
+// more keepout, not a second placer. Blade H 0.12–0.22 m (unmowed
+// St. Augustine) so it reads at 8–25 m. A 50 mm lawn disappears — do
+// not ship that. Cell is ~10–13k instances. Lean at nearest leftoverLot
+// fence or garden path if it reaches. Collider is the thin grade hull
+// only. Blades are visual. A 0.3 m pad AABB fails. Never per-blade
+// colliders.
+export const POCKET_PARK_X0 = 268;
+export const POCKET_PARK_X1 = 284;
+export const POCKET_PARK_Z0 = 88;
+export const POCKET_PARK_Z1 = 96;
+export const POCKET_PARK_X = 276;
+export const POCKET_PARK_Z = 92;
+export const POCKET_PARK_W = 16;
+export const POCKET_PARK_D = 8;
+export const POCKET_PARK_AREA = 128;
+export const POCKET_PARK_H_MIN = 0.12;
+export const POCKET_PARK_H_MAX = 0.22;
+export const POCKET_PARK_LAWN_H = 0.05;
+export const POCKET_PARK_COVER = 10;
+export const POCKET_PARK_INSTANCES_MIN = 10000;
+export const POCKET_PARK_INSTANCES_MAX = 13000;
+export const POCKET_PARK_HULL_H = 0.014;
+export const POCKET_PARK_HULL_COLLIDER = 'ground';
+export const POCKET_PARK_PAD_AABB = 0.3;
+export const POCKET_PARK_AABB = false;
+
 /**
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
@@ -984,6 +1019,33 @@ export function leftoverLotOverlap(x, z, w, d, margin = 0.15) {
   return false;
 }
 
+/** True when (x,z) sits in the warehouse reserved box. */
+export function inWarehouseReserved(x, z) {
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag !== 'warehouse') continue;
+    if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1) return true;
+  }
+  return false;
+}
+
+/**
+ * Axis-aligned footprint vs warehouse reserved only.
+ * Pocket park uses this so it cannot slide onto the warehouse.
+ */
+export function warehouseOverlap(x, z, w, d, margin = 0.15) {
+  const hw = w / 2, hd = d / 2;
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag !== 'warehouse') continue;
+    const ox = Math.min(x + hw, r.x1) - Math.max(x - hw, r.x0);
+    if (ox <= margin) continue;
+    const oz = Math.min(z + hd, r.z1) - Math.max(z - hd, r.z0);
+    if (oz > margin) return true;
+  }
+  return false;
+}
+
 /**
  * Reject-or-drop for the signed garden path cell. Fail if pavement,
  * streetOverlap, or leftoverLot A/B/C reserved. Never nudges x/z.
@@ -1146,6 +1208,116 @@ export function leftoverGrassRejected() {
   return false;
 }
 
+/**
+ * One leftover-city plate at grade inland of the garden strip.
+ * Signed 268–284 / 88–96. Collider is the ground / thin grade hull.
+ * Never remaps x/z. Scatter stays on tryPlace. z0=88 sits inland of
+ * path z1=84.8 — do not slide the hull onto the path.
+ */
+export function pocketParkHull() {
+  return {
+    tag: 'pocketPark',
+    x0: POCKET_PARK_X0, x1: POCKET_PARK_X1,
+    z0: POCKET_PARK_Z0, z1: POCKET_PARK_Z1,
+    x: POCKET_PARK_X, z: POCKET_PARK_Z,
+    w: POCKET_PARK_W, d: POCKET_PARK_D,
+    y0: CITY_Y,
+    seed: 0x70,
+    collider: POCKET_PARK_HULL_COLLIDER,
+  };
+}
+
+export function pocketParkArea() {
+  return (POCKET_PARK_X1 - POCKET_PARK_X0)
+    * (POCKET_PARK_Z1 - POCKET_PARK_Z0);
+}
+
+export function inPocketPark(x, z, margin = 0) {
+  return x >= POCKET_PARK_X0 - margin && x <= POCKET_PARK_X1 + margin
+    && z >= POCKET_PARK_Z0 - margin && z <= POCKET_PARK_Z1 + margin;
+}
+
+/**
+ * tryPlace-drop on warehouse, leftoverLot A/B/C/D reserved, the garden
+ * path, and pavement. Reject-or-drop, never nudge.
+ */
+export function pocketParkDrop(x, z) {
+  if (onPavement(x, z)) return true;
+  if (inLeftoverLotReserved(x, z)) return true;
+  if (inWarehouseReserved(x, z)) return true;
+  if (inGardenPath(x, z)) return true;
+  return false;
+}
+
+/**
+ * Lean at the nearest leftoverLot fence (A/B/C/D) or garden path if
+ * it reaches. Hull z0=88 sits inland of path z1=84.8 — do not slide.
+ */
+export function pocketParkLean(x, z) {
+  let d = distToAabb(
+    x, z, LEFTOVER_LOT_X0, LEFTOVER_LOT_X1, LEFTOVER_LOT_Z0, LEFTOVER_LOT_Z1,
+  );
+  d = Math.min(d, distToAabb(
+    x, z, LEFTOVER_LOT_B_X0, LEFTOVER_LOT_B_X1, LEFTOVER_LOT_B_Z0, LEFTOVER_LOT_B_Z1,
+  ));
+  d = Math.min(d, distToAabb(
+    x, z, LEFTOVER_LOT_C_X0, LEFTOVER_LOT_C_X1, LEFTOVER_LOT_C_Z0, LEFTOVER_LOT_C_Z1,
+  ));
+  d = Math.min(d, distToAabb(
+    x, z, LEFTOVER_LOT_D_X0, LEFTOVER_LOT_D_X1, LEFTOVER_LOT_D_Z0, LEFTOVER_LOT_D_Z1,
+  ));
+  d = Math.min(d, distToAabb(
+    x, z, GARDEN_PATH_X0, GARDEN_PATH_X1, GARDEN_PATH_Z0, GARDEN_PATH_Z1,
+  ));
+  if (d < 0.35) return 0.22;
+  if (d < 1.1) return 0.14;
+  return 0.04;
+}
+
+/**
+ * n = area × cover², clamped to 10–13k. Not leftover-dirt 3.36 / 190k.
+ */
+export function pocketParkPlannedCount() {
+  const raw = Math.round(
+    POCKET_PARK_AREA * POCKET_PARK_COVER * POCKET_PARK_COVER,
+  );
+  return Math.min(
+    POCKET_PARK_INSTANCES_MAX,
+    Math.max(POCKET_PARK_INSTANCES_MIN, raw),
+  );
+}
+
+/**
+ * Reject-or-drop for the signed pocket-park plate. Fail if pavement,
+ * streetOverlap, leftoverLot A/B/C/D reserved, warehouse reserved, or
+ * the garden path. Never nudges x/z.
+ */
+export function pocketParkRejected() {
+  const g = pocketParkHull();
+  if (onPavement(g.x, g.z) || onPavement(g.x0, g.z) || onPavement(g.x1, g.z)) {
+    return true;
+  }
+  if (streetOverlap(g.x, g.z, g.w, g.d)) return true;
+  if (leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15)) return true;
+  if (inLeftoverLotReserved(g.x, g.z)
+    || inLeftoverLotReserved(g.x0, g.z)
+    || inLeftoverLotReserved(g.x1, g.z)) return true;
+  if (warehouseOverlap(g.x, g.z, g.w, g.d, 0.15)) return true;
+  if (inWarehouseReserved(g.x, g.z)
+    || inWarehouseReserved(g.x0, g.z)
+    || inWarehouseReserved(g.x1, g.z)
+    || inWarehouseReserved(g.x, g.z0)
+    || inWarehouseReserved(g.x, g.z1)) return true;
+  if (inGardenPath(g.x, g.z)
+    || inGardenPath(g.x0, g.z) || inGardenPath(g.x1, g.z)
+    || inGardenPath(g.x, g.z0) || inGardenPath(g.x, g.z1)
+    || inGardenPath(g.x0, g.z0) || inGardenPath(g.x1, g.z0)
+    || inGardenPath(g.x0, g.z1) || inGardenPath(g.x1, g.z1)) {
+    return true;
+  }
+  return false;
+}
+
 // ---- ground keep-outs ----
 // Rectangles of beach/plaza that belong to a built feature. Scatter passes
 // (palms, shrubs, parasols, towels, rocks) test against these as well as the
@@ -1187,6 +1359,8 @@ export const KEEPOUT = [
     z0: GARDEN_BENCH_Z0 - 1.3, z1: GARDEN_BENCH_Z1 + 1.2, tag: 'gardenBench' },
   { x0: LEFTOVER_GRASS_X0, x1: LEFTOVER_GRASS_X1,
     z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1, tag: 'leftoverGrass' },
+  { x0: POCKET_PARK_X0, x1: POCKET_PARK_X1,
+    z0: POCKET_PARK_Z0, z1: POCKET_PARK_Z1, tag: 'pocketPark' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -2343,6 +2517,29 @@ export function leftoverGrassColliderShapes() {
 export function installLeftoverGrassColliders(addCyl, addCollider) {
   void addCyl;
   const shapes = leftoverGrassColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * One thin grade hull. Blades are visual. Never a 0.3 m pad AABB.
+ * Never per-blade colliders. Collider is the ground hull.
+ */
+export function pocketParkColliderShapes() {
+  const h = pocketParkHull();
+  return [{
+    type: 'aabb', tag: 'pocketPark', part: 'grade',
+    x: h.x, z: h.z, sx: h.w, sz: h.d,
+    y0: CITY_Y, sy: POCKET_PARK_HULL_H,
+  }];
+}
+
+/** Push the thin grade hull. Same bag as the haunt kits. */
+export function installPocketParkColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = pocketParkColliderShapes();
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
