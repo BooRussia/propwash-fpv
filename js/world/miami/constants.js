@@ -457,6 +457,40 @@ export const GARDEN_BENCH_X1 = GARDEN_BENCH_X + GARDEN_BENCH_W / 2;
 export const GARDEN_BENCH_Z0 = GARDEN_BENCH_Z - GARDEN_BENCH_DEPTH / 2;
 export const GARDEN_BENCH_Z1 = GARDEN_BENCH_Z + GARDEN_BENCH_DEPTH / 2;
 
+// ---- leftoverGrass (Tiny Glade grow-to-gap; leftover-city hull) ----
+// Signed x 267–285 / z 81.0–86.0. Desi + Reesy signed the box. Do not
+// invent or slide it. One hull around the path and bench, not OSM, not
+// leftover-dirt 190k. Hull ≈ 90 m². Leftover after path+bench ≈ 63 m².
+// Path stays 268→284 / z=84 / 1.6 m. leftoverLot A 258/84, B 295/84,
+// C 313/84 (A x1=265 and B x0=288 sit just off this hull). Bench stays
+// 276 / 82.4. Path's thin joint hull stays. Scatter stays on tryPlace;
+// this reservation is one more keepout, not a second placer. Blade H
+// 0.12–0.22 m (unmowed St. Augustine) so it reads at 8–25 m. A 50 mm
+// lawn disappears — do not ship that. Cell is ~8–12k instances. Lean at
+// nearest slab / bench leg / leftoverLot fence. Grow into the path's
+// 60–100 mm joints. Collider is the thin grade hull only. Blades are
+// visual. A 0.3 m pad AABB fails. Never per-blade colliders.
+export const LEFTOVER_GRASS_X0 = 267;
+export const LEFTOVER_GRASS_X1 = 285;
+export const LEFTOVER_GRASS_Z0 = 81.0;
+export const LEFTOVER_GRASS_Z1 = 86.0;
+export const LEFTOVER_GRASS_X = 276;
+export const LEFTOVER_GRASS_Z = 83.5;
+export const LEFTOVER_GRASS_W = 18;
+export const LEFTOVER_GRASS_D = 5;
+export const LEFTOVER_GRASS_AREA = 90;
+export const LEFTOVER_GRASS_LEFTOVER = 63;
+export const LEFTOVER_GRASS_H_MIN = 0.12;
+export const LEFTOVER_GRASS_H_MAX = 0.22;
+export const LEFTOVER_GRASS_LAWN_H = 0.05;
+export const LEFTOVER_GRASS_COVER = 12.6;
+export const LEFTOVER_GRASS_INSTANCES_MIN = 8000;
+export const LEFTOVER_GRASS_INSTANCES_MAX = 12000;
+export const LEFTOVER_GRASS_HULL_H = 0.014;
+export const LEFTOVER_GRASS_HULL_COLLIDER = 'ground';
+export const LEFTOVER_GRASS_PAD_AABB = 0.3;
+export const LEFTOVER_GRASS_AABB = false;
+
 /**
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
@@ -980,6 +1014,115 @@ export function gardenBenchRejected() {
   return false;
 }
 
+/**
+ * One leftover-city hull at grade around the path and bench.
+ * Signed 267–285 / 81.0–86.0. Collider is the ground / thin grade hull.
+ * Never remaps x/z. Scatter stays on tryPlace.
+ */
+export function leftoverGrassHull() {
+  return {
+    tag: 'leftoverGrass',
+    x0: LEFTOVER_GRASS_X0, x1: LEFTOVER_GRASS_X1,
+    z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1,
+    x: LEFTOVER_GRASS_X, z: LEFTOVER_GRASS_Z,
+    w: LEFTOVER_GRASS_W, d: LEFTOVER_GRASS_D,
+    y0: CITY_Y,
+    seed: 0x67,
+    collider: LEFTOVER_GRASS_HULL_COLLIDER,
+  };
+}
+
+export function leftoverGrassArea() {
+  return (LEFTOVER_GRASS_X1 - LEFTOVER_GRASS_X0)
+    * (LEFTOVER_GRASS_Z1 - LEFTOVER_GRASS_Z0);
+}
+
+/** Hull minus the signed path rectangle minus the signed bench plate. */
+export function leftoverGrassLeftoverArea() {
+  return leftoverGrassArea()
+    - GARDEN_PATH_LEN * GARDEN_PATH_W
+    - GARDEN_BENCH_W * GARDEN_BENCH_DEPTH;
+}
+
+export function inLeftoverGrass(x, z, margin = 0) {
+  return x >= LEFTOVER_GRASS_X0 - margin && x <= LEFTOVER_GRASS_X1 + margin
+    && z >= LEFTOVER_GRASS_Z0 - margin && z <= LEFTOVER_GRASS_Z1 + margin;
+}
+
+/**
+ * tryPlace-drop on flagstones, leftoverLot A/B/C reserved, the bench
+ * plate, and pavement. Reject-or-drop, never nudge. Joints keep.
+ */
+export function leftoverGrassDrop(x, z) {
+  if (onPavement(x, z)) return true;
+  if (inLeftoverLotReserved(x, z)) return true;
+  if (inGardenBench(x, z)) return true;
+  if (inGardenPathSlab(x, z)) return true;
+  return false;
+}
+
+function distToAabb(x, z, x0, x1, z0, z1) {
+  const dx = x < x0 ? x0 - x : (x > x1 ? x - x1 : 0);
+  const dz = z < z0 ? z0 - z : (z > z1 ? z - z1 : 0);
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+/**
+ * Lean at the nearest flagstone slab, bench leg, or leftoverLot fence
+ * (A x1=265, B x0=288 sit just off this hull). Grow-to-gap at joints.
+ */
+export function leftoverGrassLean(x, z) {
+  let d = Math.min(x - LEFTOVER_LOT_X1, LEFTOVER_LOT_B_X0 - x);
+  const slabs = gardenPathSlabs();
+  for (let i = 0; i < slabs.length; i++) {
+    const s = slabs[i];
+    d = Math.min(d, distToAabb(x, z, s.x0, s.x1, s.z0, s.z1));
+  }
+  const parts = gardenBenchParts();
+  for (let i = 0; i < parts.legs.length; i++) {
+    const p = parts.legs[i];
+    d = Math.min(d, distToAabb(
+      x, z, p.x - p.sx / 2, p.x + p.sx / 2, p.z - p.sz / 2, p.z + p.sz / 2,
+    ));
+  }
+  if (d < 0.35) return 0.22;
+  if (d < 1.1) return 0.14;
+  return 0.04;
+}
+
+/**
+ * n = leftover × cover², clamped to 8–12k, then scaled by hull/leftover
+ * so the grid still covers the signed box. Not leftover-dirt 3.36 / 190k.
+ */
+export function leftoverGrassPlannedCount() {
+  const raw = Math.round(
+    LEFTOVER_GRASS_LEFTOVER * LEFTOVER_GRASS_COVER * LEFTOVER_GRASS_COVER,
+  );
+  const n = Math.min(
+    LEFTOVER_GRASS_INSTANCES_MAX,
+    Math.max(LEFTOVER_GRASS_INSTANCES_MIN, raw),
+  );
+  return Math.round(n * leftoverGrassArea() / LEFTOVER_GRASS_LEFTOVER);
+}
+
+/**
+ * Reject-or-drop for the signed leftover-city grass hull. Fail if
+ * pavement, streetOverlap, or leftoverLot A/B/C reserved. Path and
+ * bench live inside this hull by design. Never nudges x/z.
+ */
+export function leftoverGrassRejected() {
+  const g = leftoverGrassHull();
+  if (onPavement(g.x, g.z) || onPavement(g.x0, g.z) || onPavement(g.x1, g.z)) {
+    return true;
+  }
+  if (streetOverlap(g.x, g.z, g.w, g.d)) return true;
+  if (leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15)) return true;
+  if (inLeftoverLotReserved(g.x, g.z)
+    || inLeftoverLotReserved(g.x0, g.z)
+    || inLeftoverLotReserved(g.x1, g.z)) return true;
+  return false;
+}
+
 // ---- ground keep-outs ----
 // Rectangles of beach/plaza that belong to a built feature. Scatter passes
 // (palms, shrubs, parasols, towels, rocks) test against these as well as the
@@ -1017,6 +1160,8 @@ export const KEEPOUT = [
     z0: GARDEN_PATH_Z0 - 1.3, z1: GARDEN_PATH_Z1 + 1.2, tag: 'gardenPath' },
   { x0: GARDEN_BENCH_X0 - 2.0, x1: GARDEN_BENCH_X1 + 1.6,
     z0: GARDEN_BENCH_Z0 - 1.3, z1: GARDEN_BENCH_Z1 + 1.2, tag: 'gardenBench' },
+  { x0: LEFTOVER_GRASS_X0, x1: LEFTOVER_GRASS_X1,
+    z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1, tag: 'leftoverGrass' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -2148,6 +2293,29 @@ export function gardenBenchColliderShapes() {
 export function installGardenBenchColliders(addCyl, addCollider) {
   void addCyl;
   const shapes = gardenBenchColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * One thin grade hull. Blades are visual. Never a 0.3 m pad AABB.
+ * Never per-blade colliders. Collider is the ground hull.
+ */
+export function leftoverGrassColliderShapes() {
+  const h = leftoverGrassHull();
+  return [{
+    type: 'aabb', tag: 'leftoverGrass', part: 'grade',
+    x: h.x, z: h.z, sx: h.w, sz: h.d,
+    y0: CITY_Y, sy: LEFTOVER_GRASS_HULL_H,
+  }];
+}
+
+/** Push the thin grade hull. Same bag as the haunt kits. */
+export function installLeftoverGrassColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = leftoverGrassColliderShapes();
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
