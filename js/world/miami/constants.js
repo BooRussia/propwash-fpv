@@ -389,9 +389,10 @@ export const LEFTOVER_LOT_B_Z0 = 78;
 export const LEFTOVER_LOT_B_Z1 = 90;
 
 // ---- leftoverLot C (third leftover-city vacant parcel; same schema) ----
-// Vacant city parcel east of leftoverLot B RESERVED (B x1 + 1.8 = 303.8),
-// west of helipadE (408), same inland band as leftoverLot #34 / #35 /
-// drop / abando (z=84). Desi signed the cell. Do not invent or slide x/z.
+// Vacant city parcel at signed 313/84, east of leftoverLot B RESERVED
+// (B x1 + 1.8 = 303.8), west of helipadE (408), same inland band as
+// leftoverLot #34 / #35 / drop / abando (z=84). Desi signed the cell.
+// Do not invent or slide x/z.
 // Do not grow the plate. Do not slide A (258/84) or B (295/84).
 // Same leftoverLotGeom / leftoverLotColliderShapes / leftoverLotVoids — not
 // leftoverLotCGeom, not OSM, not a fifth haunt.
