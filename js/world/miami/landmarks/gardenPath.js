@@ -5,6 +5,7 @@ import {
   GARDEN_PATH_X, GARDEN_PATH_Z,
   PARK_WALK_X, PARK_WALK_Z,
   PARK_WALK_E_X, PARK_WALK_E_Z,
+  PARK_WALK_NS_X, PARK_WALK_NS_Z,
   GARDEN_PATH_SLAB_H, GARDEN_PATH_HULL_COLLIDER,
   gardenPathGeom, gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
   gardenPathRejected, inGardenPathSlab, inLeftoverLotReserved,
@@ -34,7 +35,12 @@ import { cBox } from '../geo.js';
  * slide of 268→284 / z=84. Ends 1.8 m west of 276. Do not extend into
  * the sash. Signed 277.8→284 / z=94 east twin reuses the same kit —
  * not a parkWalkEGeom, not a slide of 268→274.2. Starts 1.8 m east of
- * 276. Last slab stays inside 284. Kiss posts / 276/90 / 276/82.4 /
+ * 276. Last slab stays inside 284. Signed 272 / 85.2→92.8 N-S
+ * connector reuses the same kit — not a parkWalkNSGeom, not a slide
+ * of 268→274.2. 0.4 m off the 84 walk and 0.4 m off the west walk.
+ * Those gaps are grow-to-gap. T's the west walk in x (272 sits in
+ * 268→274.2). Misses 276/90 (~2.3 m) and the posts on x=276.
+ * Kiss 84 walk / 276/82.4 / 276/90 / posts / z=94 slabs /
  * leftover lots / pavement / streetOverlap = drop, never nudge.
  */
 
@@ -99,6 +105,7 @@ function buildWeeds(parts, spots) {
  * x/z. Scatter stays on tryPlace. Park walk is
  * gardenPathGeom(PARK_WALK_X, PARK_WALK_Z) — not a gardenPathBGeom.
  * East twin is gardenPathGeom(PARK_WALK_E_X, PARK_WALK_E_Z).
+ * N-S connector is gardenPathGeom(PARK_WALK_NS_X, PARK_WALK_NS_Z).
  */
 export function buildGardenPath(ctx) {
   if (gardenPathRejected()) return null;
@@ -156,6 +163,24 @@ export function buildGardenPath(ctx) {
     }
   } else if (onPavement(PARK_WALK_E_X, PARK_WALK_E_Z)) {
     tryPlace(ctx, PARK_WALK_E_X, PARK_WALK_E_Z);
+  }
+
+  const nsGeom = gardenPathGeom(PARK_WALK_NS_X, PARK_WALK_NS_Z);
+  if (!gardenPathRejected(PARK_WALK_NS_X, PARK_WALK_NS_Z)
+      && !onPavement(PARK_WALK_NS_X, PARK_WALK_NS_Z)) {
+    const nsHull = gardenPathGrassHull(nsGeom);
+    if (nsHull.collider === GARDEN_PATH_HULL_COLLIDER) {
+      buildGrassHull(grass, nsHull);
+      buildSlabs(stone, nsGeom);
+      const nsPlants = gardenPathPlantSpots(nsGeom);
+      for (let i = 0; i < nsPlants.weeds.length; i++) {
+        const p = nsPlants.weeds[i];
+        if (!pathPlantDrop(ctx, p.x, p.z)) continue;
+        kept.push(p);
+      }
+    }
+  } else if (onPavement(PARK_WALK_NS_X, PARK_WALK_NS_Z)) {
+    tryPlace(ctx, PARK_WALK_NS_X, PARK_WALK_NS_Z);
   }
   buildWeeds(weeds, kept);
 
