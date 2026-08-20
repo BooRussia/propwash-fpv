@@ -53,16 +53,22 @@ import {
   PARK_WALK_GG_W_X0, PARK_WALK_GG_W_X1, PARK_WALK_GG_W_Z,
   PARK_WALK_GG_E_X0, PARK_WALK_GG_E_X1, PARK_WALK_GG_E_Z,
   PARK_WALK_HH_X0, PARK_WALK_HH_X1, PARK_WALK_HH_Z,
+  PARK_WALK_HH_W_X0, PARK_WALK_HH_W_X1, PARK_WALK_HH_W_Z,
+  PARK_WALK_HH_E_X0, PARK_WALK_HH_E_X1, PARK_WALK_HH_E_Z,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
   PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z,
   PARK_PERGOLA_FF_X, PARK_PERGOLA_FF_Z,
   PARK_PERGOLA_GG_X, PARK_PERGOLA_GG_Z,
+  PARK_PERGOLA_HH_X, PARK_PERGOLA_HH_Z,
   PARK_BENCH_FF_X, PARK_BENCH_FF_Z,
   PARK_BENCH_FF_W_X, PARK_BENCH_FF_W_Z,
   PARK_BENCH_FF_E_X, PARK_BENCH_FF_E_Z,
   PARK_BENCH_GG_X, PARK_BENCH_GG_Z,
   PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z,
   PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z,
+  PARK_BENCH_HH_X, PARK_BENCH_HH_Z,
+  PARK_BENCH_HH_W_X, PARK_BENCH_HH_W_Z,
+  PARK_BENCH_HH_E_X, PARK_BENCH_HH_E_Z,
   PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
   PARK_BENCH_EE_W_X, PARK_BENCH_EE_W_Z,
   PARK_BENCH_EE_E_X, PARK_BENCH_EE_E_Z,
@@ -640,7 +646,7 @@ export function runMiamiLeftoverLotTests() {
   ok('POCKET_PARK_G leftover MIN/MAX stay 8000/11000',
     POCKET_PARK_G_INSTANCES_MIN === 8000
     && POCKET_PARK_G_INSTANCES_MAX === 11000);
-  ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit / GG spine + kit / HH spine',
+  ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit / GG spine + kit / HH spine + kit',
     PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
     && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94
     && PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355 && PARK_WALK_EE_Z === 96
@@ -652,8 +658,10 @@ export function runMiamiLeftoverLotTests() {
     && PARK_WALK_GG_X0 === 373 && PARK_WALK_GG_X1 === 389 && PARK_WALK_GG_Z === 96
     && PARK_WALK_GG_W_X0 === 373 && PARK_WALK_GG_W_X1 === 379.2 && PARK_WALK_GG_W_Z === 98.5
     && PARK_WALK_GG_E_X0 === 382.8 && PARK_WALK_GG_E_X1 === 389 && PARK_WALK_GG_E_Z === 98.5
-    && PARK_WALK_HH_X0 === 390 && PARK_WALK_HH_X1 === 406 && PARK_WALK_HH_Z === 96);
-  ok('benches stay 347/94.4, 340.5/94.4, 353.5/94.4, FF 364/94.4 kit, GG 381/94.4 kit',
+    && PARK_WALK_HH_X0 === 390 && PARK_WALK_HH_X1 === 406 && PARK_WALK_HH_Z === 96
+    && PARK_WALK_HH_W_X0 === 390 && PARK_WALK_HH_W_X1 === 396.2 && PARK_WALK_HH_W_Z === 98.5
+    && PARK_WALK_HH_E_X0 === 399.8 && PARK_WALK_HH_E_X1 === 406 && PARK_WALK_HH_E_Z === 98.5);
+  ok('benches stay 347/94.4, 340.5/94.4, 353.5/94.4, FF 364/94.4 kit, GG 381/94.4 kit, HH 398/94.4 kit',
     PARK_BENCH_EE_X === 347 && PARK_BENCH_EE_Z === 94.4
     && PARK_BENCH_EE_W_X === 340.5 && PARK_BENCH_EE_W_Z === 94.4
     && PARK_BENCH_EE_E_X === 353.5 && PARK_BENCH_EE_E_Z === 94.4
@@ -662,11 +670,15 @@ export function runMiamiLeftoverLotTests() {
     && PARK_BENCH_FF_E_X === 370.5 && PARK_BENCH_FF_E_Z === 94.4
     && PARK_BENCH_GG_X === 381 && PARK_BENCH_GG_Z === 94.4
     && PARK_BENCH_GG_W_X === 374.5 && PARK_BENCH_GG_W_Z === 94.4
-    && PARK_BENCH_GG_E_X === 387.5 && PARK_BENCH_GG_E_Z === 94.4);
-  ok('347/98.5, 364/98.5, and 381/98.5 pergolas stay',
+    && PARK_BENCH_GG_E_X === 387.5 && PARK_BENCH_GG_E_Z === 94.4
+    && PARK_BENCH_HH_X === 398 && PARK_BENCH_HH_Z === 94.4
+    && PARK_BENCH_HH_W_X === 391.5 && PARK_BENCH_HH_W_Z === 94.4
+    && PARK_BENCH_HH_E_X === 404.5 && PARK_BENCH_HH_E_Z === 94.4);
+  ok('347/98.5, 364/98.5, 381/98.5, and 398/98.5 pergolas stay',
     PARK_PERGOLA_EE_X === 347 && PARK_PERGOLA_EE_Z === 98.5
     && PARK_PERGOLA_FF_X === 364 && PARK_PERGOLA_FF_Z === 98.5
-    && PARK_PERGOLA_GG_X === 381 && PARK_PERGOLA_GG_Z === 98.5);
+    && PARK_PERGOLA_GG_X === 381 && PARK_PERGOLA_GG_Z === 98.5
+    && PARK_PERGOLA_HH_X === 398 && PARK_PERGOLA_HH_Z === 98.5);
   ok('park / walks / pergola stay put',
     POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
     && PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
@@ -814,9 +826,42 @@ export function runMiamiLeftoverLotTests() {
     && POCKET_PARK_H_X0 === POCKET_PARK_G_X1 + 1
     && POCKET_PARK_G_Z0 === POCKET_PARK_H_Z0
     && POCKET_PARK_G_Z1 === POCKET_PARK_H_Z1);
-  ok('POCKET_PARK_H leftover MIN/MAX stay 10000/13000',
-    POCKET_PARK_H_INSTANCES_MIN === 10000
-    && POCKET_PARK_H_INSTANCES_MAX === 13000);
+  ok('POCKET_PARK_H leftover MIN/MAX stay 8000/11000',
+    POCKET_PARK_H_INSTANCES_MIN === 8000
+    && POCKET_PARK_H_INSTANCES_MAX === 11000);
+  ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit / GG spine + kit / HH spine + kit',
+    PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
+    && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94
+    && PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355 && PARK_WALK_EE_Z === 96
+    && PARK_WALK_EE_W_X0 === 339 && PARK_WALK_EE_W_X1 === 345.2 && PARK_WALK_EE_W_Z === 98.5
+    && PARK_WALK_EE_E_X0 === 348.8 && PARK_WALK_EE_E_X1 === 355 && PARK_WALK_EE_E_Z === 98.5
+    && PARK_WALK_FF_X0 === 356 && PARK_WALK_FF_X1 === 372 && PARK_WALK_FF_Z === 96
+    && PARK_WALK_FF_W_X0 === 356 && PARK_WALK_FF_W_X1 === 362.2 && PARK_WALK_FF_W_Z === 98.5
+    && PARK_WALK_FF_E_X0 === 365.8 && PARK_WALK_FF_E_X1 === 372 && PARK_WALK_FF_E_Z === 98.5
+    && PARK_WALK_GG_X0 === 373 && PARK_WALK_GG_X1 === 389 && PARK_WALK_GG_Z === 96
+    && PARK_WALK_GG_W_X0 === 373 && PARK_WALK_GG_W_X1 === 379.2 && PARK_WALK_GG_W_Z === 98.5
+    && PARK_WALK_GG_E_X0 === 382.8 && PARK_WALK_GG_E_X1 === 389 && PARK_WALK_GG_E_Z === 98.5
+    && PARK_WALK_HH_X0 === 390 && PARK_WALK_HH_X1 === 406 && PARK_WALK_HH_Z === 96
+    && PARK_WALK_HH_W_X0 === 390 && PARK_WALK_HH_W_X1 === 396.2 && PARK_WALK_HH_W_Z === 98.5
+    && PARK_WALK_HH_E_X0 === 399.8 && PARK_WALK_HH_E_X1 === 406 && PARK_WALK_HH_E_Z === 98.5);
+  ok('benches stay 347/94.4, 340.5/94.4, 353.5/94.4, FF 364/94.4 kit, GG 381/94.4 kit, HH 398/94.4 kit',
+    PARK_BENCH_EE_X === 347 && PARK_BENCH_EE_Z === 94.4
+    && PARK_BENCH_EE_W_X === 340.5 && PARK_BENCH_EE_W_Z === 94.4
+    && PARK_BENCH_EE_E_X === 353.5 && PARK_BENCH_EE_E_Z === 94.4
+    && PARK_BENCH_FF_X === 364 && PARK_BENCH_FF_Z === 94.4
+    && PARK_BENCH_FF_W_X === 357.5 && PARK_BENCH_FF_W_Z === 94.4
+    && PARK_BENCH_FF_E_X === 370.5 && PARK_BENCH_FF_E_Z === 94.4
+    && PARK_BENCH_GG_X === 381 && PARK_BENCH_GG_Z === 94.4
+    && PARK_BENCH_GG_W_X === 374.5 && PARK_BENCH_GG_W_Z === 94.4
+    && PARK_BENCH_GG_E_X === 387.5 && PARK_BENCH_GG_E_Z === 94.4
+    && PARK_BENCH_HH_X === 398 && PARK_BENCH_HH_Z === 94.4
+    && PARK_BENCH_HH_W_X === 391.5 && PARK_BENCH_HH_W_Z === 94.4
+    && PARK_BENCH_HH_E_X === 404.5 && PARK_BENCH_HH_E_Z === 94.4);
+  ok('347/98.5, 364/98.5, 381/98.5, and 398/98.5 pergolas stay',
+    PARK_PERGOLA_EE_X === 347 && PARK_PERGOLA_EE_Z === 98.5
+    && PARK_PERGOLA_FF_X === 364 && PARK_PERGOLA_FF_Z === 98.5
+    && PARK_PERGOLA_GG_X === 381 && PARK_PERGOLA_GG_Z === 98.5
+    && PARK_PERGOLA_HH_X === 398 && PARK_PERGOLA_HH_Z === 98.5);
   ok('drop if pavement / reserved / kiss G or G-park 389',
     tryPlace(ctx, 0, 27) === 0
     && tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0

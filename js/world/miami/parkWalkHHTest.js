@@ -1,7 +1,7 @@
 // Headless checks for the Miami H-park spine (garden-path slab kit).
 // No three.js, no game state. Not a haunt. Not leftoverLot. Not a
 // leftoverGrass / pocket-park / garden-path / 276-walk / F-park kit /
-// G-park kit / pergola restack. Spine only — no kit on this file.
+// G-park kit / pergola restack.
 //
 //   node ./tools/run-miami-park-walk-hh-test.mjs
 
@@ -597,20 +597,15 @@ export function runMiamiParkWalkHHTests() {
     POCKET_PARK_COVER === 10
     && plannedH === 12800
     && plannedH === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER));
-  ok('H leftover after the spine stays 10000–13000 (~10k), 13k is a ceiling',
+  ok('H leftover after the walks drops below 12800 and stays 8000–11000',
     fieldH.placed.length >= POCKET_PARK_H_INSTANCES_MIN
     && fieldH.placed.length <= POCKET_PARK_H_INSTANCES_MAX
-    && POCKET_PARK_H_INSTANCES_MIN === 10000
-    && POCKET_PARK_H_INSTANCES_MAX === 13000
+    && POCKET_PARK_H_INSTANCES_MIN === 8000
+    && POCKET_PARK_H_INSTANCES_MAX === 11000
     && fieldH.placed.length < 12800
-    && fieldH.placed.length !== 12800
-    && fieldH.placed.length <= 13000,
+    && fieldH.placed.length <= 11000
+    && fieldH.placed.length !== 12800,
     `placedH=${fieldH.placed.length} plannedH=${plannedH} lastSlab.x1=${lastSlab && lastSlab.x1}`);
-  ok('did not drop H leftover band to 8–11k',
-    POCKET_PARK_H_INSTANCES_MIN === 10000
-    && POCKET_PARK_H_INSTANCES_MAX === 13000
-    && POCKET_PARK_H_INSTANCES_MIN !== 8000
-    && POCKET_PARK_H_INSTANCES_MAX !== 11000);
   ok('did not backfill slabs to hit empty-hull 12800',
     fieldH.placed.length < plannedH
     && fieldH.cells.length === plannedH
@@ -779,12 +774,8 @@ export function runMiamiParkWalkHHTests() {
     && gardenSrc.includes('390') && gardenSrc.includes('Desi')
     && !/chair|sofa|table|crate|bench|Kenney/i.test(gardenSrc)
     && !/silo|hoistway|aisle/i.test(gardenSrc));
-  ok('no kit on this file',
-    !constants.includes('PARK_BENCH_HH')
-    && !constants.includes('PARK_PERGOLA_HH')
-    && !constants.includes('PARK_WALK_HH_W_X0')
-    && !constants.includes('PARK_WALK_HH_E_X0')
-    && !constants.includes('PARK_WALK_HH_NS'));
+  ok('no N-S walk on the H hull',
+    !constants.includes('PARK_WALK_HH_NS'));
   ok('276 walks were not restacked',
     gardenSrc.includes('268→274.2') && gardenSrc.includes('277.8→284')
     && westTest.includes('268→274.2') && westTest.includes('PARK_WALK_X0 === 268')

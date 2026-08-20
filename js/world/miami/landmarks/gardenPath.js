@@ -17,6 +17,8 @@ import {
   PARK_WALK_GG_W_X, PARK_WALK_GG_W_Z,
   PARK_WALK_GG_E_X, PARK_WALK_GG_E_Z,
   PARK_WALK_HH_X, PARK_WALK_HH_Z,
+  PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z,
+  PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z,
   GARDEN_PATH_SLAB_H, GARDEN_PATH_HULL_COLLIDER,
   gardenPathGeom, gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
   gardenPathRejected, inGardenPathSlab, inLeftoverLotReserved,
@@ -125,16 +127,22 @@ import { cBox } from '../geo.js';
  * PARK_WALK_GG_X1=389 (1 m west gap, same z). Lives on the
  * H-park hull (390–406 × 92–100) by design. leftoverLot H
  * reserved z1+1.4=91.4 vs walk z0=95.2 — leftoverLotOverlap
- * is 0. Walk eats ~26 m². Honest leftover on the H hull
- * after this spine is ~10k. H leftover MIN/MAX stay
- * 10000/13000. 13k is a ceiling. Do not backfill. Do
- * not drop H leftover to 8–11k on this file (that wait is
- * the later kit). No kit on this merge. Do not merge G-park
- * 389. G leftover stays 8000–11000. F leftover stays
- * 8000–11000. E leftover stays 8000–11000. 276 stays 8–11k.
- * Kiss leftoverLot H / leftoverLot A–H reserved / G-park
- * hull merge / helipad / warehouse / 276 park / GG spine /
- * 381 = drop, never nudge.
+ * is 0. Walk eats ~26 m². Signed 390→396.2 / z=98.5 H-park
+ * west walk reuses the same kit — not a parkWalkHHWGeom, not a
+ * gardenPathHGeom, not leftoverLotDirtGeom, not a slide of
+ * 373→379.2 or of 390→406 / z=96. Ends 1.8 m west of 398.
+ * Last slab stays inside 396.2. Never into the sash. Signed
+ * 399.8→406 / z=98.5 H-park east walk reuses the same kit —
+ * not a parkWalkHHEGeom, not a gardenPathHGeom, not a slide
+ * of 382.8→389 or of 390→396.2. Starts 1.8 m east of 398.
+ * Last slab stays inside 406. Never into the sash. Three
+ * walks eat ~45 m²; leftover ~8.2k. H leftover after this
+ * file is 8000–11000. 11k is a ceiling. Do not backfill.
+ * Do not merge G-park 389. G leftover stays 8000–11000.
+ * F leftover stays 8000–11000. E leftover stays 8000–11000.
+ * 276 stays 8–11k. Kiss leftoverLot H / leftoverLot A–H
+ * reserved / G-park hull merge / helipad / warehouse / 276
+ * park / GG spine / 381 = drop, never nudge.
  */
 
 const STONE = 0xb4a890;
@@ -210,6 +218,8 @@ function buildWeeds(parts, spots) {
  * G-park west walk is gardenPathGeom(PARK_WALK_GG_W_X, PARK_WALK_GG_W_Z).
  * G-park east walk is gardenPathGeom(PARK_WALK_GG_E_X, PARK_WALK_GG_E_Z).
  * H-park spine is gardenPathGeom(PARK_WALK_HH_X, PARK_WALK_HH_Z).
+ * H-park west walk is gardenPathGeom(PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z).
+ * H-park east walk is gardenPathGeom(PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z).
  */
 export function buildGardenPath(ctx) {
   if (gardenPathRejected()) return null;
@@ -483,6 +493,42 @@ export function buildGardenPath(ctx) {
     }
   } else if (onPavement(PARK_WALK_HH_X, PARK_WALK_HH_Z)) {
     tryPlace(ctx, PARK_WALK_HH_X, PARK_WALK_HH_Z);
+  }
+
+  const hhWGeom = gardenPathGeom(PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z);
+  if (!gardenPathRejected(PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z)
+      && !onPavement(PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z)) {
+    const hhWHull = gardenPathGrassHull(hhWGeom);
+    if (hhWHull.collider === GARDEN_PATH_HULL_COLLIDER) {
+      buildGrassHull(grass, hhWHull);
+      buildSlabs(stone, hhWGeom);
+      const hhWPlants = gardenPathPlantSpots(hhWGeom);
+      for (let i = 0; i < hhWPlants.weeds.length; i++) {
+        const p = hhWPlants.weeds[i];
+        if (!pathPlantDrop(ctx, p.x, p.z)) continue;
+        kept.push(p);
+      }
+    }
+  } else if (onPavement(PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z)) {
+    tryPlace(ctx, PARK_WALK_HH_W_X, PARK_WALK_HH_W_Z);
+  }
+
+  const hhEGeom = gardenPathGeom(PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z);
+  if (!gardenPathRejected(PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z)
+      && !onPavement(PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z)) {
+    const hhEHull = gardenPathGrassHull(hhEGeom);
+    if (hhEHull.collider === GARDEN_PATH_HULL_COLLIDER) {
+      buildGrassHull(grass, hhEHull);
+      buildSlabs(stone, hhEGeom);
+      const hhEPlants = gardenPathPlantSpots(hhEGeom);
+      for (let i = 0; i < hhEPlants.weeds.length; i++) {
+        const p = hhEPlants.weeds[i];
+        if (!pathPlantDrop(ctx, p.x, p.z)) continue;
+        kept.push(p);
+      }
+    }
+  } else if (onPavement(PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z)) {
+    tryPlace(ctx, PARK_WALK_HH_E_X, PARK_WALK_HH_E_Z);
   }
   buildWeeds(weeds, kept);
 
