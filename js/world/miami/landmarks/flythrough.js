@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CITY_Y,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
+  PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z,
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_WALL_H,
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
@@ -26,6 +27,12 @@ import { roofTexture } from '../textures.js';
  * z1 stays inside the park (z=96). Drop if the Z-span kisses the
  * 276/90 bench (back ~90.3). Never nudge.
  *
+ * E-park pergola is the same kit at signed 347/98.5 — not
+ * parkPergolaEEGeom / boardwalkGateEGeom, not a slide of 276/94.
+ * Half-span 1.16 stays inside 100 and 0.54 m off spine 96.8.
+ * Drop if the Z-span kisses the 347/94.4 bench or the 339→355 /
+ * z=96 spine. Never nudge.
+ *
  * Pier undercroft + pavilion stay in pier.js; this file does not touch them.
  */
 export function buildFlythrough(ctx) {
@@ -39,6 +46,13 @@ export function buildFlythrough(ctx) {
     buildBoardwalkGate(ctx, parkGeom);
   } else if (onPavement(parkGeom.x, parkGeom.z)) {
     tryPlace(ctx, parkGeom.x, parkGeom.z);
+  }
+  const parkEEGeom = boardwalkGateGeom(PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z);
+  if (!boardwalkGateRejected(parkEEGeom.x, parkEEGeom.z)
+      && !onPavement(parkEEGeom.x, parkEEGeom.z)) {
+    buildBoardwalkGate(ctx, parkEEGeom);
+  } else if (onPavement(parkEEGeom.x, parkEEGeom.z)) {
+    tryPlace(ctx, parkEEGeom.x, parkEEGeom.z);
   }
   installFlyColliders(addCyl, addCollider, 'boardwalk-gate');
 
