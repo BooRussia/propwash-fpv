@@ -38,6 +38,9 @@ import {
   POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D,
   POCKET_PARK_G_X0, POCKET_PARK_G_X1, POCKET_PARK_G_Z0, POCKET_PARK_G_Z1,
   POCKET_PARK_G_INSTANCES_MIN, POCKET_PARK_G_INSTANCES_MAX,
+  POCKET_PARK_H_X, POCKET_PARK_H_Z, POCKET_PARK_H_W, POCKET_PARK_H_D,
+  POCKET_PARK_H_X0, POCKET_PARK_H_X1, POCKET_PARK_H_Z0, POCKET_PARK_H_Z1,
+  POCKET_PARK_H_INSTANCES_MIN, POCKET_PARK_H_INSTANCES_MAX,
   PARK_WALK_X0, PARK_WALK_X1, PARK_WALK_Z,
   PARK_WALK_E_X0, PARK_WALK_E_X1, PARK_WALK_E_Z,
   PARK_WALK_EE_X0, PARK_WALK_EE_X1, PARK_WALK_EE_Z,
@@ -791,9 +794,27 @@ export function runMiamiLeftoverLotTests() {
     && POCKET_PARK_G_X0 === 373 && POCKET_PARK_G_X1 === 389
     && POCKET_PARK_G_Z0 === 92 && POCKET_PARK_G_Z1 === 100
     && POCKET_PARK_G_W === 16 && POCKET_PARK_G_D === 8);
-  ok('H-park waits — no POCKET_PARK_H',
-    leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D)
-    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D));
+  ok('H-park is the signed 398/96 hull (390–406 × 92–100)',
+    POCKET_PARK_H_X === 398 && POCKET_PARK_H_Z === 96
+    && POCKET_PARK_H_X0 === 390 && POCKET_PARK_H_X1 === 406
+    && POCKET_PARK_H_Z0 === 92 && POCKET_PARK_H_Z1 === 100
+    && POCKET_PARK_H_W === 16 && POCKET_PARK_H_D === 8
+    && LEFTOVER_LOT_H_X === 398 && LEFTOVER_LOT_H_Z === 84);
+  ok('H-park is 2 m inland of lot H, leftoverLotOverlap of H reserved is 0',
+    POCKET_PARK_H_Z0 === LEFTOVER_LOT_H_Z1 + 2
+    && POCKET_PARK_H_X0 === LEFTOVER_LOT_H_X0 - 1
+    && POCKET_PARK_H_X1 === LEFTOVER_LOT_H_X1 + 1
+    && !leftoverLotOverlap(POCKET_PARK_H_X, POCKET_PARK_H_Z, POCKET_PARK_H_W, POCKET_PARK_H_D)
+    && LEFTOVER_LOT_H_Z1 + 1.4 === 91.4
+    && Math.abs((LEFTOVER_LOT_H_Z1 + 1.4) - POCKET_PARK_H_Z0 + 0.6) < 1e-9);
+  ok('G-park x1=389 must not merge with H-park x0=390',
+    POCKET_PARK_G_X1 === 389 && POCKET_PARK_H_X0 === 390
+    && POCKET_PARK_H_X0 === POCKET_PARK_G_X1 + 1
+    && POCKET_PARK_G_Z0 === POCKET_PARK_H_Z0
+    && POCKET_PARK_G_Z1 === POCKET_PARK_H_Z1);
+  ok('POCKET_PARK_H leftover MIN/MAX stay 10000/13000',
+    POCKET_PARK_H_INSTANCES_MIN === 10000
+    && POCKET_PARK_H_INSTANCES_MAX === 13000);
   ok('drop if pavement / reserved / kiss G or G-park 389',
     tryPlace(ctx, 0, 27) === 0
     && tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0
@@ -803,6 +824,7 @@ export function runMiamiLeftoverLotTests() {
     && !leftoverLotOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D)
     && !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D)
     && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
+    && !leftoverLotOverlap(POCKET_PARK_H_X, POCKET_PARK_H_Z, POCKET_PARK_H_W, POCKET_PARK_H_D)
     && LEFTOVER_LOT_H_X0 >= LEFTOVER_LOT_G_X1 + 1.8
     && LEFTOVER_LOT_H_X0 > LEFTOVER_GRASS_X1
     && LEFTOVER_LOT_H_X0 > POCKET_PARK_X1
@@ -1231,8 +1253,10 @@ export function runMiamiLeftoverLotTests() {
     && leftover.includes('398/84')
     && leftover.includes('leftoverLotHGeom fork')
     && leftover.includes('not a slide of A–G')
-    && leftover.includes('H-park waits')
-    && !leftover.includes('H-park is now the signed')
+    && leftover.includes('signed 398/96 hull')
+    && leftover.includes('1 m leftover apron')
+    && leftover.includes('H-park is now the signed')
+    && !leftover.includes('H-park waits')
     && !leftover.includes('POCKET_PARK_H')
     && !/function leftoverLotHGeom/.test(leftover)
     && !/leftoverLotHGeom\(/.test(leftover)
@@ -1250,7 +1274,7 @@ export function runMiamiLeftoverLotTests() {
     && constants.includes('389.8')
     && constants.includes('2 m east of G-park x1=389')
     && constants.includes('Do NOT merge with G-park 389')
-    && constants.includes('H-park waits')
+    && constants.includes('H-park is now the signed 398/96 hull')
     && constants.includes('H is G+17 m')
     && constants.includes('LEFTOVER_LOT_G_X = 381')
     && constants.includes('LEFTOVER_LOT_G_X1 = 388')
