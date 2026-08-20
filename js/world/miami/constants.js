@@ -449,7 +449,9 @@ export const LEFTOVER_LOT_E_Z1 = 90;
 // 2 m gap). F-park at signed 364/96 sits 2 m inland of this lot
 // (F z1=90, park z0=92). x 356–372 is 1 m past F’s 357–371 —
 // leftoverLotOverlap of F reserved is 0 (oz = −0.6 vs z1+1.4
-// = 91.4), not a kiss. E-park x1=355 must not merge with
+// = 91.4), not a kiss. F-park spine 356→372 / z=96 leftoverLotOverlap
+// of F reserved is 0 (walk z0=95.2 vs reserved z1+1.4=91.4).
+// E-park x1=355 must not merge with
 // F-park x0=356 (1 m west gap, same z band). West of helipadE
 // (408), same inland band as leftoverLot
 // #34 / #35 / C / D / E / drop / abando (z=84). Helipad E stays
@@ -771,11 +773,13 @@ export const LEFTOVER_GRASS_AABB = false;
 // same ~0.8 m² — do not restack the grass floor. Do not
 // backfill to 12800. Do not change
 // MIN/MAX. POCKET_PARK_E_INSTANCES is that leftover
-// band (8000–11000), not the empty 10000–13000. F is still an
-// empty hull — leftover 10000–13000 (128 m²). 13k is a ceiling,
-// not a goal. Do not backfill. Do not change E leftover
-// 8000–11000. POCKET_PARK_F_INSTANCES is that empty leftover
-// band (10000–13000).
+// band (8000–11000), not the empty 10000–13000. F empty-hull
+// 10000–13000 is dead after the 356→372 / z=96 spine (walk
+// eats ~26 m² of 128 m²). Honest leftover on the F hull drops
+// below 12800. Do not backfill to 12800. 13k is a ceiling, not
+// a goal. Do not change E leftover 8000–11000. Do not change
+// F leftover MIN/MAX (10000–13000). POCKET_PARK_F_INSTANCES is
+// that leftover band after the spine, not a forced 12800.
 // Lean at nearest leftoverLot fence (including E, 2 m inland, and
 // F, 2 m inland of F-park / 2 m east / 2 m ocean of the E-park)
 // or garden path if it reaches. Collider is the thin grade hull
@@ -1106,6 +1110,45 @@ export const PARK_WALK_EE_E_X = 351.9;
 export const PARK_WALK_EE_E_LEN = 6.2;
 export const PARK_WALK_EE_E_AABB = GARDEN_PATH_AABB;
 
+// ---- F-park spine (same Tiny Glade two-abreast kit; signed 356→372 / z=96) ----
+// Desi + Reesy signed the cell. Do not invent or slide x/z. Never nudge.
+// Same gardenPathGeom / gardenPathSlabs — not gardenPathBGeom, not
+// parkWalkGeom, not parkWalkEGeom, not parkWalkE2Geom, not
+// parkWalkEEGeom, not parkWalkEEWGeom, not parkWalkEEEGeom, not
+// parkWalkFFGeom, not gardenPathFGeom, not gardenPathGGeom, not
+// gardenPathHGeom, not gardenPathIGeom, not parkWalkFGeom, not
+// parkWalkGGeom, not a slide of 339→355 / z=96 or of 268→284 /
+// z=84. Width 1.6 m (z 95.2–96.8). Length 16 m (full 16×1.6 on
+// the 364/96 hull). Lives on the F-park hull (356–372 × 92–100)
+// by design. Last slab stays inside 372. Do not grow past 372.
+// Does not merge with PARK_WALK_EE_X1=355 (1 m west gap, same z;
+// EE ends 355, this cell starts 356). Do not merge the two
+// spines into one plate. leftoverLot F reserved z1+1.4=91.4 vs
+// walk z0=95.2 — leftoverLotOverlap is 0. Flagstones 0.5–0.7 m
+// + 60–100 mm joints. Collider ⊆ each slab. Kiss leftoverLot F /
+// leftoverLot A–F reserved / E-park hull merge / helipad /
+// warehouse / 276 park / 276 walks / benches / pergola /
+// pavement / streetOverlap = drop, never nudge. Walk eats
+// ~26 m². F leftover after this walk drops below 12800 (of
+// 128 m²). Do not backfill to 12800. 13k stays a ceiling.
+// E leftover stays 8000–11000. 276 park stays 268–284 × 88–96.
+// 347 park stays 339–355 × 92–100. F-park hull stays 364/96.
+// EE spine stays 339→355 / z=96. West park walk stays
+// 268→274.2 / z=94. East park walk stays 277.8→284 / z=94.
+// N-S stays 272 / 85.2→92.8. East N-S stays 280 / 85.2→92.8.
+// Garden path stays 268→284 / z=84. leftoverLot A 258/84,
+// B 295/84, C 313/84, D 330/84, E 347/84, F 364/84. Scatter
+// still uses tryPlace.
+export const PARK_WALK_FF_X0 = 356;
+export const PARK_WALK_FF_X1 = 372;
+export const PARK_WALK_FF_Z = 96;
+export const PARK_WALK_FF_W = GARDEN_PATH_W;
+export const PARK_WALK_FF_Z0 = 95.2;
+export const PARK_WALK_FF_Z1 = 96.8;
+export const PARK_WALK_FF_X = 364;
+export const PARK_WALK_FF_LEN = 16;
+export const PARK_WALK_FF_AABB = GARDEN_PATH_AABB;
+
 /**
  * Boardwalk-gate kit (posts + lintel). Default is GATE_X / GATE_Z on
  * the promenade. Pass (PARK_PERGOLA_X, PARK_PERGOLA_Z) for the park
@@ -1323,10 +1366,12 @@ function pathHash01(a, b) {
  * z=96). Pass (PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) for the E-park
  * west walk (339→345.2 / z=98.5). Pass (PARK_WALK_EE_E_X,
  * PARK_WALK_EE_E_Z) for the E-park east walk (348.8→355 / z=98.5).
- * Same schema — never gardenPathBGeom / parkWalkGeom / parkWalkEGeom
- * / parkWalkNSGeom / parkWalkNSEGeom / parkWalkE2Geom / parkWalkEEGeom
- * / parkWalkEEWGeom / parkWalkEEEGeom / gardenPathFGeom /
- * gardenPathGGeom / gardenPathHGeom / parkWalkFGeom / parkWalkGGeom.
+ * Pass (PARK_WALK_FF_X, PARK_WALK_FF_Z) for the F-park spine
+ * (356→372 / z=96). Same schema — never gardenPathBGeom /
+ * parkWalkGeom / parkWalkEGeom / parkWalkNSGeom / parkWalkNSEGeom /
+ * parkWalkE2Geom / parkWalkEEGeom / parkWalkEEWGeom / parkWalkEEEGeom
+ * / parkWalkFFGeom / gardenPathFGeom / gardenPathGGeom /
+ * gardenPathHGeom / gardenPathIGeom / parkWalkFGeom / parkWalkGGeom.
  * Never remaps x/z. Scatter stays on tryPlace. One grass hull at grade;
  * flagstones jitter size + joint only. West walk uses the signed bounds
  * (ends 1.8 m west of 276). East walk uses the signed bounds (starts
@@ -1336,9 +1381,11 @@ function pathHash01(a, b) {
  * walk). E-park spine uses the signed bounds (last slab inside 355).
  * E-park west walk uses the signed bounds (ends 1.8 m west of 347;
  * last slab inside 345.2). E-park east walk uses the signed bounds
- * (starts 1.8 m east of 347; last slab inside 355). Do not slide
+ * (starts 1.8 m east of 347; last slab inside 355). F-park spine
+ * uses the signed bounds (last slab inside 372). Does not merge
+ * with PARK_WALK_EE_X1=355 (1 m west gap, same z). Do not slide
  * 268→284 onto z=94. Do not slide 277.8→284 onto z=96. Do not slide
- * 268→274.2, 339→345.2, the EE spine, or 347/98.5.
+ * 268→274.2, 339→345.2, the EE spine, 347/98.5, or 356→372.
  */
 export function gardenPathGeom(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
   const park = cx === PARK_WALK_X && cz === PARK_WALK_Z;
@@ -1346,6 +1393,7 @@ export function gardenPathGeom(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
   const ee = cx === PARK_WALK_EE_X && cz === PARK_WALK_EE_Z;
   const eeW = cx === PARK_WALK_EE_W_X && cz === PARK_WALK_EE_W_Z;
   const eeE = cx === PARK_WALK_EE_E_X && cz === PARK_WALK_EE_E_Z;
+  const ff = cx === PARK_WALK_FF_X && cz === PARK_WALK_FF_Z;
   const ns = cx === PARK_WALK_NS_X && cz === PARK_WALK_NS_Z;
   const nsE = cx === PARK_WALK_NS_E_X && cz === PARK_WALK_NS_E_Z;
   const w = GARDEN_PATH_W;
@@ -1372,18 +1420,21 @@ export function gardenPathGeom(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
     : ee ? PARK_WALK_EE_LEN
     : eeW ? PARK_WALK_EE_W_LEN
     : eeE ? PARK_WALK_EE_E_LEN
+    : ff ? PARK_WALK_FF_LEN
     : GARDEN_PATH_LEN;
   const x0 = park ? PARK_WALK_X0
     : east ? PARK_WALK_E_X0
     : ee ? PARK_WALK_EE_X0
     : eeW ? PARK_WALK_EE_W_X0
     : eeE ? PARK_WALK_EE_E_X0
+    : ff ? PARK_WALK_FF_X0
     : cx - len / 2;
   const x1 = park ? PARK_WALK_X1
     : east ? PARK_WALK_E_X1
     : ee ? PARK_WALK_EE_X1
     : eeW ? PARK_WALK_EE_W_X1
     : eeE ? PARK_WALK_EE_E_X1
+    : ff ? PARK_WALK_FF_X1
     : cx + len / 2;
   const z0 = cz - w / 2;
   const z1 = cz + w / 2;
@@ -1394,6 +1445,7 @@ export function gardenPathGeom(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
       : ee ? PARK_WALK_EE_X
       : eeW ? PARK_WALK_EE_W_X
       : eeE ? PARK_WALK_EE_E_X
+      : ff ? PARK_WALK_FF_X
       : cx,
     z: cz,
     w, len,
@@ -1411,6 +1463,7 @@ function gardenPathSignedCells() {
     [PARK_WALK_EE_X, PARK_WALK_EE_Z],
     [PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z],
     [PARK_WALK_EE_E_X, PARK_WALK_EE_E_Z],
+    [PARK_WALK_FF_X, PARK_WALK_FF_Z],
   ];
 }
 
@@ -1816,6 +1869,8 @@ export const RESERVED = [
     z0: PARK_WALK_EE_W_Z0 - 1.5, z1: PARK_WALK_EE_W_Z1 + 1.4, tag: 'gardenPath' },
   { x0: PARK_WALK_EE_E_X0 - 2.2, x1: PARK_WALK_EE_E_X1 + 1.8,
     z0: PARK_WALK_EE_E_Z0 - 1.5, z1: PARK_WALK_EE_E_Z1 + 1.4, tag: 'gardenPath' },
+  { x0: PARK_WALK_FF_X0 - 2.2, x1: PARK_WALK_FF_X1 + 1.8,
+    z0: PARK_WALK_FF_Z0 - 1.5, z1: PARK_WALK_FF_Z1 + 1.4, tag: 'gardenPath' },
   { x0: GARDEN_BENCH_X0 - 2.2, x1: GARDEN_BENCH_X1 + 1.8,
     z0: GARDEN_BENCH_Z0 - 1.5, z1: GARDEN_BENCH_Z1 + 1.4, tag: 'gardenBench' },
   { x0: PARK_BENCH_X0 - 2.2, x1: PARK_BENCH_X1 + 1.8,
@@ -1960,18 +2015,20 @@ function pathFootprintOverlaps(g, bx, bz, bw, bd, margin) {
  * (PARK_WALK_EE_X, PARK_WALK_EE_Z) for the E-park spine. Pass
  * (PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) for the E-park west walk
  * (339→345.2 / z=98.5). Pass (PARK_WALK_EE_E_X, PARK_WALK_EE_E_Z)
- * for the E-park east walk (348.8→355 / z=98.5). Fail if
- * pavement, streetOverlap, leftoverLot A–F reserved, warehouse
- * reserved, helipad reserved, a kiss of 276/82.4, a kiss of
- * 276/90, a kiss of the 276/94 posts / sash, a kiss of the
- * 347/98.5 posts / sash, a kiss of the EE spine slabs, a kiss of
- * 347/94.4, a kiss of the 339→345.2 west walk, a kiss of the
- * 276 park hull (unless the cell is a signed 276 walk — this
- * E-park east cell is not a 276 walk), a kiss of the 84 walk,
- * or a kiss of the z=94 slabs. Sitting in the 347/98.5 sash
- * band in Z is not a fail if the cell starts east of the posts
- * in X (same as 277.8→284 in the 276/94 sash band). Lives on
- * the E park hull by design. Never nudges x/z.
+ * for the E-park east walk (348.8→355 / z=98.5). Pass
+ * (PARK_WALK_FF_X, PARK_WALK_FF_Z) for the F-park spine
+ * (356→372 / z=96). Fail if pavement, streetOverlap, leftoverLot
+ * A–F reserved, warehouse reserved, helipad reserved, a kiss of
+ * 276/82.4, a kiss of 276/90, a kiss of the 276/94 posts / sash,
+ * a kiss of the 347/98.5 posts / sash, a kiss of the EE spine
+ * slabs, a kiss of 347/94.4, a kiss of the 339→345.2 west walk,
+ * a kiss of the 276 park hull (unless the cell is a signed 276
+ * walk — this F-park spine is not a 276 walk), a kiss of the
+ * 84 walk, or a kiss of the z=94 slabs. Sitting on the F-park
+ * hull is not a fail (park-walk spines live on the hull by
+ * design). Does not merge with PARK_WALK_EE_X1=355 (1 m west
+ * gap, same z). leftoverLot F reserved z1+1.4=91.4 vs walk
+ * z0=95.2 is not a leftoverLotOverlap. Never nudges x/z.
  */
 export function gardenPathRejected(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
   const g = gardenPathGeom(cx, cz);
@@ -2329,10 +2386,11 @@ export function pocketParkLean(x, z) {
  * MIN/MAX 8000–11000 is the 276 placed floor after walks, not this
  * clamp. E leftover placed band after the 348.8→355 / z=98.5 east
  * walk is 8000–11000 (~8.2k expected). 12800 placed on E after this
- * walk is a fail. F leftover placed band is the empty hull
- * 10000–13000 (do not force 13k). Do not backfill. 13k is still a
- * ceiling, not a goal. Not leftover-dirt 3.36 / 190k. Do not raise
- * cover.
+ * walk is a fail. F leftover placed band after the 356→372 / z=96
+ * spine drops below 12800 (walk eats ~26 m² of 128 m²). MIN/MAX
+ * stay 10000–13000. Do not force 12800. Do not backfill. 13k is
+ * still a ceiling, not a goal. Not leftover-dirt 3.36 / 190k. Do
+ * not raise cover.
  */
 export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const area = pocketParkArea(cx, cz);
@@ -2523,6 +2581,8 @@ export const KEEPOUT = [
     z0: PARK_WALK_EE_W_Z0 - 1.3, z1: PARK_WALK_EE_W_Z1 + 1.2, tag: 'gardenPath' },
   { x0: PARK_WALK_EE_E_X0 - 2.0, x1: PARK_WALK_EE_E_X1 + 1.6,
     z0: PARK_WALK_EE_E_Z0 - 1.3, z1: PARK_WALK_EE_E_Z1 + 1.2, tag: 'gardenPath' },
+  { x0: PARK_WALK_FF_X0 - 2.0, x1: PARK_WALK_FF_X1 + 1.6,
+    z0: PARK_WALK_FF_Z0 - 1.3, z1: PARK_WALK_FF_Z1 + 1.2, tag: 'gardenPath' },
   { x0: GARDEN_BENCH_X0 - 2.0, x1: GARDEN_BENCH_X1 + 1.6,
     z0: GARDEN_BENCH_Z0 - 1.3, z1: GARDEN_BENCH_Z1 + 1.2, tag: 'gardenBench' },
   { x0: PARK_BENCH_X0 - 2.0, x1: PARK_BENCH_X1 + 1.6,
@@ -3709,6 +3769,10 @@ export function installGardenPathColliders(addCyl, addCollider) {
   if (!gardenPathRejected(PARK_WALK_EE_E_X, PARK_WALK_EE_E_Z)) {
     const eeE = gardenPathColliderShapes(gardenPathGeom(PARK_WALK_EE_E_X, PARK_WALK_EE_E_Z));
     for (let i = 0; i < eeE.length; i++) shapes.push(eeE[i]);
+  }
+  if (!gardenPathRejected(PARK_WALK_FF_X, PARK_WALK_FF_Z)) {
+    const ff = gardenPathColliderShapes(gardenPathGeom(PARK_WALK_FF_X, PARK_WALK_FF_Z));
+    for (let i = 0; i < ff.length; i++) shapes.push(ff[i]);
   }
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];

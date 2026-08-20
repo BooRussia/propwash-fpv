@@ -721,12 +721,14 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_F_X === 364 && POCKET_PARK_F_Z === 96);
   ok('F plant from the grid',
     fieldF.cells.length === plannedF && fieldF.cells.length > 0);
-  ok('F empty-hull leftover is 10000–13000, not a forced 13k',
+  ok('F leftover after the 356→372 / z=96 spine is 10000–13000, below 12800',
     fieldF.placed.length >= POCKET_PARK_F_INSTANCES_MIN
     && fieldF.placed.length <= POCKET_PARK_F_INSTANCES_MAX
     && POCKET_PARK_F_INSTANCES_MIN === 10000
     && POCKET_PARK_F_INSTANCES_MAX === 13000
     && fieldF.placed.length !== POCKET_PARK_F_INSTANCES_MAX
+    && fieldF.placed.length < 12800
+    && fieldF.placed.length !== 12800
     && plannedF >= POCKET_PARK_F_INSTANCES_MIN
     && plannedF <= POCKET_PARK_F_INSTANCES_MAX,
     `placedF=${fieldF.placed.length} plannedF=${plannedF}`);
