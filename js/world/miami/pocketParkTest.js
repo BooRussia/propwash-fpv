@@ -623,7 +623,7 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_F_X0 === LEFTOVER_LOT_F_X0 - 1
     && POCKET_PARK_F_X1 === LEFTOVER_LOT_F_X1 + 1
     && LEFTOVER_LOT_F_Z1 + 1.4 === 91.4
-    && (LEFTOVER_LOT_F_Z1 + 1.4) - POCKET_PARK_F_Z0 === -0.6
+    && Math.abs((LEFTOVER_LOT_F_Z1 + 1.4) - POCKET_PARK_F_Z0 + 0.6) < 1e-9
     && !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D, 0.15)
     && !inLeftoverLotReserved(POCKET_PARK_F_X, POCKET_PARK_F_Z)
     && !inLeftoverLotReserved(POCKET_PARK_F_X0, POCKET_PARK_F_Z)
