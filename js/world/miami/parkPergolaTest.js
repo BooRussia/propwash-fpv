@@ -157,7 +157,8 @@ export function runMiamiParkPergolaTests() {
     && LEFTOVER_LOT_B_X0 === 288 && LEFTOVER_LOT_B_X1 === 302
     && LEFTOVER_LOT_C_X0 === 306 && LEFTOVER_LOT_C_X1 === 320
     && LEFTOVER_LOT_D_X0 === 323 && LEFTOVER_LOT_D_X1 === 337
-    && geomA.x === 258 && geomA.z === 84);
+    && geomA.x0 === 251 && geomA.x1 === 265
+    && geomA.z0 === 78 && geomA.z1 === 90);
 
   ok('pergola is not pavement', !onPavement(PARK_PERGOLA_X, PARK_PERGOLA_Z));
   ok('pergola is not boardwalk', !onBoardwalk(PARK_PERGOLA_X, PARK_PERGOLA_Z));
