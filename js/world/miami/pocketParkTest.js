@@ -1320,8 +1320,8 @@ export function runMiamiPocketParkTests() {
     && constants.includes('never pocketParkHGeom')
     && constants.includes('leftoverLotOverlap of H reserved is 0')
     && constants.includes('G-park x1=389 must not merge'));
-  ok('no spine or kit on this file',
-    !constants.includes('PARK_WALK_HH')
+  ok('no kit on this file (spine is a later file)',
+    constants.includes('PARK_WALK_HH_X0 = 390')
     && !constants.includes('PARK_BENCH_HH')
     && !constants.includes('PARK_PERGOLA_HH')
     && !park.includes('PARK_WALK_HH')

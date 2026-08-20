@@ -52,6 +52,7 @@ import {
   PARK_WALK_GG_X0, PARK_WALK_GG_X1, PARK_WALK_GG_Z,
   PARK_WALK_GG_W_X0, PARK_WALK_GG_W_X1, PARK_WALK_GG_W_Z,
   PARK_WALK_GG_E_X0, PARK_WALK_GG_E_X1, PARK_WALK_GG_E_Z,
+  PARK_WALK_HH_X0, PARK_WALK_HH_X1, PARK_WALK_HH_Z,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
   PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z,
   PARK_PERGOLA_FF_X, PARK_PERGOLA_FF_Z,
@@ -639,7 +640,7 @@ export function runMiamiLeftoverLotTests() {
   ok('POCKET_PARK_G leftover MIN/MAX stay 8000/11000',
     POCKET_PARK_G_INSTANCES_MIN === 8000
     && POCKET_PARK_G_INSTANCES_MAX === 11000);
-  ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit / GG spine + kit',
+  ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit / GG spine + kit / HH spine',
     PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
     && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94
     && PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355 && PARK_WALK_EE_Z === 96
@@ -650,7 +651,8 @@ export function runMiamiLeftoverLotTests() {
     && PARK_WALK_FF_E_X0 === 365.8 && PARK_WALK_FF_E_X1 === 372 && PARK_WALK_FF_E_Z === 98.5
     && PARK_WALK_GG_X0 === 373 && PARK_WALK_GG_X1 === 389 && PARK_WALK_GG_Z === 96
     && PARK_WALK_GG_W_X0 === 373 && PARK_WALK_GG_W_X1 === 379.2 && PARK_WALK_GG_W_Z === 98.5
-    && PARK_WALK_GG_E_X0 === 382.8 && PARK_WALK_GG_E_X1 === 389 && PARK_WALK_GG_E_Z === 98.5);
+    && PARK_WALK_GG_E_X0 === 382.8 && PARK_WALK_GG_E_X1 === 389 && PARK_WALK_GG_E_Z === 98.5
+    && PARK_WALK_HH_X0 === 390 && PARK_WALK_HH_X1 === 406 && PARK_WALK_HH_Z === 96);
   ok('benches stay 347/94.4, 340.5/94.4, 353.5/94.4, FF 364/94.4 kit, GG 381/94.4 kit',
     PARK_BENCH_EE_X === 347 && PARK_BENCH_EE_Z === 94.4
     && PARK_BENCH_EE_W_X === 340.5 && PARK_BENCH_EE_W_Z === 94.4
