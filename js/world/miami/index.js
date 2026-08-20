@@ -254,6 +254,7 @@ export async function buildMiami(scene, env) {
     update(dt, extras = {}) {
       time += dt;
       applyDayNight();
+      street.fleet?.update?.(dt);
       wheel.rotation.z += dt * 0.1;
       // keep cabins upright
       for (const child of wheel.children) {

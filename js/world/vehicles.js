@@ -18,6 +18,7 @@
 //        kind: 'sedan'|'taxi'|'pickup'|'bus' (unknown → sedan)
 //        wheels rest exactly on y; vehicle nose faces +X at rotY=0
 //   fleet.finalize(used)              -> uploads matrices, culls
+//   fleet.update(dt)                  -> rolls signed curb cars (no-op if none)
 //   fleet.dispose()                   -> frees instance buffers
 //
 // Perf: shared geometry built once at module level.
@@ -105,6 +106,88 @@ const PAINT = [
 ];
 const TAXI_YELLOW = 0xffc21a;
 const BUS_LIVERY = [0x2f7fd8, 0x35a371, 0xe8e4da, 0xc9772f];
+
+// ---- Ocean Drive curb roll (Desi + Reesy) --------------------------------
+// Fold eight of the 34 street.js carSpots. Lanes and wrap are that ribbon:
+//   x = -560 + i*34 …, z = i%2 ? 39.5 : 48.5, rotY = i%2 ? 0 : π
+// Odds travel +X, evens −X. BUS_I=16 stays at the shelter. No ped.js / traffic.js.
+export const FLEET_ROLL_I = Object.freeze([3, 6, 11, 14, 19, 22, 27, 30]);
+export const FLEET_BUS_I = 16;
+export const FLEET_X0 = -560;
+export const FLEET_DX = 34;
+export const FLEET_N = 34;
+export const FLEET_WRAP0 = FLEET_X0;
+export const FLEET_WRAP_SPAN = FLEET_N * FLEET_DX;
+export const FLEET_CROSS_X = Object.freeze([-129, 57]);
+export const FLEET_ZEBRA_HALF = 1.8;   // road.js zebra BoxGeometry(3.6, …)
+export const FLEET_HOLD = 2;
+export const FLEET_SPEED_MIN = 6;      // 13–18 mph so enamel still reads
+export const FLEET_SPEED_MAX = 8;
+export const FLEET_LANE_BEACH_Z = 39.5;
+export const FLEET_LANE_CITY_Z = 48.5;
+
+const FLEET_ROLL_SET = new Set(FLEET_ROLL_I);
+
+export function fleetIsRoller(i) {
+  return FLEET_ROLL_SET.has(i);
+}
+
+/** street.js carSpots lane. Odds +X on z=39.5; evens −X on z=48.5. */
+export function fleetLaneOf(i) {
+  return (i % 2)
+    ? { z: FLEET_LANE_BEACH_Z, rotY: 0, dir: 1 }
+    : { z: FLEET_LANE_CITY_Z, rotY: Math.PI, dir: -1 };
+}
+
+export function fleetCrawlSpeed(i) {
+  return FLEET_SPEED_MIN
+    + ((i * 5 + 3) % 11) / 10 * (FLEET_SPEED_MAX - FLEET_SPEED_MIN);
+}
+
+export function fleetWrapX(x) {
+  let t = (x - FLEET_WRAP0) % FLEET_WRAP_SPAN;
+  if (t < 0) t += FLEET_WRAP_SPAN;
+  return FLEET_WRAP0 + t;
+}
+
+/** Near zebra edge ahead of x along dir. Only CROSS_X −129 / 57. */
+export function fleetStopAhead(x, dir) {
+  let best = null;
+  for (let k = 0; k < FLEET_CROSS_X.length; k++) {
+    const stop = FLEET_CROSS_X[k] - dir * FLEET_ZEBRA_HALF;
+    if (dir > 0) {
+      if (stop > x && (best === null || stop < best)) best = stop;
+    } else if (stop < x && (best === null || stop > best)) {
+      best = stop;
+    }
+  }
+  return best;
+}
+
+/** Advance one roller. Mutates {x, hold}. z / rotY stay put. */
+export function stepFleetRoller(state, dt) {
+  if (!(dt > 0) || !Number.isFinite(dt)) return state;
+  if (state.hold > 0) {
+    state.hold -= dt;
+    if (state.hold > 0) return state;
+    dt = -state.hold;
+    state.hold = 0;
+    if (!(dt > 0)) return state;
+  }
+  const dir = state.dir;
+  const travel = dir * state.speed * dt;
+  const stop = fleetStopAhead(state.x, dir);
+  if (stop !== null) {
+    const toStop = stop - state.x;
+    if (toStop * dir >= 0 && Math.abs(toStop) <= Math.abs(travel) + 1e-9) {
+      state.x = stop;
+      state.hold = FLEET_HOLD;
+      return state;
+    }
+  }
+  state.x = fleetWrapX(state.x + travel);
+  return state;
+}
 
 // ---------------- small geometry helpers ----------------
 function ss(t) { return t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t); }
@@ -755,11 +838,23 @@ export async function createVehicleFleet(maxCount) {
     perKind[kind] = { meshes, used: 0 };
   }
 
-  const slotOf = new Map();          // caller index -> { kind, slot }
+  const slotOf = new Map();          // caller index -> { kind, slot, pose }
   const _m4 = new THREE.Matrix4();
   const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
   const _c = new THREE.Color();
   let warned = false;
+
+  function writeMatrix(rec) {
+    _m4.makeRotationY(rec.rotY);
+    _m4.setPosition(rec.x, rec.y, rec.z);
+    const K = perKind[rec.kind];
+    for (const slot of SLOTS) {
+      const im = K.meshes[slot];
+      if (!im) continue;
+      im.setMatrixAt(rec.slot, _m4);
+      im.instanceMatrix.needsUpdate = true;
+    }
+  }
 
   function placeAt(i, x, y, z, rotY, kind, colorHex) {
     if (!perKind[kind]) kind = 'sedan';
@@ -779,17 +874,13 @@ export async function createVehicleFleet(maxCount) {
         if (!warned) { console.warn('[vehicles] fleet capacity exceeded, placeAt ignored'); warned = true; }
         return;
       }
-      rec = { kind, slot: K.used++ };
+      rec = { kind, slot: K.used++, hold: 0, speed: 0, dir: 1 };
       slotOf.set(i, rec);
     }
-    _m4.makeRotationY(rotY);
-    _m4.setPosition(x, y, z);
-    for (const slot of SLOTS) {
-      const im = K.meshes[slot];
-      if (!im) continue;
-      im.setMatrixAt(rec.slot, _m4);
-      im.instanceMatrix.needsUpdate = true;
-    }
+    rec.x = x; rec.y = y; rec.z = z; rec.rotY = rotY;
+    rec.dir = Math.cos(rotY) >= 0 ? 1 : -1;
+    if (fleetIsRoller(i)) rec.speed = fleetCrawlSpeed(i);
+    writeMatrix(rec);
     let hex;
     if (kind === 'taxi') hex = TAXI_YELLOW;
     else if (kind === 'bus') hex = BUS_LIVERY[rec.slot % BUS_LIVERY.length];
@@ -816,6 +907,32 @@ export async function createVehicleFleet(maxCount) {
     }
   }
 
+  function update(dt) {
+    if (!(dt > 0) || !Number.isFinite(dt)) return;
+    // Clamp so a backgrounded tab cannot skip a zebra. Sub-frame leftover
+    // after a hold still rolls through in stepFleetRoller.
+    if (dt > 0.25) dt = 0.25;
+    const dirty = new Set();
+    for (let n = 0; n < FLEET_ROLL_I.length; n++) {
+      const i = FLEET_ROLL_I[n];
+      if (i === FLEET_BUS_I) continue;          // bus stays at the shelter
+      const rec = slotOf.get(i);
+      if (!rec || rec.kind === 'bus') continue;
+      stepFleetRoller(rec, dt);
+      rec.z = rec.dir > 0 ? FLEET_LANE_BEACH_Z : FLEET_LANE_CITY_Z;
+      rec.rotY = rec.dir > 0 ? 0 : Math.PI;
+      writeMatrix(rec);
+      dirty.add(rec.kind);
+    }
+    for (const kind of dirty) {
+      const K = perKind[kind];
+      for (const slot of SLOTS) {
+        const im = K.meshes[slot];
+        if (im && im.count > 0) im.computeBoundingSphere();
+      }
+    }
+  }
+
   function dispose() {
     for (const kind of VEHICLE_KINDS) {
       for (const slot of SLOTS) {
@@ -827,5 +944,5 @@ export async function createVehicleFleet(maxCount) {
     slotOf.clear();
   }
 
-  return { group, placeAt, finalize, dispose };
+  return { group, placeAt, finalize, update, dispose };
 }

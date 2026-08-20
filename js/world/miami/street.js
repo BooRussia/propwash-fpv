@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createVehicleFleet } from '../vehicles.js';
+import { createVehicleFleet, fleetIsRoller } from '../vehicles.js';
 import {
   CITY_Y, PIER_X, GAP_X, CROSS_X, PLAZA_X0, PLAZA_X1, CLUB_X, groundHeight, stripY,
 } from './constants.js';
@@ -154,7 +154,9 @@ export async function buildStreet(ctx) {
     else if (i === TAXI_A || i === TAXI_B) { kind = 'taxi'; colorHex = 0xffc400; }
     carSpots.push({ x, z, rotY: i % 2 ? 0 : Math.PI, kind, colorHex });
     const b = CAR_BOX[kind] || CAR_BOX.sedan;
-    addCollider(x, CITY_Y, z, b[0], b[1], b[2]);
+    // Rollers drop the parked AABB — the physics grid is baked once, so a
+    // moving box goes stale. Kiss = ghost; stay in lane, never dodge.
+    if (!fleetIsRoller(i)) addCollider(x, CITY_Y, z, b[0], b[1], b[2]);
   }
   const shelterX = carSpots[BUS_I].x + 2.2;
 
