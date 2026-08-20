@@ -517,13 +517,13 @@ export function runMiamiParkWalkFFTests() {
     POCKET_PARK_COVER === 10
     && plannedF === 12800
     && plannedF === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER));
-  ok('F leftover after the spine drops below 12800 and stays ≤ 13000',
+  ok('F leftover after the 347 kit +17 m walks is 8000–11000, below 12800',
     fieldF.placed.length >= POCKET_PARK_F_INSTANCES_MIN
     && fieldF.placed.length <= POCKET_PARK_F_INSTANCES_MAX
-    && POCKET_PARK_F_INSTANCES_MIN === 10000
-    && POCKET_PARK_F_INSTANCES_MAX === 13000
+    && POCKET_PARK_F_INSTANCES_MIN === 8000
+    && POCKET_PARK_F_INSTANCES_MAX === 11000
     && fieldF.placed.length < 12800
-    && fieldF.placed.length <= 13000
+    && fieldF.placed.length <= 11000
     && fieldF.placed.length !== 12800,
     `placedF=${fieldF.placed.length} plannedF=${plannedF} lastSlab.x1=${lastSlab && lastSlab.x1}`);
   ok('did not backfill slabs to hit empty-hull 12800',

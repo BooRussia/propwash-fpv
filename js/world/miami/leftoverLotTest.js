@@ -447,9 +447,9 @@ export function runMiamiLeftoverLotTests() {
     && POCKET_PARK_F_X0 === POCKET_PARK_E_X1 + 1
     && POCKET_PARK_E_Z0 === POCKET_PARK_F_Z0
     && POCKET_PARK_E_Z1 === POCKET_PARK_F_Z1);
-  ok('POCKET_PARK_F leftover MIN/MAX stay 10000/13000',
-    POCKET_PARK_F_INSTANCES_MIN === 10000
-    && POCKET_PARK_F_INSTANCES_MAX === 13000);
+  ok('POCKET_PARK_F leftover MIN/MAX stay 8000/11000',
+    POCKET_PARK_F_INSTANCES_MIN === 8000
+    && POCKET_PARK_F_INSTANCES_MAX === 11000);
   ok('walks stay 84 / 276 / EE spine / west / east / FF spine',
     PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
     && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94

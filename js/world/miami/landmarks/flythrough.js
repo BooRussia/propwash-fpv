@@ -4,6 +4,7 @@ import {
   CITY_Y,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
   PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z,
+  PARK_PERGOLA_FF_X, PARK_PERGOLA_FF_Z,
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_WALL_H,
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
@@ -33,6 +34,13 @@ import { roofTexture } from '../textures.js';
  * Drop if the Z-span kisses the 347/94.4 bench or the 339→355 /
  * z=96 spine. Never nudge.
  *
+ * F-park pergola is the same kit at signed 364/98.5 — 347 kit
+ * +17 m, not parkPergolaFGeom / boardwalkGateFGeom, not a slide
+ * of 347/98.5. Half-span 1.16 stays inside 100 and 0.54 m off
+ * spine 96.8. Fly +X. 2.20 m void. Drop if the Z-span kisses
+ * the 364/94.4 bench or the 356→372 / z=96 spine. Never nudge.
+ * Do not merge E-park 355.
+ *
  * Pier undercroft + pavilion stay in pier.js; this file does not touch them.
  */
 export function buildFlythrough(ctx) {
@@ -53,6 +61,13 @@ export function buildFlythrough(ctx) {
     buildBoardwalkGate(ctx, parkEEGeom);
   } else if (onPavement(parkEEGeom.x, parkEEGeom.z)) {
     tryPlace(ctx, parkEEGeom.x, parkEEGeom.z);
+  }
+  const parkFFGeom = boardwalkGateGeom(PARK_PERGOLA_FF_X, PARK_PERGOLA_FF_Z);
+  if (!boardwalkGateRejected(parkFFGeom.x, parkFFGeom.z)
+      && !onPavement(parkFFGeom.x, parkFFGeom.z)) {
+    buildBoardwalkGate(ctx, parkFFGeom);
+  } else if (onPavement(parkFFGeom.x, parkFFGeom.z)) {
+    tryPlace(ctx, parkFFGeom.x, parkFFGeom.z);
   }
   installFlyColliders(addCyl, addCollider, 'boardwalk-gate');
 
