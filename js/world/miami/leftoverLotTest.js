@@ -18,7 +18,7 @@ import {
   LEFTOVER_LOT_MESH_T, LEFTOVER_LOT_POST, LEFTOVER_LOT_JAMB,
   WAREHOUSE_X1,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
-  inKeepout, inReserved, reservedOverlap, groundHeight,
+  inKeepout, inReserved, reservedOverlap, streetOverlap, groundHeight,
   leftoverLotGeom, leftoverLotVoids, leftoverLotColliderShapes,
   leftoverLotPlantSpots, inLeftoverLotGate,
 } from './constants.js';
@@ -133,6 +133,31 @@ export function runMiamiLeftoverLotTests() {
   ok('lot B same inland band as #34 / drop / abando',
     LEFTOVER_LOT_B_Z === 84 && LEFTOVER_LOT_B_Z === LEFTOVER_LOT_Z);
 
+  // ---- leftoverLot C stays signed-and-unblocked; street tower drops ------
+  ok('#34 / #35 stay signed 258/84 and 295/84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
+    && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84);
+  ok('lot C 313/84 is signed but unblocked',
+    !onPavement(313, 84) && !onCrossStreet(313, 84)
+    && !inReserved(313, 84) && !inKeepout(313, 84)
+    && !reservedOverlap(313, 84, 14, 12)
+    && tryPlace(ctx, 313, 84) > 0);
+  ok('lots A/B footprints are not in the street',
+    !streetOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D)
+    && !streetOverlap(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, LEFTOVER_LOT_B_W, LEFTOVER_LOT_B_D));
+  ok('Ocean Drive carriageway is a street footprint',
+    streetOverlap(0, 44, 20, 12));
+  ok('cross-street column is a street footprint',
+    streetOverlap(57, 80, 20, 20) && onPavement(57, 80));
+  ok('helipad E 430/70 sits in GAP 429',
+    streetOverlap(430, 70, 16, 16) && onPavement(430, 70) && onCrossStreet(430, 70));
+  ok('helipad W is not in a street',
+    !streetOverlap(-430, 100, 16, 16) && !onPavement(-430, 100));
+  ok('tryPlace drops the street-building cell',
+    tryPlace(ctx, 430, 70) === 0 && tryPlace(ctx, 57, 80) === 0);
+  ok('tryPlace does not remap the street-building cell',
+    tryPlace(ctx, 430, 70) === 0);
+
   // ---- weenie: street-front vehicle gate on ocean face -------------------
   ok('vehicle gate is 3.66 × 1.83',
     Math.abs(LEFTOVER_LOT_GATE_W - 3.66) < 1e-9
@@ -243,6 +268,7 @@ export function runMiamiLeftoverLotTests() {
   const planting = readFileSync(join(here, 'planting.js'), 'utf8');
   const leftover = readFileSync(join(here, 'landmarks/leftoverLot.js'), 'utf8');
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
+  const buildings = readFileSync(join(here, 'buildings.js'), 'utf8');
   const house = readFileSync(join(here, 'landmarks/house.js'), 'utf8');
   const warehouse = readFileSync(join(here, 'landmarks/warehouse.js'), 'utf8');
   const drop = readFileSync(join(here, 'landmarks/drop.js'), 'utf8');
@@ -275,6 +301,16 @@ export function runMiamiLeftoverLotTests() {
     && constants.includes('export function leftoverLotGeom')
     && !/export function leftoverLotBGeom/.test(constants)
     && !/leftoverLotBGeom\(/.test(constants));
+  ok('no leftoverLot C kit / leftoverLotCGeom',
+    !/LEFTOVER_LOT_C_/.test(leftover) && !/LEFTOVER_LOT_C_/.test(constants)
+    && !/leftoverLotCGeom/.test(leftover) && !/leftoverLotCGeom/.test(constants)
+    && leftover.includes('LEFTOVER_LOT_B_X')
+    && constants.includes('313/84'));
+  ok('cullReserved drops street footprints, tryPlace drops helipad E',
+    buildings.includes('streetOverlap(t.x, t.z, t.w, t.d)')
+    && buildings.includes('tryPlace')
+    && buildings.includes('streetOverlap(hx, hz, 16, 16)')
+    && !/hx\s*\+=/.test(buildings) && !/hz\s*\+=/.test(buildings));
   ok('index builds leftoverLot on the keepout path',
     index.includes("from './landmarks/leftoverLot.js'")
     && index.includes('buildLeftoverLot(ctx)')
