@@ -457,10 +457,10 @@ export function runMiamiParkWalkEETests() {
     POCKET_PARK_COVER === 10
     && plannedE === 12800
     && plannedE === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER));
-  ok('E leftover after the walk is ~10k (9000–11000), not 12800',
+  ok('E leftover after the east walk is 8000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
-    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MIN === 8000
     && POCKET_PARK_E_INSTANCES_MAX === 11000
     && fieldE.placed.length !== 12800
     && fieldE.placed.length < 12000,

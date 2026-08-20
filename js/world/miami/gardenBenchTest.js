@@ -786,10 +786,10 @@ export function runMiamiGardenBenchTests() {
     && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84
     && LEFTOVER_LOT_E_X0 === 340 && LEFTOVER_LOT_E_X1 === 354
     && LEFTOVER_LOT_E_Z0 === 78 && LEFTOVER_LOT_E_Z1 === 90);
-  ok('E leftover stays 9000–11000, not 12800',
+  ok('E leftover stays 8000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
-    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MIN === 8000
     && POCKET_PARK_E_INSTANCES_MAX === 11000
     && fieldE.placed.length !== 12800
     && pocketParkPlannedCount(POCKET_PARK_E_X, POCKET_PARK_E_Z) === 12800

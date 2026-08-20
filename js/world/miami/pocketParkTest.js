@@ -511,10 +511,10 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96);
   ok('E plant from the grid',
     fieldE.cells.length === plannedE && fieldE.cells.length > 0);
-  ok('E leftover after the 339→355 / z=96 spine is 9000–11000, not 12800',
+  ok('E leftover after the 348.8→355 / z=98.5 east walk is 8000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
-    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MIN === 8000
     && POCKET_PARK_E_INSTANCES_MAX === 11000
     && fieldE.placed.length !== 12800
     && fieldE.placed.length < plannedE
