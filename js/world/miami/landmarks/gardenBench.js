@@ -11,6 +11,9 @@ import {
   PARK_BENCH_FF_X, PARK_BENCH_FF_Z,
   PARK_BENCH_FF_W_X, PARK_BENCH_FF_W_Z,
   PARK_BENCH_FF_E_X, PARK_BENCH_FF_E_Z,
+  PARK_BENCH_GG_X, PARK_BENCH_GG_Z,
+  PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z,
+  PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z,
   gardenBenchGeom, gardenBenchParts, gardenBenchRejected,
   installGardenBenchColliders, onPavement,
 } from '../constants.js';
@@ -52,18 +55,25 @@ import { cBox } from '../geo.js';
  * of 347 / 94.4. 347 kit +17 m. Signed 357.5 / 94.4 F-park
  * west bench is the same kit — −6.5 m off 364. Signed
  * 370.5 / 94.4 F-park east bench is the same kit — +6.5 m
- * off 364. x1=371.4 stays in 372. Yaw faces −Z toward the
- * walk at z=84 except 347 / 94.4, 340.5 / 94.4, 353.5 / 94.4,
- * 364 / 94.4, 357.5 / 94.4, and 370.5 / 94.4, which face +Z
- * toward the EE / FF spine at z=96. 0.8 m ocean of path
+ * off 364. x1=371.4 stays in 372. Signed 381 / 94.4 G-park
+ * bench is the same kit — not a gardenBenchGGeom /
+ * parkBenchGGGeom, not a slide of 364 / 94.4. 364 kit +17 m.
+ * Signed 374.5 / 94.4 G-park west bench is the same kit —
+ * −6.5 m off 381. Signed 387.5 / 94.4 G-park east bench is
+ * the same kit — +6.5 m off 381. x1=388.4 stays in 389. Yaw
+ * faces −Z toward the walk at z=84 except 347 / 94.4, 340.5 /
+ * 94.4, 353.5 / 94.4, 364 / 94.4, 357.5 / 94.4, 370.5 / 94.4,
+ * 381 / 94.4, 374.5 / 94.4, and 387.5 / 94.4, which face +Z
+ * toward the EE / FF / GG spine at z=96. 0.8 m ocean of path
  * z0=83.2. 0.8 m is edge-to-walk of the x=272 N-S (east end
  * 270.4) and of the x=280 N-S (west end 281.6). 0.8 m at
  * 347 / 94.4, 340.5 / 94.4, 353.5 / 94.4, 364 / 94.4,
- * 357.5 / 94.4, and 370.5 / 94.4 is center-to-spine of EE /
- * FF z0=95.2. Path stays 268→284 / z=84 / 1.6 m. EE walk
- * stays 339→355 / z=96. West walk stays 339→345.2 / z=98.5.
- * East walk stays 348.8→355 / z=98.5. FF walk stays
- * 356→372 / z=96.
+ * 357.5 / 94.4, 370.5 / 94.4, 381 / 94.4, 374.5 / 94.4, and
+ * 387.5 / 94.4 is center-to-spine of EE / FF / GG z0=95.2.
+ * Path stays 268→284 / z=84 / 1.6 m. EE walk stays 339→355 /
+ * z=96. West walk stays 339→345.2 / z=98.5. East walk stays
+ * 348.8→355 / z=98.5. FF walk stays 356→372 / z=96. GG walk
+ * stays 373→389 / z=96.
  */
 
 const WOOD = 0xb08958;
@@ -121,7 +131,12 @@ function appendBenchWood(wood, parts) {
  * gardenBenchFGeom / parkBenchFFGeom. F-park west bench is
  * gardenBenchGeom(PARK_BENCH_FF_W_X, PARK_BENCH_FF_W_Z).
  * F-park east bench is gardenBenchGeom(PARK_BENCH_FF_E_X,
- * PARK_BENCH_FF_E_Z).
+ * PARK_BENCH_FF_E_Z). G-park bench is
+ * gardenBenchGeom(PARK_BENCH_GG_X, PARK_BENCH_GG_Z) — not a
+ * gardenBenchGGeom / parkBenchGGGeom. G-park west bench is
+ * gardenBenchGeom(PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z).
+ * G-park east bench is gardenBenchGeom(PARK_BENCH_GG_E_X,
+ * PARK_BENCH_GG_E_Z).
  */
 export function buildGardenBench(ctx) {
   if (gardenBenchRejected()) return null;
@@ -196,6 +211,27 @@ export function buildGardenBench(ctx) {
     appendBenchWood(wood, gardenBenchParts(PARK_BENCH_FF_E_X, PARK_BENCH_FF_E_Z));
   } else if (onPavement(PARK_BENCH_FF_E_X, PARK_BENCH_FF_E_Z)) {
     tryPlace(ctx, PARK_BENCH_FF_E_X, PARK_BENCH_FF_E_Z);
+  }
+  const ggGeom = gardenBenchGeom(PARK_BENCH_GG_X, PARK_BENCH_GG_Z);
+  if (!gardenBenchRejected(ggGeom.x, ggGeom.z)
+      && !onPavement(PARK_BENCH_GG_X, PARK_BENCH_GG_Z)) {
+    appendBenchWood(wood, gardenBenchParts(PARK_BENCH_GG_X, PARK_BENCH_GG_Z));
+  } else if (onPavement(PARK_BENCH_GG_X, PARK_BENCH_GG_Z)) {
+    tryPlace(ctx, PARK_BENCH_GG_X, PARK_BENCH_GG_Z);
+  }
+  const ggWGeom = gardenBenchGeom(PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z);
+  if (!gardenBenchRejected(ggWGeom.x, ggWGeom.z)
+      && !onPavement(PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z)) {
+    appendBenchWood(wood, gardenBenchParts(PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z));
+  } else if (onPavement(PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z)) {
+    tryPlace(ctx, PARK_BENCH_GG_W_X, PARK_BENCH_GG_W_Z);
+  }
+  const ggEGeom = gardenBenchGeom(PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z);
+  if (!gardenBenchRejected(ggEGeom.x, ggEGeom.z)
+      && !onPavement(PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z)) {
+    appendBenchWood(wood, gardenBenchParts(PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z));
+  } else if (onPavement(PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z)) {
+    tryPlace(ctx, PARK_BENCH_GG_E_X, PARK_BENCH_GG_E_Z);
   }
 
   const mergeAdd = (geos, name, extra = {}) => {

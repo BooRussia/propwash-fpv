@@ -961,16 +961,14 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_G_X === 381 && POCKET_PARK_G_Z === 96);
   ok('G plant from the grid',
     fieldG.cells.length === plannedG && fieldG.cells.length > 0);
-  ok('G leftover after the 373→389 / z=96 spine is 10000–13000, below 12800',
+  ok('G leftover after the 364 kit +17 m walks is 8000–11000, below 12800',
     fieldG.placed.length >= POCKET_PARK_G_INSTANCES_MIN
     && fieldG.placed.length <= POCKET_PARK_G_INSTANCES_MAX
-    && POCKET_PARK_G_INSTANCES_MIN === 10000
-    && POCKET_PARK_G_INSTANCES_MAX === 13000
+    && POCKET_PARK_G_INSTANCES_MIN === 8000
+    && POCKET_PARK_G_INSTANCES_MAX === 11000
     && fieldG.placed.length !== POCKET_PARK_G_INSTANCES_MAX
     && fieldG.placed.length < 12800
     && fieldG.placed.length !== 12800
-    && plannedG >= POCKET_PARK_G_INSTANCES_MIN
-    && plannedG <= POCKET_PARK_G_INSTANCES_MAX
     && plannedG === 12800,
     `placedG=${fieldG.placed.length} plannedG=${plannedG}`);
   ok('F leftover floor stays 8000–11000 after walks',

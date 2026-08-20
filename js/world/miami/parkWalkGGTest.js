@@ -555,13 +555,13 @@ export function runMiamiParkWalkGGTests() {
     POCKET_PARK_COVER === 10
     && plannedG === 12800
     && plannedG === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER));
-  ok('G leftover after the spine drops below 12800 and stays ≤ 13000',
+  ok('G leftover after the walks drops below 12800 and stays 8000–11000',
     fieldG.placed.length >= POCKET_PARK_G_INSTANCES_MIN
     && fieldG.placed.length <= POCKET_PARK_G_INSTANCES_MAX
-    && POCKET_PARK_G_INSTANCES_MIN === 10000
-    && POCKET_PARK_G_INSTANCES_MAX === 13000
+    && POCKET_PARK_G_INSTANCES_MIN === 8000
+    && POCKET_PARK_G_INSTANCES_MAX === 11000
     && fieldG.placed.length < 12800
-    && fieldG.placed.length <= 13000
+    && fieldG.placed.length <= 11000
     && fieldG.placed.length !== 12800,
     `placedG=${fieldG.placed.length} plannedG=${plannedG} lastSlab.x1=${lastSlab && lastSlab.x1}`);
   ok('did not backfill slabs to hit empty-hull 12800',
@@ -637,8 +637,9 @@ export function runMiamiParkWalkGGTests() {
     && constants.includes('export function gardenPathGeom')
     && constants.includes('373→389')
     && constants.includes('Does not merge with PARK_WALK_FF_X1=372')
-    && !constants.includes('PARK_WALK_GG_W_X0')
-    && !constants.includes('PARK_WALK_GG_E_X0')
+    && constants.includes('PARK_WALK_GG_X0 = 373')
+    && constants.includes('PARK_WALK_GG_X1 = 389')
+    && constants.includes('PARK_WALK_GG_Z = 96')
     && !/export function parkWalkGeom/.test(constants)
     && !/export function parkWalkEGeom/.test(constants)
     && !/export function parkWalkE2Geom/.test(constants)
