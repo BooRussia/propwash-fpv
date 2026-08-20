@@ -58,6 +58,8 @@ export function runBayWaterTests() {
   ok('SSR off', BAY_PRESET.ssr === false);
   ok('TMA depth is bay-shallow', BAY_PRESET.depthM <= 8 && BAY_PRESET.depthM >= 2);
   ok('gravity is 9.81', G === 9.81);
+  ok('foam threshold is a fold, not a 2–4 m flat',
+    BAY_PRESET.jThresh <= 0.50 && BAY_PRESET.jThresh >= 0.35);
 
   // ---- spectrum ----------------------------------------------------------
   const jp = jonswapParams(BAY_PRESET.windMs, BAY_PRESET.fetchM);
@@ -119,6 +121,12 @@ export function runBayWaterTests() {
   }
   ok('Jacobian field is live', Number.isFinite(minJ) && minJ < 1.05);
   ok('fold foam appears at the waterline', maxFoam > 0.02);
+  let foamCells = 0;
+  for (let i = 0; i < sim.n * sim.n; i++) {
+    if (sim.foam[i] > 0.002) foamCells++;
+  }
+  ok('foam is sparse breaking, not salt-and-pepper',
+    foamCells / (sim.n * sim.n) < 0.04);
   ok('displacement stays under the deck (no punch-through)', maxAbsH < 1.2);
 
   const foamBefore = sim.foam[0];
@@ -172,6 +180,8 @@ export function runBayWaterTests() {
     !index.includes("uniforms['time']") && !index.includes('waterColor'));
   ok('hero material is MeshPhysicalMaterial',
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
+  ok('foam encode floors leftover specks',
+    bayWater.includes('0.05') && bayWater.includes('foam'));
   ok('no Abyssal WIND_GLSL paste',
     !bayWater.includes('WIND_GLSL') && !terrain.includes('WIND_GLSL'));
   ok('one bay mesh, no open-ocean far plate',

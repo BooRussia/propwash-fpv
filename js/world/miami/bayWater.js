@@ -59,7 +59,9 @@ function encodeHeightFoam(sim, heightBytes, foamBytes) {
     heightBytes[p + 1] = hb;
     heightBytes[p + 2] = hb;
     heightBytes[p + 3] = 255;
-    const f = foam[i] * 255;
+    // Floor kills the salt-and-pepper leftovers; honest breaks stay.
+    const raw = foam[i];
+    const f = (raw <= 0.05 ? 0 : (raw - 0.05) / 0.95) * 255;
     foamBytes[p] = f;
     foamBytes[p + 1] = f;
     foamBytes[p + 2] = f;
@@ -123,7 +125,7 @@ export function buildBayWater(ctx, opts = {}) {
     displacementBias: -0.11,
     emissive: 0xf4f1ea,
     emissiveMap: foamMap,
-    emissiveIntensity: 0.42,
+    emissiveIntensity: 0.26,
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
@@ -155,7 +157,7 @@ export function buildBayWater(ctx, opts = {}) {
     lastDayF = dayF;
     mat.color.copy(colorNight).lerp(colorDay, 0.12 + 0.88 * dayF);
     mat.envMapIntensity = 0.22 + 0.68 * dayF;
-    mat.emissiveIntensity = 0.10 + 0.32 * dayF;
+    mat.emissiveIntensity = 0.06 + 0.20 * dayF;
     mat.roughness = 0.14 + 0.16 * (1 - dayF);
     return dayF;
   };

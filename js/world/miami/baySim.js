@@ -106,10 +106,10 @@ export function createBaySim(opts = {}) {
   const gamma = opts.gamma ?? BAY_PRESET.gamma;
   const g = opts.g ?? G;
   const lambda = opts.lambda ?? 0.88;       // Tessendorf chop
-  const jThresh = opts.jThresh ?? 0.58;     // foam where the surface folds
-  const foamGain = opts.foamGain ?? 1.45;
-  const foamDecay = opts.foamDecay ?? 0.965;
-  const foamBlur = opts.foamBlur ?? 0.22;
+  const jThresh = opts.jThresh ?? BAY_PRESET.jThresh;
+  const foamGain = opts.foamGain ?? BAY_PRESET.foamGain;
+  const foamDecay = opts.foamDecay ?? BAY_PRESET.foamDecay;
+  const foamBlur = opts.foamBlur ?? BAY_PRESET.foamBlur;
   const { alpha, omegaP } = jonswapParams(windMs, fetchM, g);
 
   const spec = { alpha, omegaP, gamma, depthM, windTheta, g };
@@ -241,7 +241,10 @@ export function createBaySim(opts = {}) {
         const c = src[idx];
         const n4 = src[j * n + ip] + src[j * n + im] + src[jp * n + i] + src[jm * n + i];
         const diffused = (1 - blur) * c + blur * n4 * 0.25;
-        const fold = jacobian[idx] < jThresh ? (jThresh - jacobian[idx]) * foamGain : 0;
+        // Crest-only: a 2–4 m flat whose J dips under 0.58 used to seed
+        // specks; require a raised surface so foam is a breaking crest.
+        const fold = (jacobian[idx] < jThresh && height[idx] > 0.06)
+          ? (jThresh - jacobian[idx]) * foamGain : 0;
         let v = decay * diffused + fold * Math.min(1, dt * 8);
         if (v < 0) v = 0;
         else if (v > 1) v = 1;

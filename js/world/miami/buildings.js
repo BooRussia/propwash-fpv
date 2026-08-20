@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CITY_Y, GAP_X, XS_HALF, XS_Z0, XS_Z1, CINEMA_X, CINEMA_W,
-  stripY, reservedOverlap,
+  stripY, reservedOverlap, streetOverlap,
 } from './constants.js';
 import { windowTexture, decoFacadeTextures, setAoUVs, roofTexture } from './textures.js';
 import { facadeUV, stripBoxCaps, roofSlabGeo, colorFill, cBox, cCyl } from './geo.js';
+import { tryPlace } from './planting.js';
 
 // Deterministic 2D hash — used where a per-tower choice must NOT consume a
 // draw from any layout stream (facade variant picking).
@@ -463,7 +464,7 @@ export function cullReserved(ctx, sky) {
     // FOOTPRINT overlap, not centre-in-rect: a tower whose corner poked into
     // a hero block used to survive the cull and then intersect the landmark
     // (that is where five of the worst overlaps in the audit came from).
-    if (reservedOverlap(t.x, t.z, t.w, t.d)) {
+    if (reservedOverlap(t.x, t.z, t.w, t.d) || streetOverlap(t.x, t.z, t.w, t.d)) {
       for (const m of t.meshes) if (m.parent) m.parent.remove(m);
       for (const c of t.colliders) doomed.add(c);
     } else {
@@ -486,9 +487,15 @@ export function buildHelipads(ctx, sky) {
   const { towerData, glassMat, hasGlassTex, GLASS_TILE_U, GLASS_TILE_V } = sky;
   for (const [hx, hz] of [[430, 70], [-430, 100]]) {
     const h = 45 + rng() * 20;
+    // Consume the UV stream even when this pad is dropped so a reject
+    // cannot shift later rng3 draws. tryPlace / streetOverlap reject-or-drop
+    // — never nudge. Helipad E (430, 70) sits on GAP 429.
+    const offU = hasGlassTex ? rng3() : 0;
+    const offV = hasGlassTex ? rng3() : 0;
+    if (!tryPlace(ctx, hx, hz) || streetOverlap(hx, hz, 16, 16)) continue;
     const geo = track(new THREE.BoxGeometry(16, h, 16));
     if (hasGlassTex) {
-      facadeUV(geo, 16, h, 16, GLASS_TILE_U, GLASS_TILE_V, rng3(), rng3());
+      facadeUV(geo, 16, h, 16, GLASS_TILE_U, GLASS_TILE_V, offU, offV);
     } else {
       const uv = geo.attributes.uv;
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i), uv.getY(i) * (h / 26));
@@ -512,9 +519,9 @@ export function buildHelipads(ctx, sky) {
     root.add(ring);
     // shaft exactly 16 x h, then the pad disc as its own cylinder — the old
     // 16 x (h+1) box put a metre of invisible ceiling over the landing deck
-    addCollider(hx, CITY_Y, hz, 16, h, 16);
-    addCyl(hx, CITY_Y + h, hz, 6, 0.4);
-    towerData.push({ x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0, meshes: [mesh, pad, ring], colliders: [] });
+    const shaft = addCollider(hx, CITY_Y, hz, 16, h, 16);
+    const disc = addCyl(hx, CITY_Y + h, hz, 6, 0.4);
+    towerData.push({ x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0, meshes: [mesh, pad, ring], colliders: [shaft, disc] });
   }
   setTag('world');
 }

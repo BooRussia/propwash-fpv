@@ -379,6 +379,8 @@ export const LEFTOVER_LOT_WALL = 0.15;
 // Desi signed the cell. Do not invent or slide x/z. Do not grow the plate.
 // Same leftoverLotGeom / leftoverLotColliderShapes / leftoverLotVoids — not
 // leftoverLotBGeom, not OSM, not a fifth haunt.
+// leftoverLot C (313/84) is signed but stays unblocked this pass — no
+// RESERVED / KEEPOUT / leftoverLotGeom instance, no slide of A or B.
 export const LEFTOVER_LOT_B_X = 295;
 export const LEFTOVER_LOT_B_Z = 84;
 export const LEFTOVER_LOT_B_W = 14.0;
@@ -573,6 +575,28 @@ export function reservedOverlap(x, z, w, d, margin = 2) {
     if (ox <= margin) continue;
     const oz = Math.min(z + hd, r.z1) - Math.max(z - hd, r.z0);
     if (oz > margin) return true;
+  }
+  return false;
+}
+
+/**
+ * True when an axis-aligned footprint overlaps Ocean Drive's carriageway
+ * or a GAP_X cross-street column. Used by the skyline cull so a tower
+ * whose corner sits in the street is dropped, never nudged. Sidewalks
+ * and planting rows are not streets.
+ */
+export function streetOverlap(x, z, w, d, margin = 0.15) {
+  const x0 = x - w / 2, x1 = x + w / 2;
+  const z0 = z - d / 2, z1 = z + d / 2;
+  const ozRoad = Math.min(z1, ROAD_Z1) - Math.max(z0, ROAD_Z0);
+  if (ozRoad > margin && x1 > x0) return true;
+  if (z1 <= XS_Z0 || z0 >= XS_Z1) return false;
+  const ozXs = Math.min(z1, XS_Z1) - Math.max(z0, XS_Z0);
+  if (ozXs <= margin) return false;
+  for (let i = 0; i < GAP_X.length; i++) {
+    const gx0 = GAP_X[i] - XS_HALF, gx1 = GAP_X[i] + XS_HALF;
+    const ox = Math.min(x1, gx1) - Math.max(x0, gx0);
+    if (ox > margin) return true;
   }
   return false;
 }
