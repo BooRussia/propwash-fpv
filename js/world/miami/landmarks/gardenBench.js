@@ -4,6 +4,7 @@ import {
   GARDEN_BENCH_X, GARDEN_BENCH_Z,
   PARK_BENCH_X, PARK_BENCH_Z,
   PARK_BENCH_W_X, PARK_BENCH_W_Z,
+  PARK_BENCH_E_X, PARK_BENCH_E_Z,
   gardenBenchGeom, gardenBenchParts, gardenBenchRejected,
   installGardenBenchColliders, onPavement,
 } from '../constants.js';
@@ -28,9 +29,12 @@ import { cBox } from '../geo.js';
  * park bench reuses gardenBenchGeom / gardenBenchParts — not a
  * gardenBenchBGeom, not a slide of 276 / 82.4. Signed 269.5 / 90
  * west park bench is the same kit — not a gardenBenchCGeom, not a
- * slide of 276 / 90. Yaw faces −Z toward the walk at z=84. 0.8 m
+ * slide of 276 / 90. Signed 282.5 / 90 east twin is the same kit —
+ * not a gardenBenchDGeom, not a slide of 269.5 / 90. +6.5 m
+ * mirror of 269.5. Yaw faces −Z toward the walk at z=84. 0.8 m
  * ocean of path z0=83.2. 0.8 m is edge-to-walk of the x=272 N-S
- * (east end 270.4). Path stays 268→284 / z=84 / 1.6 m.
+ * (east end 270.4) and of the x=280 N-S (west end 281.6). Path
+ * stays 268→284 / z=84 / 1.6 m.
  */
 
 const WOOD = 0xb08958;
@@ -72,7 +76,9 @@ function appendBenchWood(wood, parts) {
  * garden-path slab. Never remaps x/z. Scatter stays on tryPlace.
  * Park bench is gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z) — not a
  * gardenBenchBGeom. West park bench is gardenBenchGeom(PARK_BENCH_W_X,
- * PARK_BENCH_W_Z) — not a gardenBenchCGeom.
+ * PARK_BENCH_W_Z) — not a gardenBenchCGeom. East twin is
+ * gardenBenchGeom(PARK_BENCH_E_X, PARK_BENCH_E_Z) — not a
+ * gardenBenchDGeom.
  */
 export function buildGardenBench(ctx) {
   if (gardenBenchRejected()) return null;
@@ -98,6 +104,13 @@ export function buildGardenBench(ctx) {
     appendBenchWood(wood, gardenBenchParts(PARK_BENCH_W_X, PARK_BENCH_W_Z));
   } else if (onPavement(PARK_BENCH_W_X, PARK_BENCH_W_Z)) {
     tryPlace(ctx, PARK_BENCH_W_X, PARK_BENCH_W_Z);
+  }
+  const eastGeom = gardenBenchGeom(PARK_BENCH_E_X, PARK_BENCH_E_Z);
+  if (!gardenBenchRejected(eastGeom.x, eastGeom.z)
+      && !onPavement(PARK_BENCH_E_X, PARK_BENCH_E_Z)) {
+    appendBenchWood(wood, gardenBenchParts(PARK_BENCH_E_X, PARK_BENCH_E_Z));
+  } else if (onPavement(PARK_BENCH_E_X, PARK_BENCH_E_Z)) {
+    tryPlace(ctx, PARK_BENCH_E_X, PARK_BENCH_E_Z);
   }
 
   const mergeAdd = (geos, name, extra = {}) => {

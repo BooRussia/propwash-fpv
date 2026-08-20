@@ -520,6 +520,33 @@ export const PARK_BENCH_W_X1 = PARK_BENCH_W_X + PARK_BENCH_W_W / 2;
 export const PARK_BENCH_W_Z0 = PARK_BENCH_W_Z - PARK_BENCH_W_DEPTH / 2;
 export const PARK_BENCH_W_Z1 = PARK_BENCH_W_Z + PARK_BENCH_W_DEPTH / 2;
 
+// ---- east park bench (same Tiny Glade 3-seat slat kit; signed 282.5 / 90) ----
+// Desi + Reesy signed the cell. Do not invent or slide x/z. Never nudge.
+// Same gardenBenchGeom / gardenBenchParts — not gardenBenchDGeom, not a
+// slide of 269.5 / 90. +6.5 m mirror of 269.5 (282.5 is +6.5 off 276;
+// 269.5 is −6.5). Yaw faces −Z / south toward the garden path (z=84).
+// 0.8 m is edge-to-walk, not center. West end 281.6, east N-S walk x1
+// 280.8 (281.6 − 280.8 = 0.8). East end 283.4 stays inside 284.
+// Misses 276/90 (~4.7 m). Kiss x=280 N-S / 276/90 / 269.5/90 /
+// leftoverLot A/B/C/D / pavement / streetOverlap / path slabs = drop,
+// never nudge. Existing benches stay 276/82.4, 276/90, 269.5/90.
+// Walks stay 84 / west 268→274.2 / east 277.8→284 / N-S 272 / N-S 280.
+// Pergola stays 276/94. Pocket park stays 276/92, 16×8. leftoverGrass
+// stays 267–285 / 81–86. leftoverLot A 258/84, B 295/84, C 313/84,
+// D 330/84. Scatter still uses tryPlace.
+export const PARK_BENCH_E_X = 282.5;
+export const PARK_BENCH_E_Z = 90;
+export const PARK_BENCH_E_YAW = PARK_BENCH_YAW;
+export const PARK_BENCH_E_W = GARDEN_BENCH_W;
+export const PARK_BENCH_E_DEPTH = GARDEN_BENCH_DEPTH;
+export const PARK_BENCH_E_SEAT_H = GARDEN_BENCH_SEAT_H;
+export const PARK_BENCH_E_BACK_H = GARDEN_BENCH_BACK_H;
+export const PARK_BENCH_E_UNDER_CLEAR = GARDEN_BENCH_UNDER_CLEAR;
+export const PARK_BENCH_E_X0 = PARK_BENCH_E_X - PARK_BENCH_E_W / 2;
+export const PARK_BENCH_E_X1 = PARK_BENCH_E_X + PARK_BENCH_E_W / 2;
+export const PARK_BENCH_E_Z0 = PARK_BENCH_E_Z - PARK_BENCH_E_DEPTH / 2;
+export const PARK_BENCH_E_Z1 = PARK_BENCH_E_Z + PARK_BENCH_E_DEPTH / 2;
+
 // ---- leftoverGrass (Tiny Glade grow-to-gap; leftover-city hull) ----
 // Signed x 267–285 / z 81.0–86.0. Desi + Reesy signed the box. Do not
 // invent or slide it. One hull around the path and bench, not OSM, not
@@ -1177,10 +1204,12 @@ export function gardenPathPlantSpots(g = gardenPathGeom()) {
  * Signed Tiny Glade 3-seat slat. Default is 276 / 82.4. Pass
  * (PARK_BENCH_X, PARK_BENCH_Z) for the park bench. Pass
  * (PARK_BENCH_W_X, PARK_BENCH_W_Z) for the west park bench at
- * 269.5 / 90. Same schema — never gardenBenchBGeom /
- * gardenBenchCGeom. Yaw faces the walk at z=84 (−Z when
- * inland of the path). Never remaps x/z. Scatter stays on tryPlace.
- * Sit-box is empty air. Under-slat clear is whoop + 5″ knife.
+ * 269.5 / 90. Pass (PARK_BENCH_E_X, PARK_BENCH_E_Z) for the
+ * east twin at 282.5 / 90. Same schema — never gardenBenchBGeom /
+ * gardenBenchCGeom / gardenBenchDGeom. Yaw faces the walk at
+ * z=84 (−Z when inland of the path). Never remaps x/z. Scatter
+ * stays on tryPlace. Sit-box is empty air. Under-slat clear is
+ * whoop + 5″ knife.
  */
 export function gardenBenchGeom(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const w = GARDEN_BENCH_W;
@@ -1206,6 +1235,7 @@ function gardenBenchSignedCells() {
     [GARDEN_BENCH_X, GARDEN_BENCH_Z],
     [PARK_BENCH_X, PARK_BENCH_Z],
     [PARK_BENCH_W_X, PARK_BENCH_W_Z],
+    [PARK_BENCH_E_X, PARK_BENCH_E_Z],
   ];
 }
 
@@ -1225,8 +1255,9 @@ export function inGardenBench(x, z, margin = 0) {
  * Legs + seat slats + back slats. Shared kit, not a second scatterer.
  * Rear posts run to the back crown so the sit-box stays a void.
  * Default is 276 / 82.4. Pass (PARK_BENCH_X, PARK_BENCH_Z) for the
- * park bench. Pass (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90 —
- * never gardenBenchBParts / gardenBenchCParts.
+ * park bench. Pass (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90.
+ * Pass (PARK_BENCH_E_X, PARK_BENCH_E_Z) for 282.5 / 90 — never
+ * gardenBenchBParts / gardenBenchCParts / gardenBenchDParts.
  */
 export function gardenBenchParts(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const g = gardenBenchGeom(cx, cz);
@@ -1332,6 +1363,8 @@ export const RESERVED = [
     z0: PARK_BENCH_Z0 - 1.5, z1: PARK_BENCH_Z1 + 1.4, tag: 'gardenBench' },
   { x0: PARK_BENCH_W_X0 - 2.2, x1: PARK_BENCH_W_X1 + 1.8,
     z0: PARK_BENCH_W_Z0 - 1.5, z1: PARK_BENCH_W_Z1 + 1.4, tag: 'gardenBench' },
+  { x0: PARK_BENCH_E_X0 - 2.2, x1: PARK_BENCH_E_X1 + 1.8,
+    z0: PARK_BENCH_E_Z0 - 1.5, z1: PARK_BENCH_E_Z1 + 1.4, tag: 'gardenBench' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -1512,12 +1545,14 @@ export function gardenPathRejected(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
 /**
  * Reject-or-drop for a signed Tiny Glade bench cell. Default is 276 / 82.4.
  * Pass (PARK_BENCH_X, PARK_BENCH_Z) for the park bench. Pass
- * (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90. Fail if pavement,
+ * (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90. Pass
+ * (PARK_BENCH_E_X, PARK_BENCH_E_Z) for 282.5 / 90. Fail if pavement,
  * streetOverlap, leftoverLot A/B/C/D reserved, other reserved (haunts),
- * a garden-path slab kiss, a kiss of the x=272 N-S walk, or a kiss of
- * another signed bench (276/90). Path keepout padding is expected
- * (0.8 m ocean of z0=83.2; 0.8 m edge-to-walk of x0=271.2) and is
- * not a fail. Never nudges x/z.
+ * a garden-path slab kiss, a kiss of the x=272 N-S walk, a kiss of
+ * the x=280 N-S walk, or a kiss of another signed bench (276/90 /
+ * 269.5/90). Path keepout padding is expected (0.8 m ocean of
+ * z0=83.2; 0.8 m edge-to-walk of x0=271.2 / x1=280.8) and is not
+ * a fail. Never nudges x/z.
  */
 export function gardenBenchRejected(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const g = gardenBenchGeom(cx, cz);
@@ -1880,6 +1915,8 @@ export const KEEPOUT = [
     z0: PARK_BENCH_Z0 - 1.3, z1: PARK_BENCH_Z1 + 1.2, tag: 'gardenBench' },
   { x0: PARK_BENCH_W_X0 - 2.0, x1: PARK_BENCH_W_X1 + 1.6,
     z0: PARK_BENCH_W_Z0 - 1.3, z1: PARK_BENCH_W_Z1 + 1.2, tag: 'gardenBench' },
+  { x0: PARK_BENCH_E_X0 - 2.0, x1: PARK_BENCH_E_X1 + 1.6,
+    z0: PARK_BENCH_E_Z0 - 1.3, z1: PARK_BENCH_E_Z1 + 1.2, tag: 'gardenBench' },
   { x0: LEFTOVER_GRASS_X0, x1: LEFTOVER_GRASS_X1,
     z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1, tag: 'leftoverGrass' },
   { x0: POCKET_PARK_X0, x1: POCKET_PARK_X1,
