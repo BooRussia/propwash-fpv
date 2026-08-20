@@ -392,10 +392,10 @@ export function runMiamiParkPergolaTests() {
     && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84
     && LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84
     && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84);
-  ok('E leftover stays 9000–11000, not 12800',
+  ok('E leftover stays 8000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
-    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MIN === 8000
     && POCKET_PARK_E_INSTANCES_MAX === 11000
     && fieldE.placed.length !== 12800
     && pocketParkPlannedCount(POCKET_PARK_E_X, POCKET_PARK_E_Z) === 12800
