@@ -17,6 +17,9 @@ import {
   POCKET_PARK_E_X0, POCKET_PARK_E_X1, POCKET_PARK_E_Z0, POCKET_PARK_E_Z1,
   POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D,
   POCKET_PARK_E_INSTANCES_MIN, POCKET_PARK_E_INSTANCES_MAX,
+  POCKET_PARK_F_X0, POCKET_PARK_F_X1, POCKET_PARK_F_Z0, POCKET_PARK_F_Z1,
+  POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D,
+  POCKET_PARK_F_INSTANCES_MIN, POCKET_PARK_F_INSTANCES_MAX,
   POCKET_PARK_HULL_H, POCKET_PARK_HULL_COLLIDER,
   POCKET_PARK_PAD_AABB, POCKET_PARK_AABB,
   GARDEN_PATH_X, GARDEN_PATH_Z, GARDEN_PATH_W, GARDEN_PATH_LEN,
@@ -29,6 +32,8 @@ import {
   LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, LEFTOVER_LOT_D_X0, LEFTOVER_LOT_D_X1,
   LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, LEFTOVER_LOT_E_X0, LEFTOVER_LOT_E_X1,
   LEFTOVER_LOT_E_Z0, LEFTOVER_LOT_E_Z1,
+  LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z, LEFTOVER_LOT_F_X0, LEFTOVER_LOT_F_X1,
+  LEFTOVER_LOT_F_Z0, LEFTOVER_LOT_F_Z1, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D,
   WAREHOUSE_X, WAREHOUSE_Z,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
   inKeepout, inReserved, groundHeight, streetOverlap,
@@ -97,6 +102,7 @@ export function runMiamiPocketParkTests() {
   const ctx = { blocked: () => false };
   const hull = pocketParkHull();
   const hullE = pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  const hullF = pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z);
   const shapes = pocketParkColliderShapes();
   const geomA = leftoverLotGeom();
 
@@ -150,6 +156,7 @@ export function runMiamiPocketParkTests() {
   ok('leftoverLot C stays 313/84', LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84);
   ok('leftoverLot D stays 330/84', LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84);
   ok('leftoverLot E stays 347/84', LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84);
+  ok('leftoverLot F stays 364/84', LEFTOVER_LOT_F_X === 364 && LEFTOVER_LOT_F_Z === 84);
   ok('bench stays 276 / 82.4', GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
   ok('leftoverGrass stays 267–285 / 81–86',
     LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
@@ -178,6 +185,9 @@ export function runMiamiPocketParkTests() {
   ok('leftoverLot E geometry was not slid',
     LEFTOVER_LOT_E_X0 === 340 && LEFTOVER_LOT_E_X1 === 354
     && LEFTOVER_LOT_E_Z0 === 78 && LEFTOVER_LOT_E_Z1 === 90);
+  ok('leftoverLot F geometry was not slid',
+    LEFTOVER_LOT_F_X0 === 357 && LEFTOVER_LOT_F_X1 === 371
+    && LEFTOVER_LOT_F_Z0 === 78 && LEFTOVER_LOT_F_Z1 === 90);
   ok('tryPlace still drops leftoverLot A/B/C/D',
     tryPlace(ctx, LEFTOVER_LOT_X, LEFTOVER_LOT_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === 0
@@ -185,6 +195,8 @@ export function runMiamiPocketParkTests() {
     && tryPlace(ctx, LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) === 0);
   ok('tryPlace still drops leftoverLot E',
     tryPlace(ctx, LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === 0);
+  ok('tryPlace still drops leftoverLot F',
+    tryPlace(ctx, LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z) === 0);
   ok('tryPlace still drops the garden path',
     tryPlace(ctx, GARDEN_PATH_X, GARDEN_PATH_Z) === 0);
   ok('tryPlace still drops the garden bench',
@@ -203,6 +215,9 @@ export function runMiamiPocketParkTests() {
   ok('pocketParkDrop rejects leftoverLot E',
     pocketParkDrop(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)
     && inLeftoverLotReserved(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z));
+  ok('pocketParkDrop rejects leftoverLot F',
+    pocketParkDrop(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)
+    && inLeftoverLotReserved(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z));
   ok('pocketParkDrop rejects the warehouse',
     pocketParkDrop(WAREHOUSE_X, WAREHOUSE_Z)
     && inWarehouseReserved(WAREHOUSE_X, WAREHOUSE_Z));
@@ -390,6 +405,17 @@ export function runMiamiPocketParkTests() {
     && leftover.includes('347/84')
     && !leftover.includes('pocketParkE')
     && constants.includes('347/84'));
+  ok('leftoverLot F was not restacked',
+    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)')
+    && leftover.includes('364/84')
+    && leftover.includes('leftoverLotFGeom fork')
+    && !leftover.includes('pocketParkF')
+    && !leftover.includes('POCKET_PARK_F')
+    && constants.includes('364/84')
+    && constants.includes('LEFTOVER_LOT_F_X = 364')
+    && constants.includes('LEFTOVER_LOT_F_Z = 84')
+    && !/export function leftoverLotFGeom/.test(constants)
+    && !/leftoverLotFGeom\(/.test(constants));
   ok('house was not restacked',
     house.includes('housePlanGeom') && house.includes('weenie')
     && !house.includes('pocketPark') && !house.includes('POCKET_PARK_'));
@@ -546,8 +572,7 @@ export function runMiamiPocketParkTests() {
     !!aabbE && aabbE.part === 'grade'
     && aabbE.sy === POCKET_PARK_HULL_H
     && aabbE.sx === POCKET_PARK_E_W && aabbE.sz === POCKET_PARK_E_D
-    && aabbE.y0 === CITY_Y
-    && aabbs.length === 2);
+    && aabbE.y0 === CITY_Y);
   ok('E thin hull exists at grade',
     !!probeBlocked(shapes, POCKET_PARK_E_X, CITY_Y + 0.006, POCKET_PARK_E_Z, 0.004));
 
@@ -569,9 +594,205 @@ export function runMiamiPocketParkTests() {
   ok('kit comment names the second hull, not a fork',
     park.includes('347/96') && park.includes('pocketParkEGeom fork')
     && park.includes('Not a slide of 276')
-    && park.includes('leftoverLot A–E')
+    && park.includes('leftoverLot A–F')
     && constants.includes('347/96')
     && constants.includes('never pocketParkEGeom'));
+
+  // ---- third hull at signed 364/96; same kit, not a fork -----------------
+  ok('F cell is signed 364/96', POCKET_PARK_F_X === 364 && POCKET_PARK_F_Z === 96);
+  ok('F plate is signed 16 × 8',
+    POCKET_PARK_F_W === 16 && POCKET_PARK_F_D === 8
+    && POCKET_PARK_F_X1 - POCKET_PARK_F_X0 === 16
+    && POCKET_PARK_F_Z1 - POCKET_PARK_F_Z0 === 8
+    && POCKET_PARK_F_W === POCKET_PARK_W && POCKET_PARK_F_D === POCKET_PARK_D);
+  ok('F plate is signed 356–372 × 92–100',
+    POCKET_PARK_F_X0 === 356 && POCKET_PARK_F_X1 === 372
+    && POCKET_PARK_F_Z0 === 92 && POCKET_PARK_F_Z1 === 100);
+  ok('F hull reuses pocketParkHull',
+    hullF.x === 364 && hullF.z === 96
+    && hullF.x0 === 356 && hullF.x1 === 372
+    && hullF.z0 === 92 && hullF.z1 === 100
+    && hullF.w === 16 && hullF.d === 8
+    && hullF.collider === 'ground');
+  ok('F is 2 m inland of leftoverLot F z1=90',
+    LEFTOVER_LOT_F_Z1 === 90 && POCKET_PARK_F_Z0 === 92
+    && POCKET_PARK_F_Z0 === LEFTOVER_LOT_F_Z1 + 2);
+  ok('F is 1 m leftover apron past lot F, leftoverLotOverlap of F reserved is 0',
+    POCKET_PARK_F_X0 === 356 && LEFTOVER_LOT_F_X0 === 357
+    && POCKET_PARK_F_X1 === 372 && LEFTOVER_LOT_F_X1 === 371
+    && POCKET_PARK_F_X0 === LEFTOVER_LOT_F_X0 - 1
+    && POCKET_PARK_F_X1 === LEFTOVER_LOT_F_X1 + 1
+    && LEFTOVER_LOT_F_Z1 + 1.4 === 91.4
+    && Math.abs((LEFTOVER_LOT_F_Z1 + 1.4) - POCKET_PARK_F_Z0 + 0.6) < 1e-9
+    && !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D, 0.15)
+    && !inLeftoverLotReserved(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !inLeftoverLotReserved(POCKET_PARK_F_X0, POCKET_PARK_F_Z)
+    && !inLeftoverLotReserved(POCKET_PARK_F_X1, POCKET_PARK_F_Z));
+  ok('leftoverLotOverlap vs leftoverLot E reserved is oz-negative',
+    !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D, 0.15)
+    && POCKET_PARK_F_X0 === 356 && LEFTOVER_LOT_E_X1 + 1.8 === 355.8);
+  ok('E-park x1=355 must not merge with this hull',
+    POCKET_PARK_E_X1 === 355 && POCKET_PARK_F_X0 === 356
+    && POCKET_PARK_F_X0 === POCKET_PARK_E_X1 + 1
+    && POCKET_PARK_E_Z0 === POCKET_PARK_F_Z0
+    && POCKET_PARK_E_Z1 === POCKET_PARK_F_Z1
+    && hullE.x1 === 355 && hullF.x0 === 356
+    && hullE.x1 < hullF.x0);
+  ok('276 park stays 276/92 (x1=284 < 339)',
+    POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_X1 === 284 && POCKET_PARK_X1 < POCKET_PARK_E_X0
+    && hull.x === 276 && hull.z === 92);
+  ok('347 park stays 347/96 (x1=355 < 356)',
+    POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96
+    && POCKET_PARK_E_X1 === 355 && POCKET_PARK_E_X1 < POCKET_PARK_F_X0
+    && hullE.x === 347 && hullE.z === 96);
+  ok('A–F stay 258/295/313/330/347/364 at z=84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295
+    && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_D_X === 330
+    && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_F_X === 364
+    && LEFTOVER_LOT_Z === 84 && LEFTOVER_LOT_B_Z === 84
+    && LEFTOVER_LOT_C_Z === 84 && LEFTOVER_LOT_D_Z === 84
+    && LEFTOVER_LOT_E_Z === 84 && LEFTOVER_LOT_F_Z === 84);
+  ok('reuses pocketParkHull, no pocketParkFGeom',
+    park.includes('pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z)')
+    && park.includes('pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z)')
+    && park.includes('pocketParkHull()')
+    && constants.includes('export function pocketParkHull')
+    && !/export function pocketParkFGeom/.test(constants)
+    && !/function pocketParkFGeom/.test(park)
+    && !/pocketParkFGeom\(/.test(constants)
+    && !/pocketParkFGeom\(/.test(park)
+    && !existsSync(join(here, 'landmarks/pocketParkF.js'))
+    && !existsSync(join(here, 'pocketParkF.js')));
+  ok('F plate is 128 m²',
+    pocketParkArea(POCKET_PARK_F_X, POCKET_PARK_F_Z) === 128
+    && Math.abs(hullArea(hullF) - 128) < 1e-9);
+  ok('F plate is not pavement / street',
+    !onPavement(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !onBoardwalk(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !onRoadway(POCKET_PARK_F_Z)
+    && !onCrossStreet(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !onSidewalk(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !streetOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D));
+  ok('F plate sits on leftover-city grade',
+    groundHeight(POCKET_PARK_F_X, POCKET_PARK_F_Z) === CITY_Y);
+  ok('F plate is reserved and a keepout',
+    inReserved(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && inKeepout(POCKET_PARK_F_X, POCKET_PARK_F_Z));
+  ok('inPocketPark covers all three signed boxes',
+    inPocketPark(POCKET_PARK_X, POCKET_PARK_Z)
+    && inPocketPark(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && inPocketPark(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && inPocketPark(POCKET_PARK_F_X0, POCKET_PARK_F_Z0)
+    && inPocketPark(POCKET_PARK_F_X1, POCKET_PARK_F_Z1));
+  ok('F signed plate is not rejected',
+    !pocketParkRejected(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !pocketParkRejected());
+  ok('pocketParkRejected fails leftoverLot A–F kiss / warehouse / helipad / pavement / street',
+    leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, 14, 12)
+    && leftoverLotOverlap(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, 14, 12)
+    && leftoverLotOverlap(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z, 14, 12)
+    && leftoverLotOverlap(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, 14, 12)
+    && leftoverLotOverlap(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, 14, 12)
+    && leftoverLotOverlap(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D)
+    && pocketParkRejected(LEFTOVER_LOT_X, LEFTOVER_LOT_Z)
+    && pocketParkRejected(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)
+    && pocketParkRejected(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
+    && pocketParkRejected(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z)
+    && pocketParkRejected(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)
+    && pocketParkRejected(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)
+    && pocketParkRejected(WAREHOUSE_X, WAREHOUSE_Z)
+    && pocketParkRejected(430, 70)
+    && pocketParkRejected(0, 27)
+    && streetOverlap(57, 80, 20, 20));
+  ok('F hull does not overlap warehouse / helipad reserved',
+    !warehouseOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D, 0.15)
+    && !inWarehouseReserved(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && !inHelipadReserved(POCKET_PARK_F_X, POCKET_PARK_F_Z)
+    && inHelipadReserved(430, 70));
+
+  const plannedF = pocketParkPlannedCount(POCKET_PARK_F_X, POCKET_PARK_F_Z);
+  const fieldF = placePocketPark(ctx, POCKET_PARK_F_X, POCKET_PARK_F_Z);
+  ok('F density is area × cover², not dirt 3.36',
+    POCKET_PARK_COVER === 10
+    && plannedF === 12800
+    && plannedF === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER)
+    && POCKET_PARK_F_X === 364 && POCKET_PARK_F_Z === 96);
+  ok('F plant from the grid',
+    fieldF.cells.length === plannedF && fieldF.cells.length > 0);
+  ok('F empty-hull leftover is 10000–13000, not a forced 13k',
+    fieldF.placed.length >= POCKET_PARK_F_INSTANCES_MIN
+    && fieldF.placed.length <= POCKET_PARK_F_INSTANCES_MAX
+    && POCKET_PARK_F_INSTANCES_MIN === 10000
+    && POCKET_PARK_F_INSTANCES_MAX === 13000
+    && fieldF.placed.length !== POCKET_PARK_F_INSTANCES_MAX
+    && plannedF >= POCKET_PARK_F_INSTANCES_MIN
+    && plannedF <= POCKET_PARK_F_INSTANCES_MAX,
+    `placedF=${fieldF.placed.length} plannedF=${plannedF}`);
+  ok('E leftover floor stays 8000–11000 after walks',
+    fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
+    && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
+    && POCKET_PARK_E_INSTANCES_MIN === 8000
+    && POCKET_PARK_E_INSTANCES_MAX === 11000);
+  ok('276 leftover floor stays 8000–11000 after F hull',
+    field.placed.length >= POCKET_PARK_INSTANCES_MIN
+    && field.placed.length <= POCKET_PARK_INSTANCES_MAX
+    && POCKET_PARK_INSTANCES_MIN === 8000
+    && POCKET_PARK_INSTANCES_MAX === 11000);
+  ok('no F blade on a lot / helipad / warehouse / pavement',
+    fieldF.placed.every((p) => !pocketParkDrop(p.x, p.z)
+      && !onPavement(p.x, p.z)
+      && !inLeftoverLotReserved(p.x, p.z)
+      && !inWarehouseReserved(p.x, p.z)
+      && !inHelipadReserved(p.x, p.z)));
+  ok('F blades stay inside the F plate',
+    fieldF.placed.every((p) => inPocketPark(p.x, p.z)
+      && p.x >= POCKET_PARK_F_X0 && p.x <= POCKET_PARK_F_X1
+      && p.z >= POCKET_PARK_F_Z0 && p.z <= POCKET_PARK_F_Z1));
+  ok('F blade H is 0.12–0.22 m, thin grade hull only',
+    POCKET_PARK_H_MIN === 0.12 && POCKET_PARK_H_MAX === 0.22
+    && hullF.collider === 'ground'
+    && POCKET_PARK_HULL_COLLIDER === 'ground');
+
+  const aabbF = aabbs.find((s) => s.x === POCKET_PARK_F_X && s.z === POCKET_PARK_F_Z);
+  ok('F thin grade hull collider is its own plate, not merged with E',
+    !!aabbF && aabbF.part === 'grade'
+    && aabbF.sy === POCKET_PARK_HULL_H
+    && aabbF.sx === POCKET_PARK_F_W && aabbF.sz === POCKET_PARK_F_D
+    && aabbF.y0 === CITY_Y
+    && !!aabbE && aabbE.x === 347 && aabbF.x === 364
+    && aabbs.length === 3);
+  ok('F thin hull exists at grade',
+    !!probeBlocked(shapes, POCKET_PARK_F_X, CITY_Y + 0.006, POCKET_PARK_F_Z, 0.004));
+
+  const nearFenceF = pocketParkLean(LEFTOVER_LOT_F_X1, 89);
+  const midParkF = pocketParkLean(364, 96);
+  ok('lean at leftoverLot F fence if it reaches',
+    nearFenceF > midParkF && nearFenceF >= 0.14 && LEFTOVER_LOT_F_Z1 === 90);
+  ok('mid-park-F lean is weak (2 m inland, fence does not reach)',
+    midParkF === 0.04);
+
+  ok('walks / 276 park / 347 park / leftoverGrass stay put',
+    GARDEN_PATH_X0 === 268 && GARDEN_PATH_X1 === 284 && GARDEN_PATH_Z === 84
+    && POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_X0 === 268 && POCKET_PARK_X1 === 284
+    && POCKET_PARK_Z0 === 88 && POCKET_PARK_Z1 === 96
+    && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96
+    && POCKET_PARK_E_X0 === 339 && POCKET_PARK_E_X1 === 355
+    && POCKET_PARK_E_Z0 === 92 && POCKET_PARK_E_Z1 === 100
+    && LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
+    && LEFTOVER_GRASS_Z0 === 81.0 && LEFTOVER_GRASS_Z1 === 86.0
+    && GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
+  ok('kit comment names the third hull, not a fork',
+    park.includes('364/96') && park.includes('pocketParkFGeom fork')
+    && park.includes('leftoverLotOverlap of F')
+    && park.includes('E-park x1=355')
+    && park.includes('leftoverLot A–F')
+    && constants.includes('364/96')
+    && constants.includes('never pocketParkFGeom')
+    && constants.includes('leftoverLotOverlap of F reserved is 0')
+    && constants.includes('E-park x1=355 must not merge'));
 
   if (fails.length) {
     console.error('[miami-pocketPark] FAIL');
@@ -579,7 +800,8 @@ export function runMiamiPocketParkTests() {
   } else {
     console.log('[miami-pocketPark] ok', passedCount, 'checks',
       `placed=${field.placed.length}/${plannedN}`,
-      `placedE=${fieldE.placed.length}/${plannedE}`);
+      `placedE=${fieldE.placed.length}/${plannedE}`,
+      `placedF=${fieldF.placed.length}/${plannedF}`);
   }
   return {
     passed: fails.length === 0,
@@ -589,6 +811,8 @@ export function runMiamiPocketParkTests() {
     planned: plannedN,
     placedE: fieldE.placed.length,
     plannedE,
+    placedF: fieldF.placed.length,
+    plannedF,
   };
 }
 
