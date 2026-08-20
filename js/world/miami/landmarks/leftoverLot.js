@@ -49,7 +49,8 @@ import { cBox, cCyl, stripBoxCaps, roofSlabGeo } from '../geo.js';
  * 1 m leftover apron, not a kiss.
  * Lot H is the same leftoverLotGeom kit at the signed 398/84 cell — not a
  * leftoverLotHGeom fork, not leftoverLotDirtGeom, not a slide of A–G.
- * H-park waits.
+ * H-park is now the signed 398/96 hull (390–406 × 92–100), 2 m inland,
+ * 1 m leftover apron, not a kiss.
  */
 
 const STEEL = 0x7a8078;
