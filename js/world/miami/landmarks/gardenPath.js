@@ -119,15 +119,15 @@ import { cBox } from '../geo.js';
  * hull merge / helipad / warehouse / 276 park / FF spine /
  * 364 = drop, never nudge. Signed 390→406 / z=96 H-park
  * spine reuses the same kit — not a parkWalkHHGeom, not a
- * gardenPathHGeom, not leftoverLotDirtGeom, not a 4.2 m slab,
+ * gardenPathHGeom, not leftoverLotDirtGeom, not a wide slab,
  * not a slide of 373→389 / z=96. Last slab stays inside 406.
  * Starts 1 m east of G-park 389. Does not merge with
  * PARK_WALK_GG_X1=389 (1 m west gap, same z). Lives on the
  * H-park hull (390–406 × 92–100) by design. leftoverLot H
  * reserved z1+1.4=91.4 vs walk z0=95.2 — leftoverLotOverlap
  * is 0. Walk eats ~26 m². Honest leftover on the H hull
- * after this spine is ~10k. POCKET_PARK_H_INSTANCES_MIN/MAX
- * stay 10000/13000. 13k is a ceiling. Do not backfill. Do
+ * after this spine is ~10k. H leftover MIN/MAX stay
+ * 10000/13000. 13k is a ceiling. Do not backfill. Do
  * not drop H leftover to 8–11k on this file (that wait is
  * the later kit). No kit on this merge. Do not merge G-park
  * 389. G leftover stays 8000–11000. F leftover stays
