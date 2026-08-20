@@ -595,6 +595,44 @@ export const PARK_BENCH_EE_X1 = PARK_BENCH_EE_X + PARK_BENCH_EE_W / 2;
 export const PARK_BENCH_EE_Z0 = PARK_BENCH_EE_Z - PARK_BENCH_EE_DEPTH / 2;
 export const PARK_BENCH_EE_Z1 = PARK_BENCH_EE_Z + PARK_BENCH_EE_DEPTH / 2;
 
+// ---- E-park west bench (same Tiny Glade 3-seat slat kit; signed 340.5 / 94.4) ----
+// Desi signed the cell. Do not invent or slide x/z. Never nudge.
+// Same gardenBenchGeom / gardenBenchParts — not gardenBenchEGeom /
+// gardenBenchFGeom / gardenBenchGGeom / parkBenchEEWGeom /
+// parkBenchFGeom, not a slide of 347 / 94.4. −6.5 m off 347
+// (347 − 6.5 = 340.5). Width 1.8 → x0=339.6, x1=341.4. East end
+// 341.4 stays west of 347/94.4 (that bench x0=346.1). Yaw faces
+// +Z / toward the EE spine at z=96. PARK_BENCH_EE_W_YAW is
+// PARK_BENCH_EE_YAW (0) so the shared geom does not fork or flip
+// 276/82.4 / 276/90 / 269.5 / 282.5 / 347/94.4. 0.8 m is the 82.4
+// convention: center-to-spine (spine z0=95.2; 95.2 − 0.8 = 94.4),
+// not the 269.5 edge-to-walk rule. Lives on the signed 347/96 hull
+// (339–355 × 92–100) by design. West end 339.6 is inside 339.
+// Misses leftoverLot E (E z1=90). Kiss 347/94.4 / 339→355 / z=96
+// spine / leftoverLot E / helipad / warehouse / 276 park / 276
+// benches / 276 walks / pavement / streetOverlap = drop, never
+// nudge. 347/94.4 stays. 347/98.5 pergola stays. EE spine
+// 339→355 / z=96 stays. West walk 339→345.2 / z=98.5 stays. East
+// walk 348.8→355 / z=98.5 stays. 276 park 268–284 × 88–96 and all
+// 276 walks/benches/pergola stay. leftoverLot A–E stay 258 / 295 /
+// 313 / 330 / 347 at z=84. Garden path 268→284 / z=84 stays.
+// E leftover band stays 8000–11000 (placedE after #59 was 8256).
+// Bench plate is ~0.8 m² — do not restack the grass floor. Do not
+// backfill to 12800. Do not change MIN/MAX. Scatter still uses
+// tryPlace.
+export const PARK_BENCH_EE_W_X = 340.5;
+export const PARK_BENCH_EE_W_Z = 94.4;
+export const PARK_BENCH_EE_W_YAW = PARK_BENCH_EE_YAW;
+export const PARK_BENCH_EE_W_W = GARDEN_BENCH_W;
+export const PARK_BENCH_EE_W_DEPTH = GARDEN_BENCH_DEPTH;
+export const PARK_BENCH_EE_W_SEAT_H = GARDEN_BENCH_SEAT_H;
+export const PARK_BENCH_EE_W_BACK_H = GARDEN_BENCH_BACK_H;
+export const PARK_BENCH_EE_W_UNDER_CLEAR = GARDEN_BENCH_UNDER_CLEAR;
+export const PARK_BENCH_EE_W_X0 = PARK_BENCH_EE_W_X - PARK_BENCH_EE_W_W / 2;
+export const PARK_BENCH_EE_W_X1 = PARK_BENCH_EE_W_X + PARK_BENCH_EE_W_W / 2;
+export const PARK_BENCH_EE_W_Z0 = PARK_BENCH_EE_W_Z - PARK_BENCH_EE_W_DEPTH / 2;
+export const PARK_BENCH_EE_W_Z1 = PARK_BENCH_EE_W_Z + PARK_BENCH_EE_W_DEPTH / 2;
+
 // ---- leftoverGrass (Tiny Glade grow-to-gap; leftover-city hull) ----
 // Signed x 267–285 / z 81.0–86.0. Desi + Reesy signed the box. Do not
 // invent or slide it. One hull around the path and bench, not OSM, not
@@ -653,8 +691,10 @@ export const LEFTOVER_GRASS_AABB = false;
 // ~102 m² → ~10k. The 339→345.2 / z=98.5 west walk eats ~10 m²
 // more; leftover stayed 9000–11000. The 348.8→355 / z=98.5 east
 // walk eats ~10 m² more. Reesy signed the leftover band at
-// 8000–11000 (~8.2k expected from 9248 minus ~10 m²). Do not
-// backfill to 12800. POCKET_PARK_E_INSTANCES is that leftover
+// 8000–11000 (~8.2k expected from 9248 minus ~10 m²). The
+// 340.5 / 94.4 west bench plate is ~0.8 m² — do not restack
+// the grass floor. Do not backfill to 12800. Do not change
+// MIN/MAX. POCKET_PARK_E_INSTANCES is that leftover
 // band (8000–11000), not the empty 10000–13000. 13k is still a
 // ceiling, not a goal.
 // Lean at nearest leftoverLot fence (including E, 2 m inland) or
@@ -1494,14 +1534,16 @@ export function gardenPathPlantSpots(g = gardenPathGeom()) {
  * (PARK_BENCH_W_X, PARK_BENCH_W_Z) for the west park bench at
  * 269.5 / 90. Pass (PARK_BENCH_E_X, PARK_BENCH_E_Z) for the
  * east twin at 282.5 / 90. Pass (PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
- * for the E-park bench at 347 / 94.4. Same schema — never
- * gardenBenchBGeom / gardenBenchCGeom / gardenBenchDGeom /
- * gardenBenchEGeom / gardenBenchFGeom / parkBenchEEGeom. Yaw
- * faces the walk at z=84 (−Z when inland of the path) unless the
- * signed cell publishes its own yaw (347 / 94.4 faces +Z toward
- * the EE spine at z=96). Never remaps x/z. Scatter stays on
- * tryPlace. Sit-box is empty air. Under-slat clear is whoop +
- * 5″ knife.
+ * for the E-park bench at 347 / 94.4. Pass (PARK_BENCH_EE_W_X,
+ * PARK_BENCH_EE_W_Z) for the E-park west bench at 340.5 / 94.4.
+ * Same schema — never gardenBenchBGeom / gardenBenchCGeom /
+ * gardenBenchDGeom / gardenBenchEGeom / gardenBenchFGeom /
+ * gardenBenchGGeom / parkBenchEEGeom / parkBenchEEWGeom /
+ * parkBenchFGeom. Yaw faces the walk at z=84 (−Z when inland of
+ * the path) unless the signed cell publishes its own yaw
+ * (347 / 94.4 and 340.5 / 94.4 face +Z toward the EE spine at
+ * z=96). Never remaps x/z. Scatter stays on tryPlace. Sit-box
+ * is empty air. Under-slat clear is whoop + 5″ knife.
  */
 export function gardenBenchGeom(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const w = GARDEN_BENCH_W;
@@ -1512,7 +1554,9 @@ export function gardenBenchGeom(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const z1 = cz + depth / 2;
   const yaw = (cx === PARK_BENCH_EE_X && cz === PARK_BENCH_EE_Z)
     ? PARK_BENCH_EE_YAW
-    : (cz > GARDEN_PATH_Z ? PARK_BENCH_YAW : 0);
+    : (cx === PARK_BENCH_EE_W_X && cz === PARK_BENCH_EE_W_Z)
+      ? PARK_BENCH_EE_W_YAW
+      : (cz > GARDEN_PATH_Z ? PARK_BENCH_YAW : 0);
   return {
     x: cx, z: cz, yaw,
     w, depth,
@@ -1531,6 +1575,7 @@ function gardenBenchSignedCells() {
     [PARK_BENCH_W_X, PARK_BENCH_W_Z],
     [PARK_BENCH_E_X, PARK_BENCH_E_Z],
     [PARK_BENCH_EE_X, PARK_BENCH_EE_Z],
+    [PARK_BENCH_EE_W_X, PARK_BENCH_EE_W_Z],
   ];
 }
 
@@ -1552,9 +1597,11 @@ export function inGardenBench(x, z, margin = 0) {
  * Default is 276 / 82.4. Pass (PARK_BENCH_X, PARK_BENCH_Z) for the
  * park bench. Pass (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90.
  * Pass (PARK_BENCH_E_X, PARK_BENCH_E_Z) for 282.5 / 90. Pass
- * (PARK_BENCH_EE_X, PARK_BENCH_EE_Z) for 347 / 94.4 — never
- * gardenBenchBParts / gardenBenchCParts / gardenBenchDParts /
- * gardenBenchEParts / gardenBenchFParts / parkBenchEEParts.
+ * (PARK_BENCH_EE_X, PARK_BENCH_EE_Z) for 347 / 94.4. Pass
+ * (PARK_BENCH_EE_W_X, PARK_BENCH_EE_W_Z) for 340.5 / 94.4 —
+ * never gardenBenchBParts / gardenBenchCParts / gardenBenchDParts /
+ * gardenBenchEParts / gardenBenchFParts / gardenBenchGParts /
+ * parkBenchEEParts / parkBenchEEWParts / parkBenchFParts.
  */
 export function gardenBenchParts(cx = GARDEN_BENCH_X, cz = GARDEN_BENCH_Z) {
   const g = gardenBenchGeom(cx, cz);
@@ -1674,6 +1721,8 @@ export const RESERVED = [
     z0: PARK_BENCH_E_Z0 - 1.5, z1: PARK_BENCH_E_Z1 + 1.4, tag: 'gardenBench' },
   { x0: PARK_BENCH_EE_X0 - 2.2, x1: PARK_BENCH_EE_X1 + 1.8,
     z0: PARK_BENCH_EE_Z0 - 1.5, z1: PARK_BENCH_EE_Z1 + 1.4, tag: 'gardenBench' },
+  { x0: PARK_BENCH_EE_W_X0 - 2.2, x1: PARK_BENCH_EE_W_X1 + 1.8,
+    z0: PARK_BENCH_EE_W_Z0 - 1.5, z1: PARK_BENCH_EE_W_Z1 + 1.4, tag: 'gardenBench' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -1889,15 +1938,17 @@ export function gardenPathRejected(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
  * Pass (PARK_BENCH_X, PARK_BENCH_Z) for the park bench. Pass
  * (PARK_BENCH_W_X, PARK_BENCH_W_Z) for 269.5 / 90. Pass
  * (PARK_BENCH_E_X, PARK_BENCH_E_Z) for 282.5 / 90. Pass
- * (PARK_BENCH_EE_X, PARK_BENCH_EE_Z) for 347 / 94.4. Fail if
- * pavement, streetOverlap, leftoverLot A–E reserved, warehouse
- * reserved, helipad reserved, a garden-path slab kiss, a kiss of
- * the EE spine slabs, a kiss of the x=272 N-S walk, a kiss of
- * the x=280 N-S walk, or a kiss of another signed bench (276/90 /
- * 269.5/90 / 282.5/90 / 347/94.4). 347 / 94.4 lives on the E park
- * hull — sitting inside POCKET_PARK_E reserved/keepout is not a
- * fail (276 benches already sit on the 276 park plate). Path
- * keepout padding is expected (0.8 m ocean of z0=83.2; 0.8 m
+ * (PARK_BENCH_EE_X, PARK_BENCH_EE_Z) for 347 / 94.4. Pass
+ * (PARK_BENCH_EE_W_X, PARK_BENCH_EE_W_Z) for 340.5 / 94.4.
+ * Fail if pavement, streetOverlap, leftoverLot A–E reserved,
+ * warehouse reserved, helipad reserved, a garden-path slab kiss,
+ * a kiss of the EE spine slabs, a kiss of the x=272 N-S walk, a
+ * kiss of the x=280 N-S walk, or a kiss of another signed bench
+ * (276/90 / 269.5/90 / 282.5/90 / 347/94.4 / 340.5/94.4).
+ * 347 / 94.4 and 340.5 / 94.4 live on the E park hull — sitting
+ * inside POCKET_PARK_E reserved/keepout is not a fail (276
+ * benches already sit on the 276 park plate). Path keepout
+ * padding is expected (0.8 m ocean of z0=83.2; 0.8 m
  * edge-to-walk of x0=271.2 / x1=280.8; 0.8 m center-to-spine of
  * EE z0=95.2) and is not a fail. Never nudges x/z.
  */
@@ -2351,6 +2402,8 @@ export const KEEPOUT = [
     z0: PARK_BENCH_E_Z0 - 1.3, z1: PARK_BENCH_E_Z1 + 1.2, tag: 'gardenBench' },
   { x0: PARK_BENCH_EE_X0 - 2.0, x1: PARK_BENCH_EE_X1 + 1.6,
     z0: PARK_BENCH_EE_Z0 - 1.3, z1: PARK_BENCH_EE_Z1 + 1.2, tag: 'gardenBench' },
+  { x0: PARK_BENCH_EE_W_X0 - 2.0, x1: PARK_BENCH_EE_W_X1 + 1.6,
+    z0: PARK_BENCH_EE_W_Z0 - 1.3, z1: PARK_BENCH_EE_W_Z1 + 1.2, tag: 'gardenBench' },
   { x0: LEFTOVER_GRASS_X0, x1: LEFTOVER_GRASS_X1,
     z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1, tag: 'leftoverGrass' },
   { x0: POCKET_PARK_X0, x1: POCKET_PARK_X1,
