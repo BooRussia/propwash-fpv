@@ -26,18 +26,19 @@ import { tessellateHull, tryPlace } from '../planting.js';
  * not dirt COVER_NEAR 3.36.
  *
  * Shared kit, not a second scatterer. Not a pocketParkEGeom fork.
- * Not a pocketParkFGeom fork. Not a pocketParkGGeom fork. Not a
- * slide of 276. Plant from the grid. tryPlace reject-or-drop off
- * pavement, warehouse, leftoverLot A–G reserved, helipad E, and
- * the garden path. Never nudge. Lean at nearest leftoverLot fence
- * (including E, 2 m inland, F, 2 m inland, and G, 2 m inland) or
- * garden path if it reaches. Do not slide the 276 hull onto the
- * path (z0=88 sits inland of path z1=84.8). Signed 276/92, plate
- * 16×8, bounds 268–284 / 88–96. Second hull at signed 347/96,
- * same kit, bounds 339–355 / 92–100 (Desi + Reesy). Third hull
- * at signed 364/96, same kit, bounds 356–372 / 92–100 (Desi +
- * Reesy). Fourth hull at signed 381/96, same kit, bounds
- * 373–389 / 92–100 (Desi + Reesy). leftoverLotOverlap of G
+ * Not a pocketParkFGeom fork. Not a pocketParkGGeom fork. Not a slide of 276.
+ * Plant from the grid. tryPlace reject-or-drop off pavement, warehouse,
+ * leftoverLot A–G reserved, helipad E, and the garden path. Never
+ * nudge. Lean at nearest leftoverLot fence (including E, 2 m
+ * inland, F, 2 m inland, and G, 2 m inland) or garden path if it
+ * reaches. Do not slide the 276 hull onto the path (z0=88 sits
+ * inland of path z1=84.8). Signed 276/92, plate 16×8, bounds
+ * 268–284 / 88–96. Second hull at signed 347/96, same kit, bounds
+ * 339–355 / 92–100 (Desi + Reesy). Third hull at signed 364/96,
+ * same kit, bounds 356–372 / 92–100 (Desi + Reesy). leftoverLotOverlap
+ * of F reserved is 0 (1 m leftover apron, not a kiss). E-park x1=355
+ * must not merge with this hull. Fourth hull at signed 381/96, same
+ * kit, bounds 373–389 / 92–100 (Desi + Reesy). leftoverLotOverlap of G
  * reserved is 0 (1 m leftover apron, not a kiss). F-park x1=372
  * must not merge with this hull. leftoverLot A–G stay.
  */
@@ -130,6 +131,8 @@ function stampField(im, list) {
  * Never remaps x/z. Scatter stays on tryPlace. Same pocketParkHull
  * kit at 276/92, 347/96, 364/96, and 381/96 — not a pocketParkEGeom
  * fork, not a pocketParkFGeom fork, not a pocketParkGGeom fork.
+ * leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not a
+ * kiss). E-park x1=355 must not merge with the 364/96 hull.
  * leftoverLotOverlap of G reserved is 0 (1 m leftover apron, not a
  * kiss). F-park x1=372 must not merge with the 381/96 hull.
  * leftoverLot A–G stay.

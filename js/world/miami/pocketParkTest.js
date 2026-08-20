@@ -624,7 +624,7 @@ export function runMiamiPocketParkTests() {
   ok('kit comment names the second hull, not a fork',
     park.includes('347/96') && park.includes('pocketParkEGeom fork')
     && park.includes('Not a slide of 276')
-    && park.includes('leftoverLot A–F')
+    && park.includes('leftoverLot A–G')
     && constants.includes('347/96')
     && constants.includes('never pocketParkEGeom'));
 
@@ -821,7 +821,7 @@ export function runMiamiPocketParkTests() {
     park.includes('364/96') && park.includes('pocketParkFGeom fork')
     && park.includes('leftoverLotOverlap of F')
     && park.includes('E-park x1=355')
-    && park.includes('leftoverLot A–F')
+    && park.includes('leftoverLot A–G')
     && constants.includes('364/96')
     && constants.includes('never pocketParkFGeom')
     && constants.includes('leftoverLotOverlap of F reserved is 0')
@@ -966,9 +966,10 @@ export function runMiamiPocketParkTests() {
     && fieldG.placed.length <= POCKET_PARK_G_INSTANCES_MAX
     && POCKET_PARK_G_INSTANCES_MIN === 10000
     && POCKET_PARK_G_INSTANCES_MAX === 13000
-    && fieldG.placed.length !== 12800
+    && fieldG.placed.length !== POCKET_PARK_G_INSTANCES_MAX
     && plannedG >= POCKET_PARK_G_INSTANCES_MIN
-    && plannedG <= POCKET_PARK_G_INSTANCES_MAX,
+    && plannedG <= POCKET_PARK_G_INSTANCES_MAX
+    && plannedG === 12800,
     `placedG=${fieldG.placed.length} plannedG=${plannedG}`);
   ok('F leftover floor stays 8000–11000 after walks',
     fieldF.placed.length >= POCKET_PARK_F_INSTANCES_MIN
