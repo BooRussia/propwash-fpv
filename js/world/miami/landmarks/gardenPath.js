@@ -13,6 +13,7 @@ import {
   PARK_WALK_FF_X, PARK_WALK_FF_Z,
   PARK_WALK_FF_W_X, PARK_WALK_FF_W_Z,
   PARK_WALK_FF_E_X, PARK_WALK_FF_E_Z,
+  PARK_WALK_GG_X, PARK_WALK_GG_Z,
   GARDEN_PATH_SLAB_H, GARDEN_PATH_HULL_COLLIDER,
   gardenPathGeom, gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
   gardenPathRejected, inGardenPathSlab, inLeftoverLotReserved,
@@ -91,7 +92,18 @@ import { cBox } from '../geo.js';
  * Do not merge E-park 355. E leftover stays 8000–11000.
  * Kiss leftoverLot F / leftoverLot A–F reserved / E-park
  * hull merge / helipad / warehouse / 276 park / EE spine /
- * 347 = drop, never nudge.
+ * 347 = drop, never nudge. Signed 373→389 / z=96 G-park
+ * spine reuses the same kit — not a parkWalkGGGeom, not a
+ * gardenPathGGeom, not a leftoverLotDirtGeom, not a slide
+ * of 356→372 / z=96. Last slab stays
+ * inside 389. Starts 1 m east of F-park 372. Does not merge
+ * with PARK_WALK_FF_X1=372 (1 m west gap, same z). Lives on
+ * the G-park hull (373–389 × 92–100) by design. leftoverLot G
+ * reserved z1+1.4=91.4 vs walk z0=95.2 — leftoverLotOverlap
+ * is 0. Walk eats ~26 m². G leftover after this walk drops
+ * below 12800. Do not backfill to 13k. Kiss leftoverLot G /
+ * leftoverLot A–G reserved / F-park hull merge / helipad /
+ * warehouse / 276 park / FF spine / 347 = drop, never nudge.
  */
 
 const STONE = 0xb4a890;
@@ -163,6 +175,7 @@ function buildWeeds(parts, spots) {
  * F-park spine is gardenPathGeom(PARK_WALK_FF_X, PARK_WALK_FF_Z).
  * F-park west walk is gardenPathGeom(PARK_WALK_FF_W_X, PARK_WALK_FF_W_Z).
  * F-park east walk is gardenPathGeom(PARK_WALK_FF_E_X, PARK_WALK_FF_E_Z).
+ * G-park spine is gardenPathGeom(PARK_WALK_GG_X, PARK_WALK_GG_Z).
  */
 export function buildGardenPath(ctx) {
   if (gardenPathRejected()) return null;
@@ -364,6 +377,24 @@ export function buildGardenPath(ctx) {
     }
   } else if (onPavement(PARK_WALK_FF_E_X, PARK_WALK_FF_E_Z)) {
     tryPlace(ctx, PARK_WALK_FF_E_X, PARK_WALK_FF_E_Z);
+  }
+
+  const ggGeom = gardenPathGeom(PARK_WALK_GG_X, PARK_WALK_GG_Z);
+  if (!gardenPathRejected(PARK_WALK_GG_X, PARK_WALK_GG_Z)
+      && !onPavement(PARK_WALK_GG_X, PARK_WALK_GG_Z)) {
+    const ggHull = gardenPathGrassHull(ggGeom);
+    if (ggHull.collider === GARDEN_PATH_HULL_COLLIDER) {
+      buildGrassHull(grass, ggHull);
+      buildSlabs(stone, ggGeom);
+      const ggPlants = gardenPathPlantSpots(ggGeom);
+      for (let i = 0; i < ggPlants.weeds.length; i++) {
+        const p = ggPlants.weeds[i];
+        if (!pathPlantDrop(ctx, p.x, p.z)) continue;
+        kept.push(p);
+      }
+    }
+  } else if (onPavement(PARK_WALK_GG_X, PARK_WALK_GG_Z)) {
+    tryPlace(ctx, PARK_WALK_GG_X, PARK_WALK_GG_Z);
   }
   buildWeeds(weeds, kept);
 
