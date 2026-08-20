@@ -3,8 +3,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CITY_Y,
   GARDEN_PATH_X, GARDEN_PATH_Z,
+  PARK_WALK_X, PARK_WALK_Z,
   GARDEN_PATH_SLAB_H, GARDEN_PATH_HULL_COLLIDER,
-  gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
+  gardenPathGeom, gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
   gardenPathRejected, inGardenPathSlab, inLeftoverLotReserved,
   installGardenPathColliders, onPavement, streetOverlap, groundHeight,
 } from '../constants.js';
@@ -27,6 +28,11 @@ import { cBox } from '../geo.js';
  * Shared kit + local jitter on slab size / joint, not a second scatterer.
  * Reject-or-drop: pavement, streetOverlap, leftoverLot A/B/C reserved.
  * Never nudge. Signed 268→284 / z=84 / width 1.6 m (Desi + Reesy).
+ * Signed 268→274.2 / z=94 park walk reuses gardenPathGeom /
+ * gardenPathSlabs — not a gardenPathBGeom, not a parkWalkGeom, not a
+ * slide of 268→284 / z=84. Ends 1.8 m west of 276. Do not extend into
+ * the sash. Kiss posts / 276/90 / 276/82.4 / leftover lots / pavement /
+ * streetOverlap = drop, never nudge.
  */
 
 const STONE = 0xb4a890;
@@ -61,8 +67,8 @@ function buildGrassHull(parts, hull) {
   parts.push(cBox(w, 0.014, d, GRASS, x, CITY_Y + 0.007, z));
 }
 
-function buildSlabs(parts) {
-  const slabs = gardenPathSlabs();
+function buildSlabs(parts, g) {
+  const slabs = gardenPathSlabs(g);
   const y = CITY_Y + 0.012 + GARDEN_PATH_SLAB_H / 2;
   for (let i = 0; i < slabs.length; i++) {
     const s = slabs[i];
@@ -85,9 +91,10 @@ function buildWeeds(parts, spots) {
 }
 
 /**
- * Instance the Tiny Glade flagstone kit on the signed walk. Rejects if the
+ * Instance the Tiny Glade flagstone kit on the signed walks. Rejects if the
  * cell is pavement, a street, or leftoverLot A/B/C reserved. Never remaps
- * x/z. Scatter stays on tryPlace.
+ * x/z. Scatter stays on tryPlace. Park walk is
+ * gardenPathGeom(PARK_WALK_X, PARK_WALK_Z) — not a gardenPathBGeom.
  */
 export function buildGardenPath(ctx) {
   if (gardenPathRejected()) return null;
@@ -109,6 +116,24 @@ export function buildGardenPath(ctx) {
     const p = plants.weeds[i];
     if (!pathPlantDrop(ctx, p.x, p.z)) continue;
     kept.push(p);
+  }
+
+  const parkGeom = gardenPathGeom(PARK_WALK_X, PARK_WALK_Z);
+  if (!gardenPathRejected(PARK_WALK_X, PARK_WALK_Z)
+      && !onPavement(PARK_WALK_X, PARK_WALK_Z)) {
+    const parkHull = gardenPathGrassHull(parkGeom);
+    if (parkHull.collider === GARDEN_PATH_HULL_COLLIDER) {
+      buildGrassHull(grass, parkHull);
+      buildSlabs(stone, parkGeom);
+      const parkPlants = gardenPathPlantSpots(parkGeom);
+      for (let i = 0; i < parkPlants.weeds.length; i++) {
+        const p = parkPlants.weeds[i];
+        if (!pathPlantDrop(ctx, p.x, p.z)) continue;
+        kept.push(p);
+      }
+    }
+  } else if (onPavement(PARK_WALK_X, PARK_WALK_Z)) {
+    tryPlace(ctx, PARK_WALK_X, PARK_WALK_Z);
   }
   buildWeeds(weeds, kept);
 
