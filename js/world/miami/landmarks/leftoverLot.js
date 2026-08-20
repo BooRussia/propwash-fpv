@@ -9,6 +9,7 @@ import {
   LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z,
   LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z,
   LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z,
+  LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z,
   LEFTOVER_LOT_GATE_W,
   LEFTOVER_LOT_WALK_W, LEFTOVER_LOT_WALK_H,
   LEFTOVER_LOT_SHED_DOOR_W, LEFTOVER_LOT_SHED_DOOR_H,
@@ -46,6 +47,9 @@ import { cBox, cCyl, stripBoxCaps, roofSlabGeo } from '../geo.js';
  * leftoverLotGGeom fork, not leftoverLotDirtGeom, not a slide of A–F.
  * G-park is now the signed 381/96 hull (373–389 × 92–100), 2 m inland,
  * 1 m leftover apron, not a kiss.
+ * Lot H is the same leftoverLotGeom kit at the signed 398/84 cell — not a
+ * leftoverLotHGeom fork, not leftoverLotDirtGeom, not a slide of A–G.
+ * H-park waits.
  */
 
 const STEEL = 0x7a8078;
@@ -257,6 +261,9 @@ export function buildLeftoverLot(ctx) {
   }
   if (!onPavement(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)) {
     lots.push(leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z));
+  }
+  if (!onPavement(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)) {
+    lots.push(leftoverLotGeom(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
   }
 
   for (let n = 0; n < lots.length; n++) {

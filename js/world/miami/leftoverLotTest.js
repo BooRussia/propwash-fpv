@@ -22,6 +22,8 @@ import {
   LEFTOVER_LOT_F_X0, LEFTOVER_LOT_F_X1, LEFTOVER_LOT_F_Z0, LEFTOVER_LOT_F_Z1,
   LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D,
   LEFTOVER_LOT_G_X0, LEFTOVER_LOT_G_X1, LEFTOVER_LOT_G_Z0, LEFTOVER_LOT_G_Z1,
+  LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D,
+  LEFTOVER_LOT_H_X0, LEFTOVER_LOT_H_X1, LEFTOVER_LOT_H_Z0, LEFTOVER_LOT_H_Z1,
   GARDEN_PATH_X0, GARDEN_PATH_X1, GARDEN_PATH_Z,
   GARDEN_BENCH_X, GARDEN_BENCH_Z,
   LEFTOVER_GRASS_X0, LEFTOVER_GRASS_X1, LEFTOVER_GRASS_Z0, LEFTOVER_GRASS_Z1,
@@ -114,6 +116,7 @@ export function runMiamiLeftoverLotTests() {
   const geomE = leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z);
   const geomF = leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z);
   const geomG = leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z);
+  const geomH = leftoverLotGeom(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z);
   const voids = leftoverLotVoids();
   const shapes = leftoverLotColliderShapes();
   const plants = leftoverLotPlantSpots();
@@ -123,6 +126,7 @@ export function runMiamiLeftoverLotTests() {
   const plantsE = leftoverLotPlantSpots(geomE);
   const plantsF = leftoverLotPlantSpots(geomF);
   const plantsG = leftoverLotPlantSpots(geomG);
+  const plantsH = leftoverLotPlantSpots(geomH);
   const gate = voids.find((v) => v.kind === 'gate');
   const walk = voids.find((v) => v.kind === 'walk');
   const shedDoor = voids.find((v) => v.kind === 'shed-door');
@@ -132,6 +136,7 @@ export function runMiamiLeftoverLotTests() {
   const gateE = voids.find((v) => v.kind === 'gate' && v.x === LEFTOVER_LOT_E_X);
   const gateF = voids.find((v) => v.kind === 'gate' && v.x === LEFTOVER_LOT_F_X);
   const gateG = voids.find((v) => v.kind === 'gate' && v.x === LEFTOVER_LOT_G_X);
+  const gateH = voids.find((v) => v.kind === 'gate' && v.x === LEFTOVER_LOT_H_X);
 
   // ---- leftover-city vacant parcel, signed cell --------------------------
   ok('lot cell is signed 258/84', LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84);
@@ -676,15 +681,143 @@ export function runMiamiLeftoverLotTests() {
     && LEFTOVER_LOT_G_X0 > POCKET_PARK_X1
     && LEFTOVER_LOT_G_X0 === POCKET_PARK_F_X1 + 2);
 
-  // ---- leftoverLot G live; street tower drops, never nudge ---------------
-  ok('lots A/B/C/D/E/F/G footprints are not in the street',
+  // ---- leftoverLot H: eighth leftover-city parcel, same schema -----------
+  ok('#34 / #35 / C / D / E / F / G stay signed 258/84, 295/84, 313/84, 330/84, 347/84, 364/84, and 381/84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
+    && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84
+    && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84
+    && LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84
+    && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84
+    && LEFTOVER_LOT_F_X === 364 && LEFTOVER_LOT_F_Z === 84
+    && LEFTOVER_LOT_G_X === 381 && LEFTOVER_LOT_G_Z === 84);
+  ok('lot H cell is signed 398/84', LEFTOVER_LOT_H_X === 398 && LEFTOVER_LOT_H_Z === 84);
+  ok('lot H is G+17 m',
+    LEFTOVER_LOT_H_X === LEFTOVER_LOT_G_X + 17 && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_G_Z);
+  ok('lot H plate is signed 14 × 12', LEFTOVER_LOT_H_W === 14 && LEFTOVER_LOT_H_D === 12);
+  ok('lot H bounds are signed',
+    LEFTOVER_LOT_H_X0 === 391 && LEFTOVER_LOT_H_X1 === 405
+    && LEFTOVER_LOT_H_Z0 === 78 && LEFTOVER_LOT_H_Z1 === 90);
+  ok('lot H plate was not grown',
+    LEFTOVER_LOT_H_X1 - LEFTOVER_LOT_H_X0 === LEFTOVER_LOT_H_W
+    && LEFTOVER_LOT_H_Z1 - LEFTOVER_LOT_H_Z0 === LEFTOVER_LOT_H_D
+    && LEFTOVER_LOT_H_W === LEFTOVER_LOT_W && LEFTOVER_LOT_H_D === LEFTOVER_LOT_D
+    && LEFTOVER_LOT_H_W === LEFTOVER_LOT_G_W && LEFTOVER_LOT_H_D === LEFTOVER_LOT_G_D);
+  ok('lot H reuses leftoverLotGeom',
+    geomH.x0 === LEFTOVER_LOT_H_X0 && geomH.x1 === LEFTOVER_LOT_H_X1
+    && geomH.z0 === LEFTOVER_LOT_H_Z0 && geomH.z1 === LEFTOVER_LOT_H_Z1
+    && geomH.h === LEFTOVER_LOT_FENCE_H
+    && geom.x0 === LEFTOVER_LOT_X0 && geom.x1 === LEFTOVER_LOT_X1
+    && geomB.x0 === LEFTOVER_LOT_B_X0 && geomB.x1 === LEFTOVER_LOT_B_X1
+    && geomC.x0 === LEFTOVER_LOT_C_X0 && geomC.x1 === LEFTOVER_LOT_C_X1
+    && geomD.x0 === LEFTOVER_LOT_D_X0 && geomD.x1 === LEFTOVER_LOT_D_X1
+    && geomE.x0 === LEFTOVER_LOT_E_X0 && geomE.x1 === LEFTOVER_LOT_E_X1
+    && geomF.x0 === LEFTOVER_LOT_F_X0 && geomF.x1 === LEFTOVER_LOT_F_X1
+    && geomG.x0 === LEFTOVER_LOT_G_X0 && geomG.x1 === LEFTOVER_LOT_G_X1);
+  ok('lot H is not pavement', !onPavement(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('lot H is not boardwalk', !onBoardwalk(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('lot H is not roadway', !onRoadway(LEFTOVER_LOT_H_Z));
+  ok('lot H is not a cross-street', !onCrossStreet(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('lot H is not a sidewalk slab', !onSidewalk(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('lot H sits on leftover-city grade',
+    groundHeight(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === CITY_Y);
+  ok('lot H is reserved', inReserved(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('lot H is a keepout', inKeepout(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('reservedOverlap covers lot H plate',
+    reservedOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D));
+  ok('leftoverLotOverlap covers lot H plate',
+    leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D));
+  ok('inLeftoverLotReserved covers lot H',
+    inLeftoverLotReserved(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
+  ok('tryPlace drops reserved H', tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0);
+  ok('tryPlace does not remap lot H', tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0);
+  ok('lot H starts 1.2 m off G reserved',
+    LEFTOVER_LOT_H_X0 === 391
+    && LEFTOVER_LOT_G_X1 + 1.8 === 389.8
+    && LEFTOVER_LOT_H_X0 === LEFTOVER_LOT_G_X1 + 1.8 + 1.2);
+  ok('lot H east of lot G reserved', LEFTOVER_LOT_H_X0 >= LEFTOVER_LOT_G_X1 + 1.8);
+  ok('lot H is 1.2 m east of G x1=388',
+    LEFTOVER_LOT_G_X1 === 388 && LEFTOVER_LOT_H_X0 === LEFTOVER_LOT_G_X1 + 3);
+  ok('H vs G reserved is a 1.2 m gap, not a leftoverLotOverlap kiss',
+    LEFTOVER_LOT_H_X0 === 391 && LEFTOVER_LOT_G_X1 + 1.8 === 389.8
+    && LEFTOVER_LOT_H_X0 === LEFTOVER_LOT_G_X1 + 1.8 + 1.2
+    && leftoverLotOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D)
+    && leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D));
+  ok('lot H does not merge with G-park 389',
+    POCKET_PARK_G_X1 === 389 && LEFTOVER_LOT_H_X0 === 391
+    && LEFTOVER_LOT_H_X0 === POCKET_PARK_G_X1 + 2
+    && LEFTOVER_LOT_H_X0 !== 389);
+  ok('H vs G-park leftoverLotOverlap is 0 (2 m south apron, not a kiss)',
+    !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
+    && LEFTOVER_LOT_H_X0 === 391 && POCKET_PARK_G_X1 === 389
+    && LEFTOVER_LOT_H_Z1 === 90 && POCKET_PARK_G_Z0 === 92
+    && LEFTOVER_LOT_H_Z1 + 2 === POCKET_PARK_G_Z0
+    && LEFTOVER_LOT_H_Z1 + 1.4 === 91.4
+    && Math.abs((LEFTOVER_LOT_H_Z1 + 1.4) - POCKET_PARK_G_Z0 + 0.6) < 1e-9);
+  ok('G-park leftoverLotOverlap of leftover reserved stays 0 after H',
+    !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
+    && POCKET_PARK_G_X0 === 373 && POCKET_PARK_G_X1 === 389
+    && POCKET_PARK_G_Z0 === 92 && POCKET_PARK_G_Z1 === 100
+    && LEFTOVER_LOT_G_X0 === 374 && LEFTOVER_LOT_G_X1 === 388
+    && LEFTOVER_LOT_G_Z0 === 78 && LEFTOVER_LOT_G_Z1 === 90);
+  ok('lot H west of helipadE', LEFTOVER_LOT_H_X1 <= 408);
+  ok('helipad E stays ~25 m east at 430/70',
+    430 - LEFTOVER_LOT_H_X1 === 25);
+  ok('GAP 429 stays ~24 m east',
+    429 - LEFTOVER_LOT_H_X1 === 24);
+  ok('lot H same inland band as #34 / #35 / C / D / E / F / G / drop / abando',
+    LEFTOVER_LOT_H_Z === 84 && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_B_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_C_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_D_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_E_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_F_Z
+    && LEFTOVER_LOT_H_Z === LEFTOVER_LOT_G_Z);
+  ok('A–G lots stay 258 / 295 / 313 / 330 / 347 / 364 / 381 at z=84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295
+    && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_D_X === 330
+    && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_F_X === 364
+    && LEFTOVER_LOT_G_X === 381
+    && LEFTOVER_LOT_Z === 84 && LEFTOVER_LOT_B_Z === 84
+    && LEFTOVER_LOT_C_Z === 84 && LEFTOVER_LOT_D_Z === 84
+    && LEFTOVER_LOT_E_Z === 84 && LEFTOVER_LOT_F_Z === 84
+    && LEFTOVER_LOT_G_Z === 84
+    && LEFTOVER_LOT_G_X0 === 374 && LEFTOVER_LOT_G_X1 === 388
+    && LEFTOVER_LOT_G_Z0 === 78 && LEFTOVER_LOT_G_Z1 === 90
+    && LEFTOVER_LOT_H_X === 398 && LEFTOVER_LOT_H_X0 === 391
+    && LEFTOVER_LOT_H_X1 === 405 && LEFTOVER_LOT_H_Z0 === 78
+    && LEFTOVER_LOT_H_Z1 === 90);
+  ok('G-park stays 373–389 × 92–100 (x1=389)',
+    POCKET_PARK_G_X === 381 && POCKET_PARK_G_Z === 96
+    && POCKET_PARK_G_X0 === 373 && POCKET_PARK_G_X1 === 389
+    && POCKET_PARK_G_Z0 === 92 && POCKET_PARK_G_Z1 === 100
+    && POCKET_PARK_G_W === 16 && POCKET_PARK_G_D === 8);
+  ok('H-park waits — no POCKET_PARK_H',
+    leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D)
+    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D));
+  ok('drop if pavement / reserved / kiss G or G-park 389',
+    tryPlace(ctx, 0, 27) === 0
+    && tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0
+    && leftoverLotOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D)
+    && leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D)
+    && !leftoverLotOverlap(POCKET_PARK_X, POCKET_PARK_Z, POCKET_PARK_W, POCKET_PARK_D)
+    && !leftoverLotOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D)
+    && !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D)
+    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
+    && LEFTOVER_LOT_H_X0 >= LEFTOVER_LOT_G_X1 + 1.8
+    && LEFTOVER_LOT_H_X0 > LEFTOVER_GRASS_X1
+    && LEFTOVER_LOT_H_X0 > POCKET_PARK_X1
+    && LEFTOVER_LOT_H_X0 === POCKET_PARK_G_X1 + 2);
+
+  // ---- leftoverLot G / H live; street tower drops, never nudge -----------
+  ok('lots A/B/C/D/E/F/G/H footprints are not in the street',
     !streetOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D)
     && !streetOverlap(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, LEFTOVER_LOT_B_W, LEFTOVER_LOT_B_D)
     && !streetOverlap(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z, LEFTOVER_LOT_C_W, LEFTOVER_LOT_C_D)
     && !streetOverlap(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, LEFTOVER_LOT_D_W, LEFTOVER_LOT_D_D)
     && !streetOverlap(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, LEFTOVER_LOT_E_W, LEFTOVER_LOT_E_D)
     && !streetOverlap(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D)
-    && !streetOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D));
+    && !streetOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D)
+    && !streetOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D));
   ok('Ocean Drive carriageway is a street footprint',
     streetOverlap(0, 44, 20, 12));
   ok('cross-street column is a street footprint',
@@ -754,6 +887,8 @@ export function runMiamiLeftoverLotTests() {
   ok('lot F interior is a flyable void', !midLotF);
   const midLotG = probeBlocked(shapes, LEFTOVER_LOT_G_X, CITY_Y + 1.0, LEFTOVER_LOT_G_Z, 0.22);
   ok('lot G interior is a flyable void', !midLotG);
+  const midLotH = probeBlocked(shapes, LEFTOVER_LOT_H_X, CITY_Y + 1.0, LEFTOVER_LOT_H_Z, 0.22);
+  ok('lot H interior is a flyable void', !midLotH);
   ok('lot B vehicle gate is open',
     !!gateB && !probeBlocked(shapes, gateB.x, gateB.y, gateB.z, gateB.probe)
     && gateB.openW === LEFTOVER_LOT_GATE_W && gateB.openH === LEFTOVER_LOT_FENCE_H
@@ -778,6 +913,10 @@ export function runMiamiLeftoverLotTests() {
     !!gateG && !probeBlocked(shapes, gateG.x, gateG.y, gateG.z, gateG.probe)
     && gateG.openW === LEFTOVER_LOT_GATE_W && gateG.openH === LEFTOVER_LOT_FENCE_H
     && geomG.gateZ === LEFTOVER_LOT_G_Z0 && geomG.gateZ === geomG.z0);
+  ok('lot H vehicle gate is open',
+    !!gateH && !probeBlocked(shapes, gateH.x, gateH.y, gateH.z, gateH.probe)
+    && gateH.openW === LEFTOVER_LOT_GATE_W && gateH.openH === LEFTOVER_LOT_FENCE_H
+    && geomH.gateZ === LEFTOVER_LOT_H_Z0 && geomH.gateZ === geomH.z0);
   ok('mesh plane is thin', LEFTOVER_LOT_MESH_T < 0.12 && LEFTOVER_LOT_POST < 0.16);
   ok('jamb thinner than the vehicle gate',
     LEFTOVER_LOT_JAMB < LEFTOVER_LOT_GATE_W - 0.5
@@ -819,6 +958,10 @@ export function runMiamiLeftoverLotTests() {
   ok('lot G dumpster collider exists', !!dumpHitG);
   ok('lot G dumpster collider is ⊆ dumpster visual',
     dumpHitG && dumpHitG.sx <= geomG.dumpW + 0.15 && dumpHitG.sz <= geomG.dumpD + 0.15);
+  const dumpHitH = probeBlocked(shapes, geomH.dumpX, CITY_Y + geomH.dumpH * 0.45, geomH.dumpZ, 0.08);
+  ok('lot H dumpster collider exists', !!dumpHitH);
+  ok('lot H dumpster collider is ⊆ dumpster visual',
+    dumpHitH && dumpHitH.sx <= geomH.dumpW + 0.15 && dumpHitH.sz <= geomH.dumpD + 0.15);
 
   const shedMid = probeBlocked(shapes, geom.shedX, CITY_Y + 1.0, geom.shedZ, 0.16);
   ok('shed interior is not a filled box', !shedMid);
@@ -909,6 +1052,18 @@ export function runMiamiLeftoverLotTests() {
     && plantsG.weeds.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)
       && !onPavement(p.x, p.z) && !onSidewalk(p.x, p.z) && !onBoardwalk(p.x, p.z))
     && plantsG.palms.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)));
+  ok('lot H palms grow-to-gap inside the lot',
+    plantsH.palms.length >= 2
+    && plantsH.palms.every((p) => p.x > LEFTOVER_LOT_H_X0 && p.x < LEFTOVER_LOT_H_X1
+      && p.z > LEFTOVER_LOT_H_Z0 && p.z < LEFTOVER_LOT_H_Z1
+      && !onPavement(p.x, p.z) && !onBoardwalk(p.x, p.z)
+      && !onSidewalk(p.x, p.z) && !onCrossStreet(p.x, p.z)
+      && !inLeftoverLotGate(p.x, p.z)));
+  ok('lot H gate void drops plants',
+    inLeftoverLotGate(geomH.gateX, geomH.gateZ)
+    && plantsH.weeds.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)
+      && !onPavement(p.x, p.z) && !onSidewalk(p.x, p.z) && !onBoardwalk(p.x, p.z))
+    && plantsH.palms.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)));
 
   // ---- one placer; no second scatterer; look locks -----------------------
   const planting = readFileSync(join(here, 'planting.js'), 'utf8');
@@ -942,6 +1097,7 @@ export function runMiamiLeftoverLotTests() {
     && leftover.includes('onPavement(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)')
     && leftover.includes('onPavement(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)')
     && leftover.includes('onPavement(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)')
+    && leftover.includes('onPavement(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)')
     && !/LEFTOVER_LOT_X\s*=/.test(leftover));
   ok('lot B reuses leftoverLotGeom, no leftoverLotBGeom fork',
     leftover.includes('leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)')
@@ -1057,6 +1213,55 @@ export function runMiamiLeftoverLotTests() {
     && !/leftoverLotDirtGeom\(/.test(constants)
     && !leftover.includes('leftoverLotG.js')
     && !leftover.includes('leftoverLotDirtGeom(')
+    && !constants.includes('photo-mode')
+    && !constants.includes('ACES')
+    && !constants.includes('SSAO')
+    && !constants.includes('Shackleton')
+    && !constants.includes('colony HUD'));
+  ok('lot H reuses leftoverLotGeom, no leftoverLotHGeom fork',
+    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)')
+    && leftover.includes('leftoverLotPlantSpots')
+    && leftover.includes('leftoverLotGeom()')
+    && leftover.includes('LEFTOVER_LOT_G_X')
+    && leftover.includes('LEFTOVER_LOT_F_X')
+    && leftover.includes('LEFTOVER_LOT_E_X')
+    && leftover.includes('LEFTOVER_LOT_D_X')
+    && leftover.includes('LEFTOVER_LOT_C_X')
+    && leftover.includes('LEFTOVER_LOT_B_X')
+    && leftover.includes('398/84')
+    && leftover.includes('leftoverLotHGeom fork')
+    && leftover.includes('not a slide of A–G')
+    && leftover.includes('H-park waits')
+    && !leftover.includes('H-park is now the signed')
+    && !leftover.includes('POCKET_PARK_H')
+    && !/function leftoverLotHGeom/.test(leftover)
+    && !/leftoverLotHGeom\(/.test(leftover)
+    && constants.includes('export function leftoverLotGeom')
+    && constants.includes('398/84')
+    && constants.includes('LEFTOVER_LOT_H_X = 398')
+    && constants.includes('LEFTOVER_LOT_H_Z = 84')
+    && constants.includes('LEFTOVER_LOT_H_W = 14')
+    && constants.includes('LEFTOVER_LOT_H_D = 12')
+    && constants.includes('LEFTOVER_LOT_H_X0 = 391')
+    && constants.includes('LEFTOVER_LOT_H_X1 = 405')
+    && constants.includes('LEFTOVER_LOT_H_Z0 = 78')
+    && constants.includes('LEFTOVER_LOT_H_Z1 = 90')
+    && constants.includes('1.2 m off')
+    && constants.includes('389.8')
+    && constants.includes('2 m east of G-park x1=389')
+    && constants.includes('Do NOT merge with G-park 389')
+    && constants.includes('H-park waits')
+    && constants.includes('H is G+17 m')
+    && constants.includes('LEFTOVER_LOT_G_X = 381')
+    && constants.includes('LEFTOVER_LOT_G_X1 = 388')
+    && !/export function leftoverLotHGeom/.test(constants)
+    && !/leftoverLotHGeom\(/.test(constants)
+    && !/export function leftoverLotDirtGeom/.test(constants)
+    && !/leftoverLotDirtGeom\(/.test(constants)
+    && !leftover.includes('leftoverLotH.js')
+    && !leftover.includes('leftoverLotDirtGeom(')
+    && !leftover.includes('Selo')
+    && !constants.includes('Selo')
     && !constants.includes('photo-mode')
     && !constants.includes('ACES')
     && !constants.includes('SSAO')
