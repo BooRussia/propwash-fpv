@@ -405,6 +405,30 @@ export const LEFTOVER_LOT_C_X1 = 320;
 export const LEFTOVER_LOT_C_Z0 = 78;
 export const LEFTOVER_LOT_C_Z1 = 90;
 
+// ---- gardenPath (Tiny Glade two-abreast walk; not a haunt; not leftoverLot) ----
+// Signed 268→284 in x, centre z=84, width 1.6 m (z 83.2–84.8). Desi + Reesy
+// signed the cell. Do not invent or slide z. Path sits off leftoverLot A
+// x1=265 and leftoverLot B x0=288. Do not slide A (258/84), B (295/84), or
+// C (313/84). Scatter still uses tryPlace; this reservation is one more
+// keepout, not a second placer. Flagstones 0.5–0.7 m + 60–100 mm grass
+// joints so they read at 8–25 m. No 300 mm tiles. Not OSM. No seating.
+export const GARDEN_PATH_X0 = 268;
+export const GARDEN_PATH_X1 = 284;
+export const GARDEN_PATH_Z = 84;
+export const GARDEN_PATH_W = 1.6;
+export const GARDEN_PATH_Z0 = 83.2;
+export const GARDEN_PATH_Z1 = 84.8;
+export const GARDEN_PATH_X = 276;
+export const GARDEN_PATH_LEN = 16;
+export const GARDEN_PATH_SLAB_MIN = 0.5;
+export const GARDEN_PATH_SLAB_MAX = 0.7;
+export const GARDEN_PATH_JOINT_MIN = 0.06;
+export const GARDEN_PATH_JOINT_MAX = 0.10;
+export const GARDEN_PATH_SLAB_H = 0.06;
+export const GARDEN_PATH_COLLIDER_PAD = 0.15;
+export const GARDEN_PATH_HULL_COLLIDER = 'ground';
+export const GARDEN_PATH_AABB = false;
+
 /**
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
@@ -534,6 +558,136 @@ export function leftoverLotPlantSpots(g = leftoverLotGeom()) {
   return { palms, weeds };
 }
 
+function pathHash01(a, b) {
+  let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 15), 0x2545f491);
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+}
+
+/**
+ * Signed Tiny Glade two-abreast walk. Never remaps x/z. Scatter stays on
+ * tryPlace. One grass hull at grade; flagstones jitter size + joint only.
+ */
+export function gardenPathGeom() {
+  return {
+    x0: GARDEN_PATH_X0, x1: GARDEN_PATH_X1,
+    z0: GARDEN_PATH_Z0, z1: GARDEN_PATH_Z1,
+    x: GARDEN_PATH_X, z: GARDEN_PATH_Z,
+    w: GARDEN_PATH_W, len: GARDEN_PATH_LEN,
+    y0: CITY_Y, h: GARDEN_PATH_SLAB_H,
+  };
+}
+
+/** One grass hull at grade for grow-to-gap joints. Collider is the ground. */
+export function gardenPathGrassHull() {
+  return {
+    tag: 'gardenPath-grass',
+    x0: GARDEN_PATH_X0, x1: GARDEN_PATH_X1,
+    z0: GARDEN_PATH_Z0, z1: GARDEN_PATH_Z1,
+    y0: CITY_Y,
+    seed: 0x61,
+    collider: GARDEN_PATH_HULL_COLLIDER,
+  };
+}
+
+/**
+ * Two-abreast flagstones. Local jitter on slab size (0.5–0.7 m) and grass
+ * joints (60–100 mm). Shared kit, not a second scatterer. No 300 mm tiles.
+ */
+export function gardenPathSlabs() {
+  const slabs = [];
+  let col = 0;
+  let x = GARDEN_PATH_X0 + GARDEN_PATH_JOINT_MIN;
+  const xLimit = GARDEN_PATH_X1 - GARDEN_PATH_JOINT_MIN;
+  while (x < xLimit - GARDEN_PATH_SLAB_MIN) {
+    const u = pathHash01(col, 17);
+    let sx = GARDEN_PATH_SLAB_MIN
+      + u * (GARDEN_PATH_SLAB_MAX - GARDEN_PATH_SLAB_MIN);
+    if (x + sx > xLimit) {
+      sx = xLimit - x;
+      if (sx < GARDEN_PATH_SLAB_MIN) break;
+      if (sx > GARDEN_PATH_SLAB_MAX) sx = GARDEN_PATH_SLAB_MAX;
+    }
+    const jointX = GARDEN_PATH_JOINT_MIN
+      + pathHash01(col, 41) * (GARDEN_PATH_JOINT_MAX - GARDEN_PATH_JOINT_MIN);
+    const jointZ = GARDEN_PATH_JOINT_MIN
+      + pathHash01(col, 31) * (GARDEN_PATH_JOINT_MAX - GARDEN_PATH_JOINT_MIN);
+    const sz0 = GARDEN_PATH_SLAB_MIN
+      + pathHash01(col, 5) * (GARDEN_PATH_SLAB_MAX - GARDEN_PATH_SLAB_MIN);
+    const sz1 = GARDEN_PATH_SLAB_MIN
+      + pathHash01(col, 7) * (GARDEN_PATH_SLAB_MAX - GARDEN_PATH_SLAB_MIN);
+    const pair = sz0 + jointZ + sz1;
+    const edge = Math.max(0, (GARDEN_PATH_W - pair) / 2);
+    const zSouth0 = GARDEN_PATH_Z0 + edge;
+    const zNorth0 = zSouth0 + sz0 + jointZ;
+    slabs.push({
+      x: x + sx / 2, z: zSouth0 + sz0 / 2, sx, sz: sz0,
+      x0: x, x1: x + sx, z0: zSouth0, z1: zSouth0 + sz0,
+      row: 0, col,
+    });
+    slabs.push({
+      x: x + sx / 2, z: zNorth0 + sz1 / 2, sx, sz: sz1,
+      x0: x, x1: x + sx, z0: zNorth0, z1: zNorth0 + sz1,
+      row: 1, col,
+    });
+    x += sx + jointX;
+    col++;
+  }
+  return slabs;
+}
+
+export function inGardenPath(x, z, margin = 0) {
+  return x >= GARDEN_PATH_X0 - margin && x <= GARDEN_PATH_X1 + margin
+    && z >= GARDEN_PATH_Z0 - margin && z <= GARDEN_PATH_Z1 + margin;
+}
+
+export function inGardenPathSlab(x, z, margin = 0) {
+  const slabs = gardenPathSlabs();
+  for (let i = 0; i < slabs.length; i++) {
+    const s = slabs[i];
+    if (x >= s.x0 - margin && x <= s.x1 + margin
+      && z >= s.z0 - margin && z <= s.z1 + margin) return s;
+  }
+  return null;
+}
+
+/**
+ * Grow-to-gap tufts in the grass joints. tryPlace-drop off pavement,
+ * leftoverLot A/B/C reserved, and the flagstone slabs. Reject-or-drop,
+ * never nudge. Palms stay off the path.
+ */
+export function gardenPathPlantSpots() {
+  const weeds = [];
+  const slabs = gardenPathSlabs();
+  const byCol = [];
+  for (let i = 0; i < slabs.length; i++) {
+    const s = slabs[i];
+    if (!byCol[s.col]) byCol[s.col] = [];
+    byCol[s.col][s.row] = s;
+  }
+  for (let c = 0; c < byCol.length; c++) {
+    const rows = byCol[c];
+    if (!rows) continue;
+    const a = rows[0], b = rows[1];
+    if (a && b) {
+      const x = (a.x0 + a.x1) / 2;
+      const z = (a.z1 + b.z0) / 2;
+      if (!onPavement(x, z) && !inGardenPathSlab(x, z)) {
+        weeds.push({ x, z, sc: 0.82, lean: 0.04 });
+      }
+    }
+    const next = byCol[c + 1];
+    if (a && next && next[0]) {
+      const x = (a.x1 + next[0].x0) / 2;
+      const z = a.z;
+      if (!onPavement(x, z) && !inGardenPathSlab(x, z)) {
+        weeds.push({ x, z, sc: 0.70, lean: 0.03 });
+      }
+    }
+  }
+  return { weeds };
+}
+
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
 export function stripY(z) {
   if ((z > SW_BEACH_Z0 && z < SW_BEACH_Z1) || (z > SW_CITY_Z0 && z < SW_CITY_Z1)) {
@@ -569,6 +723,8 @@ export const RESERVED = [
     z0: LEFTOVER_LOT_B_Z0 - 1.5, z1: LEFTOVER_LOT_B_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_C_X0 - 2.2, x1: LEFTOVER_LOT_C_X1 + 1.8,
     z0: LEFTOVER_LOT_C_Z0 - 1.5, z1: LEFTOVER_LOT_C_Z1 + 1.4, tag: 'leftoverLot' },
+  { x0: GARDEN_PATH_X0 - 2.2, x1: GARDEN_PATH_X1 + 1.8,
+    z0: GARDEN_PATH_Z0 - 1.5, z1: GARDEN_PATH_Z1 + 1.4, tag: 'gardenPath' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -620,6 +776,50 @@ export function streetOverlap(x, z, w, d, margin = 0.15) {
   return false;
 }
 
+/** True when (x,z) sits in leftoverLot A, B, or C reserved boxes. */
+export function inLeftoverLotReserved(x, z) {
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag !== 'leftoverLot') continue;
+    if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1) return true;
+  }
+  return false;
+}
+
+/**
+ * Axis-aligned footprint vs leftoverLot A/B/C reserved only.
+ * Garden path uses this so it cannot slide onto a leftover lot.
+ */
+export function leftoverLotOverlap(x, z, w, d, margin = 0.15) {
+  const hw = w / 2, hd = d / 2;
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag !== 'leftoverLot') continue;
+    const ox = Math.min(x + hw, r.x1) - Math.max(x - hw, r.x0);
+    if (ox <= margin) continue;
+    const oz = Math.min(z + hd, r.z1) - Math.max(z - hd, r.z0);
+    if (oz > margin) return true;
+  }
+  return false;
+}
+
+/**
+ * Reject-or-drop for the signed garden path cell. Fail if pavement,
+ * streetOverlap, or leftoverLot A/B/C reserved. Never nudges x/z.
+ */
+export function gardenPathRejected() {
+  const g = gardenPathGeom();
+  if (onPavement(g.x, g.z) || onPavement(g.x0, g.z) || onPavement(g.x1, g.z)) {
+    return true;
+  }
+  if (streetOverlap(g.x, g.z, g.len, g.w)) return true;
+  if (leftoverLotOverlap(g.x, g.z, g.len, g.w, 0.15)) return true;
+  if (inLeftoverLotReserved(g.x, g.z)
+    || inLeftoverLotReserved(g.x0, g.z)
+    || inLeftoverLotReserved(g.x1, g.z)) return true;
+  return false;
+}
+
 // ---- ground keep-outs ----
 // Rectangles of beach/plaza that belong to a built feature. Scatter passes
 // (palms, shrubs, parasols, towels, rocks) test against these as well as the
@@ -653,6 +853,8 @@ export const KEEPOUT = [
     z0: LEFTOVER_LOT_B_Z0 - 1.3, z1: LEFTOVER_LOT_B_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_C_X0 - 2.0, x1: LEFTOVER_LOT_C_X1 + 1.6,
     z0: LEFTOVER_LOT_C_Z0 - 1.3, z1: LEFTOVER_LOT_C_Z1 + 1.2, tag: 'leftoverLot' },
+  { x0: GARDEN_PATH_X0 - 2.0, x1: GARDEN_PATH_X1 + 1.6,
+    z0: GARDEN_PATH_Z0 - 1.3, z1: GARDEN_PATH_Z1 + 1.2, tag: 'gardenPath' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1652,6 +1854,78 @@ export function installLeftoverLotColliders(addCyl, addCollider) {
     const s = shapes[i];
     if (s.type === 'cyl') addCyl(s.x, s.y0, s.z, s.r, s.h);
     else addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * Garden-path reserved voids. Collider is ⊆ each flagstone (±0.15 m).
+ * Joints + grow-to-gap grass are empty air. Never a filled path AABB.
+ */
+export function gardenPathVoids() {
+  const slabs = gardenPathSlabs();
+  const y0 = CITY_Y;
+  const voids = [];
+  const south = slabs.find((s) => s.col === 0 && s.row === 0);
+  const north = slabs.find((s) => s.col === 0 && s.row === 1);
+  if (south && north) {
+    voids.push({
+      id: 'gardenPath-joint-z', kind: 'joint',
+      x: south.x, z: (south.z1 + north.z0) / 2, y: y0 + 0.04,
+      x0: south.x0, x1: south.x1, z0: south.z1, z1: north.z0,
+      y0: y0 + 0.02, y1: y0 + 1.6,
+      openW: north.z0 - south.z1, openH: 1.6, probe: 0.02,
+    });
+  }
+  const next = slabs.find((s) => s.col === 1 && s.row === 0);
+  if (south && next) {
+    voids.push({
+      id: 'gardenPath-joint-x', kind: 'joint',
+      x: (south.x1 + next.x0) / 2, z: south.z, y: y0 + 0.04,
+      x0: south.x1, x1: next.x0, z0: south.z0, z1: south.z1,
+      y0: y0 + 0.02, y1: y0 + 1.6,
+      openW: next.x0 - south.x1, openH: 1.6, probe: 0.02,
+    });
+  }
+  voids.push({
+    id: 'gardenPath-air', kind: 'air',
+    x: GARDEN_PATH_X, z: GARDEN_PATH_Z, y: y0 + 1.0,
+    x0: GARDEN_PATH_X0, x1: GARDEN_PATH_X1,
+    z0: GARDEN_PATH_Z0, z1: GARDEN_PATH_Z1,
+    y0: y0 + GARDEN_PATH_SLAB_H + 0.08, y1: y0 + 2.4,
+    openW: GARDEN_PATH_W, openH: 2.4, probe: 0.22,
+  });
+  return voids;
+}
+
+function pushPathAabb(shapes, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'gardenPath', x, z, sx, sz, y0, sy });
+}
+
+/**
+ * Per-slab colliders only. Inset so each collider is ⊆ its flagstone
+ * (±0.15 m). Grass hull / joints have no collider.
+ */
+export function gardenPathColliderShapes() {
+  const shapes = [];
+  const slabs = gardenPathSlabs();
+  const inset = 0.04;
+  const y0 = CITY_Y + 0.012;
+  for (let i = 0; i < slabs.length; i++) {
+    const s = slabs[i];
+    const sx = Math.max(0.12, s.sx - 2 * inset);
+    const sz = Math.max(0.12, s.sz - 2 * inset);
+    pushPathAabb(shapes, s.x, s.z, sx, sz, y0, GARDEN_PATH_SLAB_H - 0.01);
+  }
+  return shapes;
+}
+
+/** Push per-slab colliders. Same bag as the haunt kits. Never a path AABB. */
+export function installGardenPathColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = gardenPathColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
   }
 }
 
