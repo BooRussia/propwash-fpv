@@ -563,6 +563,70 @@ export const POCKET_PARK_HULL_COLLIDER = 'ground';
 export const POCKET_PARK_PAD_AABB = 0.3;
 export const POCKET_PARK_AABB = false;
 
+// ---- park pergola (same boardwalk-gate kit; signed 276 / 94) ----
+// Desi + Reesy signed the cell. Do not invent or slide x/z. Never nudge.
+// Do not leave it at 92. Same boardwalkGateGeom / posts + lintel — not
+// pergolaGeom, not parkPergolaGeom, not a slide of GATE_X/GATE_Z.
+// Opening height 2.20 m (whoop sash). Fly along +X. Opening is empty
+// air — never a filled sash AABB. Collider ⊆ posts + lintel (jamb/lip),
+// not the fly-through. Collider ⊆ visual ±0.15 m. 276/94 is 3.7 m
+// north of the park-bench back (~90.3). Lawn / park ends z=96. Kit
+// half-span must stay under 2 m or it exits the park — drop, never
+// slide to 96. If the Z-span kisses the 276/90 bench (back ~90.3),
+// drop, never nudge. Pocket park stays 276/92, 16×8 (268–284 × 88–96).
+// Park bench stays 276/90. Garden bench stays 276 / 82.4. Path stays
+// 268→284 / z=84. leftoverLot A 258/84, B 295/84, C 313/84, D 330/84.
+// leftoverGrass stays 267–285 / 81–86. Scatter stays on tryPlace;
+// this reservation is one more keepout, not a second placer.
+export const PARK_PERGOLA_X = 276;
+export const PARK_PERGOLA_Z = 94;
+export const PARK_PERGOLA_OPEN_H = GATE_POST_H;
+export const PARK_PERGOLA_FLY = '+X';
+export const PARK_PERGOLA_HALF_X = GATE_HALF_X;
+export const PARK_PERGOLA_HALF_Z = GATE_HALF_Z;
+export const PARK_PERGOLA_HALF_MAX = 2;
+export const PARK_PERGOLA_POST_R = GATE_POST_R;
+export const PARK_PERGOLA_POST_H = GATE_POST_H;
+export const PARK_PERGOLA_BEAM_H = GATE_BEAM_H;
+export const PARK_PERGOLA_BEAM_W = GATE_BEAM_W;
+export const PARK_PERGOLA_W = GATE_HALF_X * 2;
+export const PARK_PERGOLA_D = GATE_HALF_Z * 2;
+export const PARK_PERGOLA_COLLIDER_PAD = 0.15;
+export const PARK_PERGOLA_AABB = false;
+export const PARK_PERGOLA_X0 = PARK_PERGOLA_X - PARK_PERGOLA_W / 2;
+export const PARK_PERGOLA_X1 = PARK_PERGOLA_X + PARK_PERGOLA_W / 2;
+export const PARK_PERGOLA_Z0 = PARK_PERGOLA_Z - PARK_PERGOLA_D / 2;
+export const PARK_PERGOLA_Z1 = PARK_PERGOLA_Z + PARK_PERGOLA_D / 2;
+
+/**
+ * Boardwalk-gate kit (posts + lintel). Default is GATE_X / GATE_Z on
+ * the promenade. Pass (PARK_PERGOLA_X, PARK_PERGOLA_Z) for the park
+ * pergola. Same schema — never pergolaGeom / parkPergolaGeom.
+ * Never remaps x/z. Scatter stays on tryPlace. Fly along +X.
+ * Opening is empty air. Collider is posts + lintel only.
+ */
+export function boardwalkGateGeom(cx = GATE_X, cz = GATE_Z) {
+  const onDeck = Math.abs(cz - BOARDWALK_Z) <= BOARDWALK_D / 2
+    && Math.abs(cx) <= BOARDWALK_W / 2;
+  const y0 = onDeck ? BOARDWALK_TOP : CITY_Y;
+  const halfX = GATE_HALF_X;
+  const halfZ = GATE_HALF_Z;
+  const postR = GATE_POST_R;
+  const postH = GATE_POST_H;
+  return {
+    x: cx, z: cz, y0,
+    halfX, halfZ, postR, postH,
+    beamH: GATE_BEAM_H, beamW: GATE_BEAM_W,
+    spanX: halfX * 2, spanZ: halfZ * 2,
+    x0: cx - halfX, x1: cx + halfX,
+    z0: cz - halfZ, z1: cz + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'boardwalk-gate',
+  };
+}
+
 /**
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
@@ -1357,6 +1421,58 @@ export function pocketParkRejected() {
   return false;
 }
 
+function gateFootprintOverlaps(g, bx, bz, bw, bd, margin) {
+  const ox = Math.min(g.x1, bx + bw / 2) - Math.max(g.x0, bx - bw / 2);
+  const oz = Math.min(g.z1, bz + bd / 2) - Math.max(g.z0, bz - bd / 2);
+  return ox > margin && oz > margin;
+}
+
+/**
+ * Reject-or-drop for a boardwalk-gate kit cell. Default is the signed
+ * park pergola 276 / 94. Fail if pavement, streetOverlap, leftoverLot
+ * A/B/C/D reserved, garden path, garden bench 276/82.4, park bench
+ * 276/90 (including a kiss of the back at ~90.3), half-span ≥ 2 m
+ * (would exit the park at z=96 — drop, never slide), or the plate
+ * exits the pocket park. Never nudges x/z.
+ */
+export function boardwalkGateRejected(cx = PARK_PERGOLA_X, cz = PARK_PERGOLA_Z) {
+  const g = boardwalkGateGeom(cx, cz);
+  if (g.halfX >= PARK_PERGOLA_HALF_MAX || g.halfZ >= PARK_PERGOLA_HALF_MAX) {
+    return true;
+  }
+  if (g.z1 >= POCKET_PARK_Z1 || g.z0 < POCKET_PARK_Z0
+      || g.x0 < POCKET_PARK_X0 || g.x1 > POCKET_PARK_X1) {
+    return true;
+  }
+  if (onPavement(g.x, g.z) || onPavement(g.x0, g.z) || onPavement(g.x1, g.z)
+      || onPavement(g.x, g.z0) || onPavement(g.x, g.z1)) {
+    return true;
+  }
+  if (streetOverlap(g.x, g.z, g.spanX, g.spanZ)) return true;
+  if (leftoverLotOverlap(g.x, g.z, g.spanX, g.spanZ, 0.15)) return true;
+  if (inLeftoverLotReserved(g.x, g.z)
+    || inLeftoverLotReserved(g.x0, g.z)
+    || inLeftoverLotReserved(g.x1, g.z)) return true;
+  if (inGardenPath(g.x, g.z)
+    || inGardenPath(g.x0, g.z) || inGardenPath(g.x1, g.z)
+    || inGardenPath(g.x, g.z0) || inGardenPath(g.x, g.z1)
+    || inGardenPath(g.x0, g.z0) || inGardenPath(g.x1, g.z0)
+    || inGardenPath(g.x0, g.z1) || inGardenPath(g.x1, g.z1)
+    || gardenPathSlabOverlap(g.x, g.z, g.spanX, g.spanZ, 0)) {
+    return true;
+  }
+  const garden = gardenBenchGeom();
+  const park = gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z);
+  if (gateFootprintOverlaps(g, garden.x, garden.z, garden.w, garden.depth, 0)) {
+    return true;
+  }
+  if (gateFootprintOverlaps(g, park.x, park.z, park.w, park.depth, 0)) {
+    return true;
+  }
+  if (g.z0 <= park.z1) return true;
+  return false;
+}
+
 // ---- ground keep-outs ----
 // Rectangles of beach/plaza that belong to a built feature. Scatter passes
 // (palms, shrubs, parasols, towels, rocks) test against these as well as the
@@ -1402,6 +1518,9 @@ export const KEEPOUT = [
     z0: LEFTOVER_GRASS_Z0, z1: LEFTOVER_GRASS_Z1, tag: 'leftoverGrass' },
   { x0: POCKET_PARK_X0, x1: POCKET_PARK_X1,
     z0: POCKET_PARK_Z0, z1: POCKET_PARK_Z1, tag: 'pocketPark' },
+  { x0: PARK_PERGOLA_X - GATE_HALF_X - 0.8, x1: PARK_PERGOLA_X + GATE_HALF_X + 0.8,
+    z0: PARK_PERGOLA_Z - GATE_HALF_Z - 0.8, z1: PARK_PERGOLA_Z + GATE_HALF_Z + 0.8,
+    tag: 'boardwalk-gate' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1492,6 +1611,75 @@ export function onPavement(x, z) {
 }
 
 /**
+ * Boardwalk-gate reserved void. Opening is empty air. Fly along +X.
+ * Same kit at GATE_X/GATE_Z and PARK_PERGOLA_X/PARK_PERGOLA_Z.
+ */
+export function boardwalkGateVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - g.halfX + g.postR + 0.08,
+    x1: g.x + g.halfX - g.postR - 0.08,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW,
+    openH: g.openH,
+  };
+}
+
+function boardwalkGateColliderShapesAt(shapes, g) {
+  for (const dx of [-g.halfX, g.halfX]) {
+    for (const dz of [-g.halfZ, g.halfZ]) {
+      shapes.push({
+        type: 'cyl', tag: 'boardwalk-gate',
+        x: g.x + dx, z: g.z + dz, r: g.postR,
+        y0: g.y0, h: g.postH,
+      });
+    }
+  }
+  const beamY = g.y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'aabb', tag: 'boardwalk-gate',
+      x: g.x, z: g.z + dz, sx: g.spanX + g.beamW, sz: g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  for (const dx of [-g.halfX, g.halfX]) {
+    shapes.push({
+      type: 'aabb', tag: 'boardwalk-gate',
+      x: g.x + dx, z: g.z, sx: g.beamW, sz: g.spanZ + g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'boardwalk-gate',
+    x: g.x, z: g.z, sx: g.spanX + 1.1, sz: g.spanZ + 1.0,
+    y0: beamY + g.beamH, sy: 0.12,
+  });
+}
+
+/**
+ * Posts + lintel + lid-on-soffit. Never a box that fills the sash.
+ * No-arg covers the promenade gate and the signed park pergola via
+ * boardwalkGateGeom. Pass a geom for one kit.
+ */
+export function boardwalkGateColliderShapes(g) {
+  const shapes = [];
+  if (!g) {
+    boardwalkGateColliderShapesAt(shapes, boardwalkGateGeom());
+    const park = boardwalkGateGeom(PARK_PERGOLA_X, PARK_PERGOLA_Z);
+    if (!boardwalkGateRejected(park.x, park.z)) {
+      boardwalkGateColliderShapesAt(shapes, park);
+    }
+  } else {
+    boardwalkGateColliderShapesAt(shapes, g);
+  }
+  return shapes;
+}
+
+/**
  * Reserved fly-through openings. Each bay is a keepout (see KEEPOUT) and a
  * documented void: collider is the jamb/post/beam, never a box in the hole.
  * `kind: 'kit'` lines are new this pass; `existing` are the pier lines #21 left open.
@@ -1521,17 +1709,8 @@ export const FLY_VOIDS = [
     openW: (PAVILION_POST_XS[1] - PAVILION_POST_XS[0]) - 2 * PAVILION_POST_R,
     openH: PAVILION_POST_H,
   },
-  {
-    id: 'boardwalk-gate', kind: 'kit',
-    x: GATE_X, z: GATE_Z, y: BOARDWALK_TOP + GATE_POST_H * 0.48,
-    x0: GATE_X - GATE_HALF_X + GATE_POST_R + 0.08,
-    x1: GATE_X + GATE_HALF_X - GATE_POST_R - 0.08,
-    z0: GATE_Z - GATE_HALF_Z + GATE_POST_R + 0.08,
-    z1: GATE_Z + GATE_HALF_Z - GATE_POST_R - 0.08,
-    y0: BOARDWALK_TOP + 0.06, y1: BOARDWALK_TOP + GATE_POST_H - 0.04,
-    openW: GATE_HALF_Z * 2 - 2 * GATE_POST_R,
-    openH: GATE_POST_H,
-  },
+  boardwalkGateVoid(boardwalkGateGeom(), 'boardwalk-gate'),
+  boardwalkGateVoid(boardwalkGateGeom(PARK_PERGOLA_X, PARK_PERGOLA_Z), 'park-pergola'),
   {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
@@ -1557,39 +1736,7 @@ export function inFlyVoid(x, z, margin = 0) {
 
 /** Mesh-tight jamb/post/beam/roof shapes. Never a box that fills a bay. */
 export function flyColliderShapes() {
-  const shapes = [];
-  // boardwalk gate — four posts + lintels + lid (lid sits ON the soffit)
-  for (const dx of [-GATE_HALF_X, GATE_HALF_X]) {
-    for (const dz of [-GATE_HALF_Z, GATE_HALF_Z]) {
-      shapes.push({
-        type: 'cyl', tag: 'boardwalk-gate',
-        x: GATE_X + dx, z: GATE_Z + dz, r: GATE_POST_R,
-        y0: BOARDWALK_TOP, h: GATE_POST_H,
-      });
-    }
-  }
-  const beamY = BOARDWALK_TOP + GATE_POST_H;
-  const spanX = GATE_HALF_X * 2;
-  const spanZ = GATE_HALF_Z * 2;
-  for (const dz of [-GATE_HALF_Z, GATE_HALF_Z]) {
-    shapes.push({
-      type: 'aabb', tag: 'boardwalk-gate',
-      x: GATE_X, z: GATE_Z + dz, sx: spanX + GATE_BEAM_W, sz: GATE_BEAM_W,
-      y0: beamY, sy: GATE_BEAM_H,
-    });
-  }
-  for (const dx of [-GATE_HALF_X, GATE_HALF_X]) {
-    shapes.push({
-      type: 'aabb', tag: 'boardwalk-gate',
-      x: GATE_X + dx, z: GATE_Z, sx: GATE_BEAM_W, sz: spanZ + GATE_BEAM_W,
-      y0: beamY, sy: GATE_BEAM_H,
-    });
-  }
-  shapes.push({
-    type: 'aabb', tag: 'boardwalk-gate',
-    x: GATE_X, z: GATE_Z, sx: spanX + 1.1, sz: spanZ + 1.0,
-    y0: beamY + GATE_BEAM_H, sy: 0.12,
-  });
+  const shapes = boardwalkGateColliderShapes();
 
   // garage — side masses + soffit/roof. Aisle is empty.
   const aisle = GARAGE_AISLE_W;
