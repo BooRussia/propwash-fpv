@@ -8,7 +8,7 @@
 // Public API (consumed by main.js / maps):
 //   constructor(scene, renderer)
 //   async init()
-//   setTimeOfDay(hours)            0..24
+//   setTimeOfDay(hours)            0..24  (start hour; the live clock advances)
 //   setWeather({windSpeed, windDirDeg, gustiness, rain})
 //   setRenderDistance(meters)
 //   setQuality(shadowMapRes)
@@ -17,6 +17,7 @@
 //   setSkyMode('procedural' | 'hdri' | null)      null = follow settings
 //   update(dt, camera)             camera = ACTIVE camera
 //   getWind(posVector3, outVector3) -> outVector3   (allocation-free)
+//   sunElevationDeg                live sun elevation (degrees)
 //   dispose()                      frees render targets / GPU resources
 //
 // ------------------------------------------------------------
@@ -100,6 +101,15 @@ const MOON_SPAN = 5.0;             // plane half-width in moon radii (room for t
 const ENV_MIN_MS = 160;            // never rebuild reflections faster than this
 const ENV_HOUR_EPS = 0.2;          // sim-hours of sun travel that force a rebuild
 const ENV_RAIN_EPS = 0.05;
+
+// Live day clock. settings.environment.timeOfDay (default 15.5) is the START
+// hour, not a parked plate — hours keep advancing so the sunset ramps roll
+// through SUNSET (19.5). 120× realtime: one real second is two sim minutes,
+// 15.5 → 19.5 in two minutes of flight.
+const HOURS_PER_REAL_SEC = 1 / 30;
+
+// Night-light gate used by existing street / lot / waterline emissive callers.
+const NIGHT_LIGHT_EL_DEG = -1;
 
 // ---------------- gust field constants ----------------
 const GW1 = Math.PI * 2 * 0.13;    // rad/s — incommensurate gust frequencies
@@ -193,6 +203,11 @@ const TWI_HI_COLOR = [
 ];
 const TWI_HI_STRENGTH = [[-18, 0], [-12, 0.06], [-7, 0.22], [-3, 0.44], [0, 0.50], [5, 0.50]];
 const BELT_COLOR = C(0xd07f95);
+// Same authored oranges / Belt pinks — init lerps these, no new palette.
+const TWI_ORANGE_PEAK = C(0xff8a3a);
+const TWI_ORANGE_DEEP = C(0xd4602c);
+const BELT_PINK_PEAK = C(0xd07f95);
+const BELT_PINK_DEEP = C(0x86436e);
 const BELT_STRENGTH = [[-13, 0], [-8, 0.07], [-4, 0.19], [-0.5, 0.22], [3, 0.12], [7, 0]];
 
 // Miami is a bright city: a warm sodium/LED wash sits on the horizon all night.
@@ -529,6 +544,8 @@ export class Environment {
     // ---- parameters (seeded from settings; main.js re-applies at boot) ----
     const env = (settings && settings.environment) || {};
     this._hours = clamp(finite(env.timeOfDay, 15.5), 0, 24) % 24;
+    this._hueSeed = 0;
+    this._twiColor = TWI_COLOR;
     this._windSpeed = clamp(finite(env.windSpeed, 2), 0, 60);
     this._windDirDeg = finite(env.windDirDeg, 90);
     this._gustiness = clamp(finite(env.gustiness, 0.3), 0, 1);
@@ -661,6 +678,7 @@ export class Environment {
     } catch (e) { /* older three — safe to ignore */ }
 
     this._ready = true;
+    this._seedSunsetHue();
 
     // apply stored parameters (re-applied by main.js after boot; idempotent)
     this.setQuality(this._shadowRes);
@@ -680,8 +698,21 @@ export class Environment {
   setTimeOfDay(hours) {
     const h = finite(hours, 12);
     this._hours = ((h % 24) + 24) % 24;
+    if (settings && settings.environment) settings.environment.timeOfDay = this._hours;
     if (!this._ready) return;
     this._applyAtmosphere();
+  }
+
+  get timeOfDay() {
+    return this._hours;
+  }
+
+  get sunElevationDeg() {
+    return this._sunElDeg;
+  }
+
+  get nightLightsOn() {
+    return this._sunElDeg < NIGHT_LIGHT_EL_DEG;
   }
 
   // ----------------------------------------------------------
@@ -834,6 +865,7 @@ export class Environment {
   // ----------------------------------------------------------
   update(dt, camera) {
     this._windTime += dt;
+    if (this._ready) this._tickClock(dt);
     if (!this._ready || !camera) return;
 
     if (!this._indoor) {
@@ -925,6 +957,27 @@ export class Environment {
     const az = this._windDirDeg * DEG2RAD;
     this._windDir.set(-Math.sin(az), 0, Math.cos(az));
     this._windLat.set(this._windDir.z, 0, -this._windDir.x);
+  }
+
+  // 15.5 is the start hour. Keep walking so the sunset plate is not a still.
+  _tickClock(dt) {
+    const dtH = Math.max(0, finite(dt, 0)) * HOURS_PER_REAL_SEC;
+    if (dtH <= 0) return;
+    this._hours = (this._hours + dtH) % 24;
+    if (settings && settings.environment) settings.environment.timeOfDay = this._hours;
+    if (!this._indoor) this._applyAtmosphere();
+  }
+
+  // Once per session. Lerp authored TWI orange against Belt pink so each
+  // load gets a different sunset on the same documentary palette.
+  _seedSunsetHue() {
+    const t = Math.random();
+    this._hueSeed = t;
+    this._twiColor = TWI_COLOR.map(([x, col]) => [x, col.clone()]);
+    for (const stop of this._twiColor) {
+      if (stop[0] === -1.5) stop[1].copy(TWI_ORANGE_PEAK).lerp(BELT_PINK_PEAK, t);
+      else if (stop[0] === -4.5) stop[1].copy(TWI_ORANGE_DEEP).lerp(BELT_PINK_DEEP, t);
+    }
   }
 
   // Celestial arc shared by sun and moon: elevation follows a sine peaking at
@@ -1110,7 +1163,7 @@ export class Environment {
     rampColor(NIGHT_HORIZON, el, du.uHorizon.value).multiplyScalar(NIGHT_LIFT);
     du.uGlowCol.value.copy(GLOW_COLOR);
     du.uGlow.value = ramp(GLOW_STRENGTH, el) * (1 + 0.35 * rain);   // cloud bounces city light back down
-    rampColor(TWI_COLOR, el, du.uTwiCol.value);
+    rampColor(this._twiColor || TWI_COLOR, el, du.uTwiCol.value);
     du.uTwi.value = ramp(TWI_STRENGTH, el) * (1 - 0.35 * rain);
     rampColor(TWI_HI_COLOR, el, du.uTwiHiCol.value);
     du.uTwiHi.value = ramp(TWI_HI_STRENGTH, el) * (1 - 0.5 * rain);
