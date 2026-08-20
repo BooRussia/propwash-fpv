@@ -568,7 +568,7 @@ export function runMiamiPocketParkTests() {
     && GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
   ok('kit comment names the second hull, not a fork',
     park.includes('347/96') && park.includes('pocketParkEGeom fork')
-    && park.includes('not a slide of 276')
+    && park.includes('Not a slide of 276')
     && park.includes('leftoverLot A–E')
     && constants.includes('347/96')
     && constants.includes('never pocketParkEGeom'));
