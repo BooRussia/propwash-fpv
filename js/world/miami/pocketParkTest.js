@@ -39,6 +39,8 @@ import {
   LEFTOVER_LOT_F_Z0, LEFTOVER_LOT_F_Z1, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D,
   LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_X0, LEFTOVER_LOT_G_X1,
   LEFTOVER_LOT_G_Z0, LEFTOVER_LOT_G_Z1, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D,
+  LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_X0, LEFTOVER_LOT_H_X1,
+  LEFTOVER_LOT_H_Z0, LEFTOVER_LOT_H_Z1, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D,
   WAREHOUSE_X, WAREHOUSE_Z,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
   inKeepout, inReserved, groundHeight, streetOverlap,
@@ -163,6 +165,8 @@ export function runMiamiPocketParkTests() {
   ok('leftoverLot D stays 330/84', LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84);
   ok('leftoverLot E stays 347/84', LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84);
   ok('leftoverLot F stays 364/84', LEFTOVER_LOT_F_X === 364 && LEFTOVER_LOT_F_Z === 84);
+  ok('leftoverLot G stays 381/84', LEFTOVER_LOT_G_X === 381 && LEFTOVER_LOT_G_Z === 84);
+  ok('leftoverLot H stays 398/84', LEFTOVER_LOT_H_X === 398 && LEFTOVER_LOT_H_Z === 84);
   ok('bench stays 276 / 82.4', GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
   ok('leftoverGrass stays 267–285 / 81–86',
     LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
@@ -194,6 +198,12 @@ export function runMiamiPocketParkTests() {
   ok('leftoverLot F geometry was not slid',
     LEFTOVER_LOT_F_X0 === 357 && LEFTOVER_LOT_F_X1 === 371
     && LEFTOVER_LOT_F_Z0 === 78 && LEFTOVER_LOT_F_Z1 === 90);
+  ok('leftoverLot G geometry was not slid',
+    LEFTOVER_LOT_G_X0 === 374 && LEFTOVER_LOT_G_X1 === 388
+    && LEFTOVER_LOT_G_Z0 === 78 && LEFTOVER_LOT_G_Z1 === 90);
+  ok('leftoverLot H geometry was not slid',
+    LEFTOVER_LOT_H_X0 === 391 && LEFTOVER_LOT_H_X1 === 405
+    && LEFTOVER_LOT_H_Z0 === 78 && LEFTOVER_LOT_H_Z1 === 90);
   ok('tryPlace still drops leftoverLot A/B/C/D',
     tryPlace(ctx, LEFTOVER_LOT_X, LEFTOVER_LOT_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === 0
@@ -203,6 +213,10 @@ export function runMiamiPocketParkTests() {
     tryPlace(ctx, LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === 0);
   ok('tryPlace still drops leftoverLot F',
     tryPlace(ctx, LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z) === 0);
+  ok('tryPlace still drops leftoverLot G',
+    tryPlace(ctx, LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z) === 0);
+  ok('tryPlace still drops leftoverLot H',
+    tryPlace(ctx, LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z) === 0);
   ok('tryPlace still drops the garden path',
     tryPlace(ctx, GARDEN_PATH_X, GARDEN_PATH_Z) === 0);
   ok('tryPlace still drops the garden bench',
@@ -227,6 +241,9 @@ export function runMiamiPocketParkTests() {
   ok('pocketParkDrop rejects leftoverLot G',
     pocketParkDrop(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)
     && inLeftoverLotReserved(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z));
+  ok('pocketParkDrop rejects leftoverLot H',
+    pocketParkDrop(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)
+    && inLeftoverLotReserved(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z));
   ok('pocketParkDrop rejects the warehouse',
     pocketParkDrop(WAREHOUSE_X, WAREHOUSE_Z)
     && inWarehouseReserved(WAREHOUSE_X, WAREHOUSE_Z));
@@ -421,18 +438,27 @@ export function runMiamiPocketParkTests() {
     && leftover.includes('leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)')
     && leftover.includes('381/84')
     && leftover.includes('leftoverLotGGeom fork')
+    && leftover.includes('leftoverLotGeom(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)')
+    && leftover.includes('398/84')
+    && leftover.includes('leftoverLotHGeom fork')
+    && leftover.includes('H-park waits')
     && !leftover.includes('pocketParkF')
     && !leftover.includes('POCKET_PARK_F')
     && !leftover.includes('POCKET_PARK_G')
+    && !leftover.includes('POCKET_PARK_H')
     && constants.includes('364/84')
     && constants.includes('LEFTOVER_LOT_F_X = 364')
     && constants.includes('LEFTOVER_LOT_F_Z = 84')
     && constants.includes('LEFTOVER_LOT_G_X = 381')
     && constants.includes('LEFTOVER_LOT_G_Z = 84')
+    && constants.includes('LEFTOVER_LOT_H_X = 398')
+    && constants.includes('LEFTOVER_LOT_H_Z = 84')
     && !/export function leftoverLotFGeom/.test(constants)
     && !/leftoverLotFGeom\(/.test(constants)
     && !/export function leftoverLotGGeom/.test(constants)
-    && !/leftoverLotGGeom\(/.test(constants));
+    && !/leftoverLotGGeom\(/.test(constants)
+    && !/export function leftoverLotHGeom/.test(constants)
+    && !/leftoverLotHGeom\(/.test(constants));
   ok('leftoverLot G was not restacked',
     leftover.includes('leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)')
     && leftover.includes('381/84')
@@ -446,6 +472,22 @@ export function runMiamiPocketParkTests() {
     && constants.includes('LEFTOVER_LOT_G_Z1 = 90')
     && !/export function leftoverLotGGeom/.test(constants)
     && !/leftoverLotGGeom\(/.test(constants));
+  ok('leftoverLot H was not restacked',
+    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)')
+    && leftover.includes('398/84')
+    && leftover.includes('leftoverLotHGeom fork')
+    && leftover.includes('H-park waits')
+    && leftover.includes('not a slide of A–G')
+    && !leftover.includes('POCKET_PARK_H')
+    && constants.includes('LEFTOVER_LOT_H_X = 398')
+    && constants.includes('LEFTOVER_LOT_H_Z = 84')
+    && constants.includes('LEFTOVER_LOT_H_X0 = 391')
+    && constants.includes('LEFTOVER_LOT_H_X1 = 405')
+    && constants.includes('LEFTOVER_LOT_H_Z0 = 78')
+    && constants.includes('LEFTOVER_LOT_H_Z1 = 90')
+    && constants.includes('Do NOT merge with G-park 389')
+    && !/export function leftoverLotHGeom/.test(constants)
+    && !/leftoverLotHGeom\(/.test(constants));
   ok('house was not restacked',
     house.includes('housePlanGeom') && house.includes('weenie')
     && !house.includes('pocketPark') && !house.includes('POCKET_PARK_'));
@@ -727,6 +769,7 @@ export function runMiamiPocketParkTests() {
     && leftoverLotOverlap(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, 14, 12)
     && leftoverLotOverlap(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D)
     && leftoverLotOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D)
+    && leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D)
     && pocketParkRejected(LEFTOVER_LOT_X, LEFTOVER_LOT_Z)
     && pocketParkRejected(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)
     && pocketParkRejected(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
@@ -734,6 +777,7 @@ export function runMiamiPocketParkTests() {
     && pocketParkRejected(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)
     && pocketParkRejected(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)
     && pocketParkRejected(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)
+    && pocketParkRejected(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)
     && pocketParkRejected(WAREHOUSE_X, WAREHOUSE_Z)
     && pocketParkRejected(430, 70)
     && pocketParkRejected(0, 27)
@@ -888,6 +932,13 @@ export function runMiamiPocketParkTests() {
     && LEFTOVER_LOT_C_Z === 84 && LEFTOVER_LOT_D_Z === 84
     && LEFTOVER_LOT_E_Z === 84 && LEFTOVER_LOT_F_Z === 84
     && LEFTOVER_LOT_G_Z === 84);
+  ok('leftoverLot H stays 398/84, 391–405 × 78–90, no merge with G-park 389',
+    LEFTOVER_LOT_H_X === 398 && LEFTOVER_LOT_H_Z === 84
+    && LEFTOVER_LOT_H_X0 === 391 && LEFTOVER_LOT_H_X1 === 405
+    && LEFTOVER_LOT_H_Z0 === 78 && LEFTOVER_LOT_H_Z1 === 90
+    && LEFTOVER_LOT_H_X === LEFTOVER_LOT_G_X + 17
+    && POCKET_PARK_G_X1 === 389 && LEFTOVER_LOT_H_X0 === POCKET_PARK_G_X1 + 2
+    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D, 0.15));
   ok('reuses pocketParkHull, no pocketParkGGeom',
     park.includes('pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z)')
     && park.includes('pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z)')
@@ -935,6 +986,7 @@ export function runMiamiPocketParkTests() {
     && leftoverLotOverlap(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, 14, 12)
     && leftoverLotOverlap(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z, LEFTOVER_LOT_F_W, LEFTOVER_LOT_F_D)
     && leftoverLotOverlap(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z, LEFTOVER_LOT_G_W, LEFTOVER_LOT_G_D)
+    && leftoverLotOverlap(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z, LEFTOVER_LOT_H_W, LEFTOVER_LOT_H_D)
     && pocketParkRejected(LEFTOVER_LOT_X, LEFTOVER_LOT_Z)
     && pocketParkRejected(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)
     && pocketParkRejected(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
@@ -942,6 +994,7 @@ export function runMiamiPocketParkTests() {
     && pocketParkRejected(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)
     && pocketParkRejected(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)
     && pocketParkRejected(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)
+    && pocketParkRejected(LEFTOVER_LOT_H_X, LEFTOVER_LOT_H_Z)
     && pocketParkRejected(WAREHOUSE_X, WAREHOUSE_Z)
     && pocketParkRejected(430, 70)
     && pocketParkRejected(0, 27)
