@@ -440,6 +440,28 @@ export const LEFTOVER_LOT_E_X1 = 354;
 export const LEFTOVER_LOT_E_Z0 = 78;
 export const LEFTOVER_LOT_E_Z1 = 90;
 
+// ---- leftoverLot F (sixth leftover-city vacant parcel; same schema) ----
+// Vacant city parcel at signed 364/84, east of leftoverLot E RESERVED
+// (E x1=354 + 1.8 = 355.8; F starts 357, 1.2 m off). Same D→E
+// convention. 2 m east of E-park x1=355 and 2 m ocean of E-park
+// z0=92 (F z1=90). Not a leftoverLotOverlap kiss of the park
+// (1 m leftover apron is the E-park vs E rule; F vs E-park is a
+// 2 m gap). West of helipadE (408), same inland band as leftoverLot
+// #34 / #35 / C / D / E / drop / abando (z=84). Helipad E stays
+// ~59 m east at 430/70 (from F x1=371). Desi + Reesy signed the
+// cell. Do not invent or slide x/z. Do not grow the plate.
+// Do not slide A (258/84), B (295/84), C (313/84), D (330/84),
+// or E (347/84). Same leftoverLotGeom / leftoverLotColliderShapes /
+// leftoverLotVoids — not leftoverLotFGeom, not OSM, not a fifth haunt.
+export const LEFTOVER_LOT_F_X = 364;
+export const LEFTOVER_LOT_F_Z = 84;
+export const LEFTOVER_LOT_F_W = 14.0;
+export const LEFTOVER_LOT_F_D = 12.0;
+export const LEFTOVER_LOT_F_X0 = 357;
+export const LEFTOVER_LOT_F_X1 = 371;
+export const LEFTOVER_LOT_F_Z0 = 78;
+export const LEFTOVER_LOT_F_Z1 = 90;
+
 // ---- gardenPath (Tiny Glade two-abreast walk; not a haunt; not leftoverLot) ----
 // Signed 268→284 in x, centre z=84, width 1.6 m (z 83.2–84.8). Desi + Reesy
 // signed the cell. Do not invent or slide z. Path sits off leftoverLot A
@@ -714,7 +736,8 @@ export const LEFTOVER_GRASS_AABB = false;
 // leftover-dirt 190k, not a leftoverLot / path / bench / leftoverGrass
 // restack. Path stays 268→284 / z=84 / 1.6 m (z1=84.8). 276 z0=88
 // sits inland of the path — do not slide that hull onto the path.
-// leftoverLot A 258/84, B 295/84, C 313/84, D 330/84, E 347/84.
+// leftoverLot A 258/84, B 295/84, C 313/84, D 330/84, E 347/84,
+// F 364/84.
 // E park sits 2 m inland of leftoverLot E (E z1=90, park z0=92).
 // x 339–355 is a 1 m leftover apron past E’s 340–354 — not a
 // leftoverLotOverlap kiss. 276 park stays (x1=284 < 339). Bench
@@ -737,8 +760,9 @@ export const LEFTOVER_GRASS_AABB = false;
 // MIN/MAX. POCKET_PARK_E_INSTANCES is that leftover
 // band (8000–11000), not the empty 10000–13000. 13k is still a
 // ceiling, not a goal.
-// Lean at nearest leftoverLot fence (including E, 2 m inland) or
-// garden path if it reaches. Collider is the thin grade hull only.
+// Lean at nearest leftoverLot fence (including E, 2 m inland, and
+// F, 2 m east / 2 m ocean of the E-park) or garden path if it
+// reaches. Collider is the thin grade hull only.
 // Blades are visual.
 // A 0.3 m pad AABB fails. Never per-blade colliders.
 export const POCKET_PARK_X0 = 268;
@@ -1122,10 +1146,11 @@ function boardwalkGatePathKiss(g, cx, cz) {
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
  * LEFTOVER_LOT_B_Z) for lot B, (LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
- * for lot C, (LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) for lot D, or
- * (LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) for lot E.
+ * for lot C, (LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) for lot D,
+ * (LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) for lot E, or
+ * (LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z) for lot F.
  * Same schema — never leftoverLotBGeom / leftoverLotCGeom /
- * leftoverLotDGeom / leftoverLotEGeom.
+ * leftoverLotDGeom / leftoverLotEGeom / leftoverLotFGeom.
  * Never remaps x/z. Scatter stays on tryPlace.
  */
 export function leftoverLotGeom(cx = LEFTOVER_LOT_X, cz = LEFTOVER_LOT_Z) {
@@ -1219,14 +1244,15 @@ export function inLeftoverLotGate(x, z, margin = 0.15) {
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z), x, z, margin)
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z), x, z, margin)
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z), x, z, margin)
-    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z), x, z, margin);
+    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z), x, z, margin)
+    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z), x, z, margin);
 }
 
 /**
  * Palms + weeds grow-to-gap inside the lot, lean at the fence.
  * tryPlace-drop off pavement and the gate void. Reject-or-drop, never nudge.
  * Default is leftoverLot #34. Pass leftoverLotGeom(B), leftoverLotGeom(C),
- * leftoverLotGeom(D), or leftoverLotGeom(E).
+ * leftoverLotGeom(D), leftoverLotGeom(E), or leftoverLotGeom(F).
  */
 export function leftoverLotPlantSpots(g = leftoverLotGeom()) {
   const palms = [
@@ -1741,6 +1767,8 @@ export const RESERVED = [
     z0: LEFTOVER_LOT_D_Z0 - 1.5, z1: LEFTOVER_LOT_D_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_E_X0 - 2.2, x1: LEFTOVER_LOT_E_X1 + 1.8,
     z0: LEFTOVER_LOT_E_Z0 - 1.5, z1: LEFTOVER_LOT_E_Z1 + 1.4, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_F_X0 - 2.2, x1: LEFTOVER_LOT_F_X1 + 1.8,
+    z0: LEFTOVER_LOT_F_Z0 - 1.5, z1: LEFTOVER_LOT_F_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: POCKET_PARK_E_X0 - 2.2, x1: POCKET_PARK_E_X1 + 1.8,
     z0: POCKET_PARK_E_Z0 - 1.5, z1: POCKET_PARK_E_Z1 + 1.4, tag: 'pocketPark' },
   { x0: GARDEN_PATH_X0 - 2.2, x1: GARDEN_PATH_X1 + 1.8,
@@ -1824,7 +1852,7 @@ export function streetOverlap(x, z, w, d, margin = 0.15) {
   return false;
 }
 
-/** True when (x,z) sits in leftoverLot A, B, C, D, or E reserved boxes. */
+/** True when (x,z) sits in leftoverLot A, B, C, D, E, or F reserved boxes. */
 export function inLeftoverLotReserved(x, z) {
   for (let i = 0; i < RESERVED.length; i++) {
     const r = RESERVED[i];
@@ -1835,7 +1863,7 @@ export function inLeftoverLotReserved(x, z) {
 }
 
 /**
- * Axis-aligned footprint vs leftoverLot A/B/C/D/E reserved only.
+ * Axis-aligned footprint vs leftoverLot A/B/C/D/E/F reserved only.
  * Garden path uses this so it cannot slide onto a leftover lot.
  */
 export function leftoverLotOverlap(x, z, w, d, margin = 0.15) {
@@ -1904,7 +1932,7 @@ function pathFootprintOverlaps(g, bx, bz, bw, bd, margin) {
  * (PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) for the E-park west walk
  * (339→345.2 / z=98.5). Pass (PARK_WALK_EE_E_X, PARK_WALK_EE_E_Z)
  * for the E-park east walk (348.8→355 / z=98.5). Fail if
- * pavement, streetOverlap, leftoverLot A–E reserved, warehouse
+ * pavement, streetOverlap, leftoverLot A–F reserved, warehouse
  * reserved, helipad reserved, a kiss of 276/82.4, a kiss of
  * 276/90, a kiss of the 276/94 posts / sash, a kiss of the
  * 347/98.5 posts / sash, a kiss of the EE spine slabs, a kiss of
@@ -1991,7 +2019,7 @@ export function gardenPathRejected(cx = GARDEN_PATH_X, cz = GARDEN_PATH_Z) {
  * (PARK_BENCH_EE_X, PARK_BENCH_EE_Z) for 347 / 94.4. Pass
  * (PARK_BENCH_EE_W_X, PARK_BENCH_EE_W_Z) for 340.5 / 94.4.
  * Pass (PARK_BENCH_EE_E_X, PARK_BENCH_EE_E_Z) for 353.5 / 94.4.
- * Fail if pavement, streetOverlap, leftoverLot A–E reserved,
+ * Fail if pavement, streetOverlap, leftoverLot A–F reserved,
  * warehouse reserved, helipad reserved, a garden-path slab kiss,
  * a kiss of the EE spine slabs, a kiss of the x=272 N-S walk, a
  * kiss of the x=280 N-S walk, or a kiss of another signed bench
@@ -2209,7 +2237,7 @@ export function inPocketPark(x, z, margin = 0) {
 }
 
 /**
- * tryPlace-drop on warehouse, leftoverLot A–E reserved, helipad E
+ * tryPlace-drop on warehouse, leftoverLot A–F reserved, helipad E
  * (~430/70), the garden path, pavement, and street. Reject-or-drop,
  * never nudge. Never remaps.
  */
@@ -2223,10 +2251,11 @@ export function pocketParkDrop(x, z) {
 }
 
 /**
- * Lean at the nearest leftoverLot fence (A/B/C/D/E) or garden path if
+ * Lean at the nearest leftoverLot fence (A/B/C/D/E/F) or garden path if
  * it reaches. 276 z0=88 sits inland of path z1=84.8 — do not slide.
  * E sits 2 m inland of leftoverLot E (z1=90) — lean if the fence
- * reaches.
+ * reaches. F sits 2 m east / 2 m ocean of the E-park — lean if the
+ * fence reaches.
  */
 export function pocketParkLean(x, z) {
   let d = distToAabb(
@@ -2243,6 +2272,9 @@ export function pocketParkLean(x, z) {
   ));
   d = Math.min(d, distToAabb(
     x, z, LEFTOVER_LOT_E_X0, LEFTOVER_LOT_E_X1, LEFTOVER_LOT_E_Z0, LEFTOVER_LOT_E_Z1,
+  ));
+  d = Math.min(d, distToAabb(
+    x, z, LEFTOVER_LOT_F_X0, LEFTOVER_LOT_F_X1, LEFTOVER_LOT_F_Z0, LEFTOVER_LOT_F_Z1,
   ));
   d = Math.min(d, distToAabb(
     x, z, GARDEN_PATH_X0, GARDEN_PATH_X1, GARDEN_PATH_Z0, GARDEN_PATH_Z1,
@@ -2268,7 +2300,7 @@ export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
 /**
  * Reject-or-drop for a signed pocket-park plate. Default is 276/92.
  * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for 347/96. Fail if
- * pavement, streetOverlap, leftoverLot A–E reserved, warehouse
+ * pavement, streetOverlap, leftoverLot A–F reserved, warehouse
  * reserved, helipad E reserved, or the 268→284 / z=84 garden path.
  * Park-walk spines live on the hulls by design and are not a fail.
  * Never nudges x/z. Each hull is rejected independently.
@@ -2315,7 +2347,7 @@ function gateFootprintOverlaps(g, bx, bz, bw, bd, margin) {
 /**
  * Reject-or-drop for a boardwalk-gate kit cell. Default is the signed
  * park pergola 276 / 94. Pass (PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z)
- * for 347 / 98.5. Fail if pavement, streetOverlap, leftoverLot A–E
+ * for 347 / 98.5. Fail if pavement, streetOverlap, leftoverLot A–F
  * reserved, warehouse reserved, helipad reserved, garden path
  * (including the 339→355 / z=96 spine slabs), garden bench 276/82.4,
  * park bench 276/90 (including a kiss of the back at ~90.3), E-park
@@ -2428,6 +2460,8 @@ export const KEEPOUT = [
     z0: LEFTOVER_LOT_D_Z0 - 1.3, z1: LEFTOVER_LOT_D_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_E_X0 - 2.0, x1: LEFTOVER_LOT_E_X1 + 1.6,
     z0: LEFTOVER_LOT_E_Z0 - 1.3, z1: LEFTOVER_LOT_E_Z1 + 1.2, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_F_X0 - 2.0, x1: LEFTOVER_LOT_F_X1 + 1.6,
+    z0: LEFTOVER_LOT_F_Z0 - 1.3, z1: LEFTOVER_LOT_F_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: GARDEN_PATH_X0 - 2.0, x1: GARDEN_PATH_X1 + 1.6,
     z0: GARDEN_PATH_Z0 - 1.3, z1: GARDEN_PATH_Z1 + 1.2, tag: 'gardenPath' },
   { x0: PARK_WALK_X0 - 2.0, x1: PARK_WALK_X1 + 1.6,
@@ -3368,7 +3402,7 @@ export function installHouseColliders(addCyl, addCollider) {
 /**
  * leftoverLot reserved voids. Collider is the fence post / thin mesh /
  * gate jamb — never a lot-AABB, never a box in the gate.
- * No-arg covers #34, lot B, lot C, lot D, and lot E via leftoverLotGeom. Pass a geom for one plate.
+ * No-arg covers #34, lot B, lot C, lot D, lot E, and lot F via leftoverLotGeom. Pass a geom for one plate.
  */
 function leftoverLotVoidsAt(g) {
   const y0 = CITY_Y;
@@ -3407,7 +3441,8 @@ export function leftoverLotVoids(g) {
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)))
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)))
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z)))
-      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)));
+      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)))
+      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)));
   }
   return leftoverLotVoidsAt(g);
 }
@@ -3484,7 +3519,7 @@ function leftoverLotColliderShapesAt(shapes, g) {
 }
 
 /** Posts + thin mesh + gate jambs + shed/dumpster. Never a lot-AABB.
- *  No-arg covers #34, lot B, lot C, lot D, and lot E via leftoverLotGeom. Pass a geom for one plate. */
+ *  No-arg covers #34, lot B, lot C, lot D, lot E, and lot F via leftoverLotGeom. Pass a geom for one plate. */
 export function leftoverLotColliderShapes(g) {
   const shapes = [];
   if (g === undefined) {
@@ -3493,6 +3528,7 @@ export function leftoverLotColliderShapes(g) {
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z));
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z));
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z));
+    leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z));
   } else {
     leftoverLotColliderShapesAt(shapes, g);
   }
