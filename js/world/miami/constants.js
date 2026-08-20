@@ -469,6 +469,30 @@ export const LEFTOVER_LOT_F_X1 = 371;
 export const LEFTOVER_LOT_F_Z0 = 78;
 export const LEFTOVER_LOT_F_Z1 = 90;
 
+// ---- leftoverLot G (seventh leftover-city vacant parcel; same schema) ----
+// Vacant city parcel at signed 381/84, east of leftoverLot F RESERVED
+// (F x1=371 + 1.8 = 372.8; G starts 374, 1.2 m off). Same E→F
+// convention. 2 m east of F-park x1=372. Not a leftoverLotOverlap
+// kiss of F or F-park. G-park waits — do not place a pocket park
+// inland of G. West of helipadE (408), same inland band as
+// leftoverLot #34 / #35 / C / D / E / F / drop / abando (z=84).
+// Helipad E stays ~42 m east at 430/70 (from G x1=388). GAP 429
+// stays ~41 m east. Desi + Reesy signed the cell. Donny cleared
+// #65 on live `/`. Do not invent or slide x/z. Do not grow the
+// plate. Do not slide A (258/84), B (295/84), C (313/84), D
+// (330/84), E (347/84), or F (364/84). Same leftoverLotGeom /
+// leftoverLotColliderShapes / leftoverLotVoids — not
+// leftoverLotGGeom, not leftoverLotDirtGeom, not OSM, not a
+// fifth haunt.
+export const LEFTOVER_LOT_G_X = 381;
+export const LEFTOVER_LOT_G_Z = 84;
+export const LEFTOVER_LOT_G_W = 14.0;
+export const LEFTOVER_LOT_G_D = 12.0;
+export const LEFTOVER_LOT_G_X0 = 374;
+export const LEFTOVER_LOT_G_X1 = 388;
+export const LEFTOVER_LOT_G_Z0 = 78;
+export const LEFTOVER_LOT_G_Z1 = 90;
+
 // ---- gardenPath (Tiny Glade two-abreast walk; not a haunt; not leftoverLot) ----
 // Signed 268→284 in x, centre z=84, width 1.6 m (z 83.2–84.8). Desi + Reesy
 // signed the cell. Do not invent or slide z. Path sits off leftoverLot A
@@ -1465,9 +1489,11 @@ function boardwalkGatePathKiss(g, cx, cz) {
  * LEFTOVER_LOT_B_Z) for lot B, (LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
  * for lot C, (LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) for lot D,
  * (LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) for lot E, or
- * (LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z) for lot F.
+ * (LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z) for lot F, or
+ * (LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z) for lot G.
  * Same schema — never leftoverLotBGeom / leftoverLotCGeom /
- * leftoverLotDGeom / leftoverLotEGeom / leftoverLotFGeom.
+ * leftoverLotDGeom / leftoverLotEGeom / leftoverLotFGeom /
+ * leftoverLotGGeom / leftoverLotDirtGeom.
  * Never remaps x/z. Scatter stays on tryPlace.
  */
 export function leftoverLotGeom(cx = LEFTOVER_LOT_X, cz = LEFTOVER_LOT_Z) {
@@ -1562,14 +1588,15 @@ export function inLeftoverLotGate(x, z, margin = 0.15) {
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z), x, z, margin)
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z), x, z, margin)
     || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z), x, z, margin)
-    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z), x, z, margin);
+    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z), x, z, margin)
+    || leftoverLotGateAt(leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z), x, z, margin);
 }
 
 /**
  * Palms + weeds grow-to-gap inside the lot, lean at the fence.
  * tryPlace-drop off pavement and the gate void. Reject-or-drop, never nudge.
  * Default is leftoverLot #34. Pass leftoverLotGeom(B), leftoverLotGeom(C),
- * leftoverLotGeom(D), leftoverLotGeom(E), or leftoverLotGeom(F).
+ * leftoverLotGeom(D), leftoverLotGeom(E), leftoverLotGeom(F), or leftoverLotGeom(G).
  */
 export function leftoverLotPlantSpots(g = leftoverLotGeom()) {
   const palms = [
@@ -2132,6 +2159,8 @@ export const RESERVED = [
     z0: LEFTOVER_LOT_E_Z0 - 1.5, z1: LEFTOVER_LOT_E_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_F_X0 - 2.2, x1: LEFTOVER_LOT_F_X1 + 1.8,
     z0: LEFTOVER_LOT_F_Z0 - 1.5, z1: LEFTOVER_LOT_F_Z1 + 1.4, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_G_X0 - 2.2, x1: LEFTOVER_LOT_G_X1 + 1.8,
+    z0: LEFTOVER_LOT_G_Z0 - 1.5, z1: LEFTOVER_LOT_G_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: POCKET_PARK_E_X0 - 2.2, x1: POCKET_PARK_E_X1 + 1.8,
     z0: POCKET_PARK_E_Z0 - 1.5, z1: POCKET_PARK_E_Z1 + 1.4, tag: 'pocketPark' },
   { x0: POCKET_PARK_F_X0 - 2.2, x1: POCKET_PARK_F_X1 + 1.8,
@@ -2229,7 +2258,7 @@ export function streetOverlap(x, z, w, d, margin = 0.15) {
   return false;
 }
 
-/** True when (x,z) sits in leftoverLot A, B, C, D, E, or F reserved boxes. */
+/** True when (x,z) sits in leftoverLot A, B, C, D, E, F, or G reserved boxes. */
 export function inLeftoverLotReserved(x, z) {
   for (let i = 0; i < RESERVED.length; i++) {
     const r = RESERVED[i];
@@ -2240,7 +2269,7 @@ export function inLeftoverLotReserved(x, z) {
 }
 
 /**
- * Axis-aligned footprint vs leftoverLot A/B/C/D/E/F reserved only.
+ * Axis-aligned footprint vs leftoverLot A/B/C/D/E/F/G reserved only.
  * Garden path uses this so it cannot slide onto a leftover lot.
  */
 export function leftoverLotOverlap(x, z, w, d, margin = 0.15) {
@@ -2651,12 +2680,13 @@ export function pocketParkDrop(x, z) {
 }
 
 /**
- * Lean at the nearest leftoverLot fence (A/B/C/D/E/F) or garden path if
+ * Lean at the nearest leftoverLot fence (A/B/C/D/E/F/G) or garden path if
  * it reaches. 276 z0=88 sits inland of path z1=84.8 — do not slide.
  * E sits 2 m inland of leftoverLot E (z1=90) — lean if the fence
  * reaches. F-park sits 2 m inland of leftoverLot F (z1=90) — lean
  * if the fence reaches. Lot F also sits 2 m east / 2 m ocean of
- * the E-park — lean if that fence reaches.
+ * the E-park — lean if that fence reaches. Lot G sits 2 m east of
+ * F-park x1=372 — lean if that fence reaches. G-park waits.
  */
 export function pocketParkLean(x, z) {
   let d = distToAabb(
@@ -2676,6 +2706,9 @@ export function pocketParkLean(x, z) {
   ));
   d = Math.min(d, distToAabb(
     x, z, LEFTOVER_LOT_F_X0, LEFTOVER_LOT_F_X1, LEFTOVER_LOT_F_Z0, LEFTOVER_LOT_F_Z1,
+  ));
+  d = Math.min(d, distToAabb(
+    x, z, LEFTOVER_LOT_G_X0, LEFTOVER_LOT_G_X1, LEFTOVER_LOT_G_Z0, LEFTOVER_LOT_G_Z1,
   ));
   d = Math.min(d, distToAabb(
     x, z, GARDEN_PATH_X0, GARDEN_PATH_X1, GARDEN_PATH_Z0, GARDEN_PATH_Z1,
@@ -2874,6 +2907,8 @@ export const KEEPOUT = [
     z0: LEFTOVER_LOT_E_Z0 - 1.3, z1: LEFTOVER_LOT_E_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: LEFTOVER_LOT_F_X0 - 2.0, x1: LEFTOVER_LOT_F_X1 + 1.6,
     z0: LEFTOVER_LOT_F_Z0 - 1.3, z1: LEFTOVER_LOT_F_Z1 + 1.2, tag: 'leftoverLot' },
+  { x0: LEFTOVER_LOT_G_X0 - 2.0, x1: LEFTOVER_LOT_G_X1 + 1.6,
+    z0: LEFTOVER_LOT_G_Z0 - 1.3, z1: LEFTOVER_LOT_G_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: GARDEN_PATH_X0 - 2.0, x1: GARDEN_PATH_X1 + 1.6,
     z0: GARDEN_PATH_Z0 - 1.3, z1: GARDEN_PATH_Z1 + 1.2, tag: 'gardenPath' },
   { x0: PARK_WALK_X0 - 2.0, x1: PARK_WALK_X1 + 1.6,
@@ -3833,7 +3868,7 @@ export function installHouseColliders(addCyl, addCollider) {
 /**
  * leftoverLot reserved voids. Collider is the fence post / thin mesh /
  * gate jamb — never a lot-AABB, never a box in the gate.
- * No-arg covers #34, lot B, lot C, lot D, lot E, and lot F via leftoverLotGeom. Pass a geom for one plate.
+ * No-arg covers #34, lot B, lot C, lot D, lot E, lot F, and lot G via leftoverLotGeom. Pass a geom for one plate.
  */
 function leftoverLotVoidsAt(g) {
   const y0 = CITY_Y;
@@ -3873,7 +3908,8 @@ export function leftoverLotVoids(g) {
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)))
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z)))
       .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)))
-      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)));
+      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z)))
+      .concat(leftoverLotVoidsAt(leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z)));
   }
   return leftoverLotVoidsAt(g);
 }
@@ -3950,7 +3986,7 @@ function leftoverLotColliderShapesAt(shapes, g) {
 }
 
 /** Posts + thin mesh + gate jambs + shed/dumpster. Never a lot-AABB.
- *  No-arg covers #34, lot B, lot C, lot D, lot E, and lot F via leftoverLotGeom. Pass a geom for one plate. */
+ *  No-arg covers #34, lot B, lot C, lot D, lot E, lot F, and lot G via leftoverLotGeom. Pass a geom for one plate. */
 export function leftoverLotColliderShapes(g) {
   const shapes = [];
   if (g === undefined) {
@@ -3960,6 +3996,7 @@ export function leftoverLotColliderShapes(g) {
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z));
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z));
     leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_F_X, LEFTOVER_LOT_F_Z));
+    leftoverLotColliderShapesAt(shapes, leftoverLotGeom(LEFTOVER_LOT_G_X, LEFTOVER_LOT_G_Z));
   } else {
     leftoverLotColliderShapesAt(shapes, g);
   }
