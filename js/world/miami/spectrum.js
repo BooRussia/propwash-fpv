@@ -25,11 +25,11 @@ export const BAY_PRESET = Object.freeze({
   windTheta: Math.PI / 2, // waves propagate +Z (toward the beach)
   gamma: 3.3,
   seed: 0xB15CA7E,
-  // Jacobian foam: 0.58 painted salt-and-pepper on 2–4 m flats of the
-  // 19 m plate (min J on this sea is ~0.37 — nothing actually folds).
-  // Threshold sits just above the deepest compressions so only honest
-  // crest breaks foam. TMA / n / cascade stay locked.
-  jThresh: 0.46,
+  // Jacobian foam: NVIDIA injects at M≈0.3–0.5 via sat(k*(M−J)).
+  // Abyssal 0.62 and the 0.46 post-#36 threshold both sit above this
+  // plate's min J (~0.37), so 2–4 m flats still foamed. M≤0.3 is a
+  // real fold gate — flats off, stream-or-none. TMA / n / cascade locked.
+  jThresh: 0.30,
   foamGain: 2.4,
   foamDecay: 0.94,
   foamBlur: 0.10,
