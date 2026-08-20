@@ -58,8 +58,8 @@ export function runBayWaterTests() {
   ok('SSR off', BAY_PRESET.ssr === false);
   ok('TMA depth is bay-shallow', BAY_PRESET.depthM <= 8 && BAY_PRESET.depthM >= 2);
   ok('gravity is 9.81', G === 9.81);
-  ok('foam threshold is NVIDIA M≤0.3, not Abyssal 0.62',
-    BAY_PRESET.jThresh <= 0.30 && BAY_PRESET.jThresh >= 0.20);
+  ok('fold foam is off on this plate (no M hunt)',
+    BAY_PRESET.foamGain === 0);
 
   // ---- spectrum ----------------------------------------------------------
   const jp = jonswapParams(BAY_PRESET.windMs, BAY_PRESET.fetchM);
@@ -119,17 +119,14 @@ export function runBayWaterTests() {
     if (ah > maxAbsH) maxAbsH = ah;
   }
   ok('Jacobian field is live', Number.isFinite(minJ) && minJ < 1.05);
+  ok('19 m plate never Tessendorf-folds', minJ > 0);
   let foamCells = 0;
   for (let i = 0; i < sim.n * sim.n; i++) {
     if (sim.foam[i] > 0.002) foamCells++;
   }
-  // min J on this 19 m plate sits ~0.33–0.37. M=0.30 means fold foam is
-  // none or a leftover stream speck — not a dotted bay. Do not require
-  // maxFoam > 0.02 (that only passed when M sat above the flats).
-  ok('flats have no foam / foam is stream-or-none',
-    foamCells / (sim.n * sim.n) < 0.01);
-  ok('foam is sparse breaking, not salt-and-pepper',
-    foamCells / (sim.n * sim.n) < 0.04);
+  // Fold paint is off. Do not require maxFoam > 0.02 or a dotted bay.
+  ok('flats have no foam', foamCells === 0);
+  ok('fold foam is off on this plate', foamCells === 0);
   ok('displacement stays under the deck (no punch-through)', maxAbsH < 1.2);
 
   const foamBefore = sim.foam[0];
@@ -177,6 +174,7 @@ export function runBayWaterTests() {
   // ---- source locks: Water.js gone, no second ocean ----------------------
   const terrain = readFileSync(join(here, 'terrain.js'), 'utf8');
   const bayWater = readFileSync(join(here, 'bayWater.js'), 'utf8');
+  const baySimSrc = readFileSync(join(here, 'baySim.js'), 'utf8');
   const index = readFileSync(join(here, 'index.js'), 'utf8');
   ok('terrain.js does not import Water.js', !terrain.includes('objects/Water.js'));
   ok('index.js does not drive Water.js uniforms',
@@ -185,6 +183,8 @@ export function runBayWaterTests() {
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
   ok('foam encode floors leftover specks',
     bayWater.includes('0.05') && bayWater.includes('foam'));
+  ok('Jacobian J<M paint is skipped',
+    baySimSrc.includes('const fold = 0') && !baySimSrc.includes('jacobian[idx] < jThresh'));
   ok('no Abyssal WIND_GLSL paste',
     !bayWater.includes('WIND_GLSL') && !terrain.includes('WIND_GLSL'));
   ok('one bay mesh, no open-ocean far plate',

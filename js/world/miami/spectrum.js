@@ -25,12 +25,12 @@ export const BAY_PRESET = Object.freeze({
   windTheta: Math.PI / 2, // waves propagate +Z (toward the beach)
   gamma: 3.3,
   seed: 0xB15CA7E,
-  // Jacobian foam: NVIDIA injects at M≈0.3–0.5 via sat(k*(M−J)).
-  // Abyssal 0.62 and the 0.46 post-#36 threshold both sit above this
-  // plate's min J (~0.37), so 2–4 m flats still foamed. M≤0.3 is a
-  // real fold gate — flats off, stream-or-none. TMA / n / cascade locked.
-  jThresh: 0.30,
-  foamGain: 2.4,
+  // 19 m Biscayne plate never Tessendorf-folds (min J ~0.23–0.37, never
+  // J<0). Flats-off is a mask, not a lower M — #37's 0.30 was a silent
+  // bay. Fold injection is off this file (foamGain 0). Wake stamp may
+  // stay. Do not hunt M. Do not invent spray. TMA / n / cascade locked.
+  jThresh: 0.46,
+  foamGain: 0,
   foamDecay: 0.94,
   foamBlur: 0.10,
 });
