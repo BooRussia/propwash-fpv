@@ -429,6 +429,34 @@ export const GARDEN_PATH_COLLIDER_PAD = 0.15;
 export const GARDEN_PATH_HULL_COLLIDER = 'ground';
 export const GARDEN_PATH_AABB = false;
 
+// ---- gardenBench (Tiny Glade 3-seat slat; not a haunt; not leftoverLot) ----
+// Signed 276 / 82.4. Desi + Reesy signed the cell. Do not invent or slide
+// x/z. Never nudge. Sits 0.8 m ocean of garden-path z0=83.2. Path stays
+// 268→284 / z=84 / 1.6 m. Do not slide leftoverLot A (258/84), B (295/84),
+// or C (313/84). Scatter still uses tryPlace; this reservation is one more
+// keepout, not a second placer. 1.8 m is a 3-seat slat. Seat H 0.43–0.46 m,
+// depth ~0.45 m, back crown 0.80–0.90 m. Clear under the slats ~0.40 m
+// (whoop + 5″ knife). Sit-box is a void (flyable). Never a filled sit AABB.
+// Slats 40–50 mm / gaps 10–15 mm so grass can lean at the legs later —
+// do not start grow-to-gap grass as a new kit. Collider ⊆ legs + slats +
+// back only (±0.15 m). Not OSM. Not a path restack.
+export const GARDEN_BENCH_X = 276;
+export const GARDEN_BENCH_Z = 82.4;
+export const GARDEN_BENCH_W = 1.8;
+export const GARDEN_BENCH_DEPTH = 0.45;
+export const GARDEN_BENCH_SEAT_H = 0.45;
+export const GARDEN_BENCH_BACK_H = 0.85;
+export const GARDEN_BENCH_UNDER_CLEAR = 0.40;
+export const GARDEN_BENCH_SLAT = 0.045;
+export const GARDEN_BENCH_GAP = 0.012;
+export const GARDEN_BENCH_LEG = 0.08;
+export const GARDEN_BENCH_COLLIDER_PAD = 0.15;
+export const GARDEN_BENCH_AABB = false;
+export const GARDEN_BENCH_X0 = GARDEN_BENCH_X - GARDEN_BENCH_W / 2;
+export const GARDEN_BENCH_X1 = GARDEN_BENCH_X + GARDEN_BENCH_W / 2;
+export const GARDEN_BENCH_Z0 = GARDEN_BENCH_Z - GARDEN_BENCH_DEPTH / 2;
+export const GARDEN_BENCH_Z1 = GARDEN_BENCH_Z + GARDEN_BENCH_DEPTH / 2;
+
 /**
  * Fence / gate / shed / dumpster on a signed leftover-city plate.
  * Default is leftoverLot #34 (258/84). Pass (LEFTOVER_LOT_B_X,
@@ -652,6 +680,24 @@ export function inGardenPathSlab(x, z, margin = 0) {
 }
 
 /**
+ * Axis-aligned footprint vs garden-path flagstones. Bench uses this so it
+ * cannot kiss a slab. Reject-or-drop, never nudge.
+ */
+export function gardenPathSlabOverlap(x, z, w, d, margin = 0) {
+  const x0 = x - w / 2, x1 = x + w / 2;
+  const z0 = z - d / 2, z1 = z + d / 2;
+  const slabs = gardenPathSlabs();
+  for (let i = 0; i < slabs.length; i++) {
+    const s = slabs[i];
+    const ox = Math.min(x1, s.x1 + margin) - Math.max(x0, s.x0 - margin);
+    if (ox <= 0) continue;
+    const oz = Math.min(z1, s.z1 + margin) - Math.max(z0, s.z0 - margin);
+    if (oz > 0) return s;
+  }
+  return null;
+}
+
+/**
  * Grow-to-gap tufts in the grass joints. tryPlace-drop off pavement,
  * leftoverLot A/B/C reserved, and the flagstone slabs. Reject-or-drop,
  * never nudge. Palms stay off the path.
@@ -686,6 +732,82 @@ export function gardenPathPlantSpots() {
     }
   }
   return { weeds };
+}
+
+/**
+ * Signed Tiny Glade 3-seat slat. Never remaps x/z. Scatter stays on tryPlace.
+ * Sit-box is empty air. Under-slat clear is whoop + 5″ knife.
+ */
+export function gardenBenchGeom() {
+  return {
+    x: GARDEN_BENCH_X, z: GARDEN_BENCH_Z,
+    w: GARDEN_BENCH_W, depth: GARDEN_BENCH_DEPTH,
+    seatH: GARDEN_BENCH_SEAT_H, backH: GARDEN_BENCH_BACK_H,
+    underClear: GARDEN_BENCH_UNDER_CLEAR,
+    x0: GARDEN_BENCH_X0, x1: GARDEN_BENCH_X1,
+    z0: GARDEN_BENCH_Z0, z1: GARDEN_BENCH_Z1,
+    y0: CITY_Y,
+    slat: GARDEN_BENCH_SLAT, gap: GARDEN_BENCH_GAP, leg: GARDEN_BENCH_LEG,
+  };
+}
+
+export function inGardenBench(x, z, margin = 0) {
+  return x >= GARDEN_BENCH_X0 - margin && x <= GARDEN_BENCH_X1 + margin
+    && z >= GARDEN_BENCH_Z0 - margin && z <= GARDEN_BENCH_Z1 + margin;
+}
+
+/**
+ * Legs + seat slats + back slats. Shared kit, not a second scatterer.
+ * Rear posts run to the back crown so the sit-box stays a void.
+ */
+export function gardenBenchParts() {
+  const g = gardenBenchGeom();
+  const slat = g.slat;
+  const gap = g.gap;
+  const leg = g.leg;
+  const y0 = g.y0;
+  const xL = g.x0 + leg / 2;
+  const xR = g.x1 - leg / 2;
+  const zFront = g.z1 - leg / 2;
+  const zBack = g.z0 + leg / 2;
+  const legs = [
+    { id: 'leg-sw', kind: 'leg', x: xL, z: zFront, sx: leg, sz: leg, y0, sy: g.underClear },
+    { id: 'leg-se', kind: 'leg', x: xR, z: zFront, sx: leg, sz: leg, y0, sy: g.underClear },
+    { id: 'leg-nw', kind: 'leg', x: xL, z: zBack, sx: leg, sz: leg, y0, sy: g.backH },
+    { id: 'leg-ne', kind: 'leg', x: xR, z: zBack, sx: leg, sz: leg, y0, sy: g.backH },
+  ];
+  const slats = [];
+  const nSeat = 8;
+  const seatSpan = nSeat * slat + (nSeat - 1) * gap;
+  const zSeat0 = g.z0 + (g.depth - seatSpan) / 2;
+  const seatT = g.seatH - g.underClear;
+  for (let i = 0; i < nSeat; i++) {
+    slats.push({
+      id: `seat-${i}`, kind: 'slat',
+      x: g.x, z: zSeat0 + slat / 2 + i * (slat + gap),
+      sx: g.w, sz: slat,
+      y0: y0 + g.underClear, sy: seatT,
+    });
+  }
+  const backs = [];
+  const nBack = 6;
+  const backZ = g.z0 + slat / 2;
+  const backSx = g.w - leg * 2;
+  let y = y0 + g.seatH + gap;
+  for (let i = 0; i < nBack; i++) {
+    backs.push({
+      id: `back-${i}`, kind: 'back',
+      x: g.x, z: backZ, sx: backSx, sz: slat,
+      y0: y, sy: slat,
+    });
+    y += slat + gap;
+  }
+  backs.push({
+    id: 'back-crown', kind: 'back',
+    x: g.x, z: backZ, sx: backSx, sz: slat,
+    y0: y0 + g.backH - slat, sy: slat,
+  });
+  return { g, legs, slats, backs, xL, xR, zFront, zBack };
 }
 
 // Street furniture rests on the sidewalk / curb slabs, everything else on grade.
@@ -725,6 +847,8 @@ export const RESERVED = [
     z0: LEFTOVER_LOT_C_Z0 - 1.5, z1: LEFTOVER_LOT_C_Z1 + 1.4, tag: 'leftoverLot' },
   { x0: GARDEN_PATH_X0 - 2.2, x1: GARDEN_PATH_X1 + 1.8,
     z0: GARDEN_PATH_Z0 - 1.5, z1: GARDEN_PATH_Z1 + 1.4, tag: 'gardenPath' },
+  { x0: GARDEN_BENCH_X0 - 2.2, x1: GARDEN_BENCH_X1 + 1.8,
+    z0: GARDEN_BENCH_Z0 - 1.5, z1: GARDEN_BENCH_Z1 + 1.4, tag: 'gardenBench' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
 ];
@@ -820,6 +944,42 @@ export function gardenPathRejected() {
   return false;
 }
 
+/**
+ * Reject-or-drop for the signed Tiny Glade bench cell. Fail if pavement,
+ * streetOverlap, leftoverLot A/B/C reserved, other reserved (haunts), or
+ * a garden-path slab kiss. Path keepout padding is expected (0.8 m ocean
+ * of z0=83.2) and is not a fail. Never nudges x/z.
+ */
+export function gardenBenchRejected() {
+  const g = gardenBenchGeom();
+  if (onPavement(g.x, g.z) || onPavement(g.x0, g.z) || onPavement(g.x1, g.z)) {
+    return true;
+  }
+  if (streetOverlap(g.x, g.z, g.w, g.depth)) return true;
+  if (leftoverLotOverlap(g.x, g.z, g.w, g.depth, 0.15)) return true;
+  if (inLeftoverLotReserved(g.x, g.z)
+    || inLeftoverLotReserved(g.x0, g.z)
+    || inLeftoverLotReserved(g.x1, g.z)) return true;
+  if (inGardenPathSlab(g.x, g.z)
+    || inGardenPathSlab(g.x0, g.z) || inGardenPathSlab(g.x1, g.z)
+    || inGardenPathSlab(g.x, g.z0) || inGardenPathSlab(g.x, g.z1)
+    || inGardenPathSlab(g.x0, g.z0) || inGardenPathSlab(g.x1, g.z0)
+    || inGardenPathSlab(g.x0, g.z1) || inGardenPathSlab(g.x1, g.z1)) {
+    return true;
+  }
+  if (gardenPathSlabOverlap(g.x, g.z, g.w, g.depth, 0)) return true;
+  const hw = g.w / 2, hd = g.depth / 2;
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag === 'gardenPath' || r.tag === 'gardenBench') continue;
+    const ox = Math.min(g.x + hw, r.x1) - Math.max(g.x - hw, r.x0);
+    if (ox <= 0.15) continue;
+    const oz = Math.min(g.z + hd, r.z1) - Math.max(g.z - hd, r.z0);
+    if (oz > 0.15) return true;
+  }
+  return false;
+}
+
 // ---- ground keep-outs ----
 // Rectangles of beach/plaza that belong to a built feature. Scatter passes
 // (palms, shrubs, parasols, towels, rocks) test against these as well as the
@@ -855,6 +1015,8 @@ export const KEEPOUT = [
     z0: LEFTOVER_LOT_C_Z0 - 1.3, z1: LEFTOVER_LOT_C_Z1 + 1.2, tag: 'leftoverLot' },
   { x0: GARDEN_PATH_X0 - 2.0, x1: GARDEN_PATH_X1 + 1.6,
     z0: GARDEN_PATH_Z0 - 1.3, z1: GARDEN_PATH_Z1 + 1.2, tag: 'gardenPath' },
+  { x0: GARDEN_BENCH_X0 - 2.0, x1: GARDEN_BENCH_X1 + 1.6,
+    z0: GARDEN_BENCH_Z0 - 1.3, z1: GARDEN_BENCH_Z1 + 1.2, tag: 'gardenBench' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -1923,6 +2085,69 @@ export function gardenPathColliderShapes() {
 export function installGardenPathColliders(addCyl, addCollider) {
   void addCyl;
   const shapes = gardenPathColliderShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
+}
+
+/**
+ * Bench reserved voids. Sit-box + under-slat clear are empty air.
+ * Whoop + 5″ knife fit under the slats. Never a filled sit AABB.
+ */
+export function gardenBenchVoids() {
+  const parts = gardenBenchParts();
+  const g = parts.g;
+  const y0 = g.y0;
+  const slat = g.slat;
+  const voids = [];
+  voids.push({
+    id: 'gardenBench-under', kind: 'under',
+    x: g.x, z: g.z, y: y0 + g.underClear * 0.5,
+    x0: parts.xL + g.leg / 2 + 0.04, x1: parts.xR - g.leg / 2 - 0.04,
+    z0: g.z0 + 0.08, z1: g.z1 - 0.08,
+    y0: y0 + 0.02, y1: y0 + g.underClear - 0.02,
+    openW: (parts.xR - parts.xL) - g.leg, openH: g.underClear, probe: 0.10,
+  });
+  voids.push({
+    id: 'gardenBench-sit', kind: 'sit',
+    x: g.x, z: g.z + 0.05, y: y0 + g.seatH + (g.backH - g.seatH) * 0.42,
+    x0: parts.xL + 0.14, x1: parts.xR - 0.14,
+    z0: g.z0 + slat + 0.05, z1: g.z1 - 0.05,
+    y0: y0 + g.seatH + 0.05, y1: y0 + g.backH - 0.08,
+    openW: g.w - g.leg * 2 - 0.20, openH: g.backH - g.seatH - 0.13, probe: 0.08,
+  });
+  return voids;
+}
+
+function pushBenchAabb(shapes, part, x, z, sx, sz, y0, sy) {
+  shapes.push({ type: 'aabb', tag: 'gardenBench', part, x, z, sx, sz, y0, sy });
+}
+
+/**
+ * Per-piece colliders only: legs + slats + back. Inset so each collider
+ * is ⊆ its mesh (±0.15 m). Sit volume / under-clear have no collider.
+ * Never a bench AABB.
+ */
+export function gardenBenchColliderShapes() {
+  const shapes = [];
+  const parts = gardenBenchParts();
+  const inset = 0.02;
+  const all = parts.legs.concat(parts.slats, parts.backs);
+  for (let i = 0; i < all.length; i++) {
+    const p = all[i];
+    const sx = Math.max(0.04, p.sx - 2 * inset);
+    const sz = Math.max(0.04, p.sz - 2 * inset);
+    const sy = Math.max(0.03, p.sy - 0.01);
+    pushBenchAabb(shapes, p.kind, p.x, p.z, sx, sz, p.y0, sy);
+  }
+  return shapes;
+}
+
+/** Push leg / slat / back colliders. Never a sit-box, never a bench AABB. */
+export function installGardenBenchColliders(addCyl, addCollider) {
+  void addCyl;
+  const shapes = gardenBenchColliderShapes();
   for (let i = 0; i < shapes.length; i++) {
     const s = shapes[i];
     addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
