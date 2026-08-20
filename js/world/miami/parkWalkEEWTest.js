@@ -1,14 +1,14 @@
-// Headless checks for the Miami E-park spine (garden-path slab kit).
+// Headless checks for the Miami E-park west walk (garden-path slab kit).
 // No three.js, no game state. Not a haunt. Not leftoverLot. Not a
 // leftoverGrass / pocket-park / garden-path / 276-walk / pergola restack.
 //
-//   node ./tools/run-miami-park-walk-ee-test.mjs
+//   node ./tools/run-miami-park-walk-ee-w-test.mjs
 
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CITY_Y,
+  CITY_Y, GATE_HALF_X, GATE_HALF_Z, GATE_POST_R,
   PARK_WALK_X0, PARK_WALK_X1, PARK_WALK_Z, PARK_WALK_W,
   PARK_WALK_Z0, PARK_WALK_Z1, PARK_WALK_X, PARK_WALK_LEN,
   PARK_WALK_E_X0, PARK_WALK_E_X1, PARK_WALK_E_Z, PARK_WALK_E_W,
@@ -19,7 +19,9 @@ import {
   PARK_WALK_NS_E_Z0, PARK_WALK_NS_E_Z1, PARK_WALK_NS_E_X, PARK_WALK_NS_E_LEN,
   PARK_WALK_EE_X0, PARK_WALK_EE_X1, PARK_WALK_EE_Z, PARK_WALK_EE_W,
   PARK_WALK_EE_Z0, PARK_WALK_EE_Z1, PARK_WALK_EE_X, PARK_WALK_EE_LEN,
-  PARK_WALK_EE_AABB,
+  PARK_WALK_EE_W_X0, PARK_WALK_EE_W_X1, PARK_WALK_EE_W_Z, PARK_WALK_EE_W_W,
+  PARK_WALK_EE_W_Z0, PARK_WALK_EE_W_Z1, PARK_WALK_EE_W_X, PARK_WALK_EE_W_LEN,
+  PARK_WALK_EE_W_AABB,
   GARDEN_PATH_X, GARDEN_PATH_Z, GARDEN_PATH_W, GARDEN_PATH_LEN,
   GARDEN_PATH_X0, GARDEN_PATH_X1, GARDEN_PATH_Z0, GARDEN_PATH_Z1,
   GARDEN_PATH_SLAB_MIN, GARDEN_PATH_SLAB_MAX,
@@ -33,6 +35,8 @@ import {
   LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, LEFTOVER_LOT_E_X0, LEFTOVER_LOT_E_X1,
   LEFTOVER_LOT_E_Z0, LEFTOVER_LOT_E_Z1,
   PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_X1, PARK_BENCH_Z1,
+  PARK_BENCH_EE_X, PARK_BENCH_EE_Z, PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH,
+  PARK_BENCH_EE_Z0, PARK_BENCH_EE_Z1,
   POCKET_PARK_X, POCKET_PARK_Z, POCKET_PARK_W, POCKET_PARK_D,
   POCKET_PARK_X0, POCKET_PARK_X1, POCKET_PARK_Z0, POCKET_PARK_Z1,
   POCKET_PARK_COVER, POCKET_PARK_INSTANCES_MIN, POCKET_PARK_INSTANCES_MAX,
@@ -41,9 +45,12 @@ import {
   POCKET_PARK_E_INSTANCES_MIN, POCKET_PARK_E_INSTANCES_MAX,
   LEFTOVER_GRASS_X0, LEFTOVER_GRASS_X1, LEFTOVER_GRASS_Z0, LEFTOVER_GRASS_Z1,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
+  PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z, PARK_PERGOLA_EE_X0, PARK_PERGOLA_EE_Z0,
+  PARK_PERGOLA_EE_Z1,
   WAREHOUSE_X, WAREHOUSE_Z,
+  FLY_VOIDS, flyColliderShapes,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
-  inKeepout, inReserved, reservedOverlap, streetOverlap, groundHeight,
+  inKeepout, inReserved, reservedOverlap, inFlyVoid, streetOverlap, groundHeight,
   leftoverLotGeom, pocketParkHull, pocketParkPlannedCount, pocketParkDrop,
   pocketParkRejected,
   gardenPathGeom, gardenPathGrassHull, gardenPathSlabs, gardenPathPlantSpots,
@@ -51,6 +58,7 @@ import {
   inGardenPath, inGardenPathSlab,
   inLeftoverLotReserved, leftoverLotOverlap,
   inWarehouseReserved, warehouseOverlap, inHelipadReserved,
+  boardwalkGateGeom, boardwalkGateVoid,
 } from './constants.js';
 import { hullArea, tessellateHull, tryPlace } from './planting.js';
 
@@ -104,7 +112,7 @@ function placePocketPark(ctx, cx, cz) {
   return { cells, placed, hull };
 }
 
-export function runMiamiParkWalkEETests() {
+export function runMiamiParkWalkEEWTests() {
   fails.length = 0;
   passedCount = 0;
 
@@ -114,12 +122,14 @@ export function runMiamiParkWalkEETests() {
   const east = gardenPathGeom(PARK_WALK_E_X, PARK_WALK_E_Z);
   const ns = gardenPathGeom(PARK_WALK_NS_X, PARK_WALK_NS_Z);
   const nsE = gardenPathGeom(PARK_WALK_NS_E_X, PARK_WALK_NS_E_Z);
-  const geom = gardenPathGeom(PARK_WALK_EE_X, PARK_WALK_EE_Z);
+  const ee = gardenPathGeom(PARK_WALK_EE_X, PARK_WALK_EE_Z);
+  const geom = gardenPathGeom(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z);
   const hull = gardenPathGrassHull(geom);
   const slabs = gardenPathSlabs(geom);
   const gardenSlabs = gardenPathSlabs();
   const westSlabs = gardenPathSlabs(west);
   const eastSlabs = gardenPathSlabs(east);
+  const eeSlabs = gardenPathSlabs(ee);
   const plants = gardenPathPlantSpots(geom);
   const voids = gardenPathVoids(geom);
   const shapes = gardenPathColliderShapes(geom);
@@ -127,67 +137,103 @@ export function runMiamiParkWalkEETests() {
   const park276 = pocketParkHull();
   const parkE = pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z);
   const lastSlab = slabs.reduce((a, s) => (!a || s.x1 > a.x1 ? s : a), null);
+  const gate = boardwalkGateGeom(PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z);
+  const sash = boardwalkGateVoid(gate, 'park-pergola-ee');
+  const fly = FLY_VOIDS.find((v) => v.id === 'park-pergola-ee');
+  const kit = flyColliderShapes();
 
   // ---- signed corridor (Desi + Reesy); do not invent or slide ------------
-  ok('walk walks 339→355 in x', PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355);
-  ok('walk centre is signed z=96', PARK_WALK_EE_Z === 96
-    && PARK_WALK_EE_X === 347);
-  ok('walk width is 1.6 m (z 95.2–96.8)',
-    PARK_WALK_EE_W === 1.6 && PARK_WALK_EE_Z0 === 95.2 && PARK_WALK_EE_Z1 === 96.8
-    && Math.abs(PARK_WALK_EE_Z1 - PARK_WALK_EE_Z0 - PARK_WALK_EE_W) < 1e-9
-    && PARK_WALK_EE_W === GARDEN_PATH_W
-    && PARK_WALK_EE_W === PARK_WALK_W
-    && PARK_WALK_EE_W === PARK_WALK_E_W);
-  ok('walk length is 16 m (16 × 1.6 on the 347/96 hull)', PARK_WALK_EE_LEN === 16
-    && Math.abs(PARK_WALK_EE_X1 - PARK_WALK_EE_X0 - PARK_WALK_EE_LEN) < 1e-9
-    && PARK_WALK_EE_LEN === GARDEN_PATH_LEN);
-  ok('6 m inland of leftoverLot E (E z1=90)',
-    LEFTOVER_LOT_E_Z1 === 90 && PARK_WALK_EE_Z === 96
-    && Math.abs(PARK_WALK_EE_Z - LEFTOVER_LOT_E_Z1 - 6) < 1e-9);
+  ok('walk walks 339→345.2 in x',
+    PARK_WALK_EE_W_X0 === 339 && PARK_WALK_EE_W_X1 === 345.2);
+  ok('walk centre is signed z=98.5', PARK_WALK_EE_W_Z === 98.5
+    && Math.abs(PARK_WALK_EE_W_X - 342.1) < 1e-9);
+  ok('walk width is 1.6 m (z 97.7–99.3)',
+    PARK_WALK_EE_W_W === 1.6 && PARK_WALK_EE_W_Z0 === 97.7 && PARK_WALK_EE_W_Z1 === 99.3
+    && Math.abs(PARK_WALK_EE_W_Z1 - PARK_WALK_EE_W_Z0 - PARK_WALK_EE_W_W) < 1e-9
+    && PARK_WALK_EE_W_W === GARDEN_PATH_W
+    && PARK_WALK_EE_W_W === PARK_WALK_W
+    && PARK_WALK_EE_W_W === PARK_WALK_EE_W);
+  ok('walk length is 6.2 m (mirror of 268→274.2 / z=94)', PARK_WALK_EE_W_LEN === 6.2
+    && Math.abs(PARK_WALK_EE_W_X1 - PARK_WALK_EE_W_X0 - PARK_WALK_EE_W_LEN) < 1e-9
+    && PARK_WALK_EE_W_LEN === PARK_WALK_LEN);
+  ok('ends 1.8 m west of 347',
+    Math.abs(347 - PARK_WALK_EE_W_X1 - 1.8) < 1e-9 && PARK_WALK_EE_W_X1 === 345.2);
   ok('geom matches signed constants',
-    geom.x0 === 339 && geom.x1 === 355 && geom.z === 96
-    && geom.z0 === 95.2 && geom.z1 === 96.8 && geom.w === 1.6
-    && geom.x === 347 && geom.len === 16);
+    geom.x0 === 339 && geom.x1 === 345.2 && geom.z === 98.5
+    && geom.z0 === 97.7 && geom.z1 === 99.3 && geom.w === 1.6
+    && Math.abs(geom.x - 342.1) < 1e-9 && geom.len === 6.2);
   ok('x/z were not invented or slid',
-    geom.x === PARK_WALK_EE_X && geom.z === PARK_WALK_EE_Z
-    && PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355 && PARK_WALK_EE_Z === 96);
-  ok('last slab stays inside 355',
-    PARK_WALK_EE_X1 === 355
-    && slabs.every((s) => s.x1 <= 355 + 1e-9)
-    && lastSlab && lastSlab.x1 <= 355 + 1e-9);
-  ok('did not grow past 355',
-    geom.x1 === 355 && PARK_WALK_EE_X1 === 355
-    && slabs.every((s) => s.x1 <= PARK_WALK_EE_X1 + 1e-9));
+    geom.x === PARK_WALK_EE_W_X && geom.z === PARK_WALK_EE_W_Z
+    && PARK_WALK_EE_W_X0 === 339 && PARK_WALK_EE_W_X1 === 345.2
+    && PARK_WALK_EE_W_Z === 98.5);
+  ok('last slab stays inside 345.2',
+    PARK_WALK_EE_W_X1 === 345.2
+    && slabs.every((s) => s.x1 <= 345.2 + 1e-9)
+    && lastSlab && lastSlab.x1 <= 345.2 + 1e-9);
+  ok('did not grow past 345.2',
+    geom.x1 === 345.2 && PARK_WALK_EE_W_X1 === 345.2
+    && slabs.every((s) => s.x1 <= PARK_WALK_EE_W_X1 + 1e-9));
   ok('sits on the signed 347/96 hull',
-    geom.x0 === POCKET_PARK_E_X0 && geom.x1 === POCKET_PARK_E_X1
+    geom.x0 === POCKET_PARK_E_X0 && geom.x1 < POCKET_PARK_E_X1
     && geom.z >= POCKET_PARK_E_Z0 && geom.z <= POCKET_PARK_E_Z1
     && parkE.x === 347 && parkE.z === 96
     && parkE.x0 === 339 && parkE.x1 === 355);
 
-  ok('walk is not pavement', !onPavement(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk is not boardwalk', !onBoardwalk(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk is not roadway', !onRoadway(PARK_WALK_EE_Z));
-  ok('walk is not a cross-street', !onCrossStreet(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk is not a sidewalk slab', !onSidewalk(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk sits on leftover-city grade',
-    groundHeight(PARK_WALK_EE_X, PARK_WALK_EE_Z) === CITY_Y);
-  ok('walk is reserved', inReserved(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk is a keepout', inKeepout(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('reservedOverlap covers the signed walk',
-    reservedOverlap(PARK_WALK_EE_X, PARK_WALK_EE_Z, PARK_WALK_EE_LEN, PARK_WALK_EE_W, 0.15));
-  ok('tryPlace drops the reserved walk',
-    tryPlace(ctx, PARK_WALK_EE_X, PARK_WALK_EE_Z) === 0);
-  ok('tryPlace does not remap the walk',
-    tryPlace(ctx, PARK_WALK_EE_X, PARK_WALK_EE_Z) === 0);
-  ok('signed cell is not rejected', !gardenPathRejected(PARK_WALK_EE_X, PARK_WALK_EE_Z));
-  ok('walk footprint is not in the street',
-    !streetOverlap(PARK_WALK_EE_X, PARK_WALK_EE_Z, PARK_WALK_EE_LEN, PARK_WALK_EE_W));
-  ok('inGardenPath covers the signed E-park spine',
-    inGardenPath(PARK_WALK_EE_X, PARK_WALK_EE_Z)
-    && inGardenPath(PARK_WALK_EE_X0, PARK_WALK_EE_Z)
-    && inGardenPath(PARK_WALK_EE_X1, PARK_WALK_EE_Z));
+  ok('345.85 is 347−1.16, the Z number reused as X, not post x0',
+    Math.abs((347 - GATE_HALF_Z) - 345.84) < 1e-9
+    && GATE_HALF_Z === 1.16
+    && PARK_WALK_EE_W_X1 < (347 - GATE_HALF_Z)
+    && PARK_WALK_EE_W_X1 < 345.85);
+  ok('post x0 is 347−GATE_HALF_X, not 347−1.16',
+    Math.abs((PARK_PERGOLA_EE_X - GATE_HALF_X) - 345.85) < 1e-9
+    && GATE_HALF_X === 1.15 && GATE_HALF_X !== GATE_HALF_Z
+    && Math.abs(PARK_PERGOLA_EE_X0 - 345.85) < 1e-9);
+  ok('345.2 is not post x0',
+    PARK_WALK_EE_W_X1 === 345.2
+    && PARK_WALK_EE_W_X1 !== PARK_PERGOLA_EE_X0
+    && PARK_WALK_EE_W_X1 < PARK_PERGOLA_EE_X0);
+  ok('walk does not extend into the sash',
+    PARK_WALK_EE_W_X1 < sash.x0
+    && PARK_WALK_EE_W_X1 < PARK_PERGOLA_EE_X0
+    && PARK_WALK_EE_W_X1 < gate.x - gate.halfX);
+  ok('pergola posts sit on x=347, Z half-span 1.16 (z 97.34–99.66)',
+    PARK_PERGOLA_EE_X === 347 && PARK_PERGOLA_EE_Z === 98.5
+    && GATE_HALF_Z === 1.16
+    && Math.abs(PARK_PERGOLA_EE_Z0 - 97.34) < 1e-9
+    && Math.abs(PARK_PERGOLA_EE_Z1 - 99.66) < 1e-9
+    && gate.x === 347);
+  ok('spine z1=96.8 is 0.9 m south of walk z0=97.7 (grow-to-gap, not a kiss)',
+    PARK_WALK_EE_Z1 === 96.8 && PARK_WALK_EE_W_Z0 === 97.7
+    && Math.abs(PARK_WALK_EE_W_Z0 - PARK_WALK_EE_Z1 - 0.9) < 1e-9
+    && geom.z0 > ee.z1);
 
-  // ---- 276 park / walks / A–E / benches / pergola stay put --------------
+  ok('walk is not pavement', !onPavement(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk is not boardwalk', !onBoardwalk(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk is not roadway', !onRoadway(PARK_WALK_EE_W_Z));
+  ok('walk is not a cross-street', !onCrossStreet(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk is not a sidewalk slab', !onSidewalk(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk sits on leftover-city grade',
+    groundHeight(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) === CITY_Y);
+  ok('walk is reserved', inReserved(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk is a keepout', inKeepout(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('reservedOverlap covers the signed walk',
+    reservedOverlap(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z,
+      PARK_WALK_EE_W_LEN, PARK_WALK_EE_W_W, 0.15));
+  ok('tryPlace drops the reserved walk',
+    tryPlace(ctx, PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) === 0);
+  ok('tryPlace does not remap the walk',
+    tryPlace(ctx, PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z) === 0);
+  ok('signed cell is not rejected',
+    !gardenPathRejected(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
+  ok('walk footprint is not in the street',
+    !streetOverlap(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z,
+      PARK_WALK_EE_W_LEN, PARK_WALK_EE_W_W));
+  ok('inGardenPath covers the signed E-park west walk',
+    inGardenPath(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)
+    && inGardenPath(PARK_WALK_EE_W_X0, PARK_WALK_EE_W_Z)
+    && inGardenPath(PARK_WALK_EE_W_X1, PARK_WALK_EE_W_Z));
+
+  // ---- 276 park / walks / EE spine / 347/98.5 / 347/94.4 / A–E stay -----
   ok('west park walk stays 268→274.2 / z=94',
     PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2
     && PARK_WALK_Z === 94 && PARK_WALK_W === 1.6
@@ -212,6 +258,12 @@ export function runMiamiParkWalkEETests() {
     && PARK_WALK_NS_E_Z1 === 92.8 && PARK_WALK_NS_E_Z === 89
     && PARK_WALK_NS_E_W === 1.6 && PARK_WALK_NS_E_LEN === 7.6
     && nsE.x === 280 && nsE.z0 === 85.2 && nsE.z1 === 92.8);
+  ok('EE spine stays 339→355 / z=96',
+    PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355
+    && PARK_WALK_EE_Z === 96 && PARK_WALK_EE_W === 1.6
+    && PARK_WALK_EE_LEN === 16 && PARK_WALK_EE_X === 347
+    && PARK_WALK_EE_Z0 === 95.2 && PARK_WALK_EE_Z1 === 96.8
+    && ee.x0 === 339 && ee.x1 === 355 && ee.z === 96);
   ok('path stays 268→284 / z=84 / 1.6 m',
     GARDEN_PATH_X0 === 268 && GARDEN_PATH_X1 === 284
     && GARDEN_PATH_Z === 84 && GARDEN_PATH_W === 1.6
@@ -220,11 +272,16 @@ export function runMiamiParkWalkEETests() {
   ok('default gardenPathGeom stays 268→284 / z=84',
     garden.x0 === 268 && garden.x1 === 284 && garden.z === 84
     && garden.z0 === 83.2 && garden.z1 === 84.8 && garden.len === 16);
-  ok('garden path was not slid onto z=96',
-    garden.z === 84 && garden.x1 === 284 && geom.z === 96 && geom.x0 === 339);
-  ok('east walk was not slid onto 339→355',
-    east.x0 === 277.8 && east.x1 === 284 && east.z === 94
-    && geom.x0 === 339 && geom.x1 === 355 && geom.z === 96);
+  ok('garden path was not slid onto z=98.5',
+    garden.z === 84 && garden.x1 === 284 && geom.z === 98.5 && geom.x1 === 345.2);
+  ok('268→274.2 was not slid onto 339→345.2',
+    west.x0 === 268 && west.x1 === 274.2 && west.z === 94
+    && geom.x0 === 339 && geom.x1 === 345.2 && geom.z === 98.5);
+  ok('EE spine was not slid onto z=98.5',
+    ee.z === 96 && ee.x1 === 355 && geom.z === 98.5 && geom.x1 === 345.2);
+  ok('347/98.5 pergola stays',
+    PARK_PERGOLA_EE_X === 347 && PARK_PERGOLA_EE_Z === 98.5);
+  ok('347/94.4 stays', PARK_BENCH_EE_X === 347 && PARK_BENCH_EE_Z === 94.4);
   ok('garden bench stays 276 / 82.4',
     GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
   ok('park bench stays 276/90', PARK_BENCH_X === 276 && PARK_BENCH_Z === 90);
@@ -266,17 +323,19 @@ export function runMiamiParkWalkEETests() {
     && geomA.x0 === 251 && geomA.x1 === 265
     && geomA.z0 === 78 && geomA.z1 === 90);
   ok('does not overlap leftoverLot A–E reserved',
-    !leftoverLotOverlap(PARK_WALK_EE_X, PARK_WALK_EE_Z, PARK_WALK_EE_LEN, PARK_WALK_EE_W, 0.15)
-    && !inLeftoverLotReserved(PARK_WALK_EE_X, PARK_WALK_EE_Z)
-    && !inLeftoverLotReserved(PARK_WALK_EE_X0, PARK_WALK_EE_Z)
-    && !inLeftoverLotReserved(PARK_WALK_EE_X1, PARK_WALK_EE_Z)
-    && !inLeftoverLotReserved(PARK_WALK_EE_X, PARK_WALK_EE_Z0));
+    !leftoverLotOverlap(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z,
+      PARK_WALK_EE_W_LEN, PARK_WALK_EE_W_W, 0.15)
+    && !inLeftoverLotReserved(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)
+    && !inLeftoverLotReserved(PARK_WALK_EE_W_X0, PARK_WALK_EE_W_Z)
+    && !inLeftoverLotReserved(PARK_WALK_EE_W_X1, PARK_WALK_EE_W_Z)
+    && !inLeftoverLotReserved(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z0));
   ok('does not overlap warehouse reserved',
-    !warehouseOverlap(PARK_WALK_EE_X, PARK_WALK_EE_Z, PARK_WALK_EE_LEN, PARK_WALK_EE_W, 0.15)
-    && !inWarehouseReserved(PARK_WALK_EE_X, PARK_WALK_EE_Z));
+    !warehouseOverlap(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z,
+      PARK_WALK_EE_W_LEN, PARK_WALK_EE_W_W, 0.15)
+    && !inWarehouseReserved(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z));
   ok('does not sit on helipad E',
-    !inHelipadReserved(PARK_WALK_EE_X, PARK_WALK_EE_Z)
-    && PARK_WALK_EE_X1 < 408);
+    !inHelipadReserved(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)
+    && PARK_WALK_EE_W_X1 < 408);
   ok('does not sit on garden path 268→284 / z=84',
     geom.z0 > GARDEN_PATH_Z1
     && gardenSlabs.every((s) => s.z1 < geom.z0 || s.x1 < geom.x0)
@@ -284,17 +343,25 @@ export function runMiamiParkWalkEETests() {
       && s.z1 > geom.z0 - 1e-9 && s.z0 < geom.z1 + 1e-9));
   ok('does not sit on 276 park hull (x1=284 < 339)',
     geom.x0 > POCKET_PARK_X1
-    && POCKET_PARK_X1 === 284 && PARK_WALK_EE_X0 === 339
+    && POCKET_PARK_X1 === 284 && PARK_WALK_EE_W_X0 === 339
     && !westSlabs.some((s) => s.x1 > geom.x0 - 1e-9 && s.x0 < geom.x1 + 1e-9
       && s.z1 > geom.z0 - 1e-9 && s.z0 < geom.z1 + 1e-9)
     && !eastSlabs.some((s) => s.x1 > geom.x0 - 1e-9 && s.x0 < geom.x1 + 1e-9
+      && s.z1 > geom.z0 - 1e-9 && s.z0 < geom.z1 + 1e-9));
+  ok('does not kiss EE spine slabs',
+    geom.z0 > ee.z1
+    && !eeSlabs.some((s) => s.x1 > geom.x0 - 1e-9 && s.x0 < geom.x1 + 1e-9
       && s.z1 > geom.z0 - 1e-9 && s.z0 < geom.z1 + 1e-9));
   ok('does not sit on 276/82.4',
     geom.z0 > GARDEN_BENCH_Z + GARDEN_BENCH_DEPTH
     && geom.x0 > GARDEN_BENCH_X);
   ok('does not sit on 276/90',
     geom.x0 > PARK_BENCH_X1
-    && geom.z0 > PARK_BENCH_Z1 - 6);
+    && geom.z0 > PARK_BENCH_Z1);
+  ok('does not sit on 347/94.4',
+    geom.z0 > PARK_BENCH_EE_Z1
+    && geom.z0 > PARK_BENCH_EE_Z + PARK_BENCH_EE_DEPTH
+    && PARK_BENCH_EE_W === 1.8);
   ok('tryPlace still drops leftoverLot A–E',
     tryPlace(ctx, LEFTOVER_LOT_X, LEFTOVER_LOT_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === 0
@@ -308,6 +375,10 @@ export function runMiamiParkWalkEETests() {
     && tryPlace(ctx, PARK_WALK_E_X, PARK_WALK_E_Z) === 0
     && tryPlace(ctx, PARK_WALK_NS_X, PARK_WALK_NS_Z) === 0
     && tryPlace(ctx, PARK_WALK_NS_E_X, PARK_WALK_NS_E_Z) === 0);
+  ok('tryPlace still drops EE spine / 347/98.5 / 347/94.4',
+    tryPlace(ctx, PARK_WALK_EE_X, PARK_WALK_EE_Z) === 0
+    && tryPlace(ctx, PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z) === 0
+    && tryPlace(ctx, PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === 0);
   ok('tryPlace still drops 276/82.4',
     tryPlace(ctx, GARDEN_BENCH_X, GARDEN_BENCH_Z) === 0);
   ok('tryPlace still drops 276/90',
@@ -319,7 +390,7 @@ export function runMiamiParkWalkEETests() {
     && tryPlace(ctx, 430, 70) === 0
     && tryPlace(ctx, 0, 27) === 0 && tryPlace(ctx, 57, 80) === 0);
 
-  // ---- drop if it kisses leftoverLot E / helipad / warehouse / 276 ------
+  // ---- drop if it kisses posts / spine / 347/94.4 / leftoverLot E / 276 --
   ok('drop if the kit sits on leftoverLot E',
     gardenPathRejected(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === true);
   ok('drop if the kit sits on leftoverLot A',
@@ -343,27 +414,33 @@ export function runMiamiParkWalkEETests() {
     gardenPathRejected(GARDEN_BENCH_X, GARDEN_BENCH_Z) === true);
   ok('drop if the kit sits on the pergola / sash at 276/94',
     gardenPathRejected(PARK_PERGOLA_X, PARK_PERGOLA_Z) === true);
+  ok('drop if the kit kisses 347/98.5 posts / sash',
+    gardenPathRejected(PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z) === true);
+  ok('drop if the kit kisses EE spine slabs',
+    gardenPathRejected(PARK_WALK_EE_X, PARK_WALK_EE_Z + 1) === true);
+  ok('drop if the kit kisses 347/94.4',
+    gardenPathRejected(PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === true);
   ok('drop pavement / streetOverlap, never nudge',
     gardenPathRejected(0, 27) === true && gardenPathRejected(57, 80) === true);
 
-  // ---- shared slab kit; no parkWalkEEGeom / parkWalkE2Geom fork ----------
+  // ---- shared slab kit; no parkWalkEEWGeom / gardenPathGGeom fork --------
   ok('default gardenPathGeom stays on 268→284 / z=84',
     garden.x === GARDEN_PATH_X && garden.z === GARDEN_PATH_Z
     && garden.x0 === GARDEN_PATH_X0 && garden.x1 === GARDEN_PATH_X1);
-  ok('E-park spine reuses gardenPathGeom, same slab kit',
+  ok('E-park west walk reuses gardenPathGeom, same slab kit',
     geom.w === garden.w && geom.h === garden.h && geom.y0 === garden.y0
-    && geom.w === GARDEN_PATH_W && geom.len === garden.len
-    && geom.len === 16);
+    && geom.w === GARDEN_PATH_W && geom.len === PARK_WALK_LEN
+    && geom.len === 6.2);
 
   // ---- flagstones 0.5–0.7 m + 60–100 mm joints; no 300 mm tiles ---------
   ok('two-abreast columns exist',
     slabs.length >= 6
     && slabs.some((s) => s.row === 0) && slabs.some((s) => s.row === 1));
   ok('slabs stay inside the signed walk',
-    slabs.every((s) => s.x0 >= PARK_WALK_EE_X0 - 1e-9
-      && s.x1 <= PARK_WALK_EE_X1 + 1e-9
-      && s.z0 >= PARK_WALK_EE_Z0 - 1e-9
-      && s.z1 <= PARK_WALK_EE_Z1 + 1e-9));
+    slabs.every((s) => s.x0 >= PARK_WALK_EE_W_X0 - 1e-9
+      && s.x1 <= PARK_WALK_EE_W_X1 + 1e-9
+      && s.z0 >= PARK_WALK_EE_W_Z0 - 1e-9
+      && s.z1 <= PARK_WALK_EE_W_Z1 + 1e-9));
   ok('flagstones are 0.5–0.7 m',
     slabs.every((s) => s.sx >= GARDEN_PATH_SLAB_MIN - 1e-9
       && s.sx <= GARDEN_PATH_SLAB_MAX + 1e-9
@@ -385,15 +462,29 @@ export function runMiamiParkWalkEETests() {
     !!south0 && !!col1south
     && col1south.x0 - south0.x1 >= GARDEN_PATH_JOINT_MIN - 1e-9
     && col1south.x0 - south0.x1 <= GARDEN_PATH_JOINT_MAX + 1e-9);
+  ok('slabs do not enter the sash',
+    slabs.every((s) => s.x1 < sash.x0 && s.x1 < PARK_PERGOLA_EE_X0));
+  ok('slabs do not kiss a post',
+    slabs.every((s) => {
+      for (const dx of [-gate.halfX, gate.halfX]) {
+        for (const dz of [-gate.halfZ, gate.halfZ]) {
+          const px = gate.x + dx, pz = gate.z + dz;
+          const ox = Math.min(s.x1, px + GATE_POST_R) - Math.max(s.x0, px - GATE_POST_R);
+          const oz = Math.min(s.z1, pz + GATE_POST_R) - Math.max(s.z0, pz - GATE_POST_R);
+          if (ox > 0 && oz > 0) return false;
+        }
+      }
+      return true;
+    }));
 
   // ---- collider ⊆ each slab; joints + air are flyable; no path AABB -----
   const aabbs = shapes.filter((s) => s.tag === 'gardenPath' && s.type === 'aabb');
   ok('one collider per flagstone', aabbs.length === slabs.length && aabbs.length >= 6);
   ok('no filled path AABB',
-    !aabbs.some((s) => s.sx >= PARK_WALK_EE_LEN - 0.4
-      && s.sz >= PARK_WALK_EE_W - 0.4 && s.sy >= 0.4));
-  ok('E-park spine AABB flag is false',
-    PARK_WALK_EE_AABB === false && GARDEN_PATH_AABB === false);
+    !aabbs.some((s) => s.sx >= PARK_WALK_EE_W_LEN - 0.4
+      && s.sz >= PARK_WALK_EE_W_W - 0.4 && s.sy >= 0.4));
+  ok('E-park west walk AABB flag is false',
+    PARK_WALK_EE_W_AABB === false && GARDEN_PATH_AABB === false);
   for (let i = 0; i < slabs.length; i++) {
     const s = slabs[i];
     const hit = aabbs[i];
@@ -421,20 +512,31 @@ export function runMiamiParkWalkEETests() {
     !inGardenPathSlab(jointZ.x, jointZ.z) && !inGardenPathSlab(jointX.x, jointX.z)
     && inGardenPath(jointZ.x, jointZ.z) && inGardenPath(jointX.x, jointX.z));
 
+  // ---- sash stays empty --------------------------------------------------
+  ok('park-pergola-ee fly void is still published',
+    !!fly && fly.kind === 'kit' && fly.x === 347 && fly.z === 98.5);
+  ok('opening centre is empty air',
+    !probeBlocked(shapes, fly.x, fly.y, fly.z, 0.28)
+    && !probeBlocked(kit, fly.x, fly.y, fly.z, 0.28));
+  ok('inFlyVoid covers the signed sash',
+    !!inFlyVoid(PARK_PERGOLA_EE_X, PARK_PERGOLA_EE_Z));
+  ok('walk air void does not reach the sash',
+    air.x1 < sash.x0 && air.x1 === PARK_WALK_EE_W_X1);
+
   // ---- one grass hull at grade; not per-blade colliders (Sylva) ---------
   ok('one grass hull covers the signed walk',
-    hull.x0 === PARK_WALK_EE_X0 && hull.x1 === PARK_WALK_EE_X1
-    && hull.z0 === PARK_WALK_EE_Z0 && hull.z1 === PARK_WALK_EE_Z1
+    hull.x0 === PARK_WALK_EE_W_X0 && hull.x1 === PARK_WALK_EE_W_X1
+    && hull.z0 === PARK_WALK_EE_W_Z0 && hull.z1 === PARK_WALK_EE_W_Z1
     && hull.y0 === CITY_Y);
   ok('grass hull collider is the ground',
     hull.collider === 'ground' && GARDEN_PATH_HULL_COLLIDER === 'ground');
   ok('grass hull area is width × length',
-    Math.abs(hullArea(hull) - PARK_WALK_EE_LEN * PARK_WALK_EE_W) < 1e-9);
-  ok('walk eats ~26 m²',
-    Math.abs(PARK_WALK_EE_LEN * PARK_WALK_EE_W - 25.6) < 1e-9);
+    Math.abs(hullArea(hull) - PARK_WALK_EE_W_LEN * PARK_WALK_EE_W_W) < 1e-9);
+  ok('walk eats ~10 m²',
+    Math.abs(PARK_WALK_EE_W_LEN * PARK_WALK_EE_W_W - 9.92) < 1e-9);
   ok('no grass-hull AABB in the collider bag',
-    !aabbs.some((s) => Math.abs(s.sx - PARK_WALK_EE_LEN) < 0.2
-      && Math.abs(s.sz - PARK_WALK_EE_W) < 0.2));
+    !aabbs.some((s) => Math.abs(s.sx - PARK_WALK_EE_W_LEN) < 0.2
+      && Math.abs(s.sz - PARK_WALK_EE_W_W) < 0.2));
 
   ok('weeds grow-to-gap in the joints',
     plants.weeds.length >= 2
@@ -446,8 +548,8 @@ export function runMiamiParkWalkEETests() {
   ok('palms stay off the walk',
     !plants.palms && plants.weeds.every((p) => inGardenPath(p.x, p.z)));
 
-  // ---- E leftover ~10k after the walk; do not backfill to 12800 ---------
-  ok('E park hull is not rejected by the spine',
+  // ---- E leftover 9000–11000 after the walk; do not backfill to 12800 ---
+  ok('E park hull is not rejected by the west walk',
     !pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z)
     && !pocketParkRejected());
   const plannedE = pocketParkPlannedCount(POCKET_PARK_E_X, POCKET_PARK_E_Z);
@@ -457,7 +559,7 @@ export function runMiamiParkWalkEETests() {
     POCKET_PARK_COVER === 10
     && plannedE === 12800
     && plannedE === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER));
-  ok('E leftover after the walk is ~10k (9000–11000), not 12800',
+  ok('E leftover after the walk is 9000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
     && POCKET_PARK_E_INSTANCES_MIN === 9000
@@ -469,7 +571,7 @@ export function runMiamiParkWalkEETests() {
     fieldE.placed.length < plannedE
     && fieldE.cells.length === plannedE
     && fieldE.cells.some((c) => inGardenPath(c.x, c.z)));
-  ok('no E blade on the spine / lot E / helipad / warehouse',
+  ok('no E blade on the west walk / spine / lot E / helipad / warehouse',
     fieldE.placed.every((p) => !pocketParkDrop(p.x, p.z)
       && !inGardenPath(p.x, p.z)
       && !inLeftoverLotReserved(p.x, p.z)
@@ -504,7 +606,7 @@ export function runMiamiParkWalkEETests() {
   const checkpoints = readFileSync(join(here, 'checkpoints.js'), 'utf8');
   const quad = readFileSync(join(here, '../../physics/quad.js'), 'utf8');
   const westTest = readFileSync(join(here, 'parkWalkTest.js'), 'utf8');
-  const eastTest = readFileSync(join(here, 'parkWalkETest.js'), 'utf8');
+  const eeTest = readFileSync(join(here, 'parkWalkEETest.js'), 'utf8');
 
   ok('tryPlace is still the placer', planting.includes('export function tryPlace'));
   ok('gardenPath is not a second scatterer',
@@ -513,12 +615,12 @@ export function runMiamiParkWalkEETests() {
     !/export function tryPlace/.test(gardenSrc)
     && gardenSrc.includes('tryPlace')
     && gardenSrc.includes('onPavement'));
-  ok('E-park spine reuses gardenPathGeom, no parkWalkEEGeom fork',
-    gardenSrc.includes('gardenPathGeom(PARK_WALK_EE_X, PARK_WALK_EE_Z)')
-    && gardenSrc.includes('gardenPathRejected(PARK_WALK_EE_X, PARK_WALK_EE_Z)')
-    && gardenSrc.includes('onPavement(PARK_WALK_EE_X, PARK_WALK_EE_Z)')
+  ok('E-park west walk reuses gardenPathGeom, no parkWalkEEWGeom fork',
+    gardenSrc.includes('gardenPathGeom(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)')
+    && gardenSrc.includes('gardenPathRejected(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)')
+    && gardenSrc.includes('onPavement(PARK_WALK_EE_W_X, PARK_WALK_EE_W_Z)')
     && constants.includes('export function gardenPathGeom')
-    && constants.includes('339→355')
+    && constants.includes('339→345.2')
     && !/export function parkWalkGeom/.test(constants)
     && !/export function parkWalkEGeom/.test(constants)
     && !/export function parkWalkE2Geom/.test(constants)
@@ -546,45 +648,57 @@ export function runMiamiParkWalkEETests() {
     && !/gardenPathFGeom\(/.test(gardenSrc)
     && !/gardenPathGGeom\(/.test(gardenSrc)
     && !/parkWalkFGeom\(/.test(gardenSrc));
-  ok('did not ship parkWalkEE.js / gardenPathF.js',
+  ok('did not ship parkWalkEEW.js / gardenPathG.js',
     !existsSync(join(here, 'landmarks/parkWalk.js'))
     && !existsSync(join(here, 'landmarks/parkWalkE.js'))
     && !existsSync(join(here, 'landmarks/parkWalkEE.js'))
-    && !existsSync(join(here, 'landmarks/parkWalkE2.js'))
     && !existsSync(join(here, 'landmarks/parkWalkEEW.js'))
+    && !existsSync(join(here, 'landmarks/parkWalkF.js'))
     && !existsSync(join(here, 'landmarks/gardenPathB.js'))
     && !existsSync(join(here, 'landmarks/gardenPathF.js'))
     && !existsSync(join(here, 'landmarks/gardenPathG.js'))
-    && !existsSync(join(here, 'parkWalkEE.js')));
+    && !existsSync(join(here, 'parkWalkEEW.js')));
   ok('index keeps the shared gardenPath builder',
     index.includes("from './landmarks/gardenPath.js'")
     && index.includes('buildGardenPath(ctx)')
     && !index.includes('buildParkWalk')
     && !index.includes('buildParkWalkE')
     && !index.includes('buildParkWalkEE')
+    && !index.includes('buildParkWalkEEW')
     && !index.includes('parkWalkGeom')
     && !index.includes('parkWalkEGeom')
-    && !index.includes('parkWalkEEGeom'));
+    && !index.includes('parkWalkEEGeom')
+    && !index.includes('parkWalkEEWGeom'));
   ok('no custom mat',
     !/\bShaderMaterial\b/.test(gardenSrc) && !/\bonBeforeCompile\b/.test(gardenSrc)
     && gardenSrc.includes('MeshStandardMaterial'));
   ok('kit is Tiny Glade flagstones + one grass hull',
     gardenSrc.includes('Tiny Glade') && gardenSrc.includes('two-abreast')
     && gardenSrc.includes('grass hull') && gardenSrc.includes('grow-to-gap')
-    && gardenSrc.includes('339') && gardenSrc.includes('Desi')
+    && gardenSrc.includes('339') && gardenSrc.includes('345.2')
+    && gardenSrc.includes('Desi')
     && !/chair|sofa|table|crate|bench|Kenney/i.test(gardenSrc)
     && !/silo|hoistway|aisle/i.test(gardenSrc));
   ok('276 walks were not restacked',
     gardenSrc.includes('268→274.2') && gardenSrc.includes('277.8→284')
     && westTest.includes('268→274.2') && westTest.includes('PARK_WALK_X0 === 268')
-    && eastTest.includes('277.8→284') && eastTest.includes('PARK_WALK_E_X0 === 277.8')
-    && !westTest.includes('PARK_WALK_EE_') && !eastTest.includes('PARK_WALK_EE_')
+    && !westTest.includes('PARK_WALK_EE_W_')
     && constants.includes('PARK_WALK_X0 = 268')
     && constants.includes('PARK_WALK_X1 = 274.2')
     && constants.includes('PARK_WALK_Z = 94')
     && constants.includes('PARK_WALK_E_X0 = 277.8')
     && constants.includes('PARK_WALK_E_X1 = 284')
     && constants.includes('PARK_WALK_E_Z = 94'));
+  ok('EE spine was not restacked',
+    gardenSrc.includes('339→355') && eeTest.includes('339→355')
+    && eeTest.includes('PARK_WALK_EE_X0 === 339')
+    && constants.includes('PARK_WALK_EE_X0 = 339')
+    && constants.includes('PARK_WALK_EE_X1 = 355')
+    && constants.includes('PARK_WALK_EE_Z = 96'));
+  ok('347/98.5 was not slid',
+    constants.includes('PARK_PERGOLA_EE_X = 347')
+    && constants.includes('PARK_PERGOLA_EE_Z = 98.5')
+    && flySrc.includes('347/98.5'));
   ok('garden path 268→284 / z=84 was not slid',
     gardenSrc.includes('268→284') && gardenSrc.includes('z=84')
     && constants.includes('GARDEN_PATH_X0 = 268')
@@ -617,6 +731,7 @@ export function runMiamiParkWalkEETests() {
   ok('park pergola was not restacked',
     flySrc.includes('boardwalkGateGeom(PARK_PERGOLA_X, PARK_PERGOLA_Z)')
     && flySrc.includes('276/94')
+    && flySrc.includes('347/98.5')
     && !flySrc.includes('PARK_WALK_') && !flySrc.includes('parkWalk')
     && !/export function pergolaGeom/.test(constants)
     && !/export function parkPergolaGeom/.test(constants));
@@ -652,10 +767,10 @@ export function runMiamiParkWalkEETests() {
     && !planting.includes('gardenPath') && !planting.includes('GARDEN_PATH_'));
 
   if (fails.length) {
-    console.error('[miami-parkWalkEE] FAIL');
+    console.error('[miami-parkWalkEEW] FAIL');
     for (const f of fails) console.error('  -', f);
   } else {
-    console.log('[miami-parkWalkEE] ok', passedCount, 'checks',
+    console.log('[miami-parkWalkEEW] ok', passedCount, 'checks',
       `lastSlab.x1=${lastSlab.x1} placedE=${fieldE.placed.length}/${plannedE} placed276=${field276.placed.length}`);
   }
   return {
@@ -667,8 +782,8 @@ export function runMiamiParkWalkEETests() {
 }
 
 const isMain = typeof process !== 'undefined'
-  && process.argv[1] && process.argv[1].endsWith('parkWalkEETest.js');
+  && process.argv[1] && process.argv[1].endsWith('parkWalkEEWTest.js');
 if (isMain) {
-  const r = runMiamiParkWalkEETests();
+  const r = runMiamiParkWalkEEWTests();
   if (!r.passed) process.exit(1);
 }
