@@ -511,11 +511,13 @@ export function runMiamiPocketParkTests() {
     && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96);
   ok('E plant from the grid',
     fieldE.cells.length === plannedE && fieldE.cells.length > 0);
-  ok('E empty-hull placed count is 10000–13000 (13k is a ceiling)',
+  ok('E leftover after the 339→355 / z=96 spine is 9000–11000, not 12800',
     fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
     && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
-    && POCKET_PARK_E_INSTANCES_MIN === 10000
-    && POCKET_PARK_E_INSTANCES_MAX === 13000
+    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MAX === 11000
+    && fieldE.placed.length !== 12800
+    && fieldE.placed.length < plannedE
     && POCKET_PARK_INSTANCES_MIN === 8000
     && POCKET_PARK_INSTANCES_MAX === 11000,
     `placedE=${fieldE.placed.length} plannedE=${plannedE}`);
