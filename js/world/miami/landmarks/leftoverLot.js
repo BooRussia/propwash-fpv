@@ -4,6 +4,7 @@ import {
   CITY_Y,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z,
+  LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z,
   LEFTOVER_LOT_GATE_W,
   LEFTOVER_LOT_WALK_W, LEFTOVER_LOT_WALK_H,
   LEFTOVER_LOT_SHED_DOOR_W, LEFTOVER_LOT_SHED_DOOR_H,
@@ -29,6 +30,8 @@ import { cBox, cCyl, stripBoxCaps, roofSlabGeo } from '../geo.js';
  * patchy grass). weenie is the ocean-face vehicle gate (z0, facing −Z).
  * Lot B is the same leftoverLotGeom kit at the signed 295/84 cell — not a
  * leftoverLotBGeom fork, not a restack of #34 at 258/84.
+ * Lot C is the same leftoverLotGeom kit at the signed 313/84 cell — not a
+ * leftoverLotCGeom fork, not a slide of A or B.
  */
 
 const STEEL = 0x7a8078;
@@ -225,6 +228,9 @@ export function buildLeftoverLot(ctx) {
   const lots = [leftoverLotGeom()];
   if (!onPavement(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)) {
     lots.push(leftoverLotGeom(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z));
+  }
+  if (!onPavement(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)) {
+    lots.push(leftoverLotGeom(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z));
   }
 
   for (let n = 0; n < lots.length; n++) {
