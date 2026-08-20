@@ -1,9 +1,10 @@
 // ============================================================
 // PropWash FPV — procedural high-fidelity vehicle kit
 //
-// Six vehicle kinds (sedan / suv / pickup / sports / taxi / bus)
+// Four vehicle kinds (sedan / taxi / pickup / bus)
 // built entirely from code — no external assets, so this module
 // works unchanged when assets/ is empty.
+// SUV / sports stay off this file: unknown kinds remap to sedan.
 //
 // Each body is ONE smooth hull extruded from a bezier side
 // profile (bevelled shoulders + tumblehome), with real window
@@ -14,14 +15,14 @@
 //   const fleet = await createVehicleFleet(maxCount);
 //   fleet.group                       -> THREE.Group (add to scene)
 //   fleet.placeAt(i, x, y, z, rotY, kind, colorHex)
-//        kind: 'sedan'|'suv'|'pickup'|'sports'|'taxi'|'bus'
+//        kind: 'sedan'|'taxi'|'pickup'|'bus' (unknown → sedan)
 //        wheels rest exactly on y; vehicle nose faces +X at rotY=0
 //   fleet.finalize(used)              -> uploads matrices, culls
 //   fleet.dispose()                   -> frees instance buffers
 //
 // Perf: shared geometry built once at module level.
 // 6 InstancedMeshes per kind (body/glass/dark/chrome/lightW/lightR)
-// => 36 draw calls for a full mixed fleet (<= 40 budget).
+// => 24 draw calls for a full mixed fleet (<= 40 budget).
 // ~2.9-3.6k tris per vehicle.
 //
 // ---- greenhouse construction note -------------------------------
@@ -39,7 +40,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const VEHICLE_KINDS = ['sedan', 'suv', 'pickup', 'sports', 'taxi', 'bus'];
+export const VEHICLE_KINDS = ['sedan', 'taxi', 'pickup', 'bus'];
 
 const BEVEL_T = 0.055;      // extrude bevel thickness (shoulder roundover, in z)
 const GLASS_PROUD = 0.020;  // glass stands this far off the probed hull surface
@@ -49,15 +50,15 @@ const CROSS_PROUD = 0.026;  // windshield / backlight offset along the profile n
 const TRIM_PROUD = 0.010;   // chrome trim / handles / rocker stand-off
 
 // ---------------- shared materials (module singletons) ----------------
-// Paint is Physical for the clearcoat — that second specular layer is what
-// makes modern car paint read as paint. Per-instance colour via setColorAt.
+// Body enamel is 1957 factory, not candy: modest metalness + a thin
+// clearcoat. Per-instance colour via setColorAt.
 let MATS = null;
 function buildMats() {
   if (MATS) return MATS;
   MATS = {
     body: new THREE.MeshPhysicalMaterial({
-      color: 0xffffff, metalness: 0.72, roughness: 0.24,
-      clearcoat: 1.0, clearcoatRoughness: 0.06, envMapIntensity: 1.0,
+      color: 0xffffff, metalness: 0.18, roughness: 0.38,
+      clearcoat: 0.28, clearcoatRoughness: 0.06, envMapIntensity: 1.0,
     }),
     // Glass is a DIELECTRIC. Making it metallic with a near-black albedo
     // tints the reflection to black and it reads as flat paint. Equally,
@@ -86,10 +87,21 @@ function buildMats() {
 
 const SLOTS = ['body', 'glass', 'dark', 'chrome', 'lightW', 'lightR'];
 
-// default paint palette when the caller passes no colorHex (plausible car colours)
+// 1957 Chevy factory (Desi + Reesy). Published digital approx. Do not re-candy.
+// Tropical #3cb7ab is factory 799, not leftover candy teal.
 const PAINT = [
-  0xf4f4f2, 0xc9ccd1, 0x74787e, 0x1a1c20, 0x9c1f2e, 0x27457e,
-  0x2fa8a0, 0xd9c8a7, 0xf2a9c4, 0x476b46, 0xd06a2c, 0xe8e8ea,
+  0x16181a, // Onyx
+  0xf2ead4, // Ivory
+  0x4b6f9e, // Larkspur
+  0x2c4570, // Harbor
+  0xa9c79c, // Surf
+  0x3cb7ab, // Tropical
+  0xf0e6bb, // Cream
+  0xe0826e, // Coral
+  0x9c2226, // Matador
+  0xb9bdc0, // Inca
+  0xc79a5b, // Sierra
+  0xddcaa6, // Adobe
 ];
 const TAXI_YELLOW = 0xffc21a;
 const BUS_LIVERY = [0x2f7fd8, 0x35a371, 0xe8e4da, 0xc9772f];
@@ -143,7 +155,7 @@ function makeProbe(geo, spec) {
      * Where the hull's outline actually sits along direction (nx, ny) through
      * (x, y), measured in the z=0 plane. Windshields and backlights ride on
      * this: offsetting from the authored profile point alone leaves steeply
-     * raked panels (SUV tailgates especially) sunk inside the bodywork.
+     * raked panels sunk inside the bodywork.
      */
     surf(x, y, nx, ny) {
       o2.set(x + nx * far, y + ny * far, 0);
@@ -520,41 +532,6 @@ S.sedan = {
   exhaust: { x: -2.27, y: 0.26, zs: [-0.52] },
 };
 
-S.suv = {
-  W: 1.92, belt: 1.06, roof: 1.71, tumble: 0.11, gc: 0.26, bevel: 0.075,
-  wheelR: 0.37, tireW: 0.26, archR: 0.475, fax: 1.46, rax: -1.44,
-  fbx: 2.06,
-  top(s) {
-    s.quadraticCurveTo(2.31, 0.29, 2.345, 0.52);
-    s.quadraticCurveTo(2.39, 0.70, 2.33, 0.88);
-    s.quadraticCurveTo(1.70, 1.03, 0.95, 1.09);
-    s.lineTo(0.28, 1.635);
-    s.quadraticCurveTo(-0.80, 1.72, -1.72, 1.665);
-    s.quadraticCurveTo(-2.19, 1.48, -2.28, 1.10);   // tailgate
-    s.lineTo(-2.325, 0.62);
-    s.quadraticCurveTo(-2.31, 0.30, -2.04, 0.26);
-  },
-  windshield: [0.95, 1.09, 0.28, 1.635],
-  backlight: { p0: [-1.72, 1.665], c: [-2.19, 1.48], p1: [-2.28, 1.10], t0: 0.12, t1: 0.9 },
-  windows: [
-    [[0.56, 1.12], [0.30, 1.52], [-0.30, 1.52], [-0.30, 1.12]],
-    [[-0.42, 1.12], [-0.42, 1.52], [-1.06, 1.52], [-1.06, 1.12]],
-    [[-1.18, 1.12], [-1.18, 1.52], [-1.58, 1.52], [-1.72, 1.30], [-1.72, 1.12]],
-  ],
-  beltTrim: { x0: 0.58, x1: -1.74, y: 1.085 },
-  rocker: { h: 0.12 },
-  doorSeams: [-0.36],
-  roofRails: { x: -0.75, len: 1.9, y: 1.75, z: 0.62 },
-  mirror: { x: 0.88, y: 1.19 },
-  handles: { xs: [0.24, -0.88], y: 0.99 },
-  head: { x: 2.31, y: 0.82, w: 0.40, h: 0.14, inset: 0.34 },
-  tail: { x: -2.30, y: 1.00, w: 0.40, h: 0.13, inset: 0.32, bar: true },
-  grille: { x: 2.35, y: 0.60, w: 1.05, h: 0.24 },
-  valance: { x: 2.36, y: 0.37, w: 1.25, h: 0.11 },
-  plateF: { x: 2.375, y: 0.42 }, plateR: { x: -2.34, y: 0.68 },
-  exhaust: { x: -2.30, y: 0.33, zs: [-0.55] },
-};
-
 S.pickup = {
   W: 1.95, belt: 1.10, roof: 1.80, tumble: 0.10, gc: 0.285, bevel: 0.075,
   wheelR: 0.37, tireW: 0.27, archR: 0.465, fax: 1.72, rax: -1.60,
@@ -589,39 +566,6 @@ S.pickup = {
   valance: { x: 2.66, y: 0.40, w: 1.30, h: 0.12 },
   plateF: { x: 2.67, y: 0.44 }, plateR: { x: -2.655, y: 0.55 },
   exhaust: { x: -2.58, y: 0.33, zs: [-0.60] },
-};
-
-S.sports = {
-  W: 1.90, belt: 0.85, roof: 1.22, tumble: 0.15, gc: 0.13, bevel: 0.075,
-  wheelR: 0.33, tireW: 0.28, archR: 0.445, fax: 1.35, rax: -1.42,
-  fbx: 1.92,
-  top(s) {
-    s.quadraticCurveTo(2.16, 0.155, 2.185, 0.32);
-    s.quadraticCurveTo(2.22, 0.44, 2.15, 0.55);
-    s.quadraticCurveTo(1.35, 0.70, 0.58, 0.795);    // long low hood
-    s.lineTo(-0.28, 1.205);                          // fast windshield
-    s.quadraticCurveTo(-0.72, 1.25, -1.06, 1.19);   // short roof
-    s.quadraticCurveTo(-1.55, 1.02, -1.86, 0.88);   // fastback
-    s.lineTo(-2.06, 0.86);                           // ducktail
-    s.quadraticCurveTo(-2.22, 0.75, -2.19, 0.50);
-    s.quadraticCurveTo(-2.18, 0.17, -1.92, 0.13);
-  },
-  windshield: [0.58, 0.795, -0.28, 1.205],
-  backlight: { p0: [-1.06, 1.19], c: [-1.55, 1.02], p1: [-1.86, 0.88], t1: 0.85 },
-  windows: [
-    [[-0.12, 0.88], [-0.38, 1.09], [-0.86, 1.09], [-1.00, 0.96], [-1.00, 0.88]],
-  ],
-  beltTrim: { x0: -0.10, x1: -1.02, y: 0.855 },
-  rocker: { h: 0.09 },
-  spoiler: { x: -2.02, y: 0.905, len: 0.24, w: 0.62 },
-  mirror: { x: 0.50, y: 0.93 },
-  handles: { xs: [-0.62], y: 0.76 },
-  head: { x: 2.13, y: 0.50, w: 0.34, h: 0.075, inset: 0.30 },
-  tail: { x: -2.17, y: 0.70, w: 0.34, h: 0.07, inset: 0.28, bar: true },
-  grille: { x: 2.16, y: 0.32, w: 1.15, h: 0.14 },
-  valance: { x: 2.17, y: 0.18, w: 1.35, h: 0.07 },
-  plateF: { x: 2.185, y: 0.235 }, plateR: { x: -2.20, y: 0.44 },
-  exhaust: { x: -2.16, y: 0.20, zs: [-0.35, 0.35] },
 };
 
 S.bus = {
@@ -764,7 +708,7 @@ let KITS = null;
 function buildKits() {
   if (KITS) return KITS;
   KITS = {};
-  for (const kind of ['sedan', 'suv', 'pickup', 'sports', 'bus']) KITS[kind] = buildKit(S[kind]);
+  for (const kind of ['sedan', 'pickup', 'bus']) KITS[kind] = buildKit(S[kind]);
 
   // taxi = sedan geometry + a roof sign in the emissive-white slot
   // (the yellow paint is applied per-instance at placement time)
@@ -849,8 +793,10 @@ export async function createVehicleFleet(maxCount) {
     let hex;
     if (kind === 'taxi') hex = TAXI_YELLOW;
     else if (kind === 'bus') hex = BUS_LIVERY[rec.slot % BUS_LIVERY.length];
-    else if (colorHex !== undefined && colorHex !== null) hex = colorHex;
-    else hex = PAINT[Math.abs((i * 2654435761) | 0) % PAINT.length];
+    // Factory PAINT wins over caller candy hexes (street.js curb rolls).
+    else hex = (colorHex !== undefined && colorHex !== null && PAINT.includes(colorHex))
+      ? colorHex
+      : PAINT[Math.abs((i * 2654435761) | 0) % PAINT.length];
     K.meshes.body.setColorAt(rec.slot, _c.setHex(hex));
     if (K.meshes.body.instanceColor) K.meshes.body.instanceColor.needsUpdate = true;
   }
