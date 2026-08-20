@@ -308,9 +308,10 @@ export function runMiamiLeftoverLotTests() {
     && constants.includes('313/84'));
   ok('cullReserved drops street footprints, tryPlace drops helipad E',
     buildings.includes('streetOverlap(t.x, t.z, t.w, t.d)')
-    && buildings.includes('tryPlace')
+    && buildings.includes('tryPlace(ctx, hx, hz)')
     && buildings.includes('streetOverlap(hx, hz, 16, 16)')
-    && !/hx\s*\+=/.test(buildings) && !/hz\s*\+=/.test(buildings));
+    && buildings.includes('[[430, 70], [-430, 100]]')
+    && !/430\s*\+\s*/.test(buildings) && !/hx\s*=\s*hx\s*\+/.test(buildings));
   ok('index builds leftoverLot on the keepout path',
     index.includes("from './landmarks/leftoverLot.js'")
     && index.includes('buildLeftoverLot(ctx)')
