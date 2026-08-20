@@ -33,6 +33,9 @@ import {
   POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D,
   POCKET_PARK_F_X0, POCKET_PARK_F_X1, POCKET_PARK_F_Z0, POCKET_PARK_F_Z1,
   POCKET_PARK_F_INSTANCES_MIN, POCKET_PARK_F_INSTANCES_MAX,
+  POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D,
+  POCKET_PARK_G_X0, POCKET_PARK_G_X1, POCKET_PARK_G_Z0, POCKET_PARK_G_Z1,
+  POCKET_PARK_G_INSTANCES_MIN, POCKET_PARK_G_INSTANCES_MAX,
   PARK_WALK_X0, PARK_WALK_X1, PARK_WALK_Z,
   PARK_WALK_E_X0, PARK_WALK_E_X1, PARK_WALK_E_Z,
   PARK_WALK_EE_X0, PARK_WALK_EE_X1, PARK_WALK_EE_Z,
@@ -564,15 +567,19 @@ export function runMiamiLeftoverLotTests() {
     && LEFTOVER_LOT_G_Z === LEFTOVER_LOT_D_Z
     && LEFTOVER_LOT_G_Z === LEFTOVER_LOT_E_Z
     && LEFTOVER_LOT_G_Z === LEFTOVER_LOT_F_Z);
-  ok('A–F lots stay 258 / 295 / 313 / 330 / 347 / 364 at z=84',
+  ok('A–G lots stay 258 / 295 / 313 / 330 / 347 / 364 / 381 at z=84',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295
     && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_D_X === 330
     && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_F_X === 364
+    && LEFTOVER_LOT_G_X === 381
     && LEFTOVER_LOT_Z === 84 && LEFTOVER_LOT_B_Z === 84
     && LEFTOVER_LOT_C_Z === 84 && LEFTOVER_LOT_D_Z === 84
     && LEFTOVER_LOT_E_Z === 84 && LEFTOVER_LOT_F_Z === 84
+    && LEFTOVER_LOT_G_Z === 84
     && LEFTOVER_LOT_F_X0 === 357 && LEFTOVER_LOT_F_X1 === 371
-    && LEFTOVER_LOT_F_Z0 === 78 && LEFTOVER_LOT_F_Z1 === 90);
+    && LEFTOVER_LOT_F_Z0 === 78 && LEFTOVER_LOT_F_Z1 === 90
+    && LEFTOVER_LOT_G_X0 === 374 && LEFTOVER_LOT_G_X1 === 388
+    && LEFTOVER_LOT_G_Z0 === 78 && LEFTOVER_LOT_G_Z1 === 90);
   ok('path stays 268→284 / z=84',
     GARDEN_PATH_X0 === 268 && GARDEN_PATH_X1 === 284 && GARDEN_PATH_Z === 84);
   ok('bench stays 276 / 82.4', GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
@@ -596,11 +603,27 @@ export function runMiamiLeftoverLotTests() {
     !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D)
     && LEFTOVER_LOT_F_Z1 + 1.4 === 91.4
     && Math.abs((LEFTOVER_LOT_F_Z1 + 1.4) - POCKET_PARK_F_Z0 + 0.6) < 1e-9);
-  ok('G-park waits — no pocket park at 381/96',
-    POCKET_PARK_F_X === 364 && POCKET_PARK_F_Z === 96
-    && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96
-    && POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+  ok('G-park is the signed 381/96 hull (373–389 × 92–100)',
+    POCKET_PARK_G_X === 381 && POCKET_PARK_G_Z === 96
+    && POCKET_PARK_G_X0 === 373 && POCKET_PARK_G_X1 === 389
+    && POCKET_PARK_G_Z0 === 92 && POCKET_PARK_G_Z1 === 100
+    && POCKET_PARK_G_W === 16 && POCKET_PARK_G_D === 8
     && LEFTOVER_LOT_G_X === 381 && LEFTOVER_LOT_G_Z === 84);
+  ok('G-park is 2 m inland of lot G, leftoverLotOverlap of G reserved is 0',
+    POCKET_PARK_G_Z0 === LEFTOVER_LOT_G_Z1 + 2
+    && POCKET_PARK_G_X0 === LEFTOVER_LOT_G_X0 - 1
+    && POCKET_PARK_G_X1 === LEFTOVER_LOT_G_X1 + 1
+    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
+    && LEFTOVER_LOT_G_Z1 + 1.4 === 91.4
+    && Math.abs((LEFTOVER_LOT_G_Z1 + 1.4) - POCKET_PARK_G_Z0 + 0.6) < 1e-9);
+  ok('F-park x1=372 must not merge with G-park x0=373',
+    POCKET_PARK_F_X1 === 372 && POCKET_PARK_G_X0 === 373
+    && POCKET_PARK_G_X0 === POCKET_PARK_F_X1 + 1
+    && POCKET_PARK_F_Z0 === POCKET_PARK_G_Z0
+    && POCKET_PARK_F_Z1 === POCKET_PARK_G_Z1);
+  ok('POCKET_PARK_G leftover MIN/MAX stay 10000/13000',
+    POCKET_PARK_G_INSTANCES_MIN === 10000
+    && POCKET_PARK_G_INSTANCES_MAX === 13000);
   ok('walks stay 84 / 276 / EE spine / west / east / FF spine + kit',
     PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
     && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94
@@ -633,6 +656,7 @@ export function runMiamiLeftoverLotTests() {
     && !leftoverLotOverlap(POCKET_PARK_X, POCKET_PARK_Z, POCKET_PARK_W, POCKET_PARK_D)
     && !leftoverLotOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D)
     && !leftoverLotOverlap(POCKET_PARK_F_X, POCKET_PARK_F_Z, POCKET_PARK_F_W, POCKET_PARK_F_D)
+    && !leftoverLotOverlap(POCKET_PARK_G_X, POCKET_PARK_G_Z, POCKET_PARK_G_W, POCKET_PARK_G_D)
     && LEFTOVER_LOT_G_X0 >= LEFTOVER_LOT_F_X1 + 1.8
     && LEFTOVER_LOT_G_X0 > LEFTOVER_GRASS_X1
     && LEFTOVER_LOT_G_X0 > POCKET_PARK_X1
@@ -992,7 +1016,11 @@ export function runMiamiLeftoverLotTests() {
     && leftover.includes('381/84')
     && leftover.includes('leftoverLotGGeom fork')
     && leftover.includes('not a slide of A–F')
-    && leftover.includes('G-park waits')
+    && leftover.includes('signed 381/96 hull')
+    && leftover.includes('1 m leftover apron')
+    && leftover.includes('G-park is now the signed')
+    && !leftover.includes('G-park waits')
+    && !leftover.includes('POCKET_PARK_G')
     && !/function leftoverLotGGeom/.test(leftover)
     && !/leftoverLotGGeom\(/.test(leftover)
     && constants.includes('export function leftoverLotGeom')
@@ -1008,15 +1036,13 @@ export function runMiamiLeftoverLotTests() {
     && constants.includes('1.2 m off')
     && constants.includes('372.8')
     && constants.includes('2 m east of F-park x1=372')
-    && constants.includes('G-park waits')
+    && constants.includes('G-park is now the signed 381/96 hull')
     && !/export function leftoverLotGGeom/.test(constants)
     && !/leftoverLotGGeom\(/.test(constants)
     && !/export function leftoverLotDirtGeom/.test(constants)
     && !/leftoverLotDirtGeom\(/.test(constants)
-    && !/POCKET_PARK_G_/.test(constants)
     && !leftover.includes('leftoverLotG.js')
     && !leftover.includes('leftoverLotDirtGeom(')
-    && !constants.includes('POCKET_PARK_G_X')
     && !constants.includes('photo-mode')
     && !constants.includes('ACES')
     && !constants.includes('SSAO')
