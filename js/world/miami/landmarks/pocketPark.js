@@ -3,6 +3,7 @@ import {
   POCKET_PARK_X, POCKET_PARK_Z,
   POCKET_PARK_E_X, POCKET_PARK_E_Z,
   POCKET_PARK_F_X, POCKET_PARK_F_Z,
+  POCKET_PARK_G_X, POCKET_PARK_G_Z,
   POCKET_PARK_H_MIN, POCKET_PARK_H_MAX,
   POCKET_PARK_HULL_COLLIDER, POCKET_PARK_AABB,
   pocketParkHull, pocketParkDrop, pocketParkLean,
@@ -25,18 +26,20 @@ import { tessellateHull, tryPlace } from '../planting.js';
  * not dirt COVER_NEAR 3.36.
  *
  * Shared kit, not a second scatterer. Not a pocketParkEGeom fork.
- * Not a pocketParkFGeom fork. Not a slide of 276. Plant from the
- * grid. tryPlace reject-or-drop off pavement, warehouse,
- * leftoverLot A–F reserved, helipad E, and the garden path. Never
- * nudge. Lean at nearest leftoverLot fence (including E, 2 m
- * inland, and F, 2 m inland) or garden path if it reaches. Do not
- * slide the 276 hull onto the path (z0=88 sits inland of path
- * z1=84.8). Signed 276/92, plate 16×8, bounds 268–284 / 88–96.
- * Second hull at signed 347/96, same kit, bounds 339–355 / 92–100
- * (Desi + Reesy). Third hull at signed 364/96, same kit, bounds
- * 356–372 / 92–100 (Desi + Reesy). leftoverLotOverlap of F
- * reserved is 0 (1 m leftover apron, not a kiss). E-park x1=355
- * must not merge with this hull.
+ * Not a pocketParkFGeom fork. Not a pocketParkGGeom fork. Not a
+ * slide of 276. Plant from the grid. tryPlace reject-or-drop off
+ * pavement, warehouse, leftoverLot A–G reserved, helipad E, and
+ * the garden path. Never nudge. Lean at nearest leftoverLot fence
+ * (including E, 2 m inland, F, 2 m inland, and G, 2 m inland) or
+ * garden path if it reaches. Do not slide the 276 hull onto the
+ * path (z0=88 sits inland of path z1=84.8). Signed 276/92, plate
+ * 16×8, bounds 268–284 / 88–96. Second hull at signed 347/96,
+ * same kit, bounds 339–355 / 92–100 (Desi + Reesy). Third hull
+ * at signed 364/96, same kit, bounds 356–372 / 92–100 (Desi +
+ * Reesy). Fourth hull at signed 381/96, same kit, bounds
+ * 373–389 / 92–100 (Desi + Reesy). leftoverLotOverlap of G
+ * reserved is 0 (1 m leftover apron, not a kiss). F-park x1=372
+ * must not merge with this hull. leftoverLot A–G stay.
  */
 
 const BASE = new THREE.Color(0x2a3d28);
@@ -49,7 +52,7 @@ function hash01(a, b) {
 }
 
 function grassPlantDrop(ctx, x, z) {
-  // tryPlace-drop on warehouse / leftoverLot A–F / helipad / path /
+  // tryPlace-drop on warehouse / leftoverLot A–G / helipad / path /
   // pavement. Reject-or-drop, never nudge. Signed leftover-city grade
   // keeps.
   if (pocketParkDrop(x, z)) {
@@ -123,17 +126,19 @@ function stampField(im, list) {
 /**
  * Instance grow-to-gap St. Augustine on the signed leftover-city plates.
  * Rejects each hull independently if pavement, a street, leftoverLot
- * A–F reserved, warehouse reserved, helipad E, or the garden path.
+ * A–G reserved, warehouse reserved, helipad E, or the garden path.
  * Never remaps x/z. Scatter stays on tryPlace. Same pocketParkHull
- * kit at 276/92, 347/96, and 364/96 — not a pocketParkEGeom fork,
- * not a pocketParkFGeom fork. leftoverLotOverlap of F reserved is
- * 0 (1 m leftover apron, not a kiss). E-park x1=355 must not merge
- * with the 364/96 hull.
+ * kit at 276/92, 347/96, 364/96, and 381/96 — not a pocketParkEGeom
+ * fork, not a pocketParkFGeom fork, not a pocketParkGGeom fork.
+ * leftoverLotOverlap of G reserved is 0 (1 m leftover apron, not a
+ * kiss). F-park x1=372 must not merge with the 381/96 hull.
+ * leftoverLot A–G stay.
  */
 export function buildPocketPark(ctx) {
   const rejectA = pocketParkRejected();
   const rejectE = pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z);
   const rejectF = pocketParkRejected(POCKET_PARK_F_X, POCKET_PARK_F_Z);
+  const rejectG = pocketParkRejected(POCKET_PARK_G_X, POCKET_PARK_G_Z);
   if (onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
     tryPlace(ctx, POCKET_PARK_X, POCKET_PARK_Z);
   }
@@ -142,6 +147,9 @@ export function buildPocketPark(ctx) {
   }
   if (onPavement(POCKET_PARK_F_X, POCKET_PARK_F_Z)) {
     tryPlace(ctx, POCKET_PARK_F_X, POCKET_PARK_F_Z);
+  }
+  if (onPavement(POCKET_PARK_G_X, POCKET_PARK_G_Z)) {
+    tryPlace(ctx, POCKET_PARK_G_X, POCKET_PARK_G_Z);
   }
   if (POCKET_PARK_AABB) return null;
 
@@ -154,6 +162,9 @@ export function buildPocketPark(ctx) {
   }
   if (!rejectF && !onPavement(POCKET_PARK_F_X, POCKET_PARK_F_Z)) {
     hulls.push(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z));
+  }
+  if (!rejectG && !onPavement(POCKET_PARK_G_X, POCKET_PARK_G_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z));
   }
   if (!hulls.length) return null;
   if (hulls.some((h) => h.collider !== POCKET_PARK_HULL_COLLIDER)) return null;

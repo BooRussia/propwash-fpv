@@ -473,8 +473,9 @@ export const LEFTOVER_LOT_F_Z1 = 90;
 // Vacant city parcel at signed 381/84, east of leftoverLot F RESERVED
 // (F x1=371 + 1.8 = 372.8; G starts 374, 1.2 m off). Same E→F
 // convention. 2 m east of F-park x1=372. Not a leftoverLotOverlap
-// kiss of F or F-park. G-park waits — do not place a pocket park
-// inland of G. West of helipadE (408), same inland band as
+// kiss of F or F-park. G-park is now the signed 381/96 hull
+// (373–389 × 92–100), 2 m inland, 1 m leftover apron, not a
+// kiss. West of helipadE (408), same inland band as
 // leftoverLot #34 / #35 / C / D / E / F / drop / abando (z=84).
 // Helipad E stays ~42 m east at 430/70 (from G x1=388). GAP 429
 // stays ~41 m east. Desi + Reesy signed the cell. Donny cleared
@@ -877,15 +878,18 @@ export const LEFTOVER_GRASS_AABB = false;
 // Signed centre 276/92, plate 16×8, bounds x0=268 x1=284 z0=88 z1=96.
 // Second hull at signed 347/96, same 16×8 kit, bounds 339–355 × 92–100.
 // Third hull at signed 364/96, same 16×8 kit, bounds 356–372 × 92–100.
+// Fourth hull at signed 381/96, same 16×8 kit, bounds 373–389 × 92–100.
 // Same pocketParkHull — never pocketParkEGeom, never pocketParkFGeom,
-// never a slide of 276. Desi + Reesy signed all three cells. Do not
-// invent or slide x/z. Three hulls inland of the garden strip /
-// leftoverLot E / leftoverLot F, not OSM, not leftover-dirt 190k,
-// not a leftoverLot / path / bench / leftoverGrass restack. Path
-// stays 268→284 / z=84 / 1.6 m (z1=84.8). 276 z0=88 sits inland
-// of the path — do not slide that hull onto the path.
+// never pocketParkGGeom, never leftoverLotDirtGeom, never a slide
+// of 276 / 347 / 364. Desi + Reesy signed all four cells. Do not
+// invent or slide x/z. Four hulls inland of the garden strip /
+// leftoverLot E / leftoverLot F / leftoverLot G, not OSM, not
+// leftover-dirt 190k, not a leftoverLot / path / bench /
+// leftoverGrass restack. Path stays 268→284 / z=84 / 1.6 m
+// (z1=84.8). 276 z0=88 sits inland of the path — do not slide
+// that hull onto the path.
 // leftoverLot A 258/84, B 295/84, C 313/84, D 330/84, E 347/84,
-// F 364/84.
+// F 364/84, G 381/84. leftoverLot A–G stay.
 // E park sits 2 m inland of leftoverLot E (E z1=90, park z0=92).
 // x 339–355 is a 1 m leftover apron past E’s 340–354 — not a
 // leftoverLotOverlap kiss. F park sits 2 m inland of leftoverLot F
@@ -893,8 +897,14 @@ export const LEFTOVER_GRASS_AABB = false;
 // leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not
 // a kiss; oz = −0.6 vs reserved z1+1.4 = 91.4). E-park x1=355
 // must not merge with this hull (F x0=356, 1 m west gap, same z
-// band). Do not merge the two hulls into one plate. 276 park
-// stays (x1=284 < 339). 347 park stays (x1=355 < 356). Bench
+// band). Do not merge the two hulls into one plate. G park sits
+// 2 m inland of leftoverLot G (G z1=90, park z0=92). x 373–389
+// is 1 m past G’s 374–388 — leftoverLotOverlap of G reserved
+// is 0 (1 m leftover apron, not a kiss; oz = −0.6 vs reserved
+// z1+1.4 = 91.4). F-park x1=372 must not merge with this hull
+// (G x0=373, 1 m east gap, same z band). Do not merge the two
+// hulls into one plate. 276 park stays (x1=284 < 339). 347 park
+// stays (x1=355 < 356). 364 park stays (x1=372 < 373). Bench
 // stays 276 / 82.4. leftoverGrass stays 267–285 / 81–86. Scatter
 // stays on tryPlace; this reservation is one more keepout, not a
 // second placer. Blade H 0.12–0.22 m (unmowed St. Augustine) so it
@@ -921,9 +931,16 @@ export const LEFTOVER_GRASS_AABB = false;
 // backfill to 12800. Do not merge E-park 355. Do not change
 // E leftover 8000–11000. 276 stays 8–11k. No leftover lots
 // on this merge. POCKET_PARK_F_INSTANCES is that leftover
-// band after the walks, not a forced 12800.
+// band after the walks, not a forced 12800. G is still an
+// empty hull — leftover 10000–13000 (128 m²). 13k is a
+// ceiling, not a goal. Do not backfill. Do not change E
+// leftover 8000–11000 or F leftover 8000–11000.
+// POCKET_PARK_G_INSTANCES is that empty leftover band
+// (10000–13000). leftoverLot A–G stay. never pocketParkGGeom
+// / leftoverLotDirtGeom.
 // Lean at nearest leftoverLot fence (including E, 2 m inland, and
-// F, 2 m inland of F-park / 2 m east / 2 m ocean of the E-park)
+// F, 2 m inland of F-park / 2 m east / 2 m ocean of the E-park,
+// and G, 2 m inland of G-park)
 // or garden path if it reaches. Collider is the thin grade hull
 // only.
 // Blades are visual.
@@ -963,6 +980,16 @@ export const POCKET_PARK_F_W = 16;
 export const POCKET_PARK_F_D = 8;
 export const POCKET_PARK_F_INSTANCES_MIN = 8000;
 export const POCKET_PARK_F_INSTANCES_MAX = 11000;
+export const POCKET_PARK_G_X0 = 373;
+export const POCKET_PARK_G_X1 = 389;
+export const POCKET_PARK_G_Z0 = 92;
+export const POCKET_PARK_G_Z1 = 100;
+export const POCKET_PARK_G_X = 381;
+export const POCKET_PARK_G_Z = 96;
+export const POCKET_PARK_G_W = 16;
+export const POCKET_PARK_G_D = 8;
+export const POCKET_PARK_G_INSTANCES_MIN = 10000;
+export const POCKET_PARK_G_INSTANCES_MAX = 13000;
 export const POCKET_PARK_HULL_H = 0.014;
 export const POCKET_PARK_HULL_COLLIDER = 'ground';
 export const POCKET_PARK_PAD_AABB = 0.3;
@@ -2165,6 +2192,8 @@ export const RESERVED = [
     z0: POCKET_PARK_E_Z0 - 1.5, z1: POCKET_PARK_E_Z1 + 1.4, tag: 'pocketPark' },
   { x0: POCKET_PARK_F_X0 - 2.2, x1: POCKET_PARK_F_X1 + 1.8,
     z0: POCKET_PARK_F_Z0 - 1.5, z1: POCKET_PARK_F_Z1 + 1.4, tag: 'pocketPark' },
+  { x0: POCKET_PARK_G_X0 - 2.2, x1: POCKET_PARK_G_X1 + 1.8,
+    z0: POCKET_PARK_G_Z0 - 1.5, z1: POCKET_PARK_G_Z1 + 1.4, tag: 'pocketPark' },
   { x0: GARDEN_PATH_X0 - 2.2, x1: GARDEN_PATH_X1 + 1.8,
     z0: GARDEN_PATH_Z0 - 1.5, z1: GARDEN_PATH_Z1 + 1.4, tag: 'gardenPath' },
   { x0: PARK_WALK_X0 - 2.2, x1: PARK_WALK_X1 + 1.8,
@@ -2617,14 +2646,19 @@ export function leftoverGrassRejected() {
  * One leftover-city plate at grade. Default is 276/92 (268–284 / 88–96).
  * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for the signed 347/96 hull
  * (339–355 / 92–100). Pass (POCKET_PARK_F_X, POCKET_PARK_F_Z) for
- * the signed 364/96 hull (356–372 / 92–100). Same schema — never
- * pocketParkEGeom, never pocketParkFGeom. Never remaps x/z. Scatter
+ * the signed 364/96 hull (356–372 / 92–100). Pass
+ * (POCKET_PARK_G_X, POCKET_PARK_G_Z) for the signed 381/96 hull
+ * (373–389 / 92–100). Same schema — never pocketParkEGeom, never
+ * pocketParkFGeom, never pocketParkGGeom. Never remaps x/z. Scatter
  * stays on tryPlace. 276 z0=88 sits inland of path z1=84.8 — do
  * not slide that hull onto the path. E z0=92 sits 2 m inland of
  * leftoverLot E (z1=90). F z0=92 sits 2 m inland of leftoverLot F
- * (z1=90). leftoverLotOverlap of F reserved is 0 (1 m leftover
- * apron, not a kiss). E-park x1=355 must not merge with this hull
- * (F x0=356). Collider is the ground / thin grade hull.
+ * (z1=90). G z0=92 sits 2 m inland of leftoverLot G (z1=90).
+ * leftoverLotOverlap of G reserved is 0 (1 m leftover apron, not
+ * a kiss). F-park x1=372 must not merge with this hull (G x0=373).
+ * leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not a
+ * kiss). E-park x1=355 must not merge with F (F x0=356). Collider
+ * is the ground / thin grade hull.
  */
 export function pocketParkHull(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const w = POCKET_PARK_W;
@@ -2637,7 +2671,9 @@ export function pocketParkHull(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
     ? 0x70
     : (cx === POCKET_PARK_E_X && cz === POCKET_PARK_E_Z)
       ? 0x71
-      : 0x72;
+      : (cx === POCKET_PARK_F_X && cz === POCKET_PARK_F_Z)
+        ? 0x72
+        : 0x73;
   return {
     tag: 'pocketPark',
     x0, x1, z0, z1,
@@ -2662,11 +2698,12 @@ function inPocketParkHull(g, x, z, margin) {
 export function inPocketPark(x, z, margin = 0) {
   return inPocketParkHull(pocketParkHull(), x, z, margin)
     || inPocketParkHull(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z), x, z, margin)
-    || inPocketParkHull(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z), x, z, margin);
+    || inPocketParkHull(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z), x, z, margin)
+    || inPocketParkHull(pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z), x, z, margin);
 }
 
 /**
- * tryPlace-drop on warehouse, leftoverLot A–F reserved, helipad E
+ * tryPlace-drop on warehouse, leftoverLot A–G reserved, helipad E
  * (~430/70), the garden path, pavement, and street. Reject-or-drop,
  * never nudge. Never remaps.
  */
@@ -2685,8 +2722,9 @@ export function pocketParkDrop(x, z) {
  * E sits 2 m inland of leftoverLot E (z1=90) — lean if the fence
  * reaches. F-park sits 2 m inland of leftoverLot F (z1=90) — lean
  * if the fence reaches. Lot F also sits 2 m east / 2 m ocean of
- * the E-park — lean if that fence reaches. Lot G sits 2 m east of
- * F-park x1=372 — lean if that fence reaches. G-park waits.
+ * the E-park — lean if that fence reaches. G-park sits 2 m inland
+ * of leftoverLot G (z1=90) — lean if the fence reaches. Lot G
+ * also sits 2 m east of F-park x1=372 — lean if that fence reaches.
  */
 export function pocketParkLean(x, z) {
   let d = distToAabb(
@@ -2726,8 +2764,10 @@ export function pocketParkLean(x, z) {
  * walk is a fail. F leftover placed band after the 347 kit +17 m
  * walks (spine + 356→362.2 + 365.8→372) is 8000–11000 (~8.2k).
  * Three walks eat ~45 m². 11k is a ceiling. Do not force 12800.
- * Do not backfill. Do not merge E-park 355. Not leftover-dirt
- * 3.36 / 190k. Do not raise cover.
+ * Do not backfill. Do not merge E-park 355. G leftover placed
+ * band is the empty hull 10000–13000 (do not force 13k). 13k
+ * is a ceiling. Do not backfill. Do not merge F-park 372. Not
+ * leftover-dirt 3.36 / 190k. Do not raise cover.
  */
 export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
   const area = pocketParkArea(cx, cz);
@@ -2737,11 +2777,14 @@ export function pocketParkPlannedCount(cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
 /**
  * Reject-or-drop for a signed pocket-park plate. Default is 276/92.
  * Pass (POCKET_PARK_E_X, POCKET_PARK_E_Z) for 347/96. Pass
- * (POCKET_PARK_F_X, POCKET_PARK_F_Z) for 364/96. Fail if
- * pavement, streetOverlap, leftoverLot A–F reserved, warehouse
+ * (POCKET_PARK_F_X, POCKET_PARK_F_Z) for 364/96. Pass
+ * (POCKET_PARK_G_X, POCKET_PARK_G_Z) for 381/96. Fail if
+ * pavement, streetOverlap, leftoverLot A–G reserved, warehouse
  * reserved, helipad E reserved, or the 268→284 / z=84 garden path.
+ * leftoverLotOverlap of G reserved is 0 (1 m leftover apron, not
+ * a kiss). F-park x1=372 must not merge with this hull.
  * leftoverLotOverlap of F reserved is 0 (1 m leftover apron, not
- * a kiss). E-park x1=355 must not merge with this hull. Park-walk
+ * a kiss). E-park x1=355 must not merge with F. Park-walk
  * spines live on the hulls by design and are not a fail.
  * Never nudges x/z. Each hull is rejected independently.
  */
@@ -2959,6 +3002,8 @@ export const KEEPOUT = [
     z0: POCKET_PARK_E_Z0, z1: POCKET_PARK_E_Z1, tag: 'pocketPark' },
   { x0: POCKET_PARK_F_X0, x1: POCKET_PARK_F_X1,
     z0: POCKET_PARK_F_Z0, z1: POCKET_PARK_F_Z1, tag: 'pocketPark' },
+  { x0: POCKET_PARK_G_X0, x1: POCKET_PARK_G_X1,
+    z0: POCKET_PARK_G_Z0, z1: POCKET_PARK_G_Z1, tag: 'pocketPark' },
   { x0: PARK_PERGOLA_X - GATE_HALF_X - 0.8, x1: PARK_PERGOLA_X + GATE_HALF_X + 0.8,
     z0: PARK_PERGOLA_Z - GATE_HALF_Z - 0.8, z1: PARK_PERGOLA_Z + GATE_HALF_Z + 0.8,
     tag: 'boardwalk-gate' },
@@ -4245,16 +4290,18 @@ export function installLeftoverGrassColliders(addCyl, addCollider) {
 }
 
 /**
- * Thin grade hulls. No-arg covers 276/92, 347/96, and 364/96 via
- * pocketParkHull. Do not merge E x1=355 with F x0=356 into one
- * plate. Blades are visual. Never a 0.3 m pad AABB. Never
- * per-blade colliders. Collider is the ground hull.
+ * Thin grade hulls. No-arg covers 276/92, 347/96, 364/96, and
+ * 381/96 via pocketParkHull. Do not merge E x1=355 with F
+ * x0=356, or F x1=372 with G x0=373, into one plate. Blades
+ * are visual. Never a 0.3 m pad AABB. Never per-blade
+ * colliders. Collider is the ground hull.
  */
 export function pocketParkColliderShapes() {
   const cells = [
     pocketParkHull(),
     pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z),
     pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z),
+    pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z),
   ];
   const shapes = [];
   for (let i = 0; i < cells.length; i++) {
