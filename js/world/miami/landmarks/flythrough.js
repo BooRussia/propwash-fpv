@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
-  CITY_Y, BOARDWALK_TOP,
-  GATE_X, GATE_Z, GATE_POST_R, GATE_POST_H, GATE_HALF_X, GATE_HALF_Z,
-  GATE_BEAM_H, GATE_BEAM_W,
+  CITY_Y,
+  PARK_PERGOLA_X, PARK_PERGOLA_Z,
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_WALL_H,
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
+  boardwalkGateGeom, boardwalkGateRejected, onPavement,
   installFlyColliders,
 } from '../constants.js';
+import { tryPlace } from '../planting.js';
 import { cBox, cCyl } from '../geo.js';
 import { roofTexture } from '../textures.js';
 
@@ -18,6 +19,13 @@ import { roofTexture } from '../textures.js';
  *   boardwalk-gate   whoop sash (~2.0 × 2.2 m) on the promenade, fly +X
  *   garage-mouth     5" through-aisle facing Ocean Drive, fly ±Z
  *
+ * Park pergola is the same boardwalkGateGeom kit at the signed 276/94
+ * cell — not a pergolaGeom / parkPergolaGeom fork, not a slide of
+ * GATE_X/GATE_Z, not a leave-behind at 276/92. Opening 2.20 m, fly +X.
+ * Empty air, never a filled sash AABB. Half-span stays under 2 m so
+ * z1 stays inside the park (z=96). Drop if the Z-span kisses the
+ * 276/90 bench (back ~90.3). Never nudge.
+ *
  * Pier undercroft + pavilion stay in pier.js; this file does not touch them.
  */
 export function buildFlythrough(ctx) {
@@ -25,6 +33,13 @@ export function buildFlythrough(ctx) {
 
   setTag('boardwalk-gate');
   buildBoardwalkGate(ctx);
+  const parkGeom = boardwalkGateGeom(PARK_PERGOLA_X, PARK_PERGOLA_Z);
+  if (!boardwalkGateRejected(parkGeom.x, parkGeom.z)
+      && !onPavement(parkGeom.x, parkGeom.z)) {
+    buildBoardwalkGate(ctx, parkGeom);
+  } else if (onPavement(parkGeom.x, parkGeom.z)) {
+    tryPlace(ctx, parkGeom.x, parkGeom.z);
+  }
   installFlyColliders(addCyl, addCollider, 'boardwalk-gate');
 
   setTag('garage');
@@ -34,38 +49,46 @@ export function buildFlythrough(ctx) {
   setTag('world');
 }
 
-function buildBoardwalkGate(ctx) {
+function buildBoardwalkGate(ctx, g = boardwalkGateGeom()) {
   const { root, track } = ctx;
   const timber = [];
   const TIMBER = 0x6e5340, TIMBER2 = 0x7a5c45, SOFFIT = 0xc4b79a;
-  const y0 = BOARDWALK_TOP;
+  const y0 = g.y0;
+  const gx = g.x;
+  const gz = g.z;
+  const halfX = g.halfX;
+  const halfZ = g.halfZ;
+  const postR = g.postR;
+  const postH = g.postH;
+  const beamH = g.beamH;
+  const beamW = g.beamW;
 
-  for (const dx of [-GATE_HALF_X, GATE_HALF_X]) {
-    for (const dz of [-GATE_HALF_Z, GATE_HALF_Z]) {
+  for (const dx of [-halfX, halfX]) {
+    for (const dz of [-halfZ, halfZ]) {
       timber.push(cCyl(
-        GATE_POST_R, GATE_POST_R + 0.02, GATE_POST_H, 10, TIMBER,
-        GATE_X + dx, y0 + GATE_POST_H / 2, GATE_Z + dz,
+        postR, postR + 0.02, postH, 10, TIMBER,
+        gx + dx, y0 + postH / 2, gz + dz,
       ));
-      timber.push(cBox(0.36, 0.08, 0.36, TIMBER2, GATE_X + dx, y0 + 0.04, GATE_Z + dz));
+      timber.push(cBox(0.36, 0.08, 0.36, TIMBER2, gx + dx, y0 + 0.04, gz + dz));
     }
   }
-  const beamY = y0 + GATE_POST_H + GATE_BEAM_H / 2;
-  const spanX = GATE_HALF_X * 2;
-  const spanZ = GATE_HALF_Z * 2;
-  for (const dz of [-GATE_HALF_Z, GATE_HALF_Z]) {
-    timber.push(cBox(spanX + GATE_BEAM_W, GATE_BEAM_H, GATE_BEAM_W, TIMBER2,
-      GATE_X, beamY, GATE_Z + dz));
+  const beamY = y0 + postH + beamH / 2;
+  const spanX = halfX * 2;
+  const spanZ = halfZ * 2;
+  for (const dz of [-halfZ, halfZ]) {
+    timber.push(cBox(spanX + beamW, beamH, beamW, TIMBER2,
+      gx, beamY, gz + dz));
   }
-  for (const dx of [-GATE_HALF_X, GATE_HALF_X]) {
-    timber.push(cBox(GATE_BEAM_W, GATE_BEAM_H, spanZ + GATE_BEAM_W, TIMBER2,
-      GATE_X + dx, beamY, GATE_Z));
+  for (const dx of [-halfX, halfX]) {
+    timber.push(cBox(beamW, beamH, spanZ + beamW, TIMBER2,
+      gx + dx, beamY, gz));
   }
   timber.push(cBox(spanX + 1.1, 0.12, spanZ + 1.0, SOFFIT,
-    GATE_X, y0 + GATE_POST_H + GATE_BEAM_H + 0.06, GATE_Z));
+    gx, y0 + postH + beamH + 0.06, gz));
 
-  const g = track(mergeGeometries(timber));
+  const geo = track(mergeGeometries(timber));
   timber.forEach((x) => x.dispose());
-  const mesh = new THREE.Mesh(g, track(new THREE.MeshStandardMaterial({
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.88,
   })));
   mesh.castShadow = true;
@@ -81,7 +104,7 @@ function buildBoardwalkGate(ctx) {
       map: roofTex, color: 0xc8cdd2, roughness: 0.42, metalness: 0.48,
     })),
   );
-  lid.position.set(GATE_X, y0 + GATE_POST_H + GATE_BEAM_H + 0.16, GATE_Z);
+  lid.position.set(gx, y0 + postH + beamH + 0.16, gz);
   lid.castShadow = true;
   lid.name = 'boardwalk-gate-roof';
   root.add(lid);

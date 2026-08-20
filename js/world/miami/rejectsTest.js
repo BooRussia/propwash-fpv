@@ -10,7 +10,7 @@ import {
   ROAD_Z, BOARDWALK_Z, BOARDWALK_TOP, PIER_DECK_TOP, PIER_DECK_Z, PAVILION_Z,
   PLANT_BEACH_Z, PLANT_CITY_Z, CROSS_X,
   SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1,
-  GATE_POST_R, GARAGE_AISLE_W,
+  GATE_X, GATE_HALF_X, GATE_POST_R, GARAGE_AISLE_W,
   onPavement, onRoadway, onBoardwalk, onCrossStreet, onLummusWalk,
   onSidewalk, onCurb, onPlantingRow, sidewalkInterrupted, sidewalkRuns,
   inKeepout, inFlyVoid, FLY_VOIDS, flyColliderShapes, pierFlyShapes,
@@ -149,7 +149,8 @@ export function runMiamiRejectsTests() {
     ok(`${v.id} opening is flyable`, v.openW >= 1.15 && v.openH >= 2.0);
   }
 
-  const gatePosts = kit.filter((s) => s.tag === 'boardwalk-gate' && s.type === 'cyl');
+  const gatePosts = kit.filter((s) => s.tag === 'boardwalk-gate' && s.type === 'cyl'
+    && Math.abs(s.x - GATE_X) <= GATE_HALF_X + 1e-6);
   const garageWalls = kit.filter((s) => s.tag === 'garage' && s.type === 'aabb' && s.sy > 2);
   ok('gate has post colliders', gatePosts.length === 4);
   ok('gate posts smaller than sash',
