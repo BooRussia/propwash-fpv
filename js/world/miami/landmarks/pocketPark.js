@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
   POCKET_PARK_X, POCKET_PARK_Z,
+  POCKET_PARK_E_X, POCKET_PARK_E_Z,
   POCKET_PARK_H_MIN, POCKET_PARK_H_MAX,
   POCKET_PARK_HULL_COLLIDER, POCKET_PARK_AABB,
   pocketParkHull, pocketParkDrop, pocketParkLean,
@@ -10,24 +11,27 @@ import {
 import { tessellateHull, tryPlace } from '../planting.js';
 
 /**
- * pocketPark — Tiny Glade grow-to-gap on one leftover-city plate.
+ * pocketPark — Tiny Glade grow-to-gap on leftover-city plates.
  *
  * Not leftoverLot. Not a haunt. Not leftover-dirt 190k. Not a path,
  * bench, or leftoverGrass restack. Keepout is published in constants.js
- * before scatter; tryPlace drops palms / dirt-blades on this cell. One
- * hull at grade (Sylva methods: tessellated hull, one thin grade
+ * before scatter; tryPlace drops palms / dirt-blades on these cells.
+ * Hulls at grade (Sylva methods: tessellated hull, thin grade
  * collider — not per-blade colliders). Blades are visual. Never a
  * filled grass AABB. Never a 0.3 m pad AABB. Blade H 0.12–0.22 m
  * (unmowed St. Augustine) so they read at 8–25 m. A 50 mm lawn
  * disappears — do not ship that. ~10–13k instances, area × cover²,
  * not dirt COVER_NEAR 3.36.
  *
- * Shared kit, not a second scatterer. Plant from the grid. tryPlace
- * reject-or-drop off pavement, warehouse, leftoverLot A/B/C/D reserved,
- * and the garden path. Never nudge. Lean at nearest leftoverLot fence
- * or garden path if it reaches. Do not slide the hull onto the path
- * (z0=88 sits inland of path z1=84.8). Signed 276/92, plate 16×8,
- * bounds 268–284 / 88–96 (Desi + Reesy).
+ * Shared kit, not a second scatterer. Not a pocketParkEGeom fork.
+ * Not a slide of 276. Plant from the grid. tryPlace reject-or-drop
+ * off pavement, warehouse, leftoverLot A–E reserved, helipad E, and
+ * the garden path. Never nudge. Lean at nearest leftoverLot fence
+ * (including E, 2 m inland) or garden path if it reaches. Do not
+ * slide the 276 hull onto the path (z0=88 sits inland of path
+ * z1=84.8). Signed 276/92, plate 16×8, bounds 268–284 / 88–96.
+ * Second hull at signed 347/96, same kit, bounds 339–355 / 92–100
+ * (Desi + Reesy).
  */
 
 const BASE = new THREE.Color(0x2a3d28);
@@ -40,8 +44,9 @@ function hash01(a, b) {
 }
 
 function grassPlantDrop(ctx, x, z) {
-  // tryPlace-drop on warehouse / leftoverLot A/B/C/D / path / pavement.
-  // Reject-or-drop, never nudge. Signed leftover-city grade keeps.
+  // tryPlace-drop on warehouse / leftoverLot A–E / helipad / path /
+  // pavement. Reject-or-drop, never nudge. Signed leftover-city grade
+  // keeps.
   if (pocketParkDrop(x, z)) {
     tryPlace(ctx, x, z);
     return 0;
@@ -111,38 +116,53 @@ function stampField(im, list) {
 }
 
 /**
- * Instance grow-to-gap St. Augustine on the signed leftover-city plate.
- * Rejects if the hull is pavement, a street, leftoverLot A/B/C/D
- * reserved, warehouse reserved, or the garden path. Never remaps x/z.
- * Scatter stays on tryPlace.
+ * Instance grow-to-gap St. Augustine on the signed leftover-city plates.
+ * Rejects each hull independently if pavement, a street, leftoverLot
+ * A–E reserved, warehouse reserved, helipad E, or the garden path.
+ * Never remaps x/z. Scatter stays on tryPlace. Same pocketParkHull
+ * kit at 276/92 and 347/96 — not a pocketParkEGeom fork.
  */
 export function buildPocketPark(ctx) {
-  if (pocketParkRejected()) return null;
+  const rejectA = pocketParkRejected();
+  const rejectE = pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z);
   if (onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
     tryPlace(ctx, POCKET_PARK_X, POCKET_PARK_Z);
-    return null;
   }
+  if (onPavement(POCKET_PARK_E_X, POCKET_PARK_E_Z)) {
+    tryPlace(ctx, POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  }
+  if (POCKET_PARK_AABB) return null;
+
+  const hulls = [];
+  if (!rejectA && !onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
+    hulls.push(pocketParkHull());
+  }
+  if (!rejectE && !onPavement(POCKET_PARK_E_X, POCKET_PARK_E_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z));
+  }
+  if (!hulls.length) return null;
+  if (hulls.some((h) => h.collider !== POCKET_PARK_HULL_COLLIDER)) return null;
+
   const { root, track, addCollider, addCyl, setTag } = ctx;
   setTag('pocketPark');
 
-  const hull = pocketParkHull();
-  if (hull.collider !== POCKET_PARK_HULL_COLLIDER) return null;
-  if (POCKET_PARK_AABB) return null;
-
-  const cells = tessellateHull(hull, pocketParkPlannedCount());
   const placed = [];
-  for (let i = 0; i < cells.length; i++) {
-    const c = cells[i];
-    const y = grassPlantDrop(ctx, c.x, c.z);
-    if (!y) continue;
-    const u = hash01(i + 11, (hull.seed || 1) * 19);
-    placed.push({
-      x: c.x, y, z: c.z,
-      yaw: c.yaw,
-      sc: 0.82 + u * 0.20,
-      h: POCKET_PARK_H_MIN + u * (POCKET_PARK_H_MAX - POCKET_PARK_H_MIN),
-      lean: pocketParkLean(c.x, c.z),
-    });
+  for (let n = 0; n < hulls.length; n++) {
+    const hull = hulls[n];
+    const cells = tessellateHull(hull, pocketParkPlannedCount(hull.x, hull.z));
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      const y = grassPlantDrop(ctx, c.x, c.z);
+      if (!y) continue;
+      const u = hash01(i + 11 + n * 97, (hull.seed || 1) * 19);
+      placed.push({
+        x: c.x, y, z: c.z,
+        yaw: c.yaw,
+        sc: 0.82 + u * 0.20,
+        h: POCKET_PARK_H_MIN + u * (POCKET_PARK_H_MAX - POCKET_PARK_H_MIN),
+        lean: pocketParkLean(c.x, c.z),
+      });
+    }
   }
 
   let mesh = null;
@@ -164,5 +184,5 @@ export function buildPocketPark(ctx) {
 
   installPocketParkColliders(addCyl, addCollider);
   setTag('world');
-  return { group: mesh, count: placed.length, hullCollider: hull.collider };
+  return { group: mesh, count: placed.length, hullCollider: hulls[0].collider };
 }

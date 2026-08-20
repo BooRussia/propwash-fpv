@@ -14,6 +14,9 @@ import {
   POCKET_PARK_AREA,
   POCKET_PARK_H_MIN, POCKET_PARK_H_MAX, POCKET_PARK_LAWN_H,
   POCKET_PARK_COVER, POCKET_PARK_INSTANCES_MIN, POCKET_PARK_INSTANCES_MAX,
+  POCKET_PARK_E_X0, POCKET_PARK_E_X1, POCKET_PARK_E_Z0, POCKET_PARK_E_Z1,
+  POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D,
+  POCKET_PARK_E_INSTANCES_MIN, POCKET_PARK_E_INSTANCES_MAX,
   POCKET_PARK_HULL_H, POCKET_PARK_HULL_COLLIDER,
   POCKET_PARK_PAD_AABB, POCKET_PARK_AABB,
   GARDEN_PATH_X, GARDEN_PATH_Z, GARDEN_PATH_W, GARDEN_PATH_LEN,
@@ -24,14 +27,16 @@ import {
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, LEFTOVER_LOT_B_X0, LEFTOVER_LOT_B_X1,
   LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z, LEFTOVER_LOT_C_X0, LEFTOVER_LOT_C_X1,
   LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, LEFTOVER_LOT_D_X0, LEFTOVER_LOT_D_X1,
+  LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, LEFTOVER_LOT_E_X0, LEFTOVER_LOT_E_X1,
+  LEFTOVER_LOT_E_Z0, LEFTOVER_LOT_E_Z1,
   WAREHOUSE_X, WAREHOUSE_Z,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
-  inKeepout, groundHeight, streetOverlap,
+  inKeepout, inReserved, groundHeight, streetOverlap,
   leftoverLotGeom, pocketParkHull, pocketParkArea,
   pocketParkDrop, pocketParkLean, pocketParkPlannedCount,
   pocketParkRejected, pocketParkColliderShapes, inPocketPark,
   inGardenPath, inLeftoverLotReserved, leftoverLotOverlap,
-  inWarehouseReserved, warehouseOverlap,
+  inWarehouseReserved, warehouseOverlap, inHelipadReserved,
 } from './constants.js';
 import { hullArea, tessellateHull, tryPlace } from './planting.js';
 
@@ -64,9 +69,9 @@ function probeBlocked(shapes, x, y, z, r) {
   return null;
 }
 
-function placePocketPark(ctx) {
-  const hull = pocketParkHull();
-  const cells = tessellateHull(hull, pocketParkPlannedCount());
+function placePocketPark(ctx, cx = POCKET_PARK_X, cz = POCKET_PARK_Z) {
+  const hull = pocketParkHull(cx, cz);
+  const cells = tessellateHull(hull, pocketParkPlannedCount(cx, cz));
   const placed = [];
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i];
@@ -82,7 +87,7 @@ function placePocketPark(ctx) {
     if (!y) continue;
     placed.push(c);
   }
-  return { cells, placed };
+  return { cells, placed, hull };
 }
 
 export function runMiamiPocketParkTests() {
@@ -91,6 +96,7 @@ export function runMiamiPocketParkTests() {
 
   const ctx = { blocked: () => false };
   const hull = pocketParkHull();
+  const hullE = pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z);
   const shapes = pocketParkColliderShapes();
   const geomA = leftoverLotGeom();
 
@@ -143,6 +149,7 @@ export function runMiamiPocketParkTests() {
   ok('leftoverLot B stays 295/84', LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84);
   ok('leftoverLot C stays 313/84', LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84);
   ok('leftoverLot D stays 330/84', LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84);
+  ok('leftoverLot E stays 347/84', LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84);
   ok('bench stays 276 / 82.4', GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
   ok('leftoverGrass stays 267–285 / 81–86',
     LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
@@ -168,11 +175,16 @@ export function runMiamiPocketParkTests() {
     && LEFTOVER_LOT_C_X0 === 306 && LEFTOVER_LOT_C_X1 === 320
     && LEFTOVER_LOT_D_X0 === 323 && LEFTOVER_LOT_D_X1 === 337
     && geomA.x0 === LEFTOVER_LOT_X0 && geomA.x1 === LEFTOVER_LOT_X1);
+  ok('leftoverLot E geometry was not slid',
+    LEFTOVER_LOT_E_X0 === 340 && LEFTOVER_LOT_E_X1 === 354
+    && LEFTOVER_LOT_E_Z0 === 78 && LEFTOVER_LOT_E_Z1 === 90);
   ok('tryPlace still drops leftoverLot A/B/C/D',
     tryPlace(ctx, LEFTOVER_LOT_X, LEFTOVER_LOT_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z) === 0
     && tryPlace(ctx, LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) === 0);
+  ok('tryPlace still drops leftoverLot E',
+    tryPlace(ctx, LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === 0);
   ok('tryPlace still drops the garden path',
     tryPlace(ctx, GARDEN_PATH_X, GARDEN_PATH_Z) === 0);
   ok('tryPlace still drops the garden bench',
@@ -188,9 +200,15 @@ export function runMiamiPocketParkTests() {
     && pocketParkDrop(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z)
     && pocketParkDrop(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z)
     && pocketParkDrop(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z));
+  ok('pocketParkDrop rejects leftoverLot E',
+    pocketParkDrop(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)
+    && inLeftoverLotReserved(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z));
   ok('pocketParkDrop rejects the warehouse',
     pocketParkDrop(WAREHOUSE_X, WAREHOUSE_Z)
     && inWarehouseReserved(WAREHOUSE_X, WAREHOUSE_Z));
+  ok('pocketParkDrop rejects helipad E (~430/70)',
+    pocketParkDrop(430, 70) && inHelipadReserved(430, 70)
+    && inReserved(430, 70));
   ok('pocketParkDrop rejects the garden path',
     pocketParkDrop(GARDEN_PATH_X, GARDEN_PATH_Z)
     && inGardenPath(GARDEN_PATH_X, GARDEN_PATH_Z));
@@ -256,15 +274,15 @@ export function runMiamiPocketParkTests() {
 
   // ---- one thin grade hull collider; no 0.3 m pad; no per-blade ----------
   const aabbs = shapes.filter((s) => s.tag === 'pocketPark' && s.type === 'aabb');
+  const aabb276 = aabbs.find((s) => s.x === POCKET_PARK_X && s.z === POCKET_PARK_Z);
   ok('one thin grade hull collider',
-    aabbs.length === 1 && shapes.length === 1
-    && aabbs[0].part === 'grade'
-    && aabbs[0].sy === POCKET_PARK_HULL_H
+    !!aabb276 && aabb276.part === 'grade'
+    && aabb276.sy === POCKET_PARK_HULL_H
     && POCKET_PARK_HULL_H === 0.014);
   ok('grade hull covers the signed box',
-    aabbs[0].sx === POCKET_PARK_W && aabbs[0].sz === POCKET_PARK_D
-    && aabbs[0].x === POCKET_PARK_X && aabbs[0].z === POCKET_PARK_Z
-    && aabbs[0].y0 === CITY_Y);
+    aabb276.sx === POCKET_PARK_W && aabb276.sz === POCKET_PARK_D
+    && aabb276.x === POCKET_PARK_X && aabb276.z === POCKET_PARK_Z
+    && aabb276.y0 === CITY_Y);
   ok('hull collider is the ground',
     hull.collider === 'ground' && POCKET_PARK_HULL_COLLIDER === 'ground');
   ok('no filled grass AABB', POCKET_PARK_AABB === false);
@@ -275,7 +293,7 @@ export function runMiamiPocketParkTests() {
   ok('thin hull exists at grade',
     !!probeBlocked(shapes, POCKET_PARK_X, CITY_Y + 0.006, POCKET_PARK_Z, 0.004));
   ok('no per-blade colliders',
-    shapes.length === 1 && !shapes.some((s) => s.part === 'blade'));
+    aabbs.every((s) => s.part === 'grade') && !shapes.some((s) => s.part === 'blade'));
 
   // ---- one placer; no second scatterer; look locks -----------------------
   const planting = readFileSync(join(here, 'planting.js'), 'utf8');
@@ -367,6 +385,11 @@ export function runMiamiPocketParkTests() {
     && constants.includes('313/84') && constants.includes('330/84')
     && constants.includes('268→284') && constants.includes('276 / 82.4')
     && constants.includes('267–285') && constants.includes('276/92'));
+  ok('leftoverLot E was not restacked',
+    leftover.includes('leftoverLotGeom(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z)')
+    && leftover.includes('347/84')
+    && !leftover.includes('pocketParkE')
+    && constants.includes('347/84'));
   ok('house was not restacked',
     house.includes('housePlanGeom') && house.includes('weenie')
     && !house.includes('pocketPark') && !house.includes('POCKET_PARK_'));
@@ -401,12 +424,160 @@ export function runMiamiPocketParkTests() {
     && !planting.includes('gardenPath') && !planting.includes('GARDEN_PATH_')
     && !planting.includes('leftoverLot'));
 
+  // ---- second hull at signed 347/96; same kit, not a fork ---------------
+  ok('E cell is signed 347/96', POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96);
+  ok('E plate is signed 16 × 8',
+    POCKET_PARK_E_W === 16 && POCKET_PARK_E_D === 8
+    && POCKET_PARK_E_X1 - POCKET_PARK_E_X0 === 16
+    && POCKET_PARK_E_Z1 - POCKET_PARK_E_Z0 === 8
+    && POCKET_PARK_E_W === POCKET_PARK_W && POCKET_PARK_E_D === POCKET_PARK_D);
+  ok('E plate is signed 339–355 × 92–100',
+    POCKET_PARK_E_X0 === 339 && POCKET_PARK_E_X1 === 355
+    && POCKET_PARK_E_Z0 === 92 && POCKET_PARK_E_Z1 === 100);
+  ok('E hull reuses pocketParkHull',
+    hullE.x === 347 && hullE.z === 96
+    && hullE.x0 === 339 && hullE.x1 === 355
+    && hullE.z0 === 92 && hullE.z1 === 100
+    && hullE.w === 16 && hullE.d === 8
+    && hullE.collider === 'ground');
+  ok('E is 2 m inland of leftoverLot E z1=90',
+    LEFTOVER_LOT_E_Z1 === 90 && POCKET_PARK_E_Z0 === 92
+    && POCKET_PARK_E_Z0 === LEFTOVER_LOT_E_Z1 + 2);
+  ok('E is 1 m leftover apron past lot E, not a leftoverLotOverlap kiss',
+    POCKET_PARK_E_X0 === 339 && LEFTOVER_LOT_E_X0 === 340
+    && POCKET_PARK_E_X1 === 355 && LEFTOVER_LOT_E_X1 === 354
+    && POCKET_PARK_E_X0 === LEFTOVER_LOT_E_X0 - 1
+    && POCKET_PARK_E_X1 === LEFTOVER_LOT_E_X1 + 1
+    && !leftoverLotOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D, 0.15)
+    && !inLeftoverLotReserved(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !inLeftoverLotReserved(POCKET_PARK_E_X0, POCKET_PARK_E_Z)
+    && !inLeftoverLotReserved(POCKET_PARK_E_X1, POCKET_PARK_E_Z));
+  ok('276 park stays 276/92 (x1=284 < 339)',
+    POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_X1 === 284 && POCKET_PARK_X1 < POCKET_PARK_E_X0
+    && POCKET_PARK_E_X0 === 339
+    && hull.x === 276 && hull.z === 92
+    && hull.x0 === 268 && hull.x1 === 284);
+  ok('A–E stay 258/295/313/330/347 at z=84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295
+    && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_D_X === 330
+    && LEFTOVER_LOT_E_X === 347
+    && LEFTOVER_LOT_Z === 84 && LEFTOVER_LOT_B_Z === 84
+    && LEFTOVER_LOT_C_Z === 84 && LEFTOVER_LOT_D_Z === 84
+    && LEFTOVER_LOT_E_Z === 84);
+  ok('reuses pocketParkHull, no pocketParkEGeom',
+    park.includes('pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z)')
+    && park.includes('pocketParkHull()')
+    && constants.includes('export function pocketParkHull')
+    && !/export function pocketParkEGeom/.test(constants)
+    && !/function pocketParkEGeom/.test(park)
+    && !/pocketParkEGeom\(/.test(constants)
+    && !/pocketParkEGeom\(/.test(park)
+    && !existsSync(join(here, 'landmarks/pocketParkE.js'))
+    && !existsSync(join(here, 'pocketParkE.js')));
+  ok('E plate is 128 m²',
+    pocketParkArea(POCKET_PARK_E_X, POCKET_PARK_E_Z) === 128
+    && Math.abs(hullArea(hullE) - 128) < 1e-9);
+  ok('E plate is not pavement / street',
+    !onPavement(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !onBoardwalk(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !onRoadway(POCKET_PARK_E_Z)
+    && !onCrossStreet(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !onSidewalk(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !streetOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D));
+  ok('E plate sits on leftover-city grade',
+    groundHeight(POCKET_PARK_E_X, POCKET_PARK_E_Z) === CITY_Y);
+  ok('E plate is reserved and a keepout',
+    inReserved(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && inKeepout(POCKET_PARK_E_X, POCKET_PARK_E_Z));
+  ok('inPocketPark covers both signed boxes',
+    inPocketPark(POCKET_PARK_X, POCKET_PARK_Z)
+    && inPocketPark(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && inPocketPark(POCKET_PARK_E_X0, POCKET_PARK_E_Z0)
+    && inPocketPark(POCKET_PARK_E_X1, POCKET_PARK_E_Z1));
+  ok('E signed plate is not rejected',
+    !pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z)
+    && !pocketParkRejected());
+  ok('E hull does not overlap warehouse reserved',
+    !warehouseOverlap(POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D, 0.15)
+    && !inWarehouseReserved(POCKET_PARK_E_X, POCKET_PARK_E_Z));
+
+  const plannedE = pocketParkPlannedCount(POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  const fieldE = placePocketPark(ctx, POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  ok('E density is area × cover², not dirt 3.36',
+    POCKET_PARK_COVER === 10
+    && plannedE === 12800
+    && plannedE === Math.round(128 * POCKET_PARK_COVER * POCKET_PARK_COVER)
+    && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96);
+  ok('E plant from the grid',
+    fieldE.cells.length === plannedE && fieldE.cells.length > 0);
+  ok('E empty-hull placed count is 10000–13000 (13k is a ceiling)',
+    fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
+    && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
+    && POCKET_PARK_E_INSTANCES_MIN === 10000
+    && POCKET_PARK_E_INSTANCES_MAX === 13000
+    && POCKET_PARK_INSTANCES_MIN === 8000
+    && POCKET_PARK_INSTANCES_MAX === 11000,
+    `placedE=${fieldE.placed.length} plannedE=${plannedE}`);
+  ok('276 leftover floor stays 8000–11000 after walks',
+    field.placed.length >= POCKET_PARK_INSTANCES_MIN
+    && field.placed.length <= POCKET_PARK_INSTANCES_MAX
+    && POCKET_PARK_INSTANCES_MIN === 8000
+    && POCKET_PARK_INSTANCES_MAX === 11000);
+  ok('no E blade on a lot / helipad / warehouse / pavement',
+    fieldE.placed.every((p) => !pocketParkDrop(p.x, p.z)
+      && !onPavement(p.x, p.z)
+      && !inLeftoverLotReserved(p.x, p.z)
+      && !inWarehouseReserved(p.x, p.z)
+      && !inHelipadReserved(p.x, p.z)));
+  ok('E blades stay inside the E plate',
+    fieldE.placed.every((p) => inPocketPark(p.x, p.z)
+      && p.x >= POCKET_PARK_E_X0 && p.x <= POCKET_PARK_E_X1
+      && p.z >= POCKET_PARK_E_Z0 && p.z <= POCKET_PARK_E_Z1));
+  ok('E blade H is 0.12–0.22 m, thin grade hull only',
+    POCKET_PARK_H_MIN === 0.12 && POCKET_PARK_H_MAX === 0.22
+    && hullE.collider === 'ground'
+    && POCKET_PARK_HULL_COLLIDER === 'ground');
+
+  const aabbE = aabbs.find((s) => s.x === POCKET_PARK_E_X && s.z === POCKET_PARK_E_Z);
+  ok('E thin grade hull collider',
+    !!aabbE && aabbE.part === 'grade'
+    && aabbE.sy === POCKET_PARK_HULL_H
+    && aabbE.sx === POCKET_PARK_E_W && aabbE.sz === POCKET_PARK_E_D
+    && aabbE.y0 === CITY_Y
+    && aabbs.length === 2);
+  ok('E thin hull exists at grade',
+    !!probeBlocked(shapes, POCKET_PARK_E_X, CITY_Y + 0.006, POCKET_PARK_E_Z, 0.004));
+
+  const nearFenceE = pocketParkLean(LEFTOVER_LOT_E_X1, 89);
+  const midParkE = pocketParkLean(347, 96);
+  ok('lean at leftoverLot E fence if it reaches',
+    nearFenceE > midParkE && nearFenceE >= 0.14 && LEFTOVER_LOT_E_Z1 === 90);
+  ok('mid-park-E lean is weak (2 m inland, fence does not reach)',
+    midParkE === 0.04);
+
+  ok('walks / 276 park / leftoverGrass stay put',
+    GARDEN_PATH_X0 === 268 && GARDEN_PATH_X1 === 284 && GARDEN_PATH_Z === 84
+    && POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_X0 === 268 && POCKET_PARK_X1 === 284
+    && POCKET_PARK_Z0 === 88 && POCKET_PARK_Z1 === 96
+    && LEFTOVER_GRASS_X0 === 267 && LEFTOVER_GRASS_X1 === 285
+    && LEFTOVER_GRASS_Z0 === 81.0 && LEFTOVER_GRASS_Z1 === 86.0
+    && GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
+  ok('kit comment names the second hull, not a fork',
+    park.includes('347/96') && park.includes('pocketParkEGeom fork')
+    && park.includes('not a slide of 276')
+    && park.includes('leftoverLot A–E')
+    && constants.includes('347/96')
+    && constants.includes('never pocketParkEGeom'));
+
   if (fails.length) {
     console.error('[miami-pocketPark] FAIL');
     for (const f of fails) console.error('  -', f);
   } else {
     console.log('[miami-pocketPark] ok', passedCount, 'checks',
-      `placed=${field.placed.length}/${plannedN}`);
+      `placed=${field.placed.length}/${plannedN}`,
+      `placedE=${fieldE.placed.length}/${plannedE}`);
   }
   return {
     passed: fails.length === 0,
@@ -414,6 +585,8 @@ export function runMiamiPocketParkTests() {
     passedCount,
     placed: field.placed.length,
     planned: plannedN,
+    placedE: fieldE.placed.length,
+    plannedE,
   };
 }
 
