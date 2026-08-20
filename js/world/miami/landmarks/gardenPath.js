@@ -94,17 +94,16 @@ import { cBox } from '../geo.js';
  * hull merge / helipad / warehouse / 276 park / EE spine /
  * 347 = drop, never nudge. Signed 373→389 / z=96 G-park
  * spine reuses the same kit — not a parkWalkGGGeom, not a
- * gardenPathGGeom, not a leftoverLotDirtGeom, not a 4.2 m
- * slab, not a slide of 356→372 / z=96. Last slab stays
+ * gardenPathGGeom, not a leftoverLotDirtGeom, not a slide
+ * of 356→372 / z=96. Last slab stays
  * inside 389. Starts 1 m east of F-park 372. Does not merge
  * with PARK_WALK_FF_X1=372 (1 m west gap, same z). Lives on
  * the G-park hull (373–389 × 92–100) by design. leftoverLot G
  * reserved z1+1.4=91.4 vs walk z0=95.2 — leftoverLotOverlap
  * is 0. Walk eats ~26 m². G leftover after this walk drops
- * below 12800. Do not backfill to 13k. POCKET_PARK_G_INSTANCES
- * stays 10000–13000. Kiss leftoverLot G / leftoverLot A–G
- * reserved / F-park hull merge / helipad / warehouse / 276
- * park / FF spine / 347 = drop, never nudge.
+ * below 12800. Do not backfill to 13k. Kiss leftoverLot G /
+ * leftoverLot A–G reserved / F-park hull merge / helipad /
+ * warehouse / 276 park / FF spine / 347 = drop, never nudge.
  */
 
 const STONE = 0xb4a890;
