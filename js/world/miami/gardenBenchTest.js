@@ -19,6 +19,8 @@ import {
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z, LEFTOVER_LOT_B_X0, LEFTOVER_LOT_B_X1,
   LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z, LEFTOVER_LOT_C_X0, LEFTOVER_LOT_C_X1,
   LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z, LEFTOVER_LOT_D_X0, LEFTOVER_LOT_D_X1,
+  LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z, LEFTOVER_LOT_E_X0, LEFTOVER_LOT_E_X1,
+  LEFTOVER_LOT_E_Z0, LEFTOVER_LOT_E_Z1,
   PARK_BENCH_X, PARK_BENCH_Z, PARK_BENCH_YAW, PARK_BENCH_W,
   PARK_BENCH_DEPTH, PARK_BENCH_SEAT_H, PARK_BENCH_BACK_H, PARK_BENCH_UNDER_CLEAR,
   PARK_BENCH_X0, PARK_BENCH_X1, PARK_BENCH_Z0, PARK_BENCH_Z1,
@@ -30,23 +32,36 @@ import {
   PARK_BENCH_E_DEPTH, PARK_BENCH_E_SEAT_H, PARK_BENCH_E_BACK_H,
   PARK_BENCH_E_UNDER_CLEAR,
   PARK_BENCH_E_X0, PARK_BENCH_E_X1, PARK_BENCH_E_Z0, PARK_BENCH_E_Z1,
+  PARK_BENCH_EE_X, PARK_BENCH_EE_Z, PARK_BENCH_EE_YAW, PARK_BENCH_EE_W,
+  PARK_BENCH_EE_DEPTH, PARK_BENCH_EE_SEAT_H, PARK_BENCH_EE_BACK_H,
+  PARK_BENCH_EE_UNDER_CLEAR,
+  PARK_BENCH_EE_X0, PARK_BENCH_EE_X1, PARK_BENCH_EE_Z0, PARK_BENCH_EE_Z1,
   PARK_WALK_X0, PARK_WALK_X1, PARK_WALK_Z,
   PARK_WALK_E_X0, PARK_WALK_E_X1, PARK_WALK_E_Z,
   PARK_WALK_NS_X, PARK_WALK_NS_Z, PARK_WALK_NS_X0, PARK_WALK_NS_X1,
   PARK_WALK_NS_Z0, PARK_WALK_NS_Z1,
   PARK_WALK_NS_E_X, PARK_WALK_NS_E_Z, PARK_WALK_NS_E_X0, PARK_WALK_NS_E_X1,
+  PARK_WALK_EE_X, PARK_WALK_EE_Z, PARK_WALK_EE_X0, PARK_WALK_EE_X1,
+  PARK_WALK_EE_Z0, PARK_WALK_EE_Z1, PARK_WALK_EE_LEN, PARK_WALK_EE_W,
   PARK_PERGOLA_X, PARK_PERGOLA_Z,
   POCKET_PARK_X, POCKET_PARK_Z, POCKET_PARK_W, POCKET_PARK_D,
   POCKET_PARK_X0, POCKET_PARK_X1, POCKET_PARK_Z0, POCKET_PARK_Z1,
+  POCKET_PARK_E_X, POCKET_PARK_E_Z, POCKET_PARK_E_W, POCKET_PARK_E_D,
+  POCKET_PARK_E_X0, POCKET_PARK_E_X1, POCKET_PARK_E_Z0, POCKET_PARK_E_Z1,
+  POCKET_PARK_E_INSTANCES_MIN, POCKET_PARK_E_INSTANCES_MAX,
+  POCKET_PARK_INSTANCES_MIN, POCKET_PARK_INSTANCES_MAX, POCKET_PARK_COVER,
   LEFTOVER_GRASS_X0, LEFTOVER_GRASS_X1, LEFTOVER_GRASS_Z0, LEFTOVER_GRASS_Z1,
+  WAREHOUSE_X, WAREHOUSE_Z,
   onPavement, onBoardwalk, onRoadway, onCrossStreet, onSidewalk,
   inKeepout, inReserved, reservedOverlap, streetOverlap, groundHeight,
-  leftoverLotGeom,
+  leftoverLotGeom, gardenPathGeom, gardenPathSlabs,
   gardenBenchGeom, gardenBenchParts, gardenBenchVoids, gardenBenchColliderShapes,
   gardenBenchRejected, inGardenBench,
   inGardenPathSlab, gardenPathSlabOverlap, inLeftoverLotReserved, leftoverLotOverlap,
+  pocketParkHull, pocketParkPlannedCount, pocketParkDrop,
+  inWarehouseReserved, inHelipadReserved, warehouseOverlap,
 } from './constants.js';
-import { tryPlace } from './planting.js';
+import { tessellateHull, tryPlace } from './planting.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -75,6 +90,27 @@ function probeBlocked(shapes, x, y, z, r) {
     }
   }
   return null;
+}
+
+function placePocketPark(ctx, cx, cz) {
+  const hull = pocketParkHull(cx, cz);
+  const cells = tessellateHull(hull, pocketParkPlannedCount(cx, cz));
+  const placed = [];
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    if (pocketParkDrop(c.x, c.z)) {
+      tryPlace(ctx, c.x, c.z);
+      continue;
+    }
+    if (onPavement(c.x, c.z)) {
+      tryPlace(ctx, c.x, c.z);
+      continue;
+    }
+    const y = groundHeight(c.x, c.z);
+    if (!y) continue;
+    placed.push(c);
+  }
+  return { cells, placed, hull };
 }
 
 export function runMiamiGardenBenchTests() {
@@ -149,6 +185,7 @@ export function runMiamiGardenBenchTests() {
   ok('leftoverLot B stays 295/84', LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84);
   ok('leftoverLot C stays 313/84', LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84);
   ok('leftoverLot D stays 330/84', LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84);
+  ok('leftoverLot E stays 347/84', LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84);
   ok('path sits off leftoverLot A x1=265',
     GARDEN_PATH_X0 >= LEFTOVER_LOT_X1 && LEFTOVER_LOT_X1 === 265);
   ok('path sits off leftoverLot B x0=288',
@@ -633,6 +670,218 @@ export function runMiamiGardenBenchTests() {
   ok('east sit-box is in front of the back (−Z of centre)',
     sitE && sitE.z < geomE.z);
 
+  // ---- E-park bench (same kit at signed 347 / 94.4; yaw +Z to z=96) ------
+  const geomEE = gardenBenchGeom(PARK_BENCH_EE_X, PARK_BENCH_EE_Z);
+  const partsEE = gardenBenchParts(PARK_BENCH_EE_X, PARK_BENCH_EE_Z);
+  const voidsEE = gardenBenchVoids(geomEE);
+  const shapesEE = gardenBenchColliderShapes(geomEE);
+  const eeSlabs = gardenPathSlabs(gardenPathGeom(PARK_WALK_EE_X, PARK_WALK_EE_Z));
+  const eeLastSlab = eeSlabs.reduce((a, s) => (!a || s.x1 > a.x1 ? s : a), null);
+  const fieldE = placePocketPark(ctx, POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  ok('E-park bench cell is signed 347 / 94.4',
+    PARK_BENCH_EE_X === 347 && PARK_BENCH_EE_Z === 94.4);
+  ok('E-park bench x/z were not invented or slid',
+    geomEE.x === 347 && geomEE.z === 94.4
+    && geomEE.x === PARK_BENCH_EE_X && geomEE.z === PARK_BENCH_EE_Z
+    && PARK_BENCH_X === 276 && PARK_BENCH_Z === 90
+    && PARK_BENCH_W_X === 269.5 && PARK_BENCH_W_Z === 90
+    && PARK_BENCH_E_X === 282.5 && PARK_BENCH_E_Z === 90
+    && GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4);
+  ok('E-park bench yaw faces +Z toward the spine at z=96',
+    PARK_BENCH_EE_YAW === 0 && geomEE.yaw === PARK_BENCH_EE_YAW
+    && geomEE.yaw === 0 && geomEE.yaw !== PARK_BENCH_YAW);
+  ok('E-park bench is the same 1.8 m 3-seat kit',
+    PARK_BENCH_EE_W === 1.8 && PARK_BENCH_EE_W === GARDEN_BENCH_W
+    && PARK_BENCH_EE_W === PARK_BENCH_W && geomEE.w === GARDEN_BENCH_W);
+  ok('E-park bench seat H is 0.43–0.46 m',
+    PARK_BENCH_EE_SEAT_H >= 0.43 && PARK_BENCH_EE_SEAT_H <= 0.46
+    && PARK_BENCH_EE_SEAT_H === GARDEN_BENCH_SEAT_H
+    && geomEE.seatH === GARDEN_BENCH_SEAT_H);
+  ok('E-park bench depth is ~0.45 m',
+    Math.abs(PARK_BENCH_EE_DEPTH - 0.45) < 1e-9
+    && PARK_BENCH_EE_DEPTH === GARDEN_BENCH_DEPTH
+    && geomEE.depth === GARDEN_BENCH_DEPTH);
+  ok('E-park bench back crown is 0.80–0.90 m',
+    PARK_BENCH_EE_BACK_H >= 0.80 && PARK_BENCH_EE_BACK_H <= 0.90
+    && PARK_BENCH_EE_BACK_H === GARDEN_BENCH_BACK_H
+    && geomEE.backH === GARDEN_BENCH_BACK_H);
+  ok('E-park bench under-slat clear is ~0.40 m',
+    Math.abs(PARK_BENCH_EE_UNDER_CLEAR - 0.40) < 1e-9
+    && PARK_BENCH_EE_UNDER_CLEAR === GARDEN_BENCH_UNDER_CLEAR
+    && geomEE.underClear === GARDEN_BENCH_UNDER_CLEAR);
+  ok('E-park bench geom matches signed constants',
+    geomEE.x === 347 && geomEE.z === 94.4 && geomEE.w === 1.8
+    && Math.abs(geomEE.x0 - PARK_BENCH_EE_X0) < 1e-9
+    && Math.abs(geomEE.x1 - PARK_BENCH_EE_X1) < 1e-9
+    && Math.abs(geomEE.z0 - PARK_BENCH_EE_Z0) < 1e-9
+    && Math.abs(geomEE.z1 - PARK_BENCH_EE_Z1) < 1e-9
+    && PARK_BENCH_EE_X0 === 346.1 && PARK_BENCH_EE_X1 === 347.9);
+  ok('0.8 m is 82.4 center-to-spine, not 269.5 edge-to-walk',
+    PARK_WALK_EE_Z0 === 95.2
+    && Math.abs(PARK_WALK_EE_Z0 - PARK_BENCH_EE_Z - 0.8) < 1e-9
+    && Math.abs(PARK_WALK_EE_Z0 - PARK_BENCH_EE_Z1) !== 0.8
+    && GARDEN_PATH_Z0 === 83.2
+    && Math.abs(GARDEN_PATH_Z0 - GARDEN_BENCH_Z - 0.8) < 1e-9);
+  ok('bench plate is ~0.8 m²',
+    Math.abs(PARK_BENCH_EE_W * PARK_BENCH_EE_DEPTH - 0.81) < 1e-9);
+  ok('sits on the E park hull (339–355 × 92–100)',
+    PARK_BENCH_EE_X0 > POCKET_PARK_E_X0 && PARK_BENCH_EE_X1 < POCKET_PARK_E_X1
+    && PARK_BENCH_EE_Z0 > POCKET_PARK_E_Z0 && PARK_BENCH_EE_Z1 < POCKET_PARK_E_Z1
+    && POCKET_PARK_E_X0 === 339 && POCKET_PARK_E_X1 === 355
+    && POCKET_PARK_E_Z0 === 92 && POCKET_PARK_E_Z1 === 100
+    && POCKET_PARK_E_X === 347 && POCKET_PARK_E_Z === 96);
+  ok('misses leftoverLot E (E z1=90)',
+    LEFTOVER_LOT_E_Z1 === 90 && PARK_BENCH_EE_Z0 > LEFTOVER_LOT_E_Z1
+    && !leftoverLotOverlap(PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
+      PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH, 0.15)
+    && !inLeftoverLotReserved(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
+    && !inLeftoverLotReserved(PARK_BENCH_EE_X0, PARK_BENCH_EE_Z)
+    && !inLeftoverLotReserved(PARK_BENCH_EE_X1, PARK_BENCH_EE_Z));
+  ok('existing benches stay 276/82.4, 276/90, 269.5/90, 282.5/90',
+    GARDEN_BENCH_X === 276 && GARDEN_BENCH_Z === 82.4
+    && PARK_BENCH_X === 276 && PARK_BENCH_Z === 90
+    && PARK_BENCH_W_X === 269.5 && PARK_BENCH_W_Z === 90
+    && PARK_BENCH_E_X === 282.5 && PARK_BENCH_E_Z === 90
+    && gardenBenchGeom().x === 276 && gardenBenchGeom().z === 82.4
+    && gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z).x === 276
+    && gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z).z === 90
+    && gardenBenchGeom(PARK_BENCH_W_X, PARK_BENCH_W_Z).x === 269.5
+    && gardenBenchGeom(PARK_BENCH_W_X, PARK_BENCH_W_Z).z === 90
+    && gardenBenchGeom(PARK_BENCH_E_X, PARK_BENCH_E_Z).x === 282.5
+    && gardenBenchGeom(PARK_BENCH_E_X, PARK_BENCH_E_Z).z === 90);
+  ok('276 bench yaws did not flip',
+    gardenBenchGeom().yaw === 0
+    && gardenBenchGeom(PARK_BENCH_X, PARK_BENCH_Z).yaw === Math.PI
+    && gardenBenchGeom(PARK_BENCH_W_X, PARK_BENCH_W_Z).yaw === Math.PI
+    && gardenBenchGeom(PARK_BENCH_E_X, PARK_BENCH_E_Z).yaw === Math.PI
+    && PARK_BENCH_YAW === Math.PI && PARK_BENCH_W_YAW === Math.PI
+    && PARK_BENCH_E_YAW === Math.PI);
+  ok('walks stay 84 / west 268→274.2 / east 277.8→284 / N-S 272 / N-S 280 / EE 339→355 / z=96',
+    GARDEN_PATH_X0 === 268 && GARDEN_PATH_X1 === 284 && GARDEN_PATH_Z === 84
+    && PARK_WALK_X0 === 268 && PARK_WALK_X1 === 274.2 && PARK_WALK_Z === 94
+    && PARK_WALK_E_X0 === 277.8 && PARK_WALK_E_X1 === 284 && PARK_WALK_E_Z === 94
+    && PARK_WALK_NS_X === 272 && PARK_WALK_NS_X0 === 271.2
+    && PARK_WALK_NS_X1 === 272.8 && PARK_WALK_NS_Z0 === 85.2
+    && PARK_WALK_NS_Z1 === 92.8 && PARK_WALK_NS_Z === 89
+    && PARK_WALK_NS_E_X === 280 && PARK_WALK_NS_E_X0 === 279.2
+    && PARK_WALK_NS_E_X1 === 280.8 && PARK_WALK_NS_E_Z === 89
+    && PARK_WALK_EE_X0 === 339 && PARK_WALK_EE_X1 === 355
+    && PARK_WALK_EE_Z === 96 && PARK_WALK_EE_Z0 === 95.2
+    && PARK_WALK_EE_Z1 === 96.8 && PARK_WALK_EE_X === 347
+    && PARK_WALK_EE_LEN === 16 && PARK_WALK_EE_W === 1.6);
+  ok('EE last slab still ≤ 355',
+    PARK_WALK_EE_X1 === 355
+    && eeSlabs.every((s) => s.x1 <= 355 + 1e-9)
+    && eeLastSlab && eeLastSlab.x1 <= 355 + 1e-9);
+  ok('276 park stays 268–284 × 88–96',
+    POCKET_PARK_X === 276 && POCKET_PARK_Z === 92
+    && POCKET_PARK_W === 16 && POCKET_PARK_D === 8
+    && POCKET_PARK_X0 === 268 && POCKET_PARK_X1 === 284
+    && POCKET_PARK_Z0 === 88 && POCKET_PARK_Z1 === 96);
+  ok('A–E lots stay 258 / 295 / 313 / 330 / 347 at z=84',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
+    && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_B_Z === 84
+    && LEFTOVER_LOT_C_X === 313 && LEFTOVER_LOT_C_Z === 84
+    && LEFTOVER_LOT_D_X === 330 && LEFTOVER_LOT_D_Z === 84
+    && LEFTOVER_LOT_E_X === 347 && LEFTOVER_LOT_E_Z === 84
+    && LEFTOVER_LOT_E_X0 === 340 && LEFTOVER_LOT_E_X1 === 354
+    && LEFTOVER_LOT_E_Z0 === 78 && LEFTOVER_LOT_E_Z1 === 90);
+  ok('E leftover stays 9000–11000, not 12800',
+    fieldE.placed.length >= POCKET_PARK_E_INSTANCES_MIN
+    && fieldE.placed.length <= POCKET_PARK_E_INSTANCES_MAX
+    && POCKET_PARK_E_INSTANCES_MIN === 9000
+    && POCKET_PARK_E_INSTANCES_MAX === 11000
+    && fieldE.placed.length !== 12800
+    && pocketParkPlannedCount(POCKET_PARK_E_X, POCKET_PARK_E_Z) === 12800
+    && POCKET_PARK_COVER === 10
+    && POCKET_PARK_INSTANCES_MIN === 8000
+    && POCKET_PARK_INSTANCES_MAX === 11000,
+    `placedE=${fieldE.placed.length}`);
+  ok('E-park bench is not pavement', !onPavement(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench is not boardwalk', !onBoardwalk(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench is not roadway', !onRoadway(PARK_BENCH_EE_Z));
+  ok('E-park bench is not a cross-street',
+    !onCrossStreet(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench is not a sidewalk slab',
+    !onSidewalk(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench sits on leftover-city grade',
+    groundHeight(PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === CITY_Y);
+  ok('E-park bench is reserved', inReserved(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench is a keepout', inKeepout(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('reservedOverlap covers the E-park slat',
+    reservedOverlap(PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
+      PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH, 0.15));
+  ok('tryPlace drops the reserved E-park bench',
+    tryPlace(ctx, PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === 0);
+  ok('tryPlace does not remap the E-park bench',
+    tryPlace(ctx, PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === 0);
+  ok('E-park bench cell is not rejected',
+    !gardenBenchRejected(PARK_BENCH_EE_X, PARK_BENCH_EE_Z));
+  ok('E-park bench footprint is not in the street',
+    !streetOverlap(PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
+      PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH));
+  ok('inGardenBench covers the E-park plate',
+    inGardenBench(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
+    && inGardenBench(PARK_BENCH_EE_X0, PARK_BENCH_EE_Z)
+    && inGardenBench(PARK_BENCH_EE_X1, PARK_BENCH_EE_Z));
+  ok('E-park bench does not kiss a garden-path slab',
+    !inGardenPathSlab(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
+    && !inGardenPathSlab(PARK_BENCH_EE_X0, PARK_BENCH_EE_Z0)
+    && !inGardenPathSlab(PARK_BENCH_EE_X1, PARK_BENCH_EE_Z0)
+    && !inGardenPathSlab(PARK_BENCH_EE_X0, PARK_BENCH_EE_Z1)
+    && !inGardenPathSlab(PARK_BENCH_EE_X1, PARK_BENCH_EE_Z1)
+    && !gardenPathSlabOverlap(PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
+      PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH, 0));
+  ok('E-park bench does not kiss the EE spine slabs',
+    PARK_BENCH_EE_Z1 < PARK_WALK_EE_Z0
+    && Math.abs(PARK_WALK_EE_Z0 - PARK_BENCH_EE_Z - 0.8) < 1e-9);
+  ok('E-park bench misses warehouse / helipad / 276 park',
+    !warehouseOverlap(PARK_BENCH_EE_X, PARK_BENCH_EE_Z,
+      PARK_BENCH_EE_W, PARK_BENCH_EE_DEPTH, 0.15)
+    && !inWarehouseReserved(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
+    && !inHelipadReserved(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)
+    && PARK_BENCH_EE_X0 > POCKET_PARK_X1 && POCKET_PARK_X1 === 284);
+  ok('E-park bench back sits inland (−Z) so the seat faces +Z / z=96',
+    partsEE.backs.every((b) => b.z < geomEE.z)
+    && partsEE.legs.filter((l) => l.sy === geomEE.backH).every((l) => l.z < geomEE.z)
+    && partsEE.zBack < partsEE.zFront);
+  ok('E-park bench slats are the same 40–50 mm kit',
+    partsEE.slats.length === 8
+    && partsEE.slats.every((s) => Math.abs(s.sz - GARDEN_BENCH_SLAT) < 1e-9));
+  const aabbsEE = shapesEE.filter((s) => s.tag === 'gardenBench' && s.type === 'aabb');
+  const meshPartsEE = partsEE.legs.concat(partsEE.slats, partsEE.backs);
+  ok('E-park bench one collider per leg / slat / back',
+    aabbsEE.length === meshPartsEE.length);
+  ok('E-park bench colliders are only legs + slats + back',
+    aabbsEE.every((s) => s.part === 'leg' || s.part === 'slat' || s.part === 'back'));
+  ok('E-park bench has no filled sit AABB',
+    !aabbsEE.some((s) => s.y0 >= CITY_Y + PARK_BENCH_EE_SEAT_H - 0.02
+      && s.sy >= 0.20 && s.sz >= 0.20 && s.sx >= 1.0));
+  for (let i = 0; i < meshPartsEE.length; i++) {
+    const p = meshPartsEE[i];
+    const hit = aabbsEE[i];
+    ok(`ee ${p.id} collider ⊆ part ±0.15`,
+      !!hit
+      && hit.sx <= p.sx + GARDEN_BENCH_COLLIDER_PAD
+      && hit.sz <= p.sz + GARDEN_BENCH_COLLIDER_PAD
+      && Math.abs(hit.x - p.x) <= GARDEN_BENCH_COLLIDER_PAD
+      && Math.abs(hit.z - p.z) <= GARDEN_BENCH_COLLIDER_PAD
+      && hit.sx <= p.sx && hit.sz <= p.sz);
+    const onPart = probeBlocked(shapesEE, p.x, p.y0 + Math.min(0.06, p.sy / 2), p.z, 0.015);
+    ok(`ee ${p.id} collider exists`, !!onPart);
+  }
+  const underEE = voidsEE.find((v) => v.id === 'gardenBench-under');
+  const sitEE = voidsEE.find((v) => v.id === 'gardenBench-sit');
+  ok('E-park bench ships under-clear + sit voids', !!underEE && !!sitEE);
+  for (const v of voidsEE) {
+    const hit = probeBlocked(shapesEE, v.x, v.y, v.z, v.probe);
+    ok(`ee ${v.id} is flyable`, !hit, hit ? `blocked by ${hit.tag} ${hit.part || hit.type}` : '');
+  }
+  ok('E-park sit-box is a void', sitEE && sitEE.kind === 'sit'
+    && sitEE.y > CITY_Y + PARK_BENCH_EE_SEAT_H);
+  ok('E-park sit-box is in front of the back (+Z of centre, toward z=96)',
+    sitEE && sitEE.z > geomEE.z);
+
   // ---- drop if it kisses x=272 N-S / x=280 N-S / 276/90 / 269.5/90 / lots
   ok('drop if the kit sits on x=272 N-S',
     gardenBenchRejected(PARK_WALK_NS_X, PARK_WALK_NS_Z) === true);
@@ -649,6 +898,27 @@ export function runMiamiGardenBenchTests() {
     && gardenBenchRejected(LEFTOVER_LOT_B_X, LEFTOVER_LOT_B_Z) === true
     && gardenBenchRejected(LEFTOVER_LOT_C_X, LEFTOVER_LOT_C_Z) === true
     && gardenBenchRejected(LEFTOVER_LOT_D_X, LEFTOVER_LOT_D_Z) === true);
+  ok('drop if the kit sits on leftoverLot E',
+    gardenBenchRejected(LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === true);
+  ok('drop if the kit sits on the EE spine',
+    gardenBenchRejected(PARK_WALK_EE_X, PARK_WALK_EE_Z) === true);
+  ok('drop if the kit sits on 282.5/90',
+    gardenBenchRejected(PARK_BENCH_E_X, PARK_BENCH_E_Z) === false
+    && gardenBenchRejected(281.6, 90) === true);
+  ok('drop if the kit kisses 347/94.4',
+    gardenBenchRejected(PARK_BENCH_EE_X, PARK_BENCH_EE_Z) === false
+    && gardenBenchRejected(346.1, 94.4) === true);
+  ok('drop if the kit sits on warehouse / helipad E',
+    gardenBenchRejected(WAREHOUSE_X, WAREHOUSE_Z) === true
+    && gardenBenchRejected(430, 70) === true);
+  ok('tryPlace drops spine / leftoverLot E / helipad / warehouse / 276',
+    tryPlace(ctx, PARK_WALK_EE_X, PARK_WALK_EE_Z) === 0
+    && tryPlace(ctx, LEFTOVER_LOT_E_X, LEFTOVER_LOT_E_Z) === 0
+    && tryPlace(ctx, 430, 70) === 0
+    && tryPlace(ctx, WAREHOUSE_X, WAREHOUSE_Z) === 0
+    && tryPlace(ctx, POCKET_PARK_X, POCKET_PARK_Z) === 0
+    && tryPlace(ctx, PARK_BENCH_X, PARK_BENCH_Z) === 0
+    && tryPlace(ctx, PARK_WALK_X0 + 1, PARK_WALK_Z) === 0);
   ok('drop if the kit sits on pavement / street',
     gardenBenchRejected(0, 27) === true && gardenBenchRejected(57, 80) === true);
 
@@ -776,6 +1046,26 @@ export function runMiamiGardenBenchTests() {
     && constants.includes('282.5 / 90')
     && !/export function gardenBenchDGeom/.test(constants)
     && !/gardenBenchDGeom\(/.test(constants));
+  ok('E-park bench reuses gardenBenchGeom, no gardenBenchEGeom / FGeom / parkBenchEEGeom fork',
+    bench.includes('gardenBenchGeom(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)')
+    && bench.includes('gardenBenchParts(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)')
+    && bench.includes('onPavement(PARK_BENCH_EE_X, PARK_BENCH_EE_Z)')
+    && !/function gardenBenchEGeom/.test(bench)
+    && !/gardenBenchEGeom\(/.test(bench)
+    && !/function gardenBenchFGeom/.test(bench)
+    && !/gardenBenchFGeom\(/.test(bench)
+    && !/function parkBenchEEGeom/.test(bench)
+    && !/parkBenchEEGeom\(/.test(bench)
+    && constants.includes('export function gardenBenchGeom')
+    && constants.includes('347 / 94.4')
+    && !/export function gardenBenchEGeom/.test(constants)
+    && !/gardenBenchEGeom\(/.test(constants)
+    && !/export function gardenBenchFGeom/.test(constants)
+    && !/gardenBenchFGeom\(/.test(constants)
+    && !/export function parkBenchEEGeom/.test(constants)
+    && !/parkBenchEEGeom\(/.test(constants)
+    && !existsSync(join(here, 'landmarks/parkBenchEE.js'))
+    && !existsSync(join(here, 'parkBenchEE.js')));
   ok('index builds gardenBench on the keepout path after gardenPath',
     index.includes("from './landmarks/gardenBench.js'")
     && index.includes('buildGardenBench(ctx)')
