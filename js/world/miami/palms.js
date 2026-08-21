@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { buildPalm, createPalms } from '../vegetation.js';
+import { createPalms } from '../vegetation.js';
 import {
   PIER_X, ROAD_Z0, ROAD_Z1,
   BOARDWALK_Z, BOARDWALK_D,
@@ -18,11 +18,13 @@ import {
 // A palm is rejected when its TRUNK would stand inside anything solid, when
 // its CROWN would push into a structure (1.2 m of clearance is demanded, per
 // the crown radius), when its crown disk intersects the signed boardwalk
-// deck (BOARDWALK_Z / BOARDWALK_D — kiss = drop), when it lands on pavement
-// (boardwalk / Ocean Drive / cross-street / Lummus walk) or a ground
-// keep-out, or when it would clip a palm already placed. Pavement and deck
-// fails DROP the candidate — they are never nudged onto the promenade or
-// off the rail. Colliders are trunk cylinders only.
+// deck (BOARDWALK_Z / BOARDWALK_D — kiss = drop), when it lands ocean of
+// the boardwalk (z < 21.8, after the legacy draws — never a z rewrite),
+// when it lands on pavement (boardwalk / Ocean Drive / cross-street /
+// Lummus walk) or a ground keep-out, or when it would clip a palm already
+// placed. Pavement, deck, and sand fails DROP the candidate — they are
+// never nudged onto the promenade or off the rail. Colliders are trunk
+// cylinders only.
 // ============================================================
 
 const CROWN_MARGIN = 1.2;      // metres of air demanded around the crown
@@ -53,8 +55,11 @@ export function planPalms(ctx) {
     const rotY = rng() * Math.PI * 2;           // Euler(tiltX, yaw, tiltZ) — the
     const legacyTiltZ = (rng() - 0.5) * 0.12;   // tilts are no longer applied
     void legacyTiltX; void legacyTiltZ;
-    plan.push({ x, z, sc, rotY });
+    // Slot consumed. Sand (z < 21.8) is skipped AFTER these draws so the
+    // main stream does not refill to 170 and shift towers / cars / huts.
     placed++;
+    if (z < 21.8) continue;
+    plan.push({ x, z, sc, rotY });
   }
   return plan;
 }
@@ -69,7 +74,7 @@ export function planPalms(ctx) {
 function palmFits(ctx, x, z, sc, taken, curated) {
   if (Math.abs(x) > 600) return 0;
   // pavement (boardwalk, carriageway, cross-street, Lummus walk) is a hard
-  // drop for everyone — including curated rows and the spawn-side heroes
+  // drop for everyone — including curated rows
   if (onPavement(x, z)) return 0;
   // curated rows requested by a landmark are exempt from the ground keep-outs
   // (they belong to the feature that owns that ground) but still have to pass
@@ -123,6 +128,7 @@ export async function materializePalms(ctx, plan) {
       // re-roll on the dedicated stream so no other layout shifts
       x = (rng5() - 0.5) * 1180;
       z = rng5() < 0.72 ? 26 + rng5() * 32 : 6 + rng5() * 18;
+      if (z < 21.8) continue;                       // sand: draw, then reject
       // planting row, never the sidewalk slab — drop via onPavement if it still fails
       if (z > ROAD_Z0 && z < ROAD_Z1) z = z < 44 ? 36.5 : 51.5;
       sc = 0.8 + rng5() * 0.55;
@@ -178,30 +184,6 @@ export async function materializePalms(ctx, plan) {
     trunks.castShadow = true; crowns.castShadow = true;
     trunks.name = 'palm-field-lo';
     root.add(trunks); root.add(crowns);
-  }
-
-  // hero palms — full buildPalm() models clustered by the spawn/boardwalk,
-  // right where the FPV camera starts (the money shot). Same rejection test.
-  {
-    const HERO_POS = [
-      [-17, 19.5], [-10, 14], [-4, 22.5], [4, 17],
-      [11, 23], [17, 14.5], [24, 20.5], [30, 16.5],
-    ];
-    for (const [hx, hz] of HERO_POS) {
-      const s = 0.95 + rng5() * 0.35;
-      const hy = palmFits(ctx, hx, hz, s, palmPlacements);
-      if (!hy) { rejected++; continue; }
-      let hero = null;
-      try { hero = await buildPalm(rng5); } catch (e) { hero = null; }
-      if (!hero) break;                     // vegetation absent — field palms still cover the area
-      hero.scale.multiplyScalar(s);
-      hero.rotation.y = rng5() * Math.PI * 2;
-      hero.position.set(hx, hy, hz);
-      hero.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
-      root.add(hero);
-      palmPlacements.push({ x: hx, y: hy, z: hz, sc: s, rotY: hero.rotation.y });
-      addCyl(hx, hy, hz, 0.32 * s, 7.0 * s);
-    }
   }
 
   // ---- tree grates: the paved-promenade palms get a cast-iron surround ----
