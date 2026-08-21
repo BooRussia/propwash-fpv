@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { buildPalm, createPalms } from '../vegetation.js';
 import {
   PIER_X, ROAD_Z0, ROAD_Z1,
+  BOARDWALK_Z, BOARDWALK_D,
   groundHeight, stripY, inKeepout, onPavement,
 } from './constants.js';
 
@@ -16,10 +17,12 @@ import {
 //
 // A palm is rejected when its TRUNK would stand inside anything solid, when
 // its CROWN would push into a structure (1.2 m of clearance is demanded, per
-// the crown radius), when it lands on pavement (boardwalk / Ocean Drive /
-// cross-street / Lummus walk) or a ground keep-out, or when it would clip a
-// palm already placed. Pavement fails DROP the candidate — they are never
-// nudged onto the deck. Colliders are trunk cylinders only.
+// the crown radius), when its crown disk intersects the signed boardwalk
+// deck (BOARDWALK_Z / BOARDWALK_D — kiss = drop), when it lands on pavement
+// (boardwalk / Ocean Drive / cross-street / Lummus walk) or a ground
+// keep-out, or when it would clip a palm already placed. Pavement and deck
+// fails DROP the candidate — they are never nudged onto the promenade or
+// off the rail. Colliders are trunk cylinders only.
 // ============================================================
 
 const CROWN_MARGIN = 1.2;      // metres of air demanded around the crown
@@ -60,7 +63,8 @@ export function planPalms(ctx) {
  * Accept/reject one palm position.
  * Two probes: a trunk probe at ground level and a wider crown probe up in the
  * canopy band, because a palm can legitimately stand beside a low wall but
- * never with its head inside a facade.
+ * never with its head inside a facade. After those probes, the crown disk
+ * is failed against the signed boardwalk deck (BOARDWALK_Z / BOARDWALK_D).
  */
 function palmFits(ctx, x, z, sc, taken, curated) {
   if (Math.abs(x) > 600) return 0;
@@ -76,6 +80,9 @@ function palmFits(ctx, x, z, sc, taken, curated) {
   const crown = CROWN_R * sc + CROWN_MARGIN;
   if (ctx.blocked(x, z, 0.9, y - 0.2, y + 2.4)) return 0;
   if (ctx.blocked(x, z, crown, y + 3.4, y + 7.6 * sc)) return 0;
+  // crown vs signed deck (|z - BOARDWALK_Z| <= BOARDWALK_D / 2). Kiss = drop.
+  // onPavement already drops a trunk ON the deck; this is the frond reach.
+  if (Math.abs(z - BOARDWALK_Z) <= BOARDWALK_D / 2 + crown) return 0;
   for (let i = 0; i < taken.length; i++) {
     const t = taken[i];
     const dx = x - t.x, dz = z - t.z;
