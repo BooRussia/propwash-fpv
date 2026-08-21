@@ -35,8 +35,7 @@ const NEAR_HALF = 220;
 
 // Leftover dirt after boardwalk / sidewalk / curb / road are reserved.
 // Boardwalk pavement occupies |z-27| <= 5.2 → [21.8, 32.2].
-const BEACH_Z0 = 1.15;
-const BEACH_Z1 = BOARDWALK_Z - BOARDWALK_D / 2 - BOARDWALK_SHOULDER - 0.05; // 21.75
+// Beach sand (z ≈ 1.15 → 21.75, seaward of the boardwalk) is not leftover dirt.
 const PROM_Z0 = BOARDWALK_Z + BOARDWALK_D / 2 + BOARDWALK_SHOULDER + 0.05; // 32.25
 const PROM_Z1 = SW_BEACH_Z0 - 0.05; // 33.90 — leftover before the sidewalk slab
 const PLANT_B_Z0 = SW_BEACH_Z1 + 0.01;
@@ -106,7 +105,6 @@ function punchKeepouts(hulls, margin = 0.35) {
 /** Tessellated leftover-dirt hulls. Near = |x| < 220 (8–25 m fly band). */
 export function dirtHulls(band) {
   const zBands = [
-    ['beach-dirt', BEACH_Z0, BEACH_Z1, 0x51],
     ['promenade-dirt', PROM_Z0, PROM_Z1, 0x52],
     ['plant-beach', PLANT_B_Z0, PLANT_B_Z1, 0x53],
     ['plant-city', PLANT_C_Z0, PLANT_C_Z1, 0x54],
