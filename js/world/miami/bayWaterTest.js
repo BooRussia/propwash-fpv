@@ -16,6 +16,9 @@ import {
   BOARDWALK_Z, BOARDWALK_TOP, PIER_X, PIER_DECK_Z, PIER_DECK_TOP, SHORE_Z,
 } from './constants.js';
 import { clampCameraToFloor } from '../../camera/floor.js';
+import {
+  BAY_PLANE, FOAM_N, RIP_CTRL, encodeShoreFoam, foamTermAt,
+} from './bayWater.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -171,6 +174,78 @@ export function runBayWaterTests() {
   ok('sit-plane is a surface, not a 20 m slab',
     groundHeight(0, -40) < 0.05 && SHORE_Z === -30);
 
+  // ---- extra TERM: depth-break + one Catmull-Rom rip ---------------------
+  ok('rip has four signed-frame ctrl points', RIP_CTRL.length === 4);
+  ok('rip mouth is on the signed shore',
+    RIP_CTRL[0].x === 0 && RIP_CTRL[0].z === SHORE_Z && SHORE_Z === -30);
+  ok('rip ctrl 1 is BAY_W/80 , SHORE_Z - BAY_D/24',
+    RIP_CTRL[1].x === 5000 / 80 && RIP_CTRL[1].z === SHORE_Z - 3600 / 24);
+  ok('rip ctrl 2 is -BAY_W/100 , SHORE_Z - BAY_D/10',
+    RIP_CTRL[2].x === -5000 / 100 && RIP_CTRL[2].z === SHORE_Z - 3600 / 10);
+  ok('rip ctrl 3 is BAY_W/160 , SHORE_Z - BAY_D/6',
+    RIP_CTRL[3].x === 5000 / 160 && RIP_CTRL[3].z === SHORE_Z - 3600 / 6);
+  ok('rip runs seaward of SHORE_Z',
+    RIP_CTRL.every((p, i) => i === 0 || p.z < SHORE_Z)
+    && RIP_CTRL[3].z < RIP_CTRL[0].z);
+
+  const H = 0.22;
+  ok('inland z>+0 is dry',
+    foamTermAt(0, 2, H) === 0
+    && foamTermAt(400, 8, H) === 0
+    && foamTermAt(-120, 40, H) === 0
+    && foamTermAt(RIP_CTRL[0].x, 1, H) === 0);
+  ok('z=0 edge is dry', foamTermAt(0, 0.01, H) === 0);
+
+  const zBreak = SHORE_Z - 16;
+  let bandMax = 0;
+  let bandHits = 0;
+  for (let x = 280; x <= 280 + 19 * 8; x += 4) {
+    const f = foamTermAt(x, zBreak, H);
+    if (f > bandMax) bandMax = f;
+    if (f > 0.04) bandHits++;
+  }
+  ok('depth-gated crash exists seaward of SHORE_Z', bandMax > 0.08);
+  ok('crash band is continuous, not 19 m specks', bandHits >= 12);
+  ok('crash is depth-gated off the flats',
+    foamTermAt(400, -900, H) === 0
+    && foamTermAt(400, -2000, H) === 0
+    && foamTermAt(0, SHORE_Z + 8, H) === 0);
+
+  const ripMid = RIP_CTRL[1];
+  const onRip = foamTermAt(ripMid.x, ripMid.z, H);
+  const offRip19 = foamTermAt(ripMid.x + 19, ripMid.z, H);
+  const offRip38 = foamTermAt(ripMid.x + 38, ripMid.z, H);
+  ok('rip foam exists on the channel', onRip > 0.08);
+  ok('rip foam is not a 19 m period',
+    onRip > offRip19 * 2 && onRip > offRip38 * 2);
+
+  const zA = SHORE_Z - 80;
+  const zB = zA - 19;
+  const zC = zA - 38;
+  const fA = foamTermAt(0, zA, H);
+  const fB = foamTermAt(0, zB, H);
+  const fC = foamTermAt(0, zC, H);
+  ok('x=0 seaward of the mouth is not a 19 m foam lattice',
+    !(Math.abs(fA - fB) < 1e-6 && Math.abs(fB - fC) < 1e-6 && fA > 0.05));
+
+  const foamBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
+  encodeShoreFoam(sim, foamBytes);
+  const foamAtWorld = (x, z) => {
+    const u = (x - BAY_PLANE.x) / BAY_PLANE.w + 0.5;
+    const v = (BAY_PLANE.z - z) / BAY_PLANE.d + 0.5;
+    const i = Math.min(FOAM_N - 1, Math.max(0, Math.floor(u * FOAM_N)));
+    const j = Math.min(FOAM_N - 1, Math.max(0, Math.floor(v * FOAM_N)));
+    return foamBytes[(j * FOAM_N + i) * 4];
+  };
+  ok('encoded inland z>+0 is 0',
+    foamAtWorld(0, 12) === 0
+    && foamAtWorld(200, 40) === 0
+    && foamAtWorld(-80, 6) === 0);
+  ok('encoded crash band is live', foamAtWorld(360, zBreak) > 4);
+  ok('encoded rip is live', foamAtWorld(ripMid.x, ripMid.z) > 4);
+  ok('encoded deep flats stay 0', foamAtWorld(800, -2200) === 0);
+  ok('foam map is plate-scale, not 256² cascade', FOAM_N === 512);
+
   // ---- source locks: Water.js gone, no second ocean ----------------------
   const terrain = readFileSync(join(here, 'terrain.js'), 'utf8');
   const bayWater = readFileSync(join(here, 'bayWater.js'), 'utf8');
@@ -189,6 +264,23 @@ export function runBayWaterTests() {
     !bayWater.includes('WIND_GLSL') && !terrain.includes('WIND_GLSL'));
   ok('one bay mesh, no open-ocean far plate',
     bayWater.includes('5000') && !bayWater.includes('24000') && !/24\s*km/i.test(bayWater));
+  ok('one biscayne-bay mesh, no second ocean',
+    bayWater.includes("'biscayne-bay'")
+    && (bayWater.match(/new THREE\.Mesh\(/g) || []).length === 1
+    && !bayWater.includes('768')
+    && !/objects\/Water\.js/.test(bayWater));
+  ok('SHORE_Z + Catmull-Rom rip are in the encode',
+    bayWater.includes('SHORE_Z')
+    && /CatmullRomCurve3/.test(bayWater)
+    && /Catmull-Rom/.test(bayWater));
+  ok('fold foamGain stays 0 — not turned back on',
+    /foamGain:\s*0/.test(readFileSync(join(here, 'spectrum.js'), 'utf8'))
+    && BAY_PRESET.foamGain === 0
+    && !/foamGain\s*=\s*[1-9]/.test(bayWater));
+  ok('foamMap does not RepeatWrap the 19 m cascade',
+    !/applyRepeat\(\s*foamMap/.test(bayWater)
+    && /foamMap\.repeat\.set\(\s*1\s*,\s*1/.test(bayWater)
+    && /ClampToEdgeWrapping/.test(bayWater));
   ok('buildOcean uses buildBayWater', terrain.includes('buildBayWater'));
 
   if (fails.length) {
