@@ -235,6 +235,7 @@ export async function buildDressing(ctx, towerData, entranceShrubSpots) {
       const planter = rng2() < 0.55;
       const x = -580 + rng2() * 1160;
       const z = planter ? 31.8 + rng2() * 4.6 : 18 + rng2() * 6;
+      if (z < 21.8) continue;                               // sand ocean of the boardwalk
       if (Math.abs(x - PIER_X) < 14) continue;
       const y = groundHeight(x, z);
       if (y < 0.25) continue;
