@@ -416,21 +416,30 @@ export function buildSkyline(ctx) {
   }
   root.add(towerGroup);
 
-  // backdrop city (cheap, far)
+  // backdrop city (cheap, far) — same 60 boxes, existing glass/office mats
   {
-    const geos = [];
+    const glassGeos = [];
+    const officeGeos = [];
     for (let i = 0; i < 60; i++) {
       const w = 30 + rng() * 50, h = 40 + rng() * 160, d = 30 + rng() * 40;
       const g = new THREE.BoxGeometry(w, h, d);
+      // Facade variant + UV offset from hash01 — never a layout-stream draw.
+      const useOffice = !!officeMat && h < 108 && hash01(i, (h * 13) | 0) < 0.45;
+      const TU = useOffice ? OFFICE_TILE_U : GLASS_TILE_U;
+      const TV = useOffice ? OFFICE_TILE_V : GLASS_TILE_V;
+      facadeUV(g, w, h, d, TU, TV, hash01(i, (w * 7) | 0), hash01((h * 13) | 0, (d * 5) | 0));
+      stripBoxCaps(g);
       g.translate(-800 + rng() * 1600, CITY_Y + h / 2, 300 + rng() * 320);
-      geos.push(g);
+      (useOffice ? officeGeos : glassGeos).push(g);
     }
-    const merged = track(mergeGeometries(geos));
-    geos.forEach(g => g.dispose());
-    const mat = regDN(track(new THREE.MeshStandardMaterial({
-      color: 0x3d4653, roughness: 0.9, emissive: 0x2a3444, emissiveIntensity: 0.35,
-    })), 0.05, 0.5);
-    root.add(new THREE.Mesh(merged, mat));
+    const addMerged = (geos, mat) => {
+      if (!geos.length) return;
+      const merged = track(mergeGeometries(geos));
+      geos.forEach((g) => g.dispose());
+      root.add(new THREE.Mesh(merged, mat));
+    };
+    addMerged(glassGeos, glassMat);
+    addMerged(officeGeos, officeMat);
   }
   return {
     towerData, towerGroup, glassMat, officeMat, hasGlassTex,
