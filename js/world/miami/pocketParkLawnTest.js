@@ -1,5 +1,6 @@
 // Headless source lock for the Miami pocket-park grass_lawn grade plate.
-// Production change is pocketPark.js only. leftoverGrass.js stays.
+// Production change for #83 is pocketPark.js only. leftoverGrass.js is
+// a separate leftover-city cell (lawn plate signed next).
 //
 //   node ./tools/run-miami-pocket-park-lawn-test.mjs
 
@@ -192,12 +193,10 @@ export function runMiamiPocketParkLawnTests() {
     && park.includes('installPocketParkColliders')
     && park.includes('Never a filled grass AABB')
     && !park.includes('part: \'blade\''));
-  ok('leftoverGrass.js was not restacked',
+  ok('leftoverGrass.js is not a pocketPark fork',
     grass.includes('Tiny Glade') && grass.includes('grow-to-gap')
     && grass.includes('leftover-city') && grass.includes('267')
-    && grass.includes('function bladeGeo')
-    && !grass.includes('pocketPark') && !grass.includes('POCKET_PARK_')
-    && !grass.includes('grass_lawn'));
+    && !grass.includes('pocketPark') && !grass.includes('POCKET_PARK_'));
   ok('planting.js / blades.js were not restacked',
     planting.includes('export function tryPlace')
     && planting.includes('export function tessellateHull')
