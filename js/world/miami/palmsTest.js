@@ -1,4 +1,4 @@
-// Headless checks for the Miami palm crown-vs-deck fail.
+// Headless checks for the Miami palm sand drop + crown-vs-deck fail.
 // Source lock only — no three.js, no game state. Production cell
 // is palms.js. Fronds are not solid; leftoverLot I stays dropped.
 //
@@ -8,7 +8,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BOARDWALK_Z, BOARDWALK_D,
+  BOARDWALK_Z, BOARDWALK_D, BOARDWALK_SHOULDER,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,32 +27,76 @@ function slicePalmFits(src) {
   return src.slice(start, end);
 }
 
+function slicePlanPalms(src) {
+  const start = src.indexOf('export function planPalms');
+  const end = src.indexOf('function palmFits(');
+  if (start < 0 || end < 0 || end <= start) return '';
+  return src.slice(start, end);
+}
+
+function sliceReroll(src) {
+  const start = src.indexOf('while (!y && tries < 36)');
+  const end = src.indexOf('if (!y) continue');
+  if (start < 0 || end < 0 || end <= start) return '';
+  return src.slice(start, end);
+}
+
 export function runMiamiPalmsTests() {
   fails.length = 0;
   passedCount = 0;
 
   const palms = readFileSync(join(here, 'palms.js'), 'utf8');
   const fits = slicePalmFits(palms);
+  const plan = slicePlanPalms(palms);
+  const reroll = sliceReroll(palms);
 
   ok('palmFits is present', fits.includes('function palmFits(') && fits.length > 80);
+  ok('planPalms / rng5 re-roll slices are present',
+    plan.includes('export function planPalms') && plan.length > 80
+    && reroll.includes('while (!y && tries < 36)') && reroll.length > 40);
 
   ok('signed deck is BOARDWALK_Z 27 / BOARDWALK_D 8',
     BOARDWALK_Z === 27 && BOARDWALK_D === 8
     && BOARDWALK_Z - BOARDWALK_D / 2 === 23
     && BOARDWALK_Z + BOARDWALK_D / 2 === 31);
 
+  const planDraw = 'let z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18';
+  const rerollDraw = 'z = rng5() < 0.72 ? 26 + rng5() * 32 : 6 + rng5() * 18';
+  const sandContinue = 'if (z < 21.8) continue';
+  const tiltDraw = 'const legacyTiltZ = (rng() - 0.5) * 0.12';
   ok('planPalms still draws sand scatter and field rows',
-    palms.includes('let z = rng() < 0.72 ? 26 + rng() * 32 : 6 + rng() * 18')
+    palms.includes(planDraw)
     && palms.includes('6 + rng() * 18')
     && palms.includes('26 + rng() * 32'));
   ok('rng5 re-roll keeps the same sand / field draws',
-    palms.includes('z = rng5() < 0.72 ? 26 + rng5() * 32 : 6 + rng5() * 18')
+    palms.includes(rerollDraw)
     && palms.includes('6 + rng5() * 18')
     && palms.includes('26 + rng5() * 32'));
-  ok('HERO_POS still present',
-    palms.includes('const HERO_POS = [')
-    && palms.includes('[-17, 19.5], [-10, 14], [-4, 22.5], [4, 17],')
-    && palms.includes('[11, 23], [17, 14.5], [24, 20.5], [30, 16.5],'));
+  ok('planPalms rejects sand after all candidate draws',
+    plan.includes(sandContinue)
+    && plan.indexOf(planDraw) < plan.indexOf(tiltDraw)
+    && plan.indexOf(tiltDraw) < plan.indexOf(sandContinue)
+    && plan.indexOf('placed++') < plan.indexOf(sandContinue)
+    && plan.indexOf(sandContinue) < plan.indexOf('plan.push'));
+  ok('rng5 re-roll rejects sand after the z draw',
+    reroll.includes(sandContinue)
+    && reroll.indexOf(rerollDraw) < reroll.indexOf(sandContinue));
+  ok('21.8 is the boardwalk ocean face',
+    BOARDWALK_Z - BOARDWALK_D / 2 - BOARDWALK_SHOULDER === 21.8);
+  ok('sand scatter 6 is a kiss; 21.8 / field 26 keep',
+    6 < 21.8
+    && 6 + 18 * ((21.8 - 6) / 18) === 21.8
+    && 26 >= 21.8);
+  ok('did not rewrite the sand / field z formula',
+    !/z\s*=\s*21\.8/.test(plan)
+    && !/z\s*=\s*Math\.(max|min)/.test(plan)
+    && !/z\s*\+=/.test(plan)
+    && plan.includes(planDraw));
+  ok('HERO_POS spawn-side beach heroes are gone',
+    !palms.includes('const HERO_POS = [')
+    && !palms.includes('[-17, 19.5], [-10, 14], [-4, 22.5], [4, 17],')
+    && !palms.includes('[11, 23], [17, 14.5], [24, 20.5], [30, 16.5,]')
+    && !palms.includes('buildPalm'));
 
   ok('imports BOARDWALK_Z / BOARDWALK_D, no new box',
     palms.includes('BOARDWALK_Z, BOARDWALK_D')
