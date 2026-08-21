@@ -209,7 +209,7 @@ export function runBayWaterTests() {
   ok('crash is depth-gated off the flats',
     foamTermAt(400, -900, H) === 0
     && foamTermAt(400, -2000, H) === 0
-    && foamTermAt(0, SHORE_Z + 8, H) === 0);
+    && foamTermAt(400, SHORE_Z + 8, H) === 0);
 
   const ripMid = RIP_CTRL[1];
   const onRip = foamTermAt(ripMid.x, ripMid.z, H);
