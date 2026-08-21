@@ -67,6 +67,8 @@ export function runMiamiBladesTests() {
   ok('far hull has area', planned.farArea > 1000);
 
   const nearHulls = dirtHulls('near');
+  const farHulls = dirtHulls('far');
+  const allHulls = nearHulls.concat(farHulls);
   let hulledPavement = 0;
   for (let i = 0; i < nearHulls.length; i++) {
     const h = nearHulls[i];
@@ -75,6 +77,14 @@ export function runMiamiBladesTests() {
     }
   }
   ok('hulls do not contain the boardwalk centre', hulledPavement === 0);
+  ok('beach-dirt band is gone',
+    !allHulls.some((h) => String(h.tag).includes('beach-dirt'))
+    && !allHulls.some((h) => Math.abs(h.z0 - 1.15) < 0.05
+      && Math.abs(h.z1 - 21.75) < 0.05));
+  ok('promenade and plant leftover bands stay',
+    allHulls.some((h) => String(h.tag).includes('promenade-dirt'))
+    && allHulls.some((h) => String(h.tag).includes('plant-beach'))
+    && allHulls.some((h) => String(h.tag).includes('plant-city')));
   ok('leftover hulls punch the spawn keepout',
     !nearHulls.some((h) => h.x0 <= 0 && h.x1 >= 0 && h.z0 <= 8 && h.z1 >= 8));
   ok('hull area helper is width × depth',
