@@ -19,8 +19,8 @@ import { tessellateHull, tryPlace } from '../planting.js';
  * bench restack. The path's thin joint hull stays. Keepout is published
  * in constants.js before scatter; tryPlace drops palms / dirt-blades on
  * this cell. One hull at grade (Sylva methods: tessellated hull, one
- * thin grade collider — not per-blade colliders). Never a filled grass
- * AABB. Never a 0.3 m pad AABB. The 8–25 m St. Augustine read is the
+ * thin grade collider — not per-blade colliders). Never a filled grass AABB.
+ * Never a 0.3 m pad AABB. The 8–25 m St. Augustine read is the
  * grass_lawn grade plate at LEFTOVER_GRASS_LAWN_H 0.05 (same assetLib
  * set dressing.js already folds). 8–12k cone instances are a leftover
  * ceiling, not the card budget. Near-corridor cards stay under 2k
