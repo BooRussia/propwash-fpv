@@ -1,15 +1,18 @@
 import * as THREE from 'three';
+import { assetLib } from '../../../core/assets.js';
+import { setAoUVs } from '../textures.js';
 import {
   POCKET_PARK_X, POCKET_PARK_Z,
   POCKET_PARK_E_X, POCKET_PARK_E_Z,
   POCKET_PARK_F_X, POCKET_PARK_F_Z,
   POCKET_PARK_G_X, POCKET_PARK_G_Z,
   POCKET_PARK_H_X, POCKET_PARK_H_Z,
-  POCKET_PARK_H_MIN, POCKET_PARK_H_MAX,
+  POCKET_PARK_H_MIN, POCKET_PARK_H_MAX, POCKET_PARK_LAWN_H,
   POCKET_PARK_HULL_COLLIDER, POCKET_PARK_AABB,
   pocketParkHull, pocketParkDrop, pocketParkLean,
   pocketParkPlannedCount, pocketParkRejected,
   installPocketParkColliders, onPavement, groundHeight,
+  inGardenPath,
 } from '../constants.js';
 import { tessellateHull, tryPlace } from '../planting.js';
 
@@ -20,13 +23,12 @@ import { tessellateHull, tryPlace } from '../planting.js';
  * bench, or leftoverGrass restack. Keepout is published in constants.js
  * before scatter; tryPlace drops palms / dirt-blades on these cells.
  * Hulls at grade (Sylva methods: tessellated hull, thin grade
- * collider — not per-blade colliders). Blades are visual. Never a
- * filled grass AABB. Never a 0.3 m pad AABB. Blade H 0.12–0.22 m
- * (unmowed St. Augustine) so they read at 8–25 m. A 50 mm lawn
- * disappears — do not ship that. ~10–13k instances, area × cover²,
- * not dirt COVER_NEAR 3.36.
- *
- * Shared kit, not a second scatterer. Not a pocketParkEGeom fork.
+ * collider — not per-blade colliders). Never a filled grass AABB.
+ * Never a 0.3 m pad AABB. The 8–25 m St. Augustine read is the
+ * grass_lawn grade plate at POCKET_PARK_LAWN_H 0.05 (same assetLib
+ * set dressing.js already folds). 10–13k cone instances are a leftover
+ * ceiling, not the card budget. Near-corridor cards stay under 2k
+ * total. Shared kit, not a second scatterer. Not a pocketParkEGeom fork.
  * Not a pocketParkFGeom fork. Not a pocketParkGGeom fork. Not a
  * pocketParkHGeom fork. Not a slide of 276.
  * Plant from the grid. tryPlace reject-or-drop off pavement, warehouse,
@@ -48,8 +50,9 @@ import { tessellateHull, tryPlace } from '../planting.js';
  * must not merge with this hull. leftoverLot A–H stay.
  */
 
-const BASE = new THREE.Color(0x2a3d28);
-const TIP = new THREE.Color(0x6a7a48);
+const CARD_BAND = 1.2;
+const CARD_KEEP = 0.055;
+const CARD_MAX = 1800;
 
 function hash01(a, b) {
   let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1);
@@ -69,40 +72,9 @@ function grassPlantDrop(ctx, x, z) {
   return groundHeight(x, z);
 }
 
-function bladeGeo() {
-  const segs = 2;
-  const h = 1;
-  const w = 0.12;
-  const geo = new THREE.BufferGeometry();
-  const vCount = (segs + 1) * 2;
-  const pos = new Float32Array(vCount * 3);
-  const col = new Float32Array(vCount * 3);
-  const nrm = new Float32Array(vCount * 3);
-  const idx = new Uint16Array(segs * 6);
-  for (let s = 0; s <= segs; s++) {
-    const t = s / segs;
-    const y = t * h;
-    const hw = w * (1 - t * 0.78) * 0.5;
-    const i0 = s * 2;
-    pos[i0 * 3] = -hw; pos[i0 * 3 + 1] = y; pos[i0 * 3 + 2] = 0;
-    pos[(i0 + 1) * 3] = hw; pos[(i0 + 1) * 3 + 1] = y; pos[(i0 + 1) * 3 + 2] = 0;
-    const r = BASE.r + (TIP.r - BASE.r) * t;
-    const g = BASE.g + (TIP.g - BASE.g) * t;
-    const b = BASE.b + (TIP.b - BASE.b) * t;
-    col[i0 * 3] = r; col[i0 * 3 + 1] = g; col[i0 * 3 + 2] = b;
-    col[(i0 + 1) * 3] = r; col[(i0 + 1) * 3 + 1] = g; col[(i0 + 1) * 3 + 2] = b;
-    nrm[i0 * 3 + 2] = 1;
-    nrm[(i0 + 1) * 3 + 2] = 1;
-    if (s < segs) {
-      const o = s * 6;
-      idx[o] = i0; idx[o + 1] = i0 + 1; idx[o + 2] = i0 + 2;
-      idx[o + 3] = i0 + 1; idx[o + 4] = i0 + 3; idx[o + 5] = i0 + 2;
-    }
-  }
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+function cardGeo() {
+  const geo = new THREE.PlaneGeometry(0.16, 1);
+  geo.translate(0, 0.5, 0);
   return geo;
 }
 
@@ -129,6 +101,108 @@ function stampField(im, list) {
   im.count = list.length;
 }
 
+function fallbackLawnMat(track) {
+  const mat = track(new THREE.MeshStandardMaterial({
+    color: 0x4c7a3d,
+    roughness: 1,
+    metalness: 0,
+  }));
+  mat.polygonOffset = true;
+  mat.polygonOffsetFactor = -2;
+  mat.polygonOffsetUnits = -2;
+  return mat;
+}
+
+async function bindGrassLawn(mat) {
+  if (!assetLib) return;
+  try {
+    const lawnSet = await assetLib.textureSet('grass_lawn');
+    if (!lawnSet || !lawnSet.map) return;
+    const pbr = await assetLib.pbrMaterial('grass_lawn', { repeat: [7, 4.5] });
+    mat.map = pbr.map;
+    mat.normalMap = pbr.normalMap;
+    mat.roughnessMap = pbr.roughnessMap;
+    mat.aoMap = pbr.aoMap;
+    mat.metalnessMap = pbr.metalnessMap;
+    if (pbr.normalScale) mat.normalScale.copy(pbr.normalScale);
+    mat.color.setHex(0xffffff);
+    mat.roughness = pbr.roughness;
+    mat.needsUpdate = true;
+  } catch (e) {
+    void e;
+  }
+}
+
+function acceptedHulls() {
+  const rejectA = pocketParkRejected();
+  const rejectE = pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z);
+  const rejectF = pocketParkRejected(POCKET_PARK_F_X, POCKET_PARK_F_Z);
+  const rejectG = pocketParkRejected(POCKET_PARK_G_X, POCKET_PARK_G_Z);
+  const rejectH = pocketParkRejected(POCKET_PARK_H_X, POCKET_PARK_H_Z);
+  const hulls = [];
+  if (!rejectA && !onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
+    hulls.push(pocketParkHull());
+  }
+  if (!rejectE && !onPavement(POCKET_PARK_E_X, POCKET_PARK_E_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z));
+  }
+  if (!rejectF && !onPavement(POCKET_PARK_F_X, POCKET_PARK_F_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z));
+  }
+  if (!rejectG && !onPavement(POCKET_PARK_G_X, POCKET_PARK_G_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z));
+  }
+  if (!rejectH && !onPavement(POCKET_PARK_H_X, POCKET_PARK_H_Z)) {
+    hulls.push(pocketParkHull(POCKET_PARK_H_X, POCKET_PARK_H_Z));
+  }
+  return hulls;
+}
+
+function collectCards(ctx, hulls) {
+  const placed = [];
+  for (let n = 0; n < hulls.length; n++) {
+    const hull = hulls[n];
+    const cells = tessellateHull(hull, pocketParkPlannedCount(hull.x, hull.z));
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      const y = grassPlantDrop(ctx, c.x, c.z);
+      if (!y) continue;
+      if (!inGardenPath(c.x, c.z, CARD_BAND)) continue;
+      const u = hash01(i + 11 + n * 97, (hull.seed || 1) * 19);
+      if (u > CARD_KEEP) continue;
+      placed.push({
+        x: c.x, y, z: c.z,
+        yaw: c.yaw,
+        sc: 0.82 + u * 0.20,
+        h: POCKET_PARK_H_MIN + u * (POCKET_PARK_H_MAX - POCKET_PARK_H_MIN),
+        lean: pocketParkLean(c.x, c.z),
+      });
+    }
+  }
+  if (placed.length <= CARD_MAX) return placed;
+  const keep = [];
+  const step = placed.length / CARD_MAX;
+  for (let i = 0; i < CARD_MAX; i++) keep.push(placed[Math.floor(i * step)]);
+  return keep;
+}
+
+function addGradePlates(root, track, hulls, lawnMat) {
+  const plates = [];
+  for (let n = 0; n < hulls.length; n++) {
+    const hull = hulls[n];
+    const geo = track(new THREE.BoxGeometry(hull.w, POCKET_PARK_LAWN_H, hull.d));
+    setAoUVs(geo);
+    const mesh = new THREE.Mesh(geo, lawnMat);
+    mesh.name = 'pocketPark-lawn';
+    mesh.position.set(hull.x, hull.y0 + POCKET_PARK_LAWN_H * 0.5, hull.z);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    root.add(mesh);
+    plates.push(mesh);
+  }
+  return plates;
+}
+
 /**
  * Instance grow-to-gap St. Augustine on the signed leftover-city plates.
  * Rejects each hull independently if pavement, a street, leftoverLot
@@ -146,11 +220,6 @@ function stampField(im, list) {
  * leftoverLot A–H stay.
  */
 export function buildPocketPark(ctx) {
-  const rejectA = pocketParkRejected();
-  const rejectE = pocketParkRejected(POCKET_PARK_E_X, POCKET_PARK_E_Z);
-  const rejectF = pocketParkRejected(POCKET_PARK_F_X, POCKET_PARK_F_Z);
-  const rejectG = pocketParkRejected(POCKET_PARK_G_X, POCKET_PARK_G_Z);
-  const rejectH = pocketParkRejected(POCKET_PARK_H_X, POCKET_PARK_H_Z);
   if (onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
     tryPlace(ctx, POCKET_PARK_X, POCKET_PARK_Z);
   }
@@ -168,65 +237,41 @@ export function buildPocketPark(ctx) {
   }
   if (POCKET_PARK_AABB) return null;
 
-  const hulls = [];
-  if (!rejectA && !onPavement(POCKET_PARK_X, POCKET_PARK_Z)) {
-    hulls.push(pocketParkHull());
-  }
-  if (!rejectE && !onPavement(POCKET_PARK_E_X, POCKET_PARK_E_Z)) {
-    hulls.push(pocketParkHull(POCKET_PARK_E_X, POCKET_PARK_E_Z));
-  }
-  if (!rejectF && !onPavement(POCKET_PARK_F_X, POCKET_PARK_F_Z)) {
-    hulls.push(pocketParkHull(POCKET_PARK_F_X, POCKET_PARK_F_Z));
-  }
-  if (!rejectG && !onPavement(POCKET_PARK_G_X, POCKET_PARK_G_Z)) {
-    hulls.push(pocketParkHull(POCKET_PARK_G_X, POCKET_PARK_G_Z));
-  }
-  if (!rejectH && !onPavement(POCKET_PARK_H_X, POCKET_PARK_H_Z)) {
-    hulls.push(pocketParkHull(POCKET_PARK_H_X, POCKET_PARK_H_Z));
-  }
+  const hulls = acceptedHulls();
   if (!hulls.length) return null;
   if (hulls.some((h) => h.collider !== POCKET_PARK_HULL_COLLIDER)) return null;
 
   const { root, track, addCollider, addCyl, setTag } = ctx;
   setTag('pocketPark');
 
-  const placed = [];
-  for (let n = 0; n < hulls.length; n++) {
-    const hull = hulls[n];
-    const cells = tessellateHull(hull, pocketParkPlannedCount(hull.x, hull.z));
-    for (let i = 0; i < cells.length; i++) {
-      const c = cells[i];
-      const y = grassPlantDrop(ctx, c.x, c.z);
-      if (!y) continue;
-      const u = hash01(i + 11 + n * 97, (hull.seed || 1) * 19);
-      placed.push({
-        x: c.x, y, z: c.z,
-        yaw: c.yaw,
-        sc: 0.82 + u * 0.20,
-        h: POCKET_PARK_H_MIN + u * (POCKET_PARK_H_MAX - POCKET_PARK_H_MIN),
-        lean: pocketParkLean(c.x, c.z),
-      });
-    }
-  }
+  const placed = collectCards(ctx, hulls);
 
   let mesh = null;
   if (placed.length) {
-    const geo = track(bladeGeo());
+    const geo = track(cardGeo());
     const mat = track(new THREE.MeshStandardMaterial({
-      color: 0xffffff,
+      color: 0x5a6e42,
       roughness: 1,
       metalness: 0,
-      vertexColors: true,
       side: THREE.DoubleSide,
       fog: true,
     }));
     mesh = new THREE.InstancedMesh(geo, mat, placed.length);
-    mesh.name = 'pocketPark-blades';
+    mesh.name = 'pocketPark-cards';
     stampField(mesh, placed);
     root.add(mesh);
   }
 
+  const lawnMat = fallbackLawnMat(track);
+  const plates = addGradePlates(root, track, hulls, lawnMat);
+  void bindGrassLawn(lawnMat);
+
   installPocketParkColliders(addCyl, addCollider);
   setTag('world');
-  return { group: mesh, count: placed.length, hullCollider: hulls[0].collider };
+  return {
+    group: mesh,
+    count: placed.length,
+    plates: plates.length,
+    hullCollider: hulls[0].collider,
+  };
 }
