@@ -7,7 +7,6 @@
 
 import * as THREE from 'three';
 import { BAY_PRESET, createBaySim } from './baySim.js';
-import { clamp } from '../../core/state.js';
 import { SHORE_Z } from './constants.js';
 
 export { BAY_PRESET };
@@ -24,6 +23,148 @@ const BAY_Y = -0.18;
 const COLLIDER_H = 0.16;
 
 const BAY_COLOR = 0x163a3c;     // muted bay teal — not Water.js 0x00404f, not abyssal grade
+
+// Foam DataTexture covers the plate once (ClampToEdge, repeat 1,1).
+// 256² / 19 m chop stays on normals + displacement — those may still tile.
+const FOAM_N = 512;
+
+// One Catmull-Rom rip: a seaward channel that cuts the SHORE_Z break.
+// Control points are derived from the signed bay frame only
+// (BAY_X, BAY_Z, BAY_W, BAY_D, SHORE_Z). Not a reserved cell.
+export const RIP_CTRL = Object.freeze([
+  Object.freeze({ x: BAY_X, y: 0, z: SHORE_Z }),
+  Object.freeze({ x: BAY_X + BAY_W / 80, y: 0, z: SHORE_Z - BAY_D / 24 }),
+  Object.freeze({ x: BAY_X - BAY_W / 100, y: 0, z: SHORE_Z - BAY_D / 10 }),
+  Object.freeze({ x: BAY_X + BAY_W / 160, y: 0, z: SHORE_Z - BAY_D / 6 }),
+]);
+
+const RIP_HALF = BAY_D / 160;           // 22.5 m foam glow around the channel
+const RIP_Z_END = RIP_CTRL[RIP_CTRL.length - 1].z;
+const RIP_X_MIN = Math.min(...RIP_CTRL.map((p) => p.x)) - RIP_HALF * 2;
+const RIP_X_MAX = Math.max(...RIP_CTRL.map((p) => p.x)) + RIP_HALF * 2;
+
+function clamp01(v) {
+  if (v <= 0) return 0;
+  if (v >= 1) return 1;
+  return v;
+}
+
+// THREE.CatmullRomCurve3('catmullrom', tension 0.5) — same cubic, no three.
+function catmullRom1(p0, p1, p2, p3, t) {
+  const t0 = 0.5 * (p2 - p0);
+  const t1 = 0.5 * (p3 - p1);
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return p1 + t0 * t + (-3 * p1 + 3 * p2 - 2 * t0 - t1) * t2
+    + (2 * p1 - 2 * p2 + t0 + t1) * t3;
+}
+
+function catmullRomPoint(pts, t) {
+  const segs = pts.length - 1;
+  const ft = t * segs;
+  let i = Math.floor(ft);
+  if (i >= segs) i = segs - 1;
+  if (i < 0) i = 0;
+  const local = ft - i;
+  const p1 = pts[i];
+  const p2 = pts[i + 1];
+  const p0 = i > 0 ? pts[i - 1] : {
+    x: 2 * p1.x - p2.x, y: 2 * p1.y - p2.y, z: 2 * p1.z - p2.z,
+  };
+  const p3 = i + 2 < pts.length ? pts[i + 2] : {
+    x: 2 * p2.x - p1.x, y: 2 * p2.y - p1.y, z: 2 * p2.z - p1.z,
+  };
+  return {
+    x: catmullRom1(p0.x, p1.x, p2.x, p3.x, local),
+    y: catmullRom1(p0.y, p1.y, p2.y, p3.y, local),
+    z: catmullRom1(p0.z, p1.z, p2.z, p3.z, local),
+  };
+}
+
+function buildRipPoly(n = 96) {
+  const out = new Array(n + 1);
+  for (let i = 0; i <= n; i++) out[i] = catmullRomPoint(RIP_CTRL, i / n);
+  return out;
+}
+
+let ripPoly = null;
+function getRipPoly() {
+  if (!ripPoly) ripPoly = buildRipPoly(96);
+  return ripPoly;
+}
+
+function distToRip(x, z, poly) {
+  let best = Infinity;
+  for (let i = 1; i < poly.length; i++) {
+    const ax = poly[i - 1].x, az = poly[i - 1].z;
+    const bx = poly[i].x, bz = poly[i].z;
+    const dx = bx - ax, dz = bz - az;
+    const l2 = dx * dx + dz * dz;
+    let t = l2 > 1e-12 ? ((x - ax) * dx + (z - az) * dz) / l2 : 0;
+    if (t < 0) t = 0;
+    else if (t > 1) t = 1;
+    const d = Math.hypot(x - (ax + t * dx), z - (az + t * dz));
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Signed-frame seabed depth at z (waterline 0). Inland z>+0 is dry. */
+function shoreDepth(z) {
+  if (z > 0) return -1;
+  if (z > SHORE_Z) return 0;
+  const bed = Math.max(-6, -0.4 + (z - SHORE_Z) * 0.08);
+  return -bed;
+}
+
+/** Depth-break gate toward SHORE_Z. Zero on flats and inland of the dip. */
+function depthBreakGate(z) {
+  if (z > 0) return 0;
+  const depth = shoreDepth(z);
+  if (depth < 0.28 || depth > 3.4) return 0;
+  return Math.sin(Math.PI * (depth - 0.28) / (3.4 - 0.28));
+}
+
+function ripMaskAt(x, z, poly) {
+  if (z > 0) return 0;
+  if (x < RIP_X_MIN || x > RIP_X_MAX) return 0;
+  if (z < RIP_Z_END - 90) return 0;
+  const d = distToRip(x, z, poly);
+  const u = d / RIP_HALF;
+  if (u >= 1.85) return 0;
+  let m = Math.exp(-u * u * 2.4);
+  if (z < RIP_Z_END) m *= clamp01(1 - (RIP_Z_END - z) / 80);
+  if (z > SHORE_Z) m *= clamp01(1 - (z - SHORE_Z) / 12);
+  return m;
+}
+
+function crestFromHeight(h) {
+  return clamp01((h - 0.03) / 0.22);
+}
+
+/**
+ * Extra foam TERM at a world XZ. Depth-break toward SHORE_Z plus the
+ * one Catmull-Rom rip. Inland of z=0 is dry. Fold paint stays off.
+ */
+export function foamTermAt(x, z, height = 0, poly = getRipPoly()) {
+  if (z > 0) return 0;
+  const crest = crestFromHeight(height);
+  const br = depthBreakGate(z);
+  const rip = ripMaskAt(x, z, poly);
+  const crash = br * (0.16 + 0.84 * crest) * (1 - 0.82 * rip);
+  const outflow = rip * (0.40 + 0.48 * crest);
+  const raw = crash + outflow;
+  return raw > 1 ? 1 : raw;
+}
+
+function plateX(i, n) {
+  return BAY_X + ((i + 0.5) / n - 0.5) * BAY_W;
+}
+
+function plateZ(j, n) {
+  // PlaneGeometry UV v → localY; rotX -90 → world z = BAY_Z - localY
+  return BAY_Z - ((j + 0.5) / n - 0.5) * BAY_D;
+}
 
 function encodeNormals(sim, out) {
   const { n, slopeX, slopeZ } = sim;
@@ -46,8 +187,8 @@ function encodeNormals(sim, out) {
   }
 }
 
-function encodeHeightFoam(sim, heightBytes, foamBytes) {
-  const { n, height, foam } = sim;
+function encodeHeight(sim, heightBytes) {
+  const { n, height } = sim;
   // mid-grey = rest height; ±0.45 m spans 0..1
   const hScale = 0.45;
   let p = 0;
@@ -59,23 +200,53 @@ function encodeHeightFoam(sim, heightBytes, foamBytes) {
     heightBytes[p + 1] = hb;
     heightBytes[p + 2] = hb;
     heightBytes[p + 3] = 255;
-    // Floor kills the salt-and-pepper leftovers; honest breaks stay.
-    const raw = foam[i];
-    const f = (raw <= 0.05 ? 0 : (raw - 0.05) / 0.95) * 255;
-    foamBytes[p] = f;
-    foamBytes[p + 1] = f;
-    foamBytes[p + 2] = f;
-    foamBytes[p + 3] = 255;
     p += 4;
   }
 }
 
-function makeDataTex(n, data) {
-  const tex = new THREE.DataTexture(data, n, n, THREE.RGBAFormat);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+/** Plate-UV foam: depth-break + one rip. Not the 19 m cascade. */
+export function encodeShoreFoam(sim, foamBytes, opts = {}) {
+  const n = opts.n || FOAM_N;
+  const poly = opts.ripPoly || getRipPoly();
+  const sampleH = sim && typeof sim.sampleHeight === 'function'
+    ? (x, z) => sim.sampleHeight(x, z)
+    : () => 0;
+  let p = 0;
+  for (let j = 0; j < n; j++) {
+    const z = plateZ(j, n);
+    for (let i = 0; i < n; i++) {
+      const x = plateX(i, n);
+      let raw = 0;
+      if (z <= 0) {
+        const br = depthBreakGate(z);
+        const nearRip = x >= RIP_X_MIN && x <= RIP_X_MAX
+          && z >= RIP_Z_END - 90 && z <= SHORE_Z + 12;
+        if (br > 0 || nearRip) raw = foamTermAt(x, z, sampleH(x, z), poly);
+      }
+      // Floor kills the salt-and-pepper leftovers; honest breaks stay.
+      const f = (raw <= 0.05 ? 0 : (raw - 0.05) / 0.95) * 255;
+      foamBytes[p] = f;
+      foamBytes[p + 1] = f;
+      foamBytes[p + 2] = f;
+      foamBytes[p + 3] = 255;
+      p += 4;
+    }
+  }
+}
+
+function encodeHeightFoam(sim, heightBytes, foamBytes, opts) {
+  encodeHeight(sim, heightBytes);
+  encodeShoreFoam(sim, foamBytes, opts);
+}
+
+function makeDataTex(w, h, data, wrap) {
+  const tex = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  tex.wrapS = tex.wrapT = wrap;
   tex.magFilter = THREE.LinearFilter;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.generateMipmaps = true;
+  tex.minFilter = wrap === THREE.ClampToEdgeWrapping
+    ? THREE.LinearFilter
+    : THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = wrap !== THREE.ClampToEdgeWrapping;
   tex.colorSpace = THREE.NoColorSpace;
   tex.needsUpdate = true;
   return tex;
@@ -95,18 +266,29 @@ export function buildBayWater(ctx, opts = {}) {
   const n = sim.n;
   const L = sim.L;
 
+  // One Catmull-Rom rip from the signed bay frame (THREE.CatmullRomCurve3).
+  const ripCurve = new THREE.CatmullRomCurve3(
+    RIP_CTRL.map((p) => new THREE.Vector3(p.x, p.y, p.z)),
+    false,
+    'catmullrom',
+    0.5,
+  );
+  const ripFromCurve = ripCurve.getSpacedPoints(96);
+  ripPoly = ripFromCurve;
+
   const normalBytes = new Uint8Array(n * n * 4);
   const heightBytes = new Uint8Array(n * n * 4);
-  const foamBytes = new Uint8Array(n * n * 4);
+  const foamBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
   encodeNormals(sim, normalBytes);
-  encodeHeightFoam(sim, heightBytes, foamBytes);
+  encodeHeightFoam(sim, heightBytes, foamBytes, { n: FOAM_N, ripPoly: ripFromCurve });
 
-  const normalMap = track(makeDataTex(n, normalBytes));
-  const displacementMap = track(makeDataTex(n, heightBytes));
-  const foamMap = track(makeDataTex(n, foamBytes));
+  const normalMap = track(makeDataTex(n, n, normalBytes, THREE.RepeatWrapping));
+  const displacementMap = track(makeDataTex(n, n, heightBytes, THREE.RepeatWrapping));
+  const foamMap = track(makeDataTex(FOAM_N, FOAM_N, foamBytes, THREE.ClampToEdgeWrapping));
   applyRepeat(normalMap, BAY_W, BAY_D, L);
   applyRepeat(displacementMap, BAY_W, BAY_D, L);
-  applyRepeat(foamMap, BAY_W, BAY_D, L);
+  foamMap.repeat.set(1, 1);
+  foamMap.offset.set(0, 0);
 
   // One plane: the existing Miami bay footprint. Not an open-ocean far grid.
   // Segments are coarse — the 19 m / 256² maps carry the 8–25 m chop.
@@ -152,7 +334,7 @@ export function buildBayWater(ctx, opts = {}) {
   let lastDayF = -1;
 
   const tint = (tod) => {
-    const dayF = Math.max(0.04, Math.sin(Math.PI * clamp((tod - 6.2) / 13.2, 0, 1)));
+    const dayF = Math.max(0.04, Math.sin(Math.PI * clamp01((tod - 6.2) / 13.2)));
     if (Math.abs(dayF - lastDayF) < 0.008) return dayF;
     lastDayF = dayF;
     mat.color.copy(colorNight).lerp(colorDay, 0.12 + 0.88 * dayF);
@@ -186,7 +368,7 @@ export function buildBayWater(ctx, opts = {}) {
     }
     if (stepped) {
       encodeNormals(sim, normalBytes);
-      encodeHeightFoam(sim, heightBytes, foamBytes);
+      encodeHeightFoam(sim, heightBytes, foamBytes, { n: FOAM_N, ripPoly: ripFromCurve });
       normalMap.needsUpdate = true;
       displacementMap.needsUpdate = true;
       foamMap.needsUpdate = true;
@@ -212,4 +394,7 @@ export const BAY_PLANE = Object.freeze({
   // wet sit-plane (groundHeight clamp), not a bag slab
   wetZ1: SHORE_Z,
   colliderH: COLLIDER_H,
+  foamN: FOAM_N,
 });
+
+export { FOAM_N, encodeHeightFoam };
