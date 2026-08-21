@@ -19,7 +19,8 @@ export function buildBeachProps(ctx) {
   setTag('lifeguard');
   {
     // lifeguard towers v2 — merged vertex-colored geometry, 1 draw call for all 6
-    const hutCols = [0xff7fa0, 0x53d6d6, 0xffd166, 0x9b5de5, 0x43d17a, 0xff8c42];
+    // 1957 fleet enamel (Desi + Reesy). Same digital approx as PAINT. Do not re-candy.
+    const hutCols = [0xe0826e, 0x3cb7ab, 0xffd166, 0xf0e6bb, 0x43d17a, 0xff8c42];
     const lgGeos = [];
     for (let i = 0; i < 6; i++) {
       void ((rng() - 0.5) * 30);                        // legacy rng draws — keep order
@@ -54,7 +55,7 @@ export function buildBeachProps(ctx) {
     const canWhite = new THREE.InstancedMesh(canopyGeoA, canopyMatWhite, NU);
     const canTint = new THREE.InstancedMesh(canopyGeoB, canopyMatTint, NU);
     const frames = new THREE.InstancedMesh(frameGeo, frameMat, NU);
-    const umbCols = [0xff5c8a, 0x29d3ff, 0xffd166, 0xff8c42, 0x43d17a, 0x9b5de5, 0xe63946];
+    const umbCols = [0xc79a5b, 0xddcaa6, 0xffd166, 0xff8c42, 0x43d17a, 0xf0e6bb, 0xe63946];
     const m4 = new THREE.Matrix4();
     const q = new THREE.Quaternion();
     const qS = new THREE.Quaternion();
