@@ -6,9 +6,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ASSETS="$ROOT/assets/models"
+VENDOR="$ROOT/assets/vendor/kenney"
 TMP="${TMPDIR:-/tmp}/pw-models-fetch"
 UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-mkdir -p "$ASSETS" "$TMP"
+mkdir -p "$ASSETS" "$VENDOR" "$TMP"
 
 get_file() {
   local url="$1" dest="$2"
@@ -111,12 +112,27 @@ COM="$TMP/kenney_commercial/Models/GLB format"
 ROAD="$TMP/kenney_roads/Models/GLB format"
 NAT="$TMP/kenney_nature/Models/GLTF format"
 
-copy_kenney_glb kenney_dumpster "$ROAD/dumpster.glb" "$ROAD/Textures/colormap.png"
-copy_kenney_glb kenney_cone "$ROAD/construction-cone.glb" "$ROAD/Textures/colormap.png"
-copy_kenney_glb kenney_parasol "$COM/detail-parasol-a.glb" "$COM/Textures/colormap.png"
-copy_kenney_glb kenney_planter "$SUB/planter.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb dumpster "$ROAD/dumpster.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb traffic_cone "$ROAD/construction-cone.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb street_light "$ROAD/light-curved.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb street_light_square "$ROAD/light-square.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb traffic_light "$ROAD/traffic-light-object-vertical.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb stop_sign "$ROAD/road-sign-object-stop.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb planter "$SUB/planter.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb fence_low "$SUB/fence-low.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb parasol_a "$COM/detail-parasol-a.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb awning "$COM/detail-awning.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_skyscraper_a "$COM/building-skyscraper-a.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_skyscraper_c "$COM/building-skyscraper-c.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_midrise_e "$COM/building-e.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_house_a "$SUB/building-type-a.glb" "$SUB/Textures/colormap.png"
 copy_kenney_glb kenney_cactus "$NAT/cactus_short.glb" ""
 copy_kenney_glb kenney_palm "$NAT/tree_palmDetailedShort.glb" ""
+
+cp -f "$TMP/kenney_suburban/License.txt" "$VENDOR/License-suburban.txt"
+cp -f "$TMP/kenney_commercial/License.txt" "$VENDOR/License-commercial.txt"
+cp -f "$TMP/kenney_roads/License.txt" "$VENDOR/License-roads.txt"
+cp -f "$TMP/kenney_nature/License.txt" "$VENDOR/License-nature.txt"
 
 echo "DONE. models:"
 du -sh "$ASSETS"/* | sort

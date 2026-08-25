@@ -4,7 +4,7 @@
 // Everything is cached; missing files degrade gracefully to null.
 //
 // Texture sets:  assets/textures/<key>/{albedo,normal,rough,ao,opacity,emissive}.jpg
-// Models:        assets/models/<slug>/<slug>.gltf (+ bin + textures/)
+// Models:        assets/models/<slug>/<slug>.gltf (+ bin + textures/) or .glb
 // HDRIs:         assets/hdri/<key>_2k.hdr
 // ============================================================
 import * as THREE from 'three';
@@ -26,6 +26,8 @@ export const MODEL_KEYS = [
   'dumpster', 'traffic_cone', 'street_light', 'street_light_square', 'traffic_light',
   'stop_sign', 'planter', 'fence_low', 'parasol_a', 'awning',
   'kenney_skyscraper_a', 'kenney_skyscraper_c', 'kenney_midrise_e', 'kenney_house_a',
+  'kenney_cactus', 'kenney_palm',
+  'potted_plant_02', 'potted_plant_04', 'plastic_monobloc_chair_01', 'shrub_04', 'lambis_shell',
 ];
 export const HDRI_KEYS = ['beach_day', 'sunset', 'night', 'day_clear', 'overcast'];
 

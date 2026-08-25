@@ -33,6 +33,18 @@ export function runMiamiKenneyDressingTests() {
     kenney.includes("'dumpster'") && kenney.includes("'street_light'")
     && kenney.includes("'planter'") && kenney.includes("'stop_sign'")
     && kenney.includes('kenney_skyscraper_a'));
+  ok('beach chairs / shells / Kenney parasols instanced',
+    kenney.includes("'plastic_monobloc_chair_01'")
+    && kenney.includes("'lambis_shell'")
+    && kenney.includes("'parasol_a'"));
+  ok('street cones + potted plants + cactus instanced',
+    kenney.includes("'traffic_cone'")
+    && kenney.includes("'potted_plant_02'")
+    && kenney.includes("'potted_plant_04'")
+    && kenney.includes("'kenney_cactus'")
+    && kenney.includes("'shrub_04'"));
+  ok('beach chairs sit ocean of the boardwalk kiss',
+    kenney.includes('z = 5.2 + hash01(i, 103) * 11'));
   ok('far row sits behind the 60-box LOD (z>=640)',
     kenney.includes('640 + hash01'));
   ok('index calls buildKenneyDressing after colliders',
@@ -48,15 +60,30 @@ export function runMiamiKenneyDressingTests() {
     assets.includes("${slug}.glb") && assets.includes("${slug}.gltf"));
 
   const glbs = [
-    'dumpster', 'street_light', 'planter', 'stop_sign',
-    'kenney_skyscraper_a', 'kenney_skyscraper_c', 'kenney_midrise_e',
+    'dumpster', 'street_light', 'planter', 'stop_sign', 'traffic_cone', 'parasol_a',
+    'kenney_skyscraper_a', 'kenney_skyscraper_c', 'kenney_midrise_e', 'kenney_cactus',
   ];
   for (const slug of glbs) {
     ok(`${slug}.glb on disk`,
       existsSync(join(root, 'assets/models', slug, `${slug}.glb`)));
-    ok(`${slug} colormap sits beside the glb`,
-      existsSync(join(root, 'assets/models', slug, 'Textures/colormap.png')));
+    if (slug !== 'kenney_cactus') {
+      ok(`${slug} colormap sits beside the glb`,
+        existsSync(join(root, 'assets/models', slug, 'Textures/colormap.png')));
+    }
   }
+  const gltfs = [
+    'potted_plant_02', 'potted_plant_04', 'plastic_monobloc_chair_01',
+    'shrub_04', 'lambis_shell',
+  ];
+  for (const slug of gltfs) {
+    ok(`${slug}.gltf on disk`,
+      existsSync(join(root, 'assets/models', slug, `${slug}.gltf`)));
+  }
+  ok('MODEL_KEYS lists Poly Haven extras',
+    assets.includes("'potted_plant_02'")
+    && assets.includes("'plastic_monobloc_chair_01'")
+    && assets.includes("'lambis_shell'")
+    && assets.includes("'kenney_cactus'"));
 
   if (fails.length) {
     console.error('[miami-kenney-dressing] FAIL');
