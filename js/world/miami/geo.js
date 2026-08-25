@@ -108,6 +108,21 @@ export function stripBoxCaps(geo) {
   return geo;
 }
 
+/**
+ * Drop CylinderGeometry cap disks (groups 1 and 2). The wall atlas stays on
+ * the barrel only; a separate lid mesh owns the roof material.
+ */
+export function stripCylinderCaps(geo) {
+  if (!geo.index || !geo.groups || geo.groups.length < 3) return geo;
+  const body = geo.groups[0];
+  const src = geo.index.array;
+  const dst = new src.constructor(body.count);
+  for (let k = 0; k < body.count; k++) dst[k] = src[body.start + k];
+  geo.setIndex(new THREE.BufferAttribute(dst, 1));
+  geo.clearGroups();
+  return geo;
+}
+
 /** Thin roof slab. Origin at the wall-box TOP centre; grows upward. */
 export function roofSlabGeo(w, d, x = 0, yTop = 0, z = 0, ry = 0, thick = 0.22) {
   const g = new THREE.BoxGeometry(w + 0.14, thick, d + 0.14);

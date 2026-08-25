@@ -5,7 +5,7 @@ import {
   stripY, reservedOverlap, streetOverlap,
 } from './constants.js';
 import { windowTexture, decoFacadeTextures, setAoUVs, roofTexture } from './textures.js';
-import { facadeUV, stripBoxCaps, roofSlabGeo, colorFill, cBox, cCyl } from './geo.js';
+import { facadeUV, stripBoxCaps, stripCylinderCaps, roofSlabGeo, colorFill, cBox, cCyl } from './geo.js';
 import { tryPlace } from './planting.js';
 
 // Deterministic 2D hash — used where a per-tower choice must NOT consume a
@@ -260,10 +260,13 @@ export function buildSkyline(ctx) {
       entry.cap = { r: Math.min(tw, td) * 0.42, y0: y - CITY_Y - 0.05, h: 3.6 };
     } else if (style === 'cyl') {
       const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18));
+      stripCylinderCaps(geo);
       const uv = geo.attributes.uv;
       const su = hasGlassTex ? (Math.PI * w) / GLASS_TILE_U : Math.max(1, (Math.PI * w) / 16);
       const sv = hasGlassTex ? h / GLASS_TILE_V : Math.max(1, h / 26);
       const ou = hasGlassTex ? offU : 0, ov = hasGlassTex ? offV : 0;
+      // Barrel UVs only — cap disks were stripped so the glass atlas cannot
+      // sit on the roof. The metal lid below is the +Y face.
       for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
@@ -420,6 +423,7 @@ export function buildSkyline(ctx) {
   {
     const glassGeos = [];
     const officeGeos = [];
+    const roofGeos = [];
     for (let i = 0; i < 60; i++) {
       const w = 30 + rng() * 50, h = 40 + rng() * 160, d = 30 + rng() * 40;
       const g = new THREE.BoxGeometry(w, h, d);
@@ -429,8 +433,12 @@ export function buildSkyline(ctx) {
       const TV = useOffice ? OFFICE_TILE_V : GLASS_TILE_V;
       facadeUV(g, w, h, d, TU, TV, hash01(i, (w * 7) | 0), hash01((h * 13) | 0, (d * 5) | 0));
       stripBoxCaps(g);
-      g.translate(-800 + rng() * 1600, CITY_Y + h / 2, 300 + rng() * 320);
+      const x = -800 + rng() * 1600;
+      const z = 300 + rng() * 320;
+      g.translate(x, CITY_Y + h / 2, z);
       (useOffice ? officeGeos : glassGeos).push(g);
+      // Caps are stripped so the window atlas never sits on +Y. Own lid.
+      roofGeos.push(roofSlabGeo(w, d, x, CITY_Y + h, z));
     }
     const addMerged = (geos, mat) => {
       if (!geos.length) return;
@@ -440,6 +448,7 @@ export function buildSkyline(ctx) {
     };
     addMerged(glassGeos, glassMat);
     addMerged(officeGeos, officeMat);
+    addMerged(roofGeos, metalRoofMat);
   }
   return {
     towerData, towerGroup, glassMat, officeMat, hasGlassTex,

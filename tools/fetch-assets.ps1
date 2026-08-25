@@ -73,7 +73,8 @@ foreach ($h in $phHdris) {
 
 # ---------------- Poly Haven models (gltf + includes) ----------------
 $phModels = @('boulder_01','rock_face_01','rock_07','namaqualand_boulder_04','moon_rock_02',
-              'quiver_tree_02','tree_stump_01','shrub_02','shrub_03','fern_02','anthurium_botany_01')
+              'quiver_tree_02','tree_stump_01','shrub_02','shrub_03','fern_02','anthurium_botany_01',
+              'potted_plant_02','potted_plant_04','plastic_monobloc_chair_01','shrub_04','lambis_shell')
 foreach ($slug in $phModels) {
   $f = Invoke-RestMethod ("https://api.polyhaven.com/files/" + $slug)
   $g = $f.gltf.'1k'.gltf

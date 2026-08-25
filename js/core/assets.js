@@ -22,6 +22,10 @@ export const TEXTURE_KEYS = [
 export const MODEL_KEYS = [
   'boulder_01', 'rock_face_01', 'rock_07', 'namaqualand_boulder_04', 'moon_rock_02',
   'quiver_tree_02', 'tree_stump_01', 'shrub_02', 'shrub_03', 'fern_02', 'anthurium_botany_01',
+  // Kenney CC0 (GLB + Textures/colormap.png). Authored 6-sided, not a window atlas.
+  'dumpster', 'traffic_cone', 'street_light', 'street_light_square', 'traffic_light',
+  'stop_sign', 'planter', 'fence_low', 'parasol_a', 'awning',
+  'kenney_skyscraper_a', 'kenney_skyscraper_c', 'kenney_midrise_e', 'kenney_house_a',
 ];
 export const HDRI_KEYS = ['beach_day', 'sunset', 'night', 'day_clear', 'overcast'];
 
@@ -130,10 +134,14 @@ export class AssetLibrary {
    */
   async model(slug, opts = {}) {
     if (!this._models.has(slug)) {
-      const url = `${ASSET_BASE}models/${slug}/${slug}.gltf`;
-      const promise = new Promise((resolve) => {
+      const tryLoad = (url) => new Promise((resolve) => {
         gltfLoader.load(url, (g) => resolve(g.scene), undefined, () => resolve(null));
       });
+      const promise = (async () => {
+        const glb = await tryLoad(`${ASSET_BASE}models/${slug}/${slug}.glb`);
+        if (glb) return glb;
+        return tryLoad(`${ASSET_BASE}models/${slug}/${slug}.gltf`);
+      })();
       this._models.set(slug, promise);
     }
     const scene = await this._models.get(slug);

@@ -50,6 +50,7 @@ import { buildGardenBench } from './landmarks/gardenBench.js';
 import { buildLeftoverGrass } from './landmarks/leftoverGrass.js';
 import { buildPocketPark } from './landmarks/pocketPark.js';
 import { buildLandscaping, buildDressing } from './dressing.js';
+import { buildKenneyDressing } from './kenneyDressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
 
@@ -221,6 +222,9 @@ export async function buildMiami(scene, env) {
 
   // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------
   await buildDressing(ctx, sky.towerData, landscape.entranceShrubSpots);
+
+  // ---------------- Kenney CC0 furniture + far authored skyline (hash, not rng) --
+  await buildKenneyDressing(ctx);
 
   // ---------------- leftover-dirt blades (tryPlace, after every reserve) ----------
   const blades = await buildBlades(ctx);

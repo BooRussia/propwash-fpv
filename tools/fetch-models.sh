@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# PropWash FPV — extra CC0 models (macOS/Linux).
+# Poly Haven 1k glTF + Kenney City/Nature kit GLBs.
+# Run: bash tools/fetch-models.sh
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ASSETS="$ROOT/assets/models"
+TMP="${TMPDIR:-/tmp}/pw-models-fetch"
+UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+mkdir -p "$ASSETS" "$TMP"
+
+get_file() {
+  local url="$1" dest="$2"
+  if [[ -f "$dest" ]]; then
+    echo "skip (exists): $(basename "$dest")"
+    return 0
+  fi
+  mkdir -p "$(dirname "$dest")"
+  echo "GET $url"
+  curl -fL --retry 3 --retry-delay 2 -A "$UA" -o "$dest" "$url"
+}
+
+# ---------------- Poly Haven models (1k glTF + includes) ----------------
+ph_model() {
+  local slug="$1"
+  local dest="$ASSETS/$slug/${slug}.gltf"
+  if [[ -f "$dest" ]]; then
+    echo "skip (exists): $slug"
+    return 0
+  fi
+  python3 - "$slug" "$ASSETS" "$UA" <<'PY'
+import json, os, sys, urllib.request
+slug, assets, ua = sys.argv[1], sys.argv[2], sys.argv[3]
+req = urllib.request.Request(
+    'https://api.polyhaven.com/files/' + slug,
+    headers={'User-Agent': ua, 'Accept': 'application/json'})
+with urllib.request.urlopen(req, timeout=60) as r:
+    files = json.load(r)
+g = files.get('gltf', {}).get('1k', {}).get('gltf')
+if not g:
+    raise SystemExit('no 1k gltf for ' + slug)
+out_dir = os.path.join(assets, slug)
+os.makedirs(out_dir, exist_ok=True)
+
+def fetch(url, dest):
+    if os.path.isfile(dest):
+        print('skip (exists):', os.path.basename(dest))
+        return
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    print('GET', url)
+    req = urllib.request.Request(url, headers={'User-Agent': ua})
+    with urllib.request.urlopen(req, timeout=180) as r, open(dest, 'wb') as w:
+        w.write(r.read())
+
+fetch(g['url'], os.path.join(out_dir, slug + '.gltf'))
+for name, node in (g.get('include') or {}).items():
+    fetch(node['url'], os.path.join(out_dir, name.replace('/', os.sep)))
+print('ok', slug)
+PY
+}
+
+for slug in \
+  potted_plant_02 \
+  potted_plant_04 \
+  plastic_monobloc_chair_01 \
+  shrub_04 \
+  lambis_shell
+do
+  ph_model "$slug"
+done
+
+# ---------------- Kenney City / Nature kits (CC0 zip, public URLs) ----------------
+KENNEY_ZIPS=(
+  "suburban|https://kenney.nl/media/pages/assets/city-kit-suburban/2c871b7af2-1745479373/kenney_city-kit-suburban_20.zip"
+  "commercial|https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip"
+  "roads|https://kenney.nl/media/pages/assets/city-kit-roads/74288c9459-1787042796/kenney_city-kit-roads.zip"
+  "nature|https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip"
+)
+
+for spec in "${KENNEY_ZIPS[@]}"; do
+  name="${spec%%|*}"
+  url="${spec#*|}"
+  zip="$TMP/kenney_${name}.zip"
+  get_file "$url" "$zip"
+  if [[ ! -d "$TMP/kenney_$name" ]]; then
+    mkdir -p "$TMP/kenney_$name"
+    unzip -q -o "$zip" -d "$TMP/kenney_$name"
+  fi
+done
+
+copy_kenney_glb() {
+  local slug="$1" src="$2" colormap="$3"
+  local dest_dir="$ASSETS/$slug"
+  local dest="$dest_dir/${slug}.glb"
+  if [[ -f "$dest" ]]; then
+    echo "skip (exists): $slug"
+    return 0
+  fi
+  mkdir -p "$dest_dir"
+  cp "$src" "$dest"
+  if [[ -n "$colormap" && -f "$colormap" ]]; then
+    mkdir -p "$dest_dir/Textures"
+    cp "$colormap" "$dest_dir/Textures/colormap.png"
+  fi
+  echo "copied $slug"
+}
+
+SUB="$TMP/kenney_suburban/Models/GLB format"
+COM="$TMP/kenney_commercial/Models/GLB format"
+ROAD="$TMP/kenney_roads/Models/GLB format"
+NAT="$TMP/kenney_nature/Models/GLTF format"
+
+copy_kenney_glb kenney_dumpster "$ROAD/dumpster.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb kenney_cone "$ROAD/construction-cone.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb kenney_parasol "$COM/detail-parasol-a.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_planter "$SUB/planter.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_cactus "$NAT/cactus_short.glb" ""
+copy_kenney_glb kenney_palm "$NAT/tree_palmDetailedShort.glb" ""
+
+echo "DONE. models:"
+du -sh "$ASSETS"/* | sort

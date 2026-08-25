@@ -54,6 +54,9 @@ export function runMiamiSkylineBackdropTests() {
     block.includes('hash01')
     && !/facadeUV\([^)]*rng\(\)/.test(block));
   ok('stripBoxCaps per box', block.includes('stripBoxCaps(g)'));
+  ok('backdrop lids use existing roof mat, not the wall atlas',
+    block.includes('roofSlabGeo') && block.includes('metalRoofMat')
+    && !/new THREE\.MeshStandardMaterial/.test(block));
   ok('existing facade mats, no flat slab color',
     (block.includes('glassMat') || block.includes('officeMat'))
     && !block.includes('0x3d4653')
