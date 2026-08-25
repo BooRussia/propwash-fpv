@@ -17,7 +17,7 @@ import {
 } from './constants.js';
 import { clampCameraToFloor } from '../../camera/floor.js';
 import {
-  BAY_PLANE, FOAM_N, RIP_CTRL, encodeShoreFoam, foamTermAt,
+  BAY_PLANE, FOAM_N, RIP_CTRL, SHORE_WAVES, encodeShoreFoam, foamTermAt,
 } from './bayWater.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -256,6 +256,19 @@ export function runBayWaterTests() {
     !index.includes("uniforms['time']") && !index.includes('waterColor'));
   ok('hero material is MeshPhysicalMaterial',
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
+  ok('coastal optics inject via onBeforeCompile',
+    bayWater.includes('applyCoastalOptics') && bayWater.includes('onBeforeCompile')
+    && bayWater.includes('uBayTime'));
+  ok('Gerstner bands are not the 19 m cascade',
+    SHORE_WAVES.length === 4
+    && SHORE_WAVES.every((L) => L !== 19)
+    && SHORE_WAVES[0] === 13.7 && SHORE_WAVES[1] === 8.3
+    && SHORE_WAVES[2] === 37.1 && SHORE_WAVES[3] === 61.3);
+  ok('shader source names the incommensurate wavelengths',
+    bayWater.includes('13.7') && bayWater.includes('8.3')
+    && bayWater.includes('37.1') && bayWater.includes('61.3'));
+  ok('cellular foam is plate-space, not the cascade',
+    bayWater.includes('cellular') && bayWater.includes('3.2'));
   ok('foam encode floors leftover specks',
     bayWater.includes('0.05') && bayWater.includes('foam'));
   ok('Jacobian J<M paint is skipped',

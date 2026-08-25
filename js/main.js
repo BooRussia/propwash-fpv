@@ -369,6 +369,32 @@ env.setTimeOfDay(settings.environment.timeOfDay);
 env.setWeather(settings.environment);
 await loadMap();
 
+window.__pwReady = true;
+{
+  const shot = new URLSearchParams(location.search).get('shot');
+  if (shot && quad) {
+    paused = true;
+    menu.close?.();
+    settings.camera.losMode = false;
+    settings.camera.staticEnabled = false;
+    const loading = document.getElementById('loading');
+    if (loading) { loading.classList.add('hidden'); loading.style.display = 'none'; }
+    if (shot === 'shore') {
+      // On the sand, looking seaward (-Z) at the waterline.
+      quad.reset(new THREE.Vector3(40, 2.8, 8), 0);
+    } else if (shot === 'break') {
+      // 2 m AGL over the depth-gated crash band.
+      quad.reset(new THREE.Vector3(360, 2.0, -46), 0);
+    } else if (shot === 'bay') {
+      quad.reset(new THREE.Vector3(0, 14, -70), 0);
+    } else if (shot === 'skyline') {
+      // Over the bay, looking inland at the skyline.
+      quad.reset(new THREE.Vector3(0, 72, -180), Math.PI);
+    }
+    armed = false;
+  }
+}
+
 // FPS watchdog: one gentle suggestion if the machine is struggling
 let fpsSamples = 0, fpsTime = 0, fpsWarned = false;
 
