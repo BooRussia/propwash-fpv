@@ -5,6 +5,7 @@ import {
   CITY_Y, PIER_X, GAP_X, CROSS_X, PLAZA_X0, PLAZA_X1, CLUB_X, groundHeight, stripY,
 } from './constants.js';
 import { colorFill, cBox, cCyl, cSph, tubeBetween } from './geo.js';
+import { hash01 } from './rng.js';
 
 // ============================================================
 // Streetscape kit — benches, bins, hydrants, meters, bike racks.
@@ -62,6 +63,62 @@ function buildMeterGeo() {
     cBox(0.17, 0.24, 0.09, 0x37525c, 0, 1.2, 0),
     cCyl(0.095, 0.095, 0.085, 10, 0x37525c, 0, 1.33, 0, Math.PI / 2),
     cBox(0.12, 0.11, 0.096, 0xd8d3c8, 0, 1.19, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Art-deco sidewalk lamp. Origin at ground.
+ *  Front/back/left/right: fluted bronze pole + lantern cage; top: cream finial;
+ *  bottom: limestone plinth. Milk-glass globe is the lantern volume. */
+function buildDecoLampGeo() {
+  const bronze = 0x4a4540, cream = 0xf0e6bb, globe = 0xddd6c4, stone = 0x9a9488;
+  const G = [
+    cBox(0.42, 0.12, 0.42, stone, 0, 0.06, 0),
+    cBox(0.32, 0.16, 0.32, stone, 0, 0.18, 0),
+    cCyl(0.055, 0.08, 2.55, 8, bronze, 0, 1.52, 0),
+    cCyl(0.11, 0.11, 0.05, 8, cream, 0, 2.55, 0),
+    cCyl(0.09, 0.09, 0.04, 8, cream, 0, 2.72, 0),
+    cBox(0.28, 0.06, 0.28, bronze, 0, 2.88, 0),
+    cBox(0.26, 0.06, 0.26, bronze, 0, 3.28, 0),
+    cCyl(0.13, 0.13, 0.36, 8, globe, 0, 3.08, 0),
+    cCyl(0.04, 0.02, 0.16, 6, cream, 0, 3.4, 0),
+  ];
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      G.push(cBox(0.03, 0.4, 0.03, bronze, sx * 0.12, 3.08, sz * 0.12));
+    }
+  }
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Miami Herald newsbox. Origin at ground.
+ *  Front: glass door + name plate; back: enamel; left: coin slot; right: enamel;
+ *  top: lid + handle; bottom: recessed base. */
+function buildNewsboxGeo() {
+  const body = 0x2f6f7a, cream = 0xf0e6bb, glass = 0x1a2830, chrome = 0xb8c0c6;
+  const G = [
+    cBox(0.42, 0.72, 0.36, body, 0, 0.46, 0),
+    cBox(0.32, 0.38, 0.03, glass, 0, 0.54, -0.185),
+    cBox(0.34, 0.1, 0.04, cream, 0, 0.82, -0.185),
+    cBox(0.42, 0.72, 0.03, 0x245860, 0, 0.46, 0.165),
+    cBox(0.08, 0.12, 0.04, chrome, -0.22, 0.62, 0),
+    cBox(0.44, 0.05, 0.38, 0x245860, 0, 0.845, 0),
+    cBox(0.16, 0.04, 0.04, chrome, 0, 0.88, -0.08),
+    cBox(0.38, 0.08, 0.32, 0x1e252c, 0, 0.06, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Rectangular enamel trash can (city sidewalk). Origin at ground.
+ *  Front: hopper door; back/left/right: enamel; top: lid + handle; bottom: base. */
+function buildTrashCanGeo() {
+  const enamel = 0x35594a, lid = 0x2a2f36, hop = 0x2a4538;
+  const G = [
+    cBox(0.48, 0.78, 0.42, enamel, 0, 0.45, 0),
+    cBox(0.36, 0.28, 0.04, hop, 0, 0.58, -0.22),
+    cBox(0.5, 0.06, 0.44, lid, 0, 0.87, 0),
+    cBox(0.16, 0.04, 0.04, 0x8d949a, 0, 0.92, 0),
+    cBox(0.44, 0.08, 0.38, 0x1e252c, 0, 0.04, 0),
   ];
   const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
 }
@@ -245,6 +302,9 @@ export function buildStreetFurniture(ctx, street) {
   const hydGeo = buildHydrantGeo();
   const meterGeo = buildMeterGeo();
   const rackGeo = buildBikeRackGeo();
+  const lampGeo = buildDecoLampGeo();
+  const newsGeo = buildNewsboxGeo();
+  const canGeo = buildTrashCanGeo();
   const blocked = (x) =>
     GAP_X.some((c) => Math.abs(x - c) < 6.5) || Math.abs(x - PIER_X) < 10 ||
     Math.abs(x - shelterX) < 4 || Math.abs(x) > 585;
@@ -267,6 +327,12 @@ export function buildStreetFurniture(ctx, street) {
         stamp(binGeo, bx + 2.5, stripY(bz), binZ, rng4() * Math.PI);
         addCyl(bx + 2.5, stripY(bz), binZ, 0.28, 0.7);
       }
+      if (benchIdx % 3 === 1) {
+        const nx = bx - 1.55;
+        const nz = bz + (side ? -0.12 : 0.12);
+        stamp(newsGeo, nx, by, nz, side ? Math.PI : 0);
+        addCollider(nx, by, nz, 0.46, 0.9, 0.4);
+      }
       benchIdx++;
     }
   }
@@ -276,6 +342,19 @@ export function buildStreetFurniture(ctx, street) {
     if (blocked(hx)) continue;
     stamp(hydGeo, hx, stripY(51.15), 51.15, rng4() * Math.PI);
     addCyl(hx, stripY(51.15), 51.15, 0.2, 0.72);
+    const cx = hx + 1.85;
+    if (!blocked(cx)) {
+      stamp(canGeo, cx, stripY(51.2), 51.2, 0);
+      addCollider(cx, stripY(51.2), 51.2, 0.5, 0.92, 0.44);
+    }
+  }
+  // deco lamps — city sidewalk, hash yaw only (no layout-stream draws)
+  for (let x = -540; x <= 540; x += 74) {
+    if (blocked(x)) continue;
+    const lz = 53.45;
+    const ly = stripY(lz);
+    stamp(lampGeo, x, ly, lz, (hash01(x, 53) - 0.5) * 0.16);
+    addCyl(x, ly, lz, 0.14, 3.45);
   }
   // parking meters — one behind each curb-lane car
   for (const s of carSpots) {
@@ -312,7 +391,7 @@ export function buildStreetFurniture(ctx, street) {
 
   const furnGeo = track(mergeGeometries(oneOff));
   oneOff.forEach((g) => g.dispose());
-  [benchGeo, binGeo, hydGeo, meterGeo, rackGeo].forEach((g) => g.dispose());
+  [benchGeo, binGeo, hydGeo, meterGeo, rackGeo, lampGeo, newsGeo, canGeo].forEach((g) => g.dispose());
   const furn = new THREE.Mesh(furnGeo, propMat);
   furn.castShadow = true;
   furn.receiveShadow = true;

@@ -130,3 +130,79 @@ export function roofSlabGeo(w, d, x = 0, yTop = 0, z = 0, ry = 0, thick = 0.22) 
   g.translate(x, yTop + thick / 2, z);
   return g;
 }
+
+/** Concrete soffit. Origin at the wall-box BOTTOM centre; grows upward. */
+export function soffitGeo(w, d, x = 0, yBottom = 0, z = 0, ry = 0, thick = 0.1) {
+  const g = new THREE.BoxGeometry(w, thick, d);
+  if (ry) g.rotateY(ry);
+  g.translate(x, yBottom + thick / 2, z);
+  return g;
+}
+
+/**
+ * Zero UVs on CylinderGeometry cap disks (groups 1+). Side wall (group 0)
+ * is left alone. A leftover +Y disk must never carry a facade/window atlas.
+ */
+export function zeroCylCaps(geo) {
+  const uv = geo.attributes.uv;
+  if (!uv || !geo.index || !geo.groups || geo.groups.length < 2) return geo;
+  for (let g = 1; g < geo.groups.length; g++) {
+    const start = geo.groups[g].start;
+    const count = geo.groups[g].count;
+    for (let k = 0; k < count; k++) uv.setXY(geo.index.getX(start + k), 0, 0);
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/**
+ * Side-wall UVs for a CylinderGeometry at a constant physical tile size.
+ * Cap disks (if present) get degenerate UVs — never a repeating window photo.
+ */
+export function facadeCylUV(geo, circ, h, tileU, tileV, offU = 0, offV = 0) {
+  const uv = geo.attributes.uv;
+  if (!uv) return geo;
+  const su = circ / tileU, sv = h / tileV;
+  const idx = geo.index;
+  if (idx && geo.groups && geo.groups.length) {
+    const seen = new Uint8Array(uv.count);
+    const { start, count } = geo.groups[0];
+    for (let k = 0; k < count; k++) {
+      const i = idx.getX(start + k);
+      if (seen[i]) continue;
+      seen[i] = 1;
+      uv.setXY(i, uv.getX(i) * su + offU, uv.getY(i) * sv + offV);
+    }
+    zeroCylCaps(geo);
+  } else {
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, uv.getX(i) * su + offU, uv.getY(i) * sv + offV);
+    }
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+/**
+ * Complete art-deco mid-rise massing. Origin at the wall-box centre.
+ *
+ * Six sides — a repeating wall atlas is NEVER applied to +Y or -Y:
+ *   +Z front  — facadeUV wall atlas (windows / stucco bays)
+ *   -Z back   — facadeUV wall atlas
+ *   +X right  — facadeUV wall atlas
+ *   -X left   — facadeUV wall atlas
+ *   +Y top    — roofSlabGeo (caller assigns tile / TPO / metal — never windows)
+ *   -Y bottom — soffitGeo (caller assigns concrete)
+ *
+ * Cornice is a separate vertex-coloured limestone band so it cannot share
+ * the window map. Does not consume any rng stream.
+ */
+export function buildDecoMidriseGeos(w, h, d, tileU, tileV, offU = 0, offV = 0) {
+  const walls = new THREE.BoxGeometry(w, h, d);
+  facadeUV(walls, w, h, d, tileU, tileV, offU, offV);
+  stripBoxCaps(walls);
+  const roof = roofSlabGeo(w, d, 0, h / 2, 0);
+  const soffit = soffitGeo(w, d, 0, -h / 2, 0);
+  const cornice = cBox(w + 0.38, 0.32, d + 0.38, 0xd4c4a8, 0, h / 2 + 0.14, 0);
+  return { walls, roof, soffit, cornice };
+}

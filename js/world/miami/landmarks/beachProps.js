@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { groundHeight, inKeepout } from '../constants.js';
+import { hash01 } from '../rng.js';
+import { colorFill, cBox, cCyl } from '../geo.js';
 import { buildLifeguardGeo } from './lifeguard.js';
 import { buildParasolCanopy, buildParasolFrame } from './parasols.js';
 
@@ -13,7 +15,72 @@ const LIFEGUARDS = [
   [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
 ];
 
-/** Lifeguard towers + parasols + beach towels. */
+/** Aluminum lounger, facing -z. Origin at ground.
+ *  Front: foot rail; back: reclined head; left/right: tube rails; top: webbing;
+ *  bottom: feet on the sand. Kind 1 is the wood/cream variant. */
+function buildLoungerGeo(kind = 0) {
+  const rail = kind ? 0xc4a574 : 0xb7bec4;
+  const web = kind ? 0xf0e6bb : 0xe0826e;
+  const G = [
+    cBox(0.62, 0.04, 1.85, rail, 0, 0.28, 0.05),
+    cBox(0.58, 0.03, 1.05, web, 0, 0.33, 0.28),
+    cBox(0.58, 0.03, 0.72, web, 0, 0.55, -0.62, -0.55),
+    cBox(0.04, 0.28, 0.04, rail, -0.29, 0.14, 0.88),
+    cBox(0.04, 0.28, 0.04, rail, 0.29, 0.14, 0.88),
+    cBox(0.04, 0.28, 0.04, rail, -0.29, 0.14, -0.72),
+    cBox(0.04, 0.28, 0.04, rail, 0.29, 0.14, -0.72),
+    cBox(0.04, 0.42, 0.04, rail, -0.29, 0.48, -0.95, -0.55),
+    cBox(0.04, 0.42, 0.04, rail, 0.29, 0.48, -0.95, -0.55),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** 1950s picnic cooler. Origin at ground.
+ *  Front: latch; back/left/right: enamel; top: cream lid; bottom: dark feet. */
+function buildCoolerGeo() {
+  const body = 0x3cb7ab, lid = 0xf0e6bb, dark = 0x2b3036;
+  const G = [
+    cBox(0.62, 0.38, 0.42, body, 0, 0.27, 0),
+    cBox(0.64, 0.07, 0.44, lid, 0, 0.48, 0),
+    cBox(0.12, 0.04, 0.06, dark, 0, 0.32, -0.22),
+    cBox(0.04, 0.12, 0.18, dark, -0.33, 0.3, 0),
+    cBox(0.04, 0.12, 0.18, dark, 0.33, 0.3, 0),
+    cBox(0.56, 0.05, 0.36, 0x1e252c, 0, 0.05, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** 55-gallon beach trash drum. Origin at ground.
+ *  Sides: olive barrel + ribs; top: open rim; bottom: rusted pad. */
+function buildTrashDrumGeo() {
+  const drum = 0x5c6248, rim = 0x3a3d36, rust = 0x6a4034;
+  const G = [
+    cCyl(0.28, 0.30, 0.72, 10, drum, 0, 0.38, 0),
+    cCyl(0.31, 0.31, 0.04, 10, rim, 0, 0.74, 0),
+    cCyl(0.22, 0.22, 0.03, 8, 0x1a1d18, 0, 0.76, 0),
+    cCyl(0.30, 0.30, 0.04, 10, rust, 0, 0.04, 0),
+  ];
+  for (const y of [0.22, 0.4, 0.58]) G.push(cCyl(0.315, 0.315, 0.03, 10, rim, 0, y, 0));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Sand-base 3-hoop bike rack. Origin at ground.
+ *  Front/back: hoop faces; left/right: end hoops; top: arch; bottom: plates. */
+function buildBeachRackGeo() {
+  const steel = 0x9aa6b0, plate = 0x6d747c;
+  const G = [];
+  for (const dx of [-0.5, 0, 0.5]) {
+    const hoop = new THREE.TorusGeometry(0.33, 0.028, 6, 12, Math.PI);
+    hoop.rotateY(Math.PI / 2);
+    hoop.translate(dx, 0.55, 0);
+    G.push(colorFill(hoop, steel));
+    for (const dz of [-0.33, 0.33]) G.push(cCyl(0.028, 0.028, 0.56, 6, steel, dx, 0.28, dz));
+    G.push(cBox(0.16, 0.04, 0.22, plate, dx, 0.02, 0));
+  }
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Lifeguard towers + parasols + towels + loungers / coolers / drums / racks. */
 export function buildBeachProps(ctx) {
   const { root, track, addCollider, addCyl, setTag, rng, rng3 } = ctx;
   setTag('lifeguard');
@@ -147,6 +214,79 @@ export function buildBeachProps(ctx) {
     towels.receiveShadow = true;
     towels.name = 'beach-towels';
     root.add(towels);
+
+    // extras: hash01 only — does not touch rng / rng3 (tower UV stream follows)
+    const propMat = track(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.78, metalness: 0.08,
+    }));
+    const placeIM = (geo, spots, name) => {
+      if (!spots.length) { geo.dispose(); return; }
+      const im = new THREE.InstancedMesh(track(geo), propMat, spots.length);
+      im.name = name;
+      im.castShadow = true;
+      im.receiveShadow = true;
+      for (let i = 0; i < spots.length; i++) {
+        const s = spots[i];
+        eul.set(0, s.ry || 0, 0);
+        q.setFromEuler(eul);
+        vP.set(s.x, s.y, s.z);
+        vS.set(1, 1, 1);
+        m4.compose(vP, q, vS);
+        im.setMatrixAt(i, m4);
+      }
+      im.instanceMatrix.needsUpdate = true;
+      im.computeBoundingSphere();
+      root.add(im);
+    };
+    const loungeA = [], loungeB = [], coolers = [];
+    for (let i = 0; i < NU; i++) {
+      const u = umbSpots[i];
+      const roll = hash01(i, 11);
+      if (roll < 0.55) {
+        const a = hash01(i, 13) * Math.PI * 2;
+        const dist = 1.55 + hash01(i, 17) * 0.7;
+        const x = u.x + Math.cos(a) * dist, z = u.z + Math.sin(a) * dist;
+        const y = groundHeight(x, z);
+        if (y >= 0.12 && !inKeepout(x, z, 0.7) && !ctx.blocked(x, z, 0.7, y, y + 0.6)) {
+          const ry = a + Math.PI / 2;
+          const spot = { x, y, z, ry };
+          (roll < 0.38 ? loungeA : loungeB).push(spot);
+          addCollider(x, y, z, 0.66, 0.42, 1.9);
+        }
+      }
+      if (hash01(i, 19) < 0.28) {
+        const a = hash01(i, 23) * Math.PI * 2;
+        const x = u.x + Math.cos(a) * 1.15, z = u.z + Math.sin(a) * 1.15;
+        const y = groundHeight(x, z);
+        if (y >= 0.12 && !inKeepout(x, z, 0.4) && !ctx.blocked(x, z, 0.4, y, y + 0.5)) {
+          coolers.push({ x, y, z, ry: a });
+          addCollider(x, y, z, 0.64, 0.5, 0.44);
+        }
+      }
+    }
+    placeIM(buildLoungerGeo(0), loungeA, 'beach-loungers-a');
+    placeIM(buildLoungerGeo(1), loungeB, 'beach-loungers-b');
+    placeIM(buildCoolerGeo(), coolers, 'beach-coolers');
+
+    const drums = [];
+    for (let i = 0; i < LIFEGUARDS.length; i++) {
+      const x = LIFEGUARDS[i][0] + 2.35, z = LIFEGUARDS[i][1] + 1.55;
+      const y = groundHeight(x, z);
+      if (inKeepout(x, z, 0.4) || ctx.blocked(x, z, 0.35, y, y + 0.8)) continue;
+      drums.push({ x, y, z, ry: 0 });
+      addCyl(x, y, z, 0.32, 0.78);
+    }
+    placeIM(buildTrashDrumGeo(), drums, 'beach-drums');
+
+    const racks = [];
+    for (const rx of [-410, -250, 95, 310]) {
+      const rz = 20.4;
+      const y = groundHeight(rx, rz);
+      if (inKeepout(rx, rz, 0.8) || ctx.blocked(rx, rz, 0.7, y, y + 0.9)) continue;
+      racks.push({ x: rx, y, z: rz, ry: 0 });
+      addCollider(rx, y, rz, 1.16, 0.89, 0.72);
+    }
+    placeIM(buildBeachRackGeo(), racks, 'beach-racks');
   }
   setTag('world');
 }

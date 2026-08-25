@@ -5,7 +5,10 @@ import {
   stripY, reservedOverlap, streetOverlap,
 } from './constants.js';
 import { windowTexture, decoFacadeTextures, setAoUVs, roofTexture } from './textures.js';
-import { facadeUV, stripBoxCaps, stripCylinderCaps, roofSlabGeo, colorFill, cBox, cCyl } from './geo.js';
+import {
+  facadeUV, stripBoxCaps, stripCylinderCaps, roofSlabGeo, soffitGeo,
+  facadeCylUV, buildDecoMidriseGeos, colorFill, cBox, cCyl, cTorus,
+} from './geo.js';
 import { tryPlace } from './planting.js';
 
 // Deterministic 2D hash — used where a per-tower choice must NOT consume a
@@ -33,25 +36,93 @@ function buildBalconyGeo() {
   const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
 }
 
-/** Rooftop clutter kit: AC pair + water tank + timber pergola, merged into one
- *  instanced geometry. Origin at roof level. */
+/** AC pack + tank + pergola. Origin at roof deck.
+ *  Six sides: front/back grille + access panel; left/right galvanized; top fan
+ *  shroud; bottom rail sleepers. Tank: barrel staves all round, cone lid, pad. */
 function buildRooftopKitGeo() {
+  const galv = 0x9ba3ab, galv2 = 0x8d959d, shroud = 0x3c4249, tank = 0xcac3b2;
+  const cone = 0xb4ac99, rail = 0x6d747c, timber = 0xb99a6f, slat = 0xcaa87a;
   const G = [];
-  G.push(cBox(1.7, 0.95, 1.25, 0x9ba3ab, -2.1, 0.48, -1.1));
-  G.push(cCyl(0.52, 0.52, 0.06, 12, 0x3c4249, -2.1, 0.98, -1.1));
-  G.push(cBox(1.25, 0.8, 1.05, 0x8d959d, -0.55, 0.4, -1.2));
-  G.push(cCyl(0.4, 0.4, 0.05, 12, 0x3c4249, -0.55, 0.83, -1.2));
-  G.push(cCyl(0.95, 0.95, 1.8, 12, 0xcac3b2, 1.9, 1.32, -0.8));
-  G.push(cCyl(0.02, 0.98, 0.55, 12, 0xb4ac99, 1.9, 2.49, -0.8));
+  G.push(cBox(1.7, 0.95, 1.25, galv, -2.1, 0.48, -1.1));           // AC body
+  G.push(cBox(1.55, 0.62, 0.04, 0x5c646c, -2.1, 0.5, -1.1 - 0.64)); // front grille
+  G.push(cBox(0.4, 0.5, 0.04, 0x4a5158, -2.1, 0.48, -1.1 + 0.64));  // back panel
+  G.push(cCyl(0.52, 0.52, 0.06, 12, shroud, -2.1, 0.98, -1.1));     // top fan
+  G.push(cBox(1.55, 0.04, 0.18, rail, -2.1, 0.04, -1.1));           // bottom rails
+  G.push(cBox(1.25, 0.8, 1.05, galv2, -0.55, 0.4, -1.2));
+  G.push(cBox(1.12, 0.5, 0.04, 0x5c646c, -0.55, 0.42, -1.2 - 0.54));
+  G.push(cCyl(0.4, 0.4, 0.05, 12, shroud, -0.55, 0.83, -1.2));
+  G.push(cCyl(0.95, 0.95, 1.8, 12, tank, 1.9, 1.32, -0.8));         // tank sides
+  G.push(cCyl(0.02, 0.98, 0.55, 12, cone, 1.9, 2.49, -0.8));        // tank top
+  G.push(cCyl(0.9, 0.9, 0.06, 10, 0xb0aa98, 1.9, 0.4, -0.8));       // tank bottom
   for (const [lx, lz] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) {
-    G.push(cBox(0.14, 0.45, 0.14, 0x6d747c, 1.9 + lx, 0.22, -0.8 + lz));
+    G.push(cBox(0.14, 0.45, 0.14, rail, 1.9 + lx, 0.22, -0.8 + lz));
   }
   for (const [px, pz] of [[-1.7, 1.2], [1.7, 1.2], [-1.7, 2.9], [1.7, 2.9]]) {
-    G.push(cBox(0.13, 2.15, 0.13, 0xb99a6f, px, 1.07, pz));
+    G.push(cBox(0.13, 2.15, 0.13, timber, px, 1.07, pz));
   }
-  G.push(cBox(3.7, 0.09, 0.14, 0xb99a6f, 0, 2.2, 1.2));
-  G.push(cBox(3.7, 0.09, 0.14, 0xb99a6f, 0, 2.2, 2.9));
-  for (let i = 0; i < 7; i++) G.push(cBox(0.09, 0.07, 1.95, 0xcaa87a, -1.62 + i * 0.54, 2.28, 2.05));
+  G.push(cBox(3.7, 0.09, 0.14, timber, 0, 2.2, 1.2));
+  G.push(cBox(3.7, 0.09, 0.14, timber, 0, 2.2, 2.9));
+  for (let i = 0; i < 7; i++) G.push(cBox(0.09, 0.07, 1.95, slat, -1.62 + i * 0.54, 2.28, 2.05));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Dish farm + extra AC. Origin at roof deck.
+ *  Dish: front mesh, back LNB arm, pole sides, top rim, pad bottom. */
+function buildRooftopDishGeo() {
+  const galv = 0x9ba3ab, shroud = 0x3c4249, dish = 0xc5cdd4, pole = 0x6d747c;
+  const G = [];
+  G.push(cBox(1.45, 0.85, 1.1, galv, -1.8, 0.46, -0.9));
+  G.push(cBox(1.32, 0.55, 0.04, 0x5c646c, -1.8, 0.48, -0.9 - 0.56));
+  G.push(cCyl(0.44, 0.44, 0.05, 10, shroud, -1.8, 0.91, -0.9));
+  G.push(cBox(1.3, 0.04, 0.16, pole, -1.8, 0.04, -0.9));
+  G.push(cBox(0.95, 0.7, 0.85, 0x8d959d, -0.4, 0.38, -1.05));
+  G.push(cCyl(0.32, 0.32, 0.05, 10, shroud, -0.4, 0.75, -1.05));
+  G.push(cCyl(0.045, 0.055, 1.55, 6, pole, 1.7, 0.78, 0.4));
+  G.push(cBox(0.22, 0.06, 0.22, 0x5a6168, 1.7, 0.03, 0.4));
+  G.push(cTorus(0.62, 0.045, 8, 16, dish, 1.7, 1.55, 0.55, 0.85));
+  G.push(cCyl(0.55, 0.08, 0.08, 10, 0xb0b8c0, 1.7, 1.55, 0.55, 0.85));
+  G.push(cCyl(0.035, 0.035, 0.55, 5, pole, 1.7, 1.42, 0.28, 0.9));
+  G.push(cCyl(0.05, 0.05, 0.1, 6, 0x3c4249, 1.7, 1.22, 0.08));
+  G.push(cCyl(0.04, 0.05, 1.2, 6, pole, 2.5, 0.6, -0.6));
+  G.push(cTorus(0.42, 0.035, 7, 14, dish, 2.5, 1.25, -0.48, 0.7));
+  G.push(cCyl(0.22, 0.22, 0.7, 8, 0x7a828a, 0.6, 0.4, 1.3));
+  G.push(cCyl(0.24, 0.04, 0.12, 8, 0x5a6168, 0.6, 0.8, 1.3));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Twin tanks + vents + ladder. Origin at roof deck.
+ *  Tanks: barrel sides, cone top, pad bottom; ladder rungs on +X. */
+function buildRooftopTankGeo() {
+  const tank = 0xcac3b2, cone = 0xb4ac99, steel = 0x6d747c, vent = 0x8d959d;
+  const G = [];
+  for (const [tx, tz] of [[-1.3, -0.6], [1.15, -0.85]]) {
+    G.push(cCyl(0.85, 0.85, 1.65, 12, tank, tx, 1.05, tz));
+    G.push(cCyl(0.02, 0.88, 0.48, 12, cone, tx, 2.1, tz));
+    G.push(cCyl(0.8, 0.8, 0.06, 10, 0xb0aa98, tx, 0.24, tz));
+    G.push(cBox(0.18, 0.08, 0.18, steel, tx, 0.04, tz));
+  }
+  G.push(cCyl(0.06, 0.06, 1.1, 6, steel, -0.08, 0.7, -0.7, 0, 0, Math.PI / 2));
+  for (const vx of [-0.4, 0.3, 1.0]) {
+    G.push(cCyl(0.12, 0.12, 0.85, 8, vent, vx, 0.48, 1.15));
+    G.push(cCyl(0.18, 0.04, 0.12, 8, steel, vx, 0.95, 1.15));
+  }
+  G.push(cBox(0.06, 1.55, 0.06, steel, 2.05, 0.8, -0.85));
+  G.push(cBox(0.06, 1.55, 0.06, steel, 2.05, 0.8, -0.55));
+  for (let i = 0; i < 6; i++) G.push(cBox(0.06, 0.03, 0.32, steel, 2.05, 0.28 + i * 0.24, -0.7));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/** Painted helipad H on a dark tarmac disc. Never a window atlas.
+ *  Six sides: disc +Y is tarmac/marking; -Y soffit; rim is the cylinder wall. */
+function buildRooftopPadGeo() {
+  const tar = 0x2a2f36, paint = 0xffd166;
+  const G = [
+    cCyl(4.15, 4.15, 0.05, 24, tar, 0, 0.025, 0),
+    cTorus(3.55, 0.1, 6, 24, paint, 0, 0.055, 0, Math.PI / 2),
+    cBox(0.32, 0.05, 2.2, paint, -0.65, 0.055, 0),
+    cBox(0.32, 0.05, 2.2, paint, 0.65, 0.055, 0),
+    cBox(1.3, 0.05, 0.32, paint, 0, 0.055, 0),
+  ];
   const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
 }
 
@@ -110,6 +181,12 @@ export function buildSkyline(ctx) {
   }));
   const metalRoofMat = track(new THREE.MeshStandardMaterial({
     map: metalRoofTex, color: 0xffffff, roughness: 0.42, metalness: 0.55,
+  }));
+  const soffitMat = track(new THREE.MeshStandardMaterial({
+    color: 0x8a8680, roughness: 0.94, metalness: 0.02,
+  }));
+  const corniceMat = track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.82, metalness: 0.04,
   }));
 
   // ---- glass curtain wall ----
@@ -218,56 +295,70 @@ export function buildSkyline(ctx) {
       let y = CITY_Y;
       const tiers = 2 + ((rng() * 2) | 0);
       let tw = w, td = d;
+      const wallGeos = [];
+      const roofGeos = [];
+      const sofGeos = [];
+      const corGeos = [];
       for (let t = 0; t < tiers; t++) {
         const th = h * (t === 0 ? 0.55 : 0.45 / (tiers - 1));
-        const geo = track(new THREE.BoxGeometry(tw, th, td));
-        facadeUV(geo, tw, th, td, DECO_TILE_U, DECO_TILE_V, offU, offV);
-        stripBoxCaps(geo);
-        setAoUVs(geo);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x, y + th / 2, z);
-        mesh.castShadow = true;
-        add(mesh);
-        // terracotta lid on every tier — setbacks leave the lower tops exposed
-        {
-          const lid = new THREE.Mesh(track(roofSlabGeo(tw, td)), tileRoofMat);
-          lid.position.set(x, y + th, z);
-          lid.castShadow = true;
-          lid.receiveShadow = true;
-          add(lid);
-        }
+        const kit = buildDecoMidriseGeos(tw, th, td, DECO_TILE_U, DECO_TILE_V, offU, offV);
+        setAoUVs(kit.walls);
+        const cy = y + th / 2 - CITY_Y;
+        kit.walls.translate(0, cy, 0);
+        kit.roof.translate(0, cy, 0);
+        kit.soffit.translate(0, cy, 0);
+        kit.cornice.translate(0, cy, 0);
+        wallGeos.push(kit.walls);
+        roofGeos.push(kit.roof);
+        sofGeos.push(kit.soffit);
+        corGeos.push(kit.cornice);
         solid(tw, th, td, 0, y - CITY_Y, 0);
         y += th;
         tw *= 0.72; td *= 0.72;
       }
-      // parapet cylinder
-      const capGeo = track(new THREE.CylinderGeometry(Math.min(tw, td) * 0.4, Math.min(tw, td) * 0.42, 3.5, 10));
-      {
-        const uv = capGeo.attributes.uv;
-        const su = (Math.PI * Math.min(tw, td) * 0.8) / DECO_TILE_U, sv = 3.5 / DECO_TILE_V;
-        for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + offU, uv.getY(i) * sv + offV);
-      }
+      const mesh = new THREE.Mesh(track(mergeGeometries(wallGeos)), mat);
+      mesh.position.set(x, CITY_Y, z);
+      mesh.castShadow = true;
+      add(mesh);
+      wallGeos.forEach((g) => g.dispose());
+      const lid = new THREE.Mesh(track(mergeGeometries(roofGeos)), tileRoofMat);
+      lid.position.set(x, CITY_Y, z);
+      lid.castShadow = true;
+      lid.receiveShadow = true;
+      add(lid);
+      roofGeos.forEach((g) => g.dispose());
+      const sof = new THREE.Mesh(track(mergeGeometries(sofGeos)), soffitMat);
+      sof.position.set(x, CITY_Y, z);
+      add(sof);
+      sofGeos.forEach((g) => g.dispose());
+      const cor = new THREE.Mesh(track(mergeGeometries(corGeos)), corniceMat);
+      cor.position.set(x, CITY_Y, z);
+      add(cor);
+      corGeos.forEach((g) => g.dispose());
+      // parapet cylinder — open-ended barrel + dedicated tile lid (never window caps)
+      const capR0 = Math.min(tw, td) * 0.4, capR1 = Math.min(tw, td) * 0.42;
+      const capGeo = track(new THREE.CylinderGeometry(capR0, capR1, 3.5, 10, 1, true));
+      facadeCylUV(capGeo, Math.PI * (capR0 + capR1), 3.5, DECO_TILE_U, DECO_TILE_V, offU, offV);
+      stripCylinderCaps(capGeo);
       setAoUVs(capGeo);
       const cap = new THREE.Mesh(capGeo, mat);
       cap.position.set(x, y + 1.7, z);
       add(cap);
       {
-        const capR = Math.min(tw, td) * 0.42;
-        const lid = new THREE.Mesh(track(new THREE.CylinderGeometry(capR + 0.06, capR + 0.06, 0.16, 12)), tileRoofMat);
-        lid.position.set(x, y + 3.45, z);
-        add(lid);
+        const lidCap = new THREE.Mesh(
+          track(new THREE.CylinderGeometry(capR1 + 0.06, capR1 + 0.06, 0.16, 12)),
+          tileRoofMat
+        );
+        lidCap.position.set(x, y + 3.45, z);
+        add(lidCap);
       }
-      entry.cap = { r: Math.min(tw, td) * 0.42, y0: y - CITY_Y - 0.05, h: 3.6 };
+      entry.cap = { r: capR1, y0: y - CITY_Y - 0.05, h: 3.6 };
     } else if (style === 'cyl') {
-      const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18));
+      const geo = track(new THREE.CylinderGeometry(w / 2, w / 2, h, 18, 1, true));
+      const tu = hasGlassTex ? GLASS_TILE_U : 16;
+      const tv = hasGlassTex ? GLASS_TILE_V : 26;
+      facadeCylUV(geo, Math.PI * w, h, tu, tv, hasGlassTex ? offU : 0, hasGlassTex ? offV : 0);
       stripCylinderCaps(geo);
-      const uv = geo.attributes.uv;
-      const su = hasGlassTex ? (Math.PI * w) / GLASS_TILE_U : Math.max(1, (Math.PI * w) / 16);
-      const sv = hasGlassTex ? h / GLASS_TILE_V : Math.max(1, h / 26);
-      const ou = hasGlassTex ? offU : 0, ov = hasGlassTex ? offV : 0;
-      // Barrel UVs only — cap disks were stripped so the glass atlas cannot
-      // sit on the roof. The metal lid below is the +Y face.
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su + ou, uv.getY(i) * sv + ov);
       const mesh = new THREE.Mesh(geo, glassMat);
       mesh.position.set(x, CITY_Y + h / 2, z);
       mesh.castShadow = true;
@@ -300,6 +391,7 @@ export function buildSkyline(ctx) {
       entry.mv = mv;
       const boxes = [];
       const roofs = [];
+      const soffits = [];
       const addBox = (bw, bh, bd, bx, by, bz, ry = 0) => {
         const g = new THREE.BoxGeometry(bw, bh, bd);
         if (textured) {
@@ -315,6 +407,7 @@ export function buildSkyline(ctx) {
         g.translate(bx, by, bz);
         boxes.push(g);
         roofs.push(roofSlabGeo(bw, bd, bx, by + bh / 2, bz, ry));
+        soffits.push(soffitGeo(bw, bd, bx, by - bh / 2, bz, ry));
         if (ry) obbs.push([bw, bh, bd, bx, by - bh / 2, bz, ry]);
         else solid(bw, bh, bd, bx, by - bh / 2, bz);
       };
@@ -356,6 +449,13 @@ export function buildSkyline(ctx) {
         lid.castShadow = true;
         lid.receiveShadow = true;
         add(lid);
+      }
+      if (soffits.length) {
+        const sg = soffits.length > 1 ? track(mergeGeometries(soffits)) : track(soffits[0]);
+        if (soffits.length > 1) soffits.forEach((g) => g.dispose());
+        const sof = new THREE.Mesh(sg, soffitMat);
+        sof.position.set(x, CITY_Y, z);
+        add(sof);
       }
       // roof details
       if (rng() < 0.5) {
@@ -453,6 +553,7 @@ export function buildSkyline(ctx) {
   return {
     towerData, towerGroup, glassMat, officeMat, hasGlassTex,
     GLASS_TILE_U, GLASS_TILE_V,
+    tileRoofMat, tpoRoofMat, metalRoofMat, soffitMat,
   };
 }
 
@@ -490,7 +591,7 @@ export function cullReserved(ctx, sky) {
 export function buildHelipads(ctx, sky) {
   const { root, track, addCollider, addCyl, setTag, rng, rng3 } = ctx;
   setTag('helipad');
-  const { towerData, glassMat, hasGlassTex, GLASS_TILE_U, GLASS_TILE_V } = sky;
+  const { towerData, glassMat, hasGlassTex, GLASS_TILE_U, GLASS_TILE_V, metalRoofMat, soffitMat } = sky;
   for (const [hx, hz] of [[430, 70], [-430, 100]]) {
     const h = 45 + rng() * 20;
     // Consume the UV stream even when this pad is dropped so a reject
@@ -512,22 +613,33 @@ export function buildHelipads(ctx, sky) {
     mesh.position.set(hx, CITY_Y + h / 2, hz);
     mesh.castShadow = true;
     root.add(mesh);
+    const roofLid = new THREE.Mesh(track(roofSlabGeo(16, 16)), metalRoofMat);
+    roofLid.position.set(hx, CITY_Y + h, hz);
+    roofLid.castShadow = true;
+    roofLid.receiveShadow = true;
+    root.add(roofLid);
+    const sof = new THREE.Mesh(track(soffitGeo(16, 16)), soffitMat);
+    sof.position.set(hx, CITY_Y, hz);
+    root.add(sof);
     const padGeo = track(new THREE.CylinderGeometry(6, 6, 0.4, 24));
     const padMat = track(new THREE.MeshStandardMaterial({ color: 0x2a2f36, roughness: 0.9 }));
     const pad = new THREE.Mesh(padGeo, padMat);
-    pad.position.set(hx, CITY_Y + h + 0.2, hz);
+    pad.position.set(hx, CITY_Y + h + 0.42, hz);
     root.add(pad);
     const hGeo = track(new THREE.RingGeometry(3.4, 4.2, 24));
     const hMat = track(new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffd166, emissiveIntensity: 1.5, side: THREE.DoubleSide }));
     const ring = new THREE.Mesh(hGeo, hMat);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(hx, CITY_Y + h + 0.45, hz);
+    ring.position.set(hx, CITY_Y + h + 0.65, hz);
     root.add(ring);
-    // shaft exactly 16 x h, then the pad disc as its own cylinder — the old
+    // shaft + roof slab, then the pad disc as its own cylinder — the old
     // 16 x (h+1) box put a metre of invisible ceiling over the landing deck
-    const shaft = addCollider(hx, CITY_Y, hz, 16, h, 16);
-    const disc = addCyl(hx, CITY_Y + h, hz, 6, 0.4);
-    towerData.push({ x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0, meshes: [mesh, pad, ring], colliders: [shaft, disc] });
+    const shaft = addCollider(hx, CITY_Y, hz, 16, h + 0.22, 16);
+    const disc = addCyl(hx, CITY_Y + h + 0.22, hz, 6, 0.4);
+    towerData.push({
+      x: hx, z: hz, w: 16, h, d: 16, style: 'glass', mv: 0,
+      meshes: [mesh, roofLid, sof, pad, ring], colliders: [shaft, disc],
+    });
   }
   setTag('world');
 }
@@ -998,11 +1110,23 @@ export function buildStreetLevel(ctx, sky, street) {
   }
 
   // ---- rooftop clutter kits + parapet hedges ----
-  const roofSpots = [];
+  const roofSpotsA = [];
+  const roofSpotsB = [];
+  const roofSpotsC = [];
+  const padSpots = [];
+  const pushKit = (t, spot) => {
+    const which = hash01((t.x * 7) | 0, (t.z * 13) | 0);
+    if (which < 0.34) roofSpotsA.push(spot);
+    else if (which < 0.67) roofSpotsB.push(spot);
+    else roofSpotsC.push(spot);
+    if (Math.min(t.w, t.d) > 28 && hash01((t.x * 3) | 0, (t.z * 5) | 0) < 0.35) {
+      padSpots.push({ x: t.x, y: CITY_Y + t.h + 0.04, z: t.z, ry: 0 });
+    }
+  };
   for (const t of towerData) {
     if (t.style !== 'glass' || t.mv === 1) continue;
     if (rng4() > 0.55 || Math.min(t.w, t.d) < 21) continue;
-    roofSpots.push({
+    pushKit(t, {
       x: t.x + (rng4() - 0.5) * (t.w - 15),
       y: CITY_Y + t.h + 0.02,
       z: t.z + (rng4() - 0.5) * (t.d - 15),
@@ -1014,6 +1138,16 @@ export function buildStreetLevel(ctx, sky, street) {
         addHedge(t.x - (t.w - 6) / 2 + k * 2.1, t.z - t.d / 2 + 1.2, 0.95, 0.8, 0.85, CITY_Y + t.h);
       }
     }
+  }
+  for (const t of towerData) {
+    if (t.style !== 'deco' || Math.min(t.w, t.d) < 21) continue;
+    if (hash01((t.x * 9) | 0, (t.z * 5) | 0) < 0.5) continue;
+    pushKit(t, {
+      x: t.x + (hash01((t.x) | 0, 3) - 0.5) * (t.w - 15),
+      y: CITY_Y + t.h + 0.02,
+      z: t.z + (hash01((t.z) | 0, 5) - 0.5) * (t.d - 15),
+      ry: ((hash01((t.x) | 0, (t.z) | 0) * 4) | 0) * (Math.PI / 2),
+    });
   }
 
   // ---- materialize the built fabric (planting happens in dressing.js) ----
@@ -1081,12 +1215,20 @@ export function buildStreetLevel(ctx, sky, street) {
     im.name = 'tower-balconies';
     placeAll(im, balSpots);
   }
-  if (roofSpots.length) {
-    const roofKitGeo = track(buildRooftopKitGeo());
+  {
     const roofMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 }));
-    const im = new THREE.InstancedMesh(roofKitGeo, roofMat, roofSpots.length);
-    im.name = 'tower-rooftops';
-    placeAll(im, roofSpots);
+    const kits = [
+      [roofSpotsA, buildRooftopKitGeo, 'tower-rooftops-ac'],
+      [roofSpotsB, buildRooftopDishGeo, 'tower-rooftops-dish'],
+      [roofSpotsC, buildRooftopTankGeo, 'tower-rooftops-tank'],
+      [padSpots, buildRooftopPadGeo, 'tower-rooftops-pad'],
+    ];
+    for (const [spots, geoFn, name] of kits) {
+      if (!spots.length) continue;
+      const im = new THREE.InstancedMesh(track(geoFn()), roofMat, spots.length);
+      im.name = name;
+      placeAll(im, spots);
+    }
   }
 
   setTag('world');
