@@ -426,6 +426,26 @@
       "id": "night-windows",
       "title": "Warm window emissives on inland mid-rises after dusk via regDN, no ShaderMaterial",
       "status": "pending"
+    },
+    {
+      "id": "npc-density-2",
+      "title": "More boardwalk bikes and beach walkers, hash01, no colliders, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "pier-dressing",
+      "title": "Signed cleats, benches, and life rings on the pier deck, hash01, no rng",
+      "status": "pending"
+    },
+    {
+      "id": "alley-lights",
+      "title": "Gooseneck lamps over z=248 alleys, night emissive via regDN, miss pipe/fire-escape bays",
+      "status": "pending"
+    },
+    {
+      "id": "foam-wake",
+      "title": "Stronger boat-wake foam stamps on the Biscayne plate, foamGain stays 0, MeshPhysical only",
+      "status": "pending"
     }
   ],
   "landmarks": {
