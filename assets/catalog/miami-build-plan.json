@@ -404,7 +404,13 @@
     {
       "id": "npc-gap-501",
       "title": "Visual crowd on GAP_X=-501 sidewalks if that street was built, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nGap501=36 on both GAP_X=-501 sidewalks (-508.7 / -493.3); z-runs 92–168 and 190–220 skip Washington; skip keepout so shop frontage fills; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/gap501Test.js"
+      ]
     },
     {
       "id": "lifeguard-fill",
@@ -444,7 +450,7 @@
     "eighthStreet": { "x": -129, "frontX": -137.9, "status": "done", "note": "GAP_X=-129 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nEighth=36" },
     "gap315": { "x": -315, "frontX": -323.9, "status": "done", "note": "GAP_X=-315 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap315=36" },
     "gap429": { "x": 429, "frontX": 420.1, "status": "done", "note": "skipped: west front 420.1 east of leftoverLot A and x=240; no shops; leftoverLot A–H unmoved" },
-    "gap501": { "x": -501, "frontX": -509.9, "status": "in_progress", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" },
+    "gap501": { "x": -501, "frontX": -509.9, "status": "done", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap501=36" },
     "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" }
   },
   "loop": {

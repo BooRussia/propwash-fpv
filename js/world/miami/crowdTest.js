@@ -1235,6 +1235,45 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
+  const GAP501_WALK_XS = [-508.7, -493.3];
+  const GAP501_WALK_Z_RUNS = [[92, 168], [190, 220]];
+  const gap501Spots = [];
+  for (let i = 0; i < 36; i++) {
+    const x = GAP501_WALK_XS[i % GAP501_WALK_XS.length];
+    const runI = ((i / GAP501_WALK_XS.length) | 0) % GAP501_WALK_Z_RUNS.length;
+    const run = GAP501_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2700, 3) * (run[1] - run[0]);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    gap501Spots.push({ x, z });
+  }
+  ok('gap501 walkers fill both sidewalks, miss travel / leftoverLot / x>=240',
+    gap501Spots.length >= 32
+    && gap501Spots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && p.z > TRAVEL_Z1)
+    && gap501Spots.some((p) => Math.abs(p.x - GAP501_WALK_XS[0]) < 0.05)
+    && gap501Spots.some((p) => Math.abs(p.x - GAP501_WALK_XS[1]) < 0.05)
+    && gap501Spots.some((p) => p.z >= 92 && p.z <= 168)
+    && gap501Spots.some((p) => p.z >= 190 && p.z <= 220));
+  ok('gap501 NPCs have no colliders and skip keepout so frontage fills',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'gap501'")
+    && crowd.includes('const nGap501 = 36')
+    && crowd.includes('GAP501_WALK_XS')
+    && crowd.includes('GAP501_WALK_Z_RUNS')
+    && crowd.includes('npcOffLimits')
+    && GAP501_WALK_XS.every((x) => x < 240 && Math.abs(x - GAP501_X) > XS_HALF)
+    && GAP501_WALK_XS.every((x) => leftoverLotOverlap(x, 114, 0.6, 0.6, 0.15) === false)
+    && GAP501_WALK_Z_RUNS.every((run) => run[0] > TRAVEL_Z1
+      && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0))
+    && Math.abs(GAP501_WALK_XS[0] - (GAP501_X - XS_HALF - 1.2)) < 1e-6
+    && Math.abs(GAP501_WALK_XS[1] - (GAP501_X + XS_HALF + 1.2)) < 1e-6);
+
   ok('GAP_X=429 west face sits east of leftoverLot A — skip shops',
     GAP429_X === 429 && GAP429_X === GAP_X[5]
     && GAP429_W_FRONT_X === GAP429_X - XS_HALF - 2.4
