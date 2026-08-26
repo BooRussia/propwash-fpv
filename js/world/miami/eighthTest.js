@@ -16,8 +16,10 @@ import {
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X, CITY_Y, GAP_X, XS_HALF,
   COLONY_X, COLONY_W, WASH_Z0, WASH_Z1, WASH_X0, WASH_X1,
+  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
   INLAND_MIDRISE_CELLS, INLAND_MIDRISE_W, INLAND_MIDRISE_D,
 } from './constants.js';
+import { hash01 } from './rng.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const TRAVEL_Z0 = 40.2;
@@ -147,6 +149,40 @@ export function runMiamiEighthTests() {
 
   ok('crowd has no colliders (NPCs stay visual-only)',
     !crowd.includes('addCollider') && !crowd.includes('addCyl'));
+  ok('crowd walks 8th-street sidewalks, no colliders',
+    crowd.includes("kind: 'eighth'") && crowd.includes('EIGHTH_WALK_XS')
+    && crowd.includes('const nEighth = 36')
+    && crowd.includes('EIGHTH_WALK_Z_RUNS')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01'));
+
+  const EIGHTH_WALK_XS = [-136.7, -121.3];
+  const EIGHTH_WALK_Z_RUNS = [[92, 168], [190, 220]];
+  const eighthSpots = [];
+  for (let i = 0; i < 36; i++) {
+    const x = EIGHTH_WALK_XS[i % EIGHTH_WALK_XS.length];
+    const runI = ((i / EIGHTH_WALK_XS.length) | 0) % EIGHTH_WALK_Z_RUNS.length;
+    const run = EIGHTH_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2100, 3) * (run[1] - run[0]);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    eighthSpots.push({ x, z });
+  }
+  ok('eighth walkers fill both sidewalks west of leftoverLot A',
+    eighthSpots.length >= 32
+    && eighthSpots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && !(p.z > WASH_Z0 && p.z < WASH_Z1)
+      && p.z > TRAVEL_Z1)
+    && eighthSpots.some((p) => Math.abs(p.x + 136.7) < 0.05)
+    && eighthSpots.some((p) => Math.abs(p.x + 121.3) < 0.05)
+    && Math.abs(EIGHTH_WALK_XS[0] - (EIGHTH_X - XS_HALF - 1.2)) < 1e-6
+    && Math.abs(EIGHTH_WALK_XS[1] - (EIGHTH_X + XS_HALF + 1.2)) < 1e-6);
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
     && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398

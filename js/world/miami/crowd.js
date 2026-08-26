@@ -42,6 +42,14 @@ export const INLAND_WALK_Z1 = 168;
 export const LINCOLN_WALK_Z = 120;
 export const WASH_WALK_Z_OCEAN = WASH_SW_OCEAN_Z;
 export const WASH_WALK_Z_INLAND = WASH_SW_INLAND_Z;
+// GAP_X=-129 sidewalk centres: street edge ±1.2 (XS_HALF+1.2). West of leftoverLot A.
+export const EIGHTH_WALK_XS = Object.freeze([-136.7, -121.3]);
+// Ocean of Washington (z 173–187) and inland of it, covering the z=210 shops.
+// Ocean of inland mid-rises at z=237. Skip keepout so shop frontage fills.
+export const EIGHTH_WALK_Z_RUNS = Object.freeze([
+  [92, 168],
+  [190, 220],
+]);
 const WASH_WALK_RUNS = washingtonRuns();
 const VBALL_PITCH = 26;
 
@@ -124,9 +132,10 @@ export function buildCrowd(ctx) {
   const nLincolnSit = 14;
   const nWashington = 36;
   const nMarinaSwim = 24;
+  const nEighth = 36;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
-    + nMarinaSwim;
+    + nMarinaSwim + nEighth;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -376,6 +385,23 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nEighth; i++) {
+    const x = EIGHTH_WALK_XS[i % EIGHTH_WALK_XS.length];
+    const runI = ((i / EIGHTH_WALK_XS.length) | 0) % EIGHTH_WALK_Z_RUNS.length;
+    const run = EIGHTH_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2100, 3) * (run[1] - run[0]);
+    const dir = hash01(i + 2100, 5) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z)) continue;
+    actors.push({
+      kind: 'eighth', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
+      speed: 1.05 + hash01(i + 2100, 7) * 0.45,
+      phase: hash01(i + 2100, 11) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2100, 13), skin: pick(SKIN, i + 2100, 17),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -456,6 +482,17 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'eighth') {
+      a.z += a.dir * a.speed * dt;
+      const run = EIGHTH_WALK_Z_RUNS[a.run] || EIGHTH_WALK_Z_RUNS[0];
+      if (a.z > run[1]) { a.z = run[1]; a.dir = -1; a.yaw = -Math.PI / 2; }
+      if (a.z < run[0]) { a.z = run[0]; a.dir = 1; a.yaw = Math.PI / 2; }
+      if (npcOffLimits(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      continue;
+    }
     if (a.kind === 'marina-swim') {
       a.x += Math.cos(a.yaw) * a.speed * dt;
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -493,6 +530,7 @@ function stampAll(state) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
+      || a.kind === 'eighth'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

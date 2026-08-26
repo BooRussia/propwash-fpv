@@ -46,6 +46,7 @@ import {
   onWashingtonWalk,
   EIGHTH_X, EIGHTH_W_CELLS, EIGHTH_E_CELLS, EIGHTH_W_FRONT_X, EIGHTH_E_FRONT_X,
   EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
+  XS_HALF,
 } from './constants.js';
 import { hash01 } from './rng.js';
 
@@ -717,6 +718,12 @@ export function runMiamiCrowdTests() {
     && crowd.includes('onWashingtonWalk')
     && crowd.includes('WASH_TRAVEL_Z0')
     && !crowd.includes('addCollider'));
+  ok('crowd walks 8th-street sidewalks',
+    crowd.includes("kind: 'eighth'") && crowd.includes('EIGHTH_WALK_XS')
+    && crowd.includes('const nEighth = 36')
+    && crowd.includes('EIGHTH_WALK_Z_RUNS')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider'));
 
   const washRuns = washingtonRuns();
   ok('four signed Washington runs west of 240',
@@ -848,6 +855,40 @@ export function runMiamiCrowdTests() {
   ok('leftoverLot A–H still signed after 8th-street',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  const EIGHTH_WALK_XS = [-136.7, -121.3];
+  const EIGHTH_WALK_Z_RUNS = [[92, 168], [190, 220]];
+  const eighthSpots = [];
+  for (let i = 0; i < 36; i++) {
+    const x = EIGHTH_WALK_XS[i % EIGHTH_WALK_XS.length];
+    const runI = ((i / EIGHTH_WALK_XS.length) | 0) % EIGHTH_WALK_Z_RUNS.length;
+    const run = EIGHTH_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2100, 3) * (run[1] - run[0]);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    eighthSpots.push({ x, z });
+  }
+  ok('eighth walkers fill both sidewalks, miss travel / leftoverLot / x>=240',
+    eighthSpots.length >= 32
+    && eighthSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && p.z > TRAVEL_Z1)
+    && eighthSpots.some((p) => Math.abs(p.x - EIGHTH_WALK_XS[0]) < 0.05)
+    && eighthSpots.some((p) => Math.abs(p.x - EIGHTH_WALK_XS[1]) < 0.05)
+    && eighthSpots.some((p) => p.z >= 92 && p.z <= 168)
+    && eighthSpots.some((p) => p.z >= 190 && p.z <= 220));
+  ok('eighth NPCs have no colliders and skip keepout so frontage fills',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'eighth'")
+    && crowd.includes('npcOffLimits')
+    && EIGHTH_WALK_XS.every((x) => x < 240 && Math.abs(x - EIGHTH_X) > XS_HALF)
+    && EIGHTH_WALK_XS.every((x) => leftoverLotOverlap(x, 114, 0.6, 0.6, 0.15) === false)
+    && EIGHTH_WALK_Z_RUNS.every((run) => run[0] > TRAVEL_Z1
+      && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0)));
 
   ok('marina.js exists', existsSync(marinaPath));
   ok('marina ocean dressing is hash01, leftoverLot unmoved',
