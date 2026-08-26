@@ -7,8 +7,11 @@ import {
   PIER_PYLON_DX, PIER_PYLON_R, PIER_PYLON_H, PIER_PYLON_Y0,
   PIER_PYLON_Z0, PIER_PYLON_STEP, PIER_PYLON_COUNT,
   PAVILION_POST_R, PAVILION_POST_H, PAVILION_POST_XS, PAVILION_POST_ZS,
+  PIER_EXTRA_BAY_IS, pierBayRingGeom, pierFlyShapes,
 } from '../constants.js';
 import { plankTexture } from '../textures.js';
+import { cTorus } from '../geo.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Boardwalk + pier deck, pylons, open-bay pavilion. */
 export function buildPier(ctx) {
@@ -59,9 +62,37 @@ export function buildPier(ctx) {
     pylons.name = 'pier-pylons';
     root.add(pylons);
 
+    buildPierBayRings(ctx);
     buildPavilion(ctx);
   }
   setTag('world');
+}
+
+/** Timber whoop rings in extra undercroft bays. Disc stays empty; fly ±Z. */
+function buildPierBayRings(ctx) {
+  const { root, track, addCollider } = ctx;
+  const TIMBER = 0x6e5340;
+  const bits = [];
+  for (let i = 0; i < PIER_EXTRA_BAY_IS.length; i++) {
+    const g = pierBayRingGeom(PIER_EXTRA_BAY_IS[i]);
+    bits.push(cTorus(g.r, g.tube, 8, 20, TIMBER, g.x, g.y, g.z, 0, 0, 0));
+  }
+  if (!bits.length) return;
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.9,
+  })));
+  mesh.castShadow = true;
+  mesh.name = 'pier-bay-rings';
+  root.add(mesh);
+
+  const shapes = pierFlyShapes();
+  for (let i = 0; i < shapes.length; i++) {
+    const s = shapes[i];
+    if (s.tag !== 'pier' || s.type !== 'aabb') continue;
+    addCollider(s.x, s.y0, s.z, s.sx, s.sy, s.sz);
+  }
 }
 
 /**

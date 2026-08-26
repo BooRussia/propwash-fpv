@@ -158,6 +158,48 @@ export const GATE_BEAM_W = 0.24;
 // Extra boardwalk whoops. Not park pergolas. Not GATE_X=92.
 // Keep off GAP_X columns (esp. 243) and leftoverLot A–H (x>=251).
 export const PROMENADE_ARCH_XS = Object.freeze([-80, -20, 40, 160, 220]);
+// Sidewalk arcades: whoop soffit over the Ocean Drive slabs, fly +X.
+// Posts sit on the walk edges (halfZ 0.90). Not hotel arcades, not GATE_X.
+// Keep off GAP_X columns, travel lanes 40.2–47.8, leftoverLot A–H (x>=251).
+export const SW_ARCADE_HALF_X = GATE_HALF_X;
+export const SW_ARCADE_HALF_Z = 0.90;
+export const SW_ARCADE_POST_R = GATE_POST_R;
+export const SW_ARCADE_POST_H = 3.20;
+export const SW_ARCADE_BEAM_H = 0.24;
+export const SW_ARCADE_BEAM_W = 0.28;
+export const SW_ARCADE_CITY_Z = (SW_CITY_Z0 + SW_CITY_Z1) / 2;
+export const SW_ARCADE_BEACH_Z = (SW_BEACH_Z0 + SW_BEACH_Z1) / 2;
+export const SW_ARCADE_CITY_XS = Object.freeze([-210, 18, 178]);
+export const SW_ARCADE_BEACH_XS = Object.freeze([-60, 80]);
+// Alley pipe gantries: U of steel, fly +X. Inland leftover city, west of x=240.
+// Not leftoverLot A–H. Not a cross-street column. Collider is the pipe, not the bay.
+export const ALLEY_PIPE_POST_R = 0.10;
+export const ALLEY_PIPE_POST_H = 2.40;
+export const ALLEY_PIPE_HALF_Z = 1.20;
+export const ALLEY_PIPE_BEAM_R = 0.09;
+export const ALLEY_PIPE_CELLS = Object.freeze([
+  [-220, 108],
+  [-80, 102],
+  [78, 102],
+  [155, 108],
+]);
+// Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
+// Fly +X. Tube is the collider; disc stays empty. West of x=240.
+export const PARK_RING_R = 1.15;
+export const PARK_RING_TUBE = 0.08;
+export const PARK_RING_Y0 = 1.20;
+export const PARK_RING_SEGS = 12;
+export const PARK_RING_CELLS = Object.freeze([
+  [-105, 14.6],
+  [-75, 14.6],
+  [-45, 14.6],
+]);
+// Extra pier undercroft bays (existing pylons) plus timber rings in two of them.
+// Fly ±Z along the pier. Not a slide of leftoverLot A–H. Pylon count stays 10.
+export const PIER_EXTRA_BAY_IS = Object.freeze([1, 6]);
+export const PIER_BAY_RING_R = 1.15;
+export const PIER_BAY_RING_TUBE = 0.08;
+export const PIER_BAY_RING_Y = 0.95;
 // Parking-garage mouth facing Ocean Drive: 5" through-aisle (fly along ±Z).
 export const GARAGE_X = 200;
 export const GARAGE_FRONT_Z = 56.20;
@@ -2199,6 +2241,145 @@ export function boardwalkGateGeom(cx = GATE_X, cz = GATE_Z) {
   };
 }
 
+/** Sidewalk arcade kit. Posts on the slab edges. Fly +X. Opening is empty air. */
+export function sidewalkArcadeGeom(cx, cz = SW_ARCADE_CITY_Z) {
+  const y0 = CITY_Y + SW_H;
+  const halfX = SW_ARCADE_HALF_X;
+  const halfZ = SW_ARCADE_HALF_Z;
+  const postR = SW_ARCADE_POST_R;
+  const postH = SW_ARCADE_POST_H;
+  return {
+    x: cx, z: cz, y0,
+    halfX, halfZ, postR, postH,
+    beamH: SW_ARCADE_BEAM_H, beamW: SW_ARCADE_BEAM_W,
+    spanX: halfX * 2, spanZ: halfZ * 2,
+    x0: cx - halfX, x1: cx + halfX,
+    z0: cz - halfZ, z1: cz + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'sidewalk-arcade',
+  };
+}
+
+/** Alley pipe U. Risers + lintel pipe. Fly +X. Opening is empty air. */
+export function alleyPipeGeom(cx, cz) {
+  const y0 = CITY_Y;
+  const halfZ = ALLEY_PIPE_HALF_Z;
+  const postR = ALLEY_PIPE_POST_R;
+  const postH = ALLEY_PIPE_POST_H;
+  return {
+    x: cx, z: cz, y0,
+    halfZ, postR, postH,
+    beamR: ALLEY_PIPE_BEAM_R,
+    x0: cx - postR - 0.04, x1: cx + postR + 0.04,
+    z0: cz - halfZ, z1: cz + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'alley-pipe',
+  };
+}
+
+/** Lummus park ring. Torus in YZ, fly +X. Disc is empty. */
+export function parkRingGeom(cx, cz) {
+  const r = PARK_RING_R;
+  const tube = PARK_RING_TUBE;
+  const y0 = PARK_RING_Y0;
+  const y = y0 + r;
+  return {
+    x: cx, z: cz, y0, y, r, tube,
+    segs: PARK_RING_SEGS,
+    x0: cx - tube - 0.04, x1: cx + tube + 0.04,
+    z0: cz - r - tube, z1: cz + r + tube,
+    openW: 2 * (r - tube),
+    openH: 2 * (r - tube),
+    fly: '+X',
+    tag: 'park-ring',
+  };
+}
+
+/** Extra pier undercroft bay between pylons `bayI` and `bayI+1`. Fly ±Z. */
+export function pierUndercroftVoid(bayI, id) {
+  const z = PIER_PYLON_Z0 - (bayI + 0.5) * PIER_PYLON_STEP;
+  return {
+    id, kind: 'existing',
+    x: PIER_X, z, y: 0.85,
+    x0: PIER_X - (PIER_PYLON_DX - PIER_PYLON_R - 0.15),
+    x1: PIER_X + (PIER_PYLON_DX - PIER_PYLON_R - 0.15),
+    z0: PIER_PYLON_Z0 - (bayI + 1) * PIER_PYLON_STEP + PIER_PYLON_R + 0.2,
+    z1: PIER_PYLON_Z0 - bayI * PIER_PYLON_STEP - PIER_PYLON_R - 0.2,
+    y0: -1.2, y1: PIER_DECK_Y - PIER_DECK_H / 2 - 0.05,
+    openW: (PIER_PYLON_DX - PIER_PYLON_R) * 2,
+    openH: (PIER_DECK_Y - PIER_DECK_H / 2) - (-1.2),
+  };
+}
+
+/** Timber whoop ring in an extra pier bay. Torus in XY, fly ±Z. Disc empty. */
+export function pierBayRingGeom(bayI) {
+  const z = PIER_PYLON_Z0 - (bayI + 0.5) * PIER_PYLON_STEP;
+  const r = PIER_BAY_RING_R;
+  const tube = PIER_BAY_RING_TUBE;
+  const y = PIER_BAY_RING_Y;
+  return {
+    bayI, x: PIER_X, z, y, r, tube,
+    segs: PARK_RING_SEGS,
+    openW: 2 * (r - tube),
+    openH: 2 * (r - tube),
+    fly: '+Z',
+    tag: 'pier',
+  };
+}
+
+export function sidewalkArcadeVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - g.halfX + g.postR + 0.08,
+    x1: g.x + g.halfX - g.postR - 0.08,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function alleyPipeVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - 0.45, x1: g.x + 0.45,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function parkRingVoid(g, id) {
+  const inner = g.r - g.tube;
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y,
+    x0: g.x - 0.40, x1: g.x + 0.40,
+    z0: g.z - inner + 0.10, z1: g.z + inner - 0.10,
+    y0: g.y - inner + 0.10, y1: g.y + inner - 0.10,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function pierBayRingVoid(g, id) {
+  const inner = g.r - g.tube;
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y,
+    x0: g.x - inner + 0.10, x1: g.x + inner - 0.10,
+    z0: g.z - 0.40, z1: g.z + 0.40,
+    y0: g.y - inner + 0.10, y1: g.y + inner - 0.10,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
 function boardwalkGateSignedCells() {
   return [
     [PARK_PERGOLA_X, PARK_PERGOLA_Z],
@@ -3106,6 +3287,11 @@ export const RESERVED = [
     z0: PARK_BENCH_HH_E_Z0 - 1.5, z1: PARK_BENCH_HH_E_Z1 + 1.4, tag: 'gardenBench' },
   { x0: -452, x1: -408, z0: 74, z1: 128, tag: 'helipadW' },
   { x0: 408, x1: 452, z0: 44, z1: 98, tag: 'helipadE' },
+  ...ALLEY_PIPE_CELLS.map(([x, z]) => ({
+    x0: x - 2.2, x1: x + 1.8,
+    z0: z - ALLEY_PIPE_HALF_Z - 1.5, z1: z + ALLEY_PIPE_HALF_Z + 1.4,
+    tag: 'alley-pipe',
+  })),
 ];
 
 export function inReserved(x, z) {
@@ -3995,6 +4181,29 @@ export const KEEPOUT = [
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
   { x0: 220 - GATE_HALF_X - 0.8, x1: 220 + GATE_HALF_X + 0.8,
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
+  ...SW_ARCADE_CITY_XS.map((x) => ({
+    x0: x - SW_ARCADE_HALF_X - 0.8, x1: x + SW_ARCADE_HALF_X + 0.8,
+    z0: SW_ARCADE_CITY_Z - SW_ARCADE_HALF_Z - 0.8,
+    z1: SW_ARCADE_CITY_Z + SW_ARCADE_HALF_Z + 0.8,
+    tag: 'sidewalk-arcade',
+  })),
+  ...SW_ARCADE_BEACH_XS.map((x) => ({
+    x0: x - SW_ARCADE_HALF_X - 0.8, x1: x + SW_ARCADE_HALF_X + 0.8,
+    z0: SW_ARCADE_BEACH_Z - SW_ARCADE_HALF_Z - 0.8,
+    z1: SW_ARCADE_BEACH_Z + SW_ARCADE_HALF_Z + 0.8,
+    tag: 'sidewalk-arcade',
+  })),
+  ...ALLEY_PIPE_CELLS.map(([x, z]) => ({
+    x0: x - 1.2, x1: x + 1.2,
+    z0: z - ALLEY_PIPE_HALF_Z - 0.8, z1: z + ALLEY_PIPE_HALF_Z + 0.8,
+    tag: 'alley-pipe',
+  })),
+  ...PARK_RING_CELLS.map(([x, z]) => ({
+    x0: x - PARK_RING_TUBE - 0.8, x1: x + PARK_RING_TUBE + 0.8,
+    z0: z - PARK_RING_R - PARK_RING_TUBE - 0.8,
+    z1: z + PARK_RING_R + PARK_RING_TUBE + 0.8,
+    tag: 'park-ring',
+  })),
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4241,6 +4450,17 @@ export const FLY_VOIDS = [
     openW: GARAGE_AISLE_W,
     openH: GARAGE_SOFFIT,
   },
+  ...SW_ARCADE_CITY_XS.map((x, i) => sidewalkArcadeVoid(
+    sidewalkArcadeGeom(x, SW_ARCADE_CITY_Z), `sidewalk-arcade-city-${i}`)),
+  ...SW_ARCADE_BEACH_XS.map((x, i) => sidewalkArcadeVoid(
+    sidewalkArcadeGeom(x, SW_ARCADE_BEACH_Z), `sidewalk-arcade-beach-${i}`)),
+  ...ALLEY_PIPE_CELLS.map(([x, z], i) => alleyPipeVoid(
+    alleyPipeGeom(x, z), `alley-pipe-${i}`)),
+  ...PARK_RING_CELLS.map(([x, z], i) => parkRingVoid(
+    parkRingGeom(x, z), `park-ring-${i}`)),
+  ...PIER_EXTRA_BAY_IS.map((bayI) => pierUndercroftVoid(bayI, `pier-undercroft-${bayI}`)),
+  ...PIER_EXTRA_BAY_IS.map((bayI) => pierBayRingVoid(
+    pierBayRingGeom(bayI), `pier-bay-ring-${bayI}`)),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -4351,7 +4571,99 @@ export function flyColliderShapes() {
     x: COLONY_X, z: colonyZ, sx: COLONY_W - 0.6, sz: 3.2,
     y0: CITY_Y + COLONY_SOFFIT, sy: 0.26,
   });
+
+  for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {
+    sidewalkArcadeColliderShapesAt(shapes, sidewalkArcadeGeom(SW_ARCADE_CITY_XS[i], SW_ARCADE_CITY_Z));
+  }
+  for (let i = 0; i < SW_ARCADE_BEACH_XS.length; i++) {
+    sidewalkArcadeColliderShapesAt(shapes, sidewalkArcadeGeom(SW_ARCADE_BEACH_XS[i], SW_ARCADE_BEACH_Z));
+  }
+  for (let i = 0; i < ALLEY_PIPE_CELLS.length; i++) {
+    alleyPipeColliderShapesAt(shapes, alleyPipeGeom(ALLEY_PIPE_CELLS[i][0], ALLEY_PIPE_CELLS[i][1]));
+  }
+  for (let i = 0; i < PARK_RING_CELLS.length; i++) {
+    parkRingColliderShapesAt(shapes, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
+  }
   return shapes;
+}
+
+function sidewalkArcadeColliderShapesAt(shapes, g) {
+  for (const dx of [-g.halfX, g.halfX]) {
+    for (const dz of [-g.halfZ, g.halfZ]) {
+      shapes.push({
+        type: 'cyl', tag: 'sidewalk-arcade',
+        x: g.x + dx, z: g.z + dz, r: g.postR,
+        y0: g.y0, h: g.postH,
+      });
+    }
+  }
+  const beamY = g.y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'aabb', tag: 'sidewalk-arcade',
+      x: g.x, z: g.z + dz, sx: g.spanX + g.beamW, sz: g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  for (const dx of [-g.halfX, g.halfX]) {
+    shapes.push({
+      type: 'aabb', tag: 'sidewalk-arcade',
+      x: g.x + dx, z: g.z, sx: g.beamW, sz: g.spanZ + g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'sidewalk-arcade',
+    x: g.x, z: g.z, sx: g.spanX + 1.0, sz: g.spanZ + 0.8,
+    y0: beamY + g.beamH, sy: 0.12,
+  });
+}
+
+function alleyPipeColliderShapesAt(shapes, g) {
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'cyl', tag: 'alley-pipe',
+      x: g.x, z: g.z + dz, r: g.postR,
+      y0: g.y0, h: g.postH + g.beamR,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'alley-pipe',
+    x: g.x, z: g.z, sx: g.beamR * 2, sz: g.halfZ * 2 + g.postR * 2,
+    y0: g.y0 + g.postH - g.beamR, sy: g.beamR * 2,
+  });
+}
+
+function parkRingColliderShapesAt(shapes, g, tag = 'park-ring') {
+  const n = g.segs;
+  const t = g.tube;
+  const box = t * 2 + 0.04;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2;
+    const yy = g.y + g.r * Math.sin(a);
+    const zz = g.z + g.r * Math.cos(a);
+    shapes.push({
+      type: 'aabb', tag,
+      x: g.x, z: zz, sx: box, sz: box,
+      y0: yy - box / 2, sy: box,
+    });
+  }
+}
+
+function pierBayRingColliderShapesAt(shapes, g) {
+  const n = g.segs;
+  const t = g.tube;
+  const box = t * 2 + 0.04;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2;
+    const xx = g.x + g.r * Math.cos(a);
+    const yy = g.y + g.r * Math.sin(a);
+    shapes.push({
+      type: 'aabb', tag: 'pier',
+      x: xx, z: g.z, sx: box, sz: box,
+      y0: yy - box / 2, sy: box,
+    });
+  }
 }
 
 export function pierFlyShapes() {
@@ -4374,6 +4686,9 @@ export function pierFlyShapes() {
         r: PAVILION_POST_R, y0: PIER_DECK_TOP, h: PAVILION_POST_H,
       });
     }
+  }
+  for (let i = 0; i < PIER_EXTRA_BAY_IS.length; i++) {
+    pierBayRingColliderShapesAt(shapes, pierBayRingGeom(PIER_EXTRA_BAY_IS[i]));
   }
   return shapes;
 }

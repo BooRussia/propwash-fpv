@@ -10,11 +10,14 @@ import {
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_WALL_H,
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
   PROMENADE_ARCH_XS, GATE_Z,
+  SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
+  ALLEY_PIPE_CELLS, PARK_RING_CELLS,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
+  sidewalkArcadeGeom, alleyPipeGeom, parkRingGeom,
   installFlyColliders,
 } from '../constants.js';
 import { tryPlace } from '../planting.js';
-import { cBox, cCyl } from '../geo.js';
+import { cBox, cCyl, cTorus } from '../geo.js';
 import { roofTexture } from '../textures.js';
 
 /**
@@ -59,6 +62,11 @@ import { roofTexture } from '../textures.js';
  * Do not merge G-park 389.
  *
  * Pier undercroft + pavilion stay in pier.js; this file does not touch them.
+ *
+ * Extra whoops this pass (signed cells, hash01 never drawn):
+ *   sidewalk-arcade  stucco soffit on the Ocean Drive slabs, fly +X
+ *   alley-pipe       steel U inland, fly +X
+ *   park-ring        torus in Lummus, fly +X
  */
 export function buildFlythrough(ctx) {
   const { root, track, addCollider, addCyl, setTag } = ctx;
@@ -112,6 +120,27 @@ export function buildFlythrough(ctx) {
   setTag('garage');
   buildGarageMouth(ctx);
   installFlyColliders(addCyl, addCollider, 'garage');
+
+  setTag('sidewalk-arcade');
+  for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {
+    buildSidewalkArcade(ctx, sidewalkArcadeGeom(SW_ARCADE_CITY_XS[i], SW_ARCADE_CITY_Z));
+  }
+  for (let i = 0; i < SW_ARCADE_BEACH_XS.length; i++) {
+    buildSidewalkArcade(ctx, sidewalkArcadeGeom(SW_ARCADE_BEACH_XS[i], SW_ARCADE_BEACH_Z));
+  }
+  installFlyColliders(addCyl, addCollider, 'sidewalk-arcade');
+
+  setTag('alley-pipe');
+  for (let i = 0; i < ALLEY_PIPE_CELLS.length; i++) {
+    buildAlleyPipe(ctx, alleyPipeGeom(ALLEY_PIPE_CELLS[i][0], ALLEY_PIPE_CELLS[i][1]));
+  }
+  installFlyColliders(addCyl, addCollider, 'alley-pipe');
+
+  setTag('park-ring');
+  for (let i = 0; i < PARK_RING_CELLS.length; i++) {
+    buildParkRing(ctx, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
+  }
+  installFlyColliders(addCyl, addCollider, 'park-ring');
 
   setTag('world');
 }
@@ -227,4 +256,95 @@ function buildGarageMouth(ctx) {
   lid.receiveShadow = true;
   lid.name = 'garage-roof';
   root.add(lid);
+}
+
+function buildSidewalkArcade(ctx, g) {
+  const { root, track } = ctx;
+  const CREAM = 0xf6f2e9, CREAM2 = 0xe8e0d2, TRIM = 0x7fd4c1;
+  const bits = [];
+  const y0 = g.y0;
+  const gx = g.x;
+  const gz = g.z;
+  const halfX = g.halfX;
+  const halfZ = g.halfZ;
+  const postR = g.postR;
+  const postH = g.postH;
+  const beamH = g.beamH;
+  const beamW = g.beamW;
+
+  for (const dx of [-halfX, halfX]) {
+    for (const dz of [-halfZ, halfZ]) {
+      bits.push(cCyl(
+        postR, postR + 0.02, postH, 10, CREAM,
+        gx + dx, y0 + postH / 2, gz + dz,
+      ));
+      bits.push(cBox(0.40, 0.08, 0.40, CREAM2, gx + dx, y0 + 0.04, gz + dz));
+    }
+  }
+  const beamY = y0 + postH + beamH / 2;
+  const spanX = halfX * 2;
+  const spanZ = halfZ * 2;
+  for (const dz of [-halfZ, halfZ]) {
+    bits.push(cBox(spanX + beamW, beamH, beamW, TRIM, gx, beamY, gz + dz));
+  }
+  for (const dx of [-halfX, halfX]) {
+    bits.push(cBox(beamW, beamH, spanZ + beamW, TRIM, gx + dx, beamY, gz));
+  }
+  bits.push(cBox(spanX + 1.0, 0.12, spanZ + 0.8, CREAM2,
+    gx, y0 + postH + beamH + 0.06, gz));
+
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.86,
+  })));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'sidewalk-arcade';
+  root.add(mesh);
+}
+
+function buildAlleyPipe(ctx, g) {
+  const { root, track } = ctx;
+  const GALV = 0x8a9298, GALV2 = 0x6d747c, FLANGE = 0x3a3e42;
+  const bits = [];
+  const y0 = g.y0;
+  const topY = y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    bits.push(cCyl(g.postR, g.postR + 0.015, g.postH, 10, GALV,
+      g.x, y0 + g.postH / 2, g.z + dz));
+    bits.push(cCyl(g.postR + 0.03, g.postR + 0.03, 0.06, 10, FLANGE,
+      g.x, y0 + 0.04, g.z + dz));
+    bits.push(cCyl(g.postR + 0.025, g.postR + 0.025, 0.05, 10, FLANGE,
+      g.x, topY, g.z + dz));
+  }
+  bits.push(cCyl(g.beamR, g.beamR, g.halfZ * 2, 10, GALV2,
+    g.x, topY, g.z, Math.PI / 2, 0, 0));
+
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.42, metalness: 0.55,
+  })));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'alley-pipe';
+  root.add(mesh);
+}
+
+function buildParkRing(ctx, g) {
+  const { root, track } = ctx;
+  const PAINT = 0x2fe0ff, PAINT2 = 0x1d6f7a;
+  const bits = [
+    cTorus(g.r, g.tube, 8, 20, PAINT, g.x, g.y, g.z, 0, Math.PI / 2, 0),
+    cTorus(g.r, g.tube * 0.45, 6, 16, PAINT2, g.x, g.y, g.z, 0, Math.PI / 2, 0),
+  ];
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.38, metalness: 0.42,
+  })));
+  mesh.castShadow = true;
+  mesh.name = 'park-ring';
+  root.add(mesh);
 }

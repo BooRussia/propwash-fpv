@@ -16,7 +16,11 @@ import {
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
-  FLY_VOIDS, flyColliderShapes, inKeepout, inFlyVoid,
+  SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
+  SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
+  PARK_RING_CELLS, PARK_RING_R, PARK_RING_TUBE, PIER_EXTRA_BAY_IS, PIER_X,
+  PIER_PYLON_COUNT, pierBayRingGeom,
+  FLY_VOIDS, flyColliderShapes, pierFlyShapes, inKeepout, inFlyVoid,
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
@@ -242,6 +246,113 @@ export function runMiamiCrowdTests() {
   ok('Winterhaven reserved stays west of leftoverLot A',
     WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 251
     && inReserved(258, 84));
+
+  ok('sidewalk arcades are five signed x, west of 240',
+    SW_ARCADE_CITY_XS.length === 3 && SW_ARCADE_BEACH_XS.length === 2
+    && [...SW_ARCADE_CITY_XS, ...SW_ARCADE_BEACH_XS].every((x) => x < 240)
+    && !SW_ARCADE_CITY_XS.includes(GATE_X));
+  ok('sidewalk arcade z sits on the slabs, not in travel lanes',
+    SW_ARCADE_CITY_Z > TRAVEL_Z1 && SW_ARCADE_BEACH_Z < TRAVEL_Z0
+    && SW_ARCADE_POST_H >= 2.0);
+  ok('flythrough builds sidewalk arcades',
+    fly.includes('SW_ARCADE_CITY_XS') && fly.includes("setTag('sidewalk-arcade')")
+    && fly.includes('buildSidewalkArcade'));
+
+  for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `sidewalk-arcade-city-${i}`);
+    ok(`sidewalk-arcade-city-${i} listed`, !!v && v.z === SW_ARCADE_CITY_Z && v.openH >= 2);
+    if (v) {
+      ok(`sidewalk-arcade-city-${i} keepout + open`,
+        !!inKeepout(v.x, v.z) && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+      ok(`sidewalk-arcade-city-${i} misses leftoverLot / travel / street`,
+        leftoverLotOverlap(v.x, v.z, 2.4, 2.0, 0.15) === false
+        && v.z > TRAVEL_Z1
+        && streetOverlap(v.x, v.z, 2.4, 1.8) === false);
+    }
+  }
+  for (let i = 0; i < SW_ARCADE_BEACH_XS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `sidewalk-arcade-beach-${i}`);
+    ok(`sidewalk-arcade-beach-${i} listed`, !!v && v.z === SW_ARCADE_BEACH_Z);
+    if (v) {
+      ok(`sidewalk-arcade-beach-${i} keepout + open`,
+        !!inKeepout(v.x, v.z) && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+      ok(`sidewalk-arcade-beach-${i} misses leftoverLot / travel`,
+        leftoverLotOverlap(v.x, v.z, 2.4, 2.0, 0.15) === false
+        && v.z < TRAVEL_Z0);
+    }
+  }
+
+  ok('alley pipes are four signed cells west of 240',
+    ALLEY_PIPE_CELLS.length === 4
+    && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1);
+  ok('flythrough builds alley pipes',
+    fly.includes('ALLEY_PIPE_CELLS') && fly.includes("setTag('alley-pipe')")
+    && fly.includes('buildAlleyPipe') && !/\brng2?\s*\(/.test(fly)
+    && !/\brng3\s*\(/.test(fly) && !/\brng4\s*\(/.test(fly));
+  for (let i = 0; i < ALLEY_PIPE_CELLS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `alley-pipe-${i}`);
+    const [x, z] = ALLEY_PIPE_CELLS[i];
+    ok(`alley-pipe-${i} listed`, !!v && v.x === x && v.z === z);
+    if (v) {
+      ok(`alley-pipe-${i} reserved keepout open`,
+        !!inReserved(v.x, v.z) && !!inKeepout(v.x, v.z)
+        && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+      ok(`alley-pipe-${i} misses leftoverLot A–H / street / travel`,
+        leftoverLotOverlap(v.x, v.z, 2.4, 2.6, 0.15) === false
+        && streetOverlap(v.x, v.z, 0.4, 2.6) === false
+        && v.z > TRAVEL_Z1);
+    }
+  }
+
+  ok('park rings are three Lummus whoops west of 240',
+    PARK_RING_CELLS.length === 3
+    && PARK_RING_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0)
+    && PARK_RING_R - PARK_RING_TUBE >= 1.0);
+  ok('flythrough builds park rings',
+    fly.includes('PARK_RING_CELLS') && fly.includes("setTag('park-ring')")
+    && fly.includes('buildParkRing'));
+  for (let i = 0; i < PARK_RING_CELLS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `park-ring-${i}`);
+    ok(`park-ring-${i} listed`, !!v && v.x === PARK_RING_CELLS[i][0]);
+    if (v) {
+      ok(`park-ring-${i} keepout + open disc`,
+        !!inKeepout(v.x, v.z) && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+      ok(`park-ring-${i} misses leftoverLot / travel`,
+        leftoverLotOverlap(v.x, v.z, 0.4, 2.4, 0.15) === false
+        && v.z < TRAVEL_Z0);
+    }
+  }
+
+  const pierKit = pierFlyShapes();
+  ok('pier still has ten pylon stations', PIER_PYLON_COUNT === 10);
+  ok('pier extra bays are two signed undercroft whoops',
+    PIER_EXTRA_BAY_IS.length === 2 && PIER_EXTRA_BAY_IS[0] === 1
+    && PIER_EXTRA_BAY_IS[1] === 6);
+  for (let i = 0; i < PIER_EXTRA_BAY_IS.length; i++) {
+    const bayI = PIER_EXTRA_BAY_IS[i];
+    const under = FLY_VOIDS.find((f) => f.id === `pier-undercroft-${bayI}`);
+    const ring = FLY_VOIDS.find((f) => f.id === `pier-bay-ring-${bayI}`);
+    const g = pierBayRingGeom(bayI);
+    ok(`pier-undercroft-${bayI} listed`, !!under && under.x === PIER_X);
+    ok(`pier-bay-ring-${bayI} listed`, !!ring && ring.x === PIER_X && ring.z === g.z);
+    if (under) {
+      ok(`pier-undercroft-${bayI} open`,
+        !probeBlocked(kit.concat(pierKit), under.x, under.y, under.z, 0.28));
+    }
+    if (ring) {
+      ok(`pier-bay-ring-${bayI} keepout + open disc`,
+        !!inKeepout(ring.x, ring.z)
+        && !probeBlocked(kit.concat(pierKit), ring.x, ring.y, ring.z, 0.28));
+    }
+  }
+  ok('obstacles do not draw layout rng or ShaderMaterial',
+    !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly)
+    && !/\brng4\s*\(/.test(fly) && !fly.includes('ShaderMaterial')
+    && !fly.includes('ped.js') && !fly.includes('traffic.js'));
+  ok('leftoverLot A–H still signed after obstacles',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }
