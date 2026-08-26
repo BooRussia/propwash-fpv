@@ -104,7 +104,8 @@
     {
       "id": "collision-audit",
       "title": "Headless collision/keepout audit: no NPC/stamp in travel lanes, fly voids stay open",
-      "status": "pending"
+      "status": "done",
+      "files": ["js/world/miami/rejectsTest.js"]
     },
     {
       "id": "city-skyline",

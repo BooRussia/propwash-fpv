@@ -4,6 +4,9 @@
 //
 //   node ./js/world/miami/rejectsTest.js
 
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   CITY_Z, CITY_Y, PIER_X, GAP_X, XS_HALF, XS_Z0, XS_Z1,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_HALF,
@@ -15,8 +18,14 @@ import {
   onSidewalk, onCurb, onPlantingRow, sidewalkInterrupted, sidewalkRuns,
   inKeepout, inFlyVoid, FLY_VOIDS, flyColliderShapes, pierFlyShapes,
   groundHeight, deckTop, deckBottom, cameraFloor,
+  leftoverLotOverlap, LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
+  LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
 } from './constants.js';
 import { minCameraY, clampCameraToFloor, CAM_FLOOR_SLACK } from '../../camera/floor.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const TRAVEL_Z0 = 40.2;
+const TRAVEL_Z1 = 47.8;
 
 const fails = [];
 let passedCount = 0;
@@ -171,6 +180,36 @@ export function runMiamiRejectsTests() {
   const pylon = pier.find((s) => s.tag === 'pier' && s.type === 'cyl' && s.y0 < 0);
   ok('pier pylon collider exists', !!pylon && pylon.r === 0.4);
   ok('pier pylon smaller than bay', pylon && pylon.r * 2 < 8.8);
+
+  // ---- 5. collision audit: travel lanes empty, fly voids open, lots still ----
+  const hitsTravel = (s) => {
+    const z0 = s.type === 'cyl' ? s.z - s.r : s.z - s.sz / 2;
+    const z1 = s.type === 'cyl' ? s.z + s.r : s.z + s.sz / 2;
+    return z0 < TRAVEL_Z1 && z1 > TRAVEL_Z0;
+  };
+  const travelHits = kit.filter(hitsTravel);
+  ok('no kit collider in travel lanes 40.2–47.8',
+    travelHits.length === 0, travelHits.slice(0, 3).map((s) => s.tag).join(','));
+  const travelVoids = FLY_VOIDS.filter((v) => v.z0 < TRAVEL_Z1 && v.z1 > TRAVEL_Z0);
+  ok('no fly void overlaps travel lanes',
+    travelVoids.length === 0, travelVoids.map((v) => v.id).join(','));
+  ok('every kit void still open after audit',
+    kitVoids.every((v) => !probeBlocked(all, v.x, v.y, v.z, 0.28)));
+
+  const crowdSrc = readFileSync(join(here, 'crowd.js'), 'utf8');
+  ok('crowd still has no colliders',
+    !crowdSrc.includes('addCollider') && !crowdSrc.includes('addCyl')
+    && !crowdSrc.includes('addOBB'));
+  ok('crowd still skips travel lanes',
+    crowdSrc.includes('TRAVEL_Z0 = 40.2') && crowdSrc.includes('TRAVEL_Z1 = 47.8')
+    && crowdSrc.includes('inTravelLane') && crowdSrc.includes('inCarriageway'));
+  ok('no ped.js / traffic.js after audit',
+    !existsSync(join(here, 'ped.js')) && !existsSync(join(here, '../ped.js'))
+    && !existsSync(join(here, 'traffic.js')) && !existsSync(join(here, '../traffic.js')));
+  ok('leftoverLot A–H still signed after audit',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
+    && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   if (fails.length) {
     console.error('[miami-rejects] FAIL');
