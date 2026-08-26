@@ -122,7 +122,7 @@ export async function buildMiami(scene, env) {
   // ---------------- shared PBR texture sets (each key may be absent) ----------------
   const [
     sandSet, sidewalkSet, asphaltSet, roadLinesSet,
-    glassSet, glassDaySet, officeSet,
+    glassSet, glassDaySet, officeSet, daySet,
   ] = await Promise.all([
     assetLib.textureSet('sand_beach'),
     assetLib.textureSet('sidewalk'),
@@ -131,6 +131,7 @@ export async function buildMiami(scene, env) {
     assetLib.textureSet('facade_glass'),      // NIGHT photo: emissive only
     assetLib.textureSet('facade_glass_day'),  // daytime curtain wall
     assetLib.textureSet('facade_office'),     // daytime mid-rise brick/window
+    assetLib.textureSet('facade_day'),        // warm punched-window hotel
   ]);
 
   const ctx = {
@@ -138,7 +139,7 @@ export async function buildMiami(scene, env) {
     addCollider, addCyl, addOBB, addSphere, setTag, blocked,
     rng, rng2, rng3, rng4, rng5, regDN, regDNColor,
     sandSet, sidewalkSet, asphaltSet, roadLinesSet,
-    glassSet, glassDaySet, officeSet,
+    glassSet, glassDaySet, officeSet, daySet,
     // transparent slabs shared by the bus shelter + hotel entrance canopies;
     // merged into one draw call by buildStreetLevel()
     glassPanelGeos: [],

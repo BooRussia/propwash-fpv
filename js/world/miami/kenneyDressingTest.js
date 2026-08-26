@@ -43,10 +43,26 @@ export function runMiamiKenneyDressingTests() {
     && kenney.includes("'potted_plant_04'")
     && kenney.includes("'kenney_cactus'")
     && kenney.includes("'shrub_04'"));
+  ok('traffic_light / kenney_palm / kenney_house_a / awning instanced',
+    kenney.includes("'traffic_light'")
+    && kenney.includes("'kenney_palm'")
+    && kenney.includes("'kenney_house_a'")
+    && kenney.includes("'awning'"));
   ok('beach chairs sit ocean of the boardwalk kiss',
     kenney.includes('z = 5.2 + hash01(i, 103) * 11'));
   ok('far row sits behind the 60-box LOD (z>=640)',
-    kenney.includes('640 + hash01'));
+    kenney.includes('640 + hash01')
+    && kenney.includes('kenney_skyscraper_b')
+    && kenney.includes('kenney_midrise_a'));
+  ok('kenney trees + covered cars are hash-scattered',
+    kenney.includes("'kenney_tree_large'")
+    && kenney.includes("'covered_car'"));
+  ok('houses sit behind the box LOD (z 720–820)',
+    kenney.includes('720 + hash01') && kenney.includes("'kenney_house_a'"));
+  ok('beach-side stop signs at GAP_X',
+    kenney.includes('GAP_X[i] - 3.4') && kenney.includes('z: 37.6'));
+  ok('traffic lights sit on GAP_X corners (±7 m)',
+    kenney.includes('GAP_X[i] + c.dx') && kenney.includes('dx: 7'));
   ok('index calls buildKenneyDressing after colliders',
     index.includes('buildKenneyDressing')
     && index.indexOf('buildKenneyDressing') > index.indexOf('buildDressing'));

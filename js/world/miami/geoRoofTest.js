@@ -78,6 +78,16 @@ export function runMiamiGeoRoofTests() {
     && geo.includes('+Y top')
     && geo.includes('-Y bottom'));
 
+  const stair = sliceFn(geo, 'buildStairFlightGeo');
+  const pilotis = sliceFn(geo, 'buildPilotisColumnGeo');
+  const ac = sliceFn(geo, 'buildRoofAcUnitGeo');
+  ok('stair / pilotis / roof AC geos are exported',
+    stair.includes('export function buildStairFlightGeo')
+    && pilotis.includes('export function buildPilotisColumnGeo')
+    && ac.includes('export function buildRoofAcUnitGeo'));
+  ok('roof AC geo does not mention glassMat',
+    ac.length > 0 && !ac.includes('glassMat'));
+
   ok('near deco towers use the midrise helper',
     near.includes('buildDecoMidriseGeos(tw, th, td, DECO_TILE_U, DECO_TILE_V, offU, offV)'));
   ok('cyl towers are open-ended + facadeCylUV + stripCylinderCaps',

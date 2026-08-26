@@ -4,10 +4,14 @@ import {
   CITY_Y, GAP_X, XS_HALF, XS_Z0, XS_Z1, CINEMA_X, CINEMA_W,
   stripY, reservedOverlap, streetOverlap,
 } from './constants.js';
-import { windowTexture, decoFacadeTextures, setAoUVs, roofTexture } from './textures.js';
+import {
+  windowTexture, decoFacadeTextures, setAoUVs, roofTexture,
+  brickFacadeTextures, stuccoCondoTextures, tealGlassTextures, coralCondoTextures,
+} from './textures.js';
 import {
   facadeUV, stripBoxCaps, stripCylinderCaps, roofSlabGeo, soffitGeo,
   facadeCylUV, buildDecoMidriseGeos, colorFill, cBox, cCyl, cTorus,
+  buildPilotisColumnGeo, buildRoofAcUnitGeo, buildStairFlightGeo,
 } from './geo.js';
 import { tryPlace } from './planting.js';
 
@@ -133,7 +137,7 @@ function buildRooftopPadGeo() {
 export function buildSkyline(ctx) {
   const {
     root, track, addCollider, addCyl, setTag, rng, rng3, rng4,
-    glassSet, glassDaySet, officeSet,
+    glassSet, glassDaySet, officeSet, daySet,
   } = ctx;
   setTag('tower');
   // winTexA/B consume main-rng draws — always create both to preserve the stream
@@ -259,9 +263,73 @@ export function buildSkyline(ctx) {
     })), 0.02, officeSet.emissiveMap ? 1.15 : 0.3);
   }
 
+  // ---- third daytime variant: warm punched-window hotel (facade_day) ----
+  let dayMat = null;
+  if (daySet && daySet.map) {
+    dayMat = regDN(track(new THREE.MeshStandardMaterial({
+      color: new THREE.Color(1.28, 1.22, 1.12),
+      roughness: 1,
+      metalness: 0.06,
+      map: daySet.map,
+      normalMap: daySet.normalMap || null,
+      roughnessMap: daySet.roughnessMap || null,
+      envMapIntensity: 1.1,
+      emissive: 0xffe0b0,
+      emissiveMap: daySet.map,
+      emissiveIntensity: 0,
+    })), 0.02, 0.55);
+  }
+  const DAY_TILE_U = 22, DAY_TILE_V = 24;
+
+  // Tinted curtain-wall clones so neighbours don't share one teal sheet.
+  const glassTeal = regDN(track(glassMat.clone()), 0.02, 1.15);
+  glassTeal.color = new THREE.Color(0xb7ddd8);
+  const glassAmber = regDN(track(glassMat.clone()), 0.02, 1.15);
+  glassAmber.color = new THREE.Color(0xe4d3b4);
+  const glassBlue = regDN(track(glassMat.clone()), 0.02, 1.15);
+  glassBlue.color = new THREE.Color(0x9eb8d4);
+
+  const brickTex = brickFacadeTextures();
+  track(brickTex.albedo); track(brickTex.emissive);
+  const brickMat = regDN(track(new THREE.MeshStandardMaterial({
+    map: brickTex.albedo, emissiveMap: brickTex.emissive,
+    color: 0xffffff, roughness: 0.84, metalness: 0.03,
+    emissive: 0xffe0b0, emissiveIntensity: 0,
+  })), 0.0, 1.2);
+  const stuccoTex = stuccoCondoTextures();
+  track(stuccoTex.albedo); track(stuccoTex.emissive);
+  const stuccoMat = regDN(track(new THREE.MeshStandardMaterial({
+    map: stuccoTex.albedo, emissiveMap: stuccoTex.emissive,
+    color: 0xf3ead8, roughness: 0.86, metalness: 0.02,
+    emissive: 0xffe8c4, emissiveIntensity: 0,
+  })), 0.0, 1.25);
+  const coralTex = coralCondoTextures();
+  track(coralTex.albedo); track(coralTex.emissive);
+  const coralMat = regDN(track(new THREE.MeshStandardMaterial({
+    map: coralTex.albedo, emissiveMap: coralTex.emissive,
+    color: 0xffffff, roughness: 0.8, metalness: 0.02,
+    emissive: 0xffe0b0, emissiveIntensity: 0,
+  })), 0.0, 1.2);
+  const tealTex = tealGlassTextures();
+  track(tealTex.albedo); track(tealTex.emissive);
+  const tealCanvasMat = regDN(track(new THREE.MeshStandardMaterial({
+    map: tealTex.albedo, emissiveMap: tealTex.emissive,
+    color: 0xffffff, roughness: 0.22, metalness: 0.45,
+    envMapIntensity: 1.6,
+    emissive: 0xcfeee8, emissiveIntensity: 0,
+  })), 0.0, 1.1);
+  const BRICK_TILE_U = 21.6, BRICK_TILE_V = 28.8;
+  const STUCCO_TILE_U = 16, STUCCO_TILE_V = 21;
+  const CORAL_TILE_U = 18, CORAL_TILE_V = 21;
+  const TEAL_TILE_U = 20, TEAL_TILE_V = 26;
+
   const towerGroup = new THREE.Group();
   towerGroup.name = 'towers';
   const towerData = [];
+  const pilotisGeo = track(buildPilotisColumnGeo());
+  const pilotisMat = track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.9, metalness: 0.04,
+  }));
 
   function addTower(x, z, w, h, d, style) {
     // per-tower UV offset (rng3 — never the layout stream)
@@ -380,15 +448,41 @@ export function buildSkyline(ctx) {
       // towers wear the brick/window office sheet so the skyline is not one
       // material. Tall towers stay curtain wall.
       const useOffice = !!officeMat && h < 108 && hash01((x * 7) | 0, (z * 13) | 0) < 0.45;
-      const mat = useOffice ? officeMat : glassMat;
-      const TU = useOffice ? OFFICE_TILE_U : GLASS_TILE_U;
-      const TV = useOffice ? OFFICE_TILE_V : GLASS_TILE_V;
-      const textured = useOffice || hasGlassTex;
+      const useDay = !!dayMat && !useOffice && h < 125 && hash01((x * 11) | 0, (z * 17) | 0) < 0.30;
+      const skin = hash01((x * 19) | 0, (z * 23) | 0);
+      let mat, TU, TV;
+      if (useOffice) {
+        mat = officeMat; TU = OFFICE_TILE_U; TV = OFFICE_TILE_V;
+      } else if (useDay) {
+        mat = dayMat; TU = DAY_TILE_U; TV = DAY_TILE_V;
+      } else if (h < 100 && skin < 0.16) {
+        mat = brickMat; TU = BRICK_TILE_U; TV = BRICK_TILE_V;
+      } else if (h < 112 && skin < 0.30) {
+        mat = stuccoMat; TU = STUCCO_TILE_U; TV = STUCCO_TILE_V;
+      } else if (h < 112 && skin < 0.44) {
+        mat = coralMat; TU = CORAL_TILE_U; TV = CORAL_TILE_V;
+      } else if (skin < 0.56) {
+        mat = tealCanvasMat; TU = TEAL_TILE_U; TV = TEAL_TILE_V;
+      } else if (skin < 0.68) {
+        mat = glassTeal; TU = GLASS_TILE_U; TV = GLASS_TILE_V;
+      } else if (skin < 0.80) {
+        mat = glassAmber; TU = GLASS_TILE_U; TV = GLASS_TILE_V;
+      } else if (skin < 0.90) {
+        mat = glassBlue; TU = GLASS_TILE_U; TV = GLASS_TILE_V;
+      } else {
+        mat = glassMat; TU = GLASS_TILE_U; TV = GLASS_TILE_V;
+      }
+      const textured = !!(mat && mat.map) || hasGlassTex;
       // Massing variants (rng4) kill the single-slab silhouette on ~40% of the
       // mid/back-row glass towers. VISUAL ONLY — the collider AABB below stays
       // the legacy full box, and no main-rng draws are added or removed.
       const mv = z > 100 && rng4() < 0.42 ? 1 + ((rng4() * 3) | 0) : 0;
       entry.mv = mv;
+      // Open ground floor on some back-row slabs (hash, not a stream draw)
+      // so a drone can fly under the columns. Collider follows addBox massing.
+      const lift = (mv === 0 && z > 118 && h > 88 && Math.min(w, d) > 22
+        && hash01((x * 17) | 0, (z * 29) | 0) < 0.28) ? 9.6 : 0;
+      entry.lift = lift;
       const boxes = [];
       const roofs = [];
       const soffits = [];
@@ -425,6 +519,18 @@ export function buildSkyline(ctx) {
         addBox(w, h, d, 0, h / 2, 0);
         addBox(1.7, h * 0.995, 1.7, -(w / 2 - 0.55), h * 0.4975, -(d / 2 - 0.55), Math.PI / 4);
         addBox(1.7, h * 0.995, 1.7, (w / 2 - 0.55), h * 0.4975, -(d / 2 - 0.55), Math.PI / 4);
+      } else if (lift > 0) {
+        addBox(w, h - lift, d, 0, lift + (h - lift) / 2, 0);
+        const cols = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]];
+        for (const [sx, sz] of cols) {
+          const cx = sx * (w * 0.36), cz = sz * (d * 0.36);
+          solid(0.7, lift, 0.7, cx, 0, cz);
+          const col = new THREE.Mesh(pilotisGeo, pilotisMat);
+          col.position.set(x + cx, CITY_Y, z + cz);
+          col.scale.set(1, lift / 9.5, 1);
+          col.castShadow = true;
+          add(col);
+        }
       } else {
         addBox(w, h, d, 0, h / 2, 0);
       }
@@ -523,32 +629,86 @@ export function buildSkyline(ctx) {
   {
     const glassGeos = [];
     const officeGeos = [];
+    const dayGeos = [];
+    const tealGeos = [];
+    const amberGeos = [];
+    const blueGeos = [];
+    const brickGeos = [];
+    const stuccoGeos = [];
+    const coralGeos = [];
+    const tealCGeos = [];
     const roofGeos = [];
+    const tileGeos = [];
+    const tpoGeos = [];
     for (let i = 0; i < 60; i++) {
       const w = 30 + rng() * 50, h = 40 + rng() * 160, d = 30 + rng() * 40;
       const g = new THREE.BoxGeometry(w, h, d);
       // Facade variant + UV offset from hash01 — never a layout-stream draw.
       const useOffice = !!officeMat && h < 108 && hash01(i, (h * 13) | 0) < 0.45;
-      const TU = useOffice ? OFFICE_TILE_U : GLASS_TILE_U;
-      const TV = useOffice ? OFFICE_TILE_V : GLASS_TILE_V;
+      const pick = hash01(i, (w * 11) | 0);
+      const useDay = !!dayMat && !useOffice && pick < 0.14;
+      const useBrick = !useOffice && !useDay && pick < 0.28;
+      const useStucco = !useOffice && !useDay && !useBrick && pick < 0.40;
+      const useCoral = !useOffice && !useDay && !useBrick && !useStucco && pick < 0.52;
+      const useTealC = !useOffice && !useDay && !useBrick && !useStucco && !useCoral && pick < 0.62;
+      const useTeal = !useOffice && !useDay && !useBrick && !useStucco && !useCoral && !useTealC && pick < 0.72;
+      const useAmber = !useOffice && !useDay && !useBrick && !useStucco && !useCoral && !useTealC && !useTeal && pick < 0.82;
+      const useBlue = !useOffice && !useDay && !useBrick && !useStucco && !useCoral && !useTealC && !useTeal && !useAmber && pick < 0.90;
+      const TU = useOffice ? OFFICE_TILE_U
+        : useDay ? DAY_TILE_U
+          : useBrick ? BRICK_TILE_U
+            : useStucco ? STUCCO_TILE_U
+              : useCoral ? CORAL_TILE_U
+                : useTealC ? TEAL_TILE_U
+                  : GLASS_TILE_U;
+      const TV = useOffice ? OFFICE_TILE_V
+        : useDay ? DAY_TILE_V
+          : useBrick ? BRICK_TILE_V
+            : useStucco ? STUCCO_TILE_V
+              : useCoral ? CORAL_TILE_V
+                : useTealC ? TEAL_TILE_V
+                  : GLASS_TILE_V;
       facadeUV(g, w, h, d, TU, TV, hash01(i, (w * 7) | 0), hash01((h * 13) | 0, (d * 5) | 0));
       stripBoxCaps(g);
       const x = -800 + rng() * 1600;
       const z = 300 + rng() * 320;
       g.translate(x, CITY_Y + h / 2, z);
-      (useOffice ? officeGeos : glassGeos).push(g);
+      if (useOffice) officeGeos.push(g);
+      else if (useDay) dayGeos.push(g);
+      else if (useBrick) brickGeos.push(g);
+      else if (useStucco) stuccoGeos.push(g);
+      else if (useCoral) coralGeos.push(g);
+      else if (useTealC) tealCGeos.push(g);
+      else if (useTeal) tealGeos.push(g);
+      else if (useAmber) amberGeos.push(g);
+      else if (useBlue) blueGeos.push(g);
+      else glassGeos.push(g);
       // Caps are stripped so the window atlas never sits on +Y. Own lid.
-      roofGeos.push(roofSlabGeo(w, d, x, CITY_Y + h, z));
+      const rp = hash01(i, (d * 19) | 0);
+      const lid = roofSlabGeo(w, d, x, CITY_Y + h, z);
+      if (rp < 0.34) tileGeos.push(lid);
+      else if (rp < 0.62) tpoGeos.push(lid);
+      else roofGeos.push(lid);
     }
     const addMerged = (geos, mat) => {
-      if (!geos.length) return;
+      if (!geos.length || !mat) return;
       const merged = track(mergeGeometries(geos));
       geos.forEach((g) => g.dispose());
       root.add(new THREE.Mesh(merged, mat));
     };
     addMerged(glassGeos, glassMat);
     addMerged(officeGeos, officeMat);
+    addMerged(dayGeos, dayMat);
+    addMerged(brickGeos, brickMat);
+    addMerged(stuccoGeos, stuccoMat);
+    addMerged(coralGeos, coralMat);
+    addMerged(tealCGeos, tealCanvasMat);
+    addMerged(tealGeos, glassTeal);
+    addMerged(amberGeos, glassAmber);
+    addMerged(blueGeos, glassBlue);
     addMerged(roofGeos, metalRoofMat);
+    addMerged(tileGeos, tileRoofMat);
+    addMerged(tpoGeos, tpoRoofMat);
   }
   return {
     towerData, towerGroup, glassMat, officeMat, hasGlassTex,
@@ -746,6 +906,12 @@ export function buildStreetLevel(ctx, sky, street) {
           }
           shopOpaque.push(cBox(inner + 0.2, 0.14, 0.06, 0x8d949a, bx, CITY_Y + 2.66, frontZ + 0.2));
           shopOpaque.push(cBox(Math.min(inner + 0.5, 3.6), 0.13, 0.95, STEP, bx, CITY_Y + 0.065, frontZ - 0.45));
+          shopOpaque.push(cBox(Math.min(inner + 0.2, 3.2), 0.13, 0.78, STEP, bx, CITY_Y + 0.19, frontZ - 0.12));
+          shopOpaque.push(cBox(Math.min(inner - 0.1, 2.8), 0.13, 0.62, STEP, bx, CITY_Y + 0.32, frontZ + 0.18));
+          for (const rs of [-1, 1]) {
+            shopOpaque.push(cBox(0.06, 0.85, 1.15, POSTC, bx + rs * Math.min(inner, 3.2) * 0.42,
+              CITY_Y + 0.5, frontZ - 0.15));
+          }
         } else {
           // shopfront: dark stone bulkhead, full-height glazing, mullions
           shopOpaque.push(cBox(inner + 0.2, GL_BOT, 0.4, 0x5f6469, bx, CITY_Y + GL_BOT / 2, frontZ - 0.08));
@@ -838,8 +1004,16 @@ export function buildStreetLevel(ctx, sky, street) {
       addCollider(t.x, cy0 - 0.05, frontZ - depth / 2 + 0.1, 7.4, 0.12, depth + 0.5);
       shopOpaque.push(cBox(7.6, 0.16, 0.16, POSTC, t.x, cy0 + 0.06, frontZ - depth - 0.13));
       shopOpaque.push(cBox(7.6, 0.14, 0.5, POSTC, t.x, cy0 + 0.05, frontZ - 0.2));
-      shopOpaque.push(cBox(4.8, 0.16, 1.3, STEP, t.x, CITY_Y + 0.08, frontZ - 0.9));
-      shopOpaque.push(cBox(5.6, 0.08, 0.8, STEP, t.x, CITY_Y + 0.04, frontZ - 1.85));
+      {
+        const stair = buildStairFlightGeo({ steps: 7, width: 4.6, rise: 0.14, run: 0.30 });
+        stair.rotateY(Math.PI);
+        stair.translate(t.x, CITY_Y, frontZ - 0.12);
+        shopOpaque.push(stair);
+      }
+      for (const rs of [-1, 1]) {
+        shopOpaque.push(cBox(0.07, 1.05, 2.15, POSTC, t.x + rs * 2.55, CITY_Y + 0.62, frontZ - 0.95));
+        shopOpaque.push(cBox(0.07, 0.07, 2.15, POSTC, t.x + rs * 2.55, CITY_Y + 1.12, frontZ - 0.95));
+      }
       // carpet strip under the canopy
       shopOpaque.push(cBox(5.2, 0.03, depth, 0x6d3a33, t.x, CITY_Y + 0.115, frontZ - depth / 2 - 0.3));
     }
@@ -1113,6 +1287,7 @@ export function buildStreetLevel(ctx, sky, street) {
   const roofSpotsA = [];
   const roofSpotsB = [];
   const roofSpotsC = [];
+  const roofSpotsD = [];
   const padSpots = [];
   const pushKit = (t, spot) => {
     const which = hash01((t.x * 7) | 0, (t.z * 13) | 0);
@@ -1148,6 +1323,31 @@ export function buildStreetLevel(ctx, sky, street) {
       z: t.z + (hash01((t.z) | 0, 5) - 0.5) * (t.d - 15),
       ry: ((hash01((t.x) | 0, (t.z) | 0) * 4) | 0) * (Math.PI / 2),
     });
+  }
+  // Extra AC / tanks / dishes / pads on every remaining roof (hash01 only).
+  for (const t of towerData) {
+    if (Math.min(t.w, t.d) < 12) continue;
+    if (hash01((t.x * 11) | 0, (t.z * 17) | 0) < 0.08) continue;
+    const ox = (hash01((t.x) | 0, 41) - 0.5) * Math.max(2, t.w * 0.42);
+    const oz = (hash01((t.z) | 0, 43) - 0.5) * Math.max(2, t.d * 0.42);
+    const y = CITY_Y + t.h + 0.02;
+    const ry = ((hash01((t.x) | 0, (t.z) | 0) * 4) | 0) * (Math.PI / 2);
+    const which = hash01((t.x * 7) | 0, (t.z * 19) | 0);
+    const spot = { x: t.x + ox, y, z: t.z + oz, ry };
+    if (which < 0.34) roofSpotsA.push(spot);
+    else if (which < 0.67) roofSpotsB.push(spot);
+    else roofSpotsC.push(spot);
+    if (t.h > 95 && Math.min(t.w, t.d) > 22
+        && hash01((t.x * 3) | 0, (t.z * 31) | 0) < 0.42) {
+      padSpots.push({
+        x: t.x - ox * 0.35, y: CITY_Y + t.h + 0.04, z: t.z - oz * 0.35, ry: 0,
+      });
+    }
+    if (hash01((t.x * 13) | 0, (t.z * 37) | 0) > 0.4) {
+      roofSpotsD.push({
+        x: t.x - ox * 0.7, y: CITY_Y + t.h + 0.02, z: t.z + oz * 0.55, ry,
+      });
+    }
   }
 
   // ---- materialize the built fabric (planting happens in dressing.js) ----
@@ -1221,6 +1421,7 @@ export function buildStreetLevel(ctx, sky, street) {
       [roofSpotsA, buildRooftopKitGeo, 'tower-rooftops-ac'],
       [roofSpotsB, buildRooftopDishGeo, 'tower-rooftops-dish'],
       [roofSpotsC, buildRooftopTankGeo, 'tower-rooftops-tank'],
+      [roofSpotsD, buildRoofAcUnitGeo, 'tower-rooftops-ac-unit'],
       [padSpots, buildRooftopPadGeo, 'tower-rooftops-pad'],
     ];
     for (const [spots, geoFn, name] of kits) {

@@ -173,7 +173,7 @@ function cellular(x, z, scale) {
   return Math.sqrt(f1);
 }
 
-/** Coast-following crest pulse. Wavelength 13.7 m, not the 19 m cascade. */
+/** Coast-aligned crest pulse. Wavelength 13.7 m, not the 19 m cascade. */
 function shoreCrest(x, z, t) {
   const along = 2.8 * Math.sin(x * 0.021) + 1.6 * Math.sin(x * 0.047 + 1.3);
   const dist = (SHORE_Z - z) + along;
@@ -268,9 +268,13 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
           raw = foamTermAt(x, z, sampleH(x, z), poly);
           if (raw > 0) {
             const cell = cellular(x, z, 3.2);
+            const cellFine = cellular(x, z, 1.15);
             const crest = shoreCrest(x, z, t);
             const holes = 1 - Math.min(1, cell * 1.35);
-            raw = raw * (0.72 + 0.28 * holes * (0.40 + 0.60 * crest));
+            const fine = 1 - Math.min(1, cellFine * 1.55);
+            const cellMask = holes * (0.55 + 0.45 * fine);
+            raw = raw * (0.64 + 0.48 * cellMask * (0.20 + 0.80 * crest));
+            if (raw > 1) raw = 1;
           }
         }
       }
@@ -312,7 +316,7 @@ function applyRepeat(tex, w, d, L) {
  * World-space Gerstner + Fresnel + foam albedo. Not a second material.
  */
 function applyCoastalOptics(mat) {
-  mat.customProgramCacheKey = () => 'pw-bay-coastal-v3';
+  mat.customProgramCacheKey = () => 'pw-bay-coastal-v4';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uBayTime = { value: 0 };
     shader.uniforms.uShoreZ = { value: SHORE_Z };
@@ -367,13 +371,26 @@ vec3 bayGerstnerNormal(vec3 wp, float t) {
   vec2 xz = wp.xz;
   float along = 2.8 * sin(wp.x * 0.021) + 1.6 * sin(wp.x * 0.047 + 1.3);
   vec2 shore = vec2(wp.x * 0.04, (uShoreZ - wp.z) + along);
-  // 13.7 / 8.3 m coast-following crests (not the 19 m cascade)
+  // 13.7 / 8.3 m coast-aligned crests (not the 19 m cascade)
   bayAddWave(normalize(vec2(0.08, 1.0)), 0.22, 13.7, t, 0.46, shore, T, B);
   bayAddWave(normalize(vec2(-0.12, 1.0)), 0.11, 8.3, t * 1.12, 0.38, shore, T, B);
   // 37.1 / 61.3 m incommensurate chop — breaks 19 m RepeatWrap beating
   bayAddWave(normalize(vec2(0.15, 1.0)), 0.09, 37.1, t * 0.72, 0.28, xz, T, B);
   bayAddWave(normalize(vec2(-0.22, 0.97)), 0.06, 61.3, t * 0.55, 0.22, xz, T, B);
   return normalize(cross(B, T));
+}
+
+float bayCrestFoam(vec3 wp, float t) {
+  float along = 2.8 * sin(wp.x * 0.021) + 1.6 * sin(wp.x * 0.047 + 1.3);
+  vec2 shore = vec2(wp.x * 0.04, (uShoreZ - wp.z) + along);
+  vec2 d1 = normalize(vec2(0.08, 1.0));
+  vec2 d2 = normalize(vec2(-0.12, 1.0));
+  float k1 = 6.28318530718 / 13.7;
+  float k2 = 6.28318530718 / 8.3;
+  float f1 = k1 * (dot(d1, shore) - sqrt(9.81 / k1) * t);
+  float f2 = k2 * (dot(d2, shore) - sqrt(9.81 / k2) * t * 1.12);
+  float c = saturate(0.70 * cos(f1) + 0.40 * cos(f2) - 0.38);
+  return c * c;
 }`,
     );
 
@@ -392,7 +409,10 @@ vec3 bayGerstnerNormal(vec3 wp, float t) {
   float distOut = max(0.0, uShoreZ - vBayWorld.z);
   float shallow = 1.0 - saturate(distOut / 90.0);
   vec3 waterCol = mix(uBayDeep, uBayShallow, shallow * 0.55);
-  diffuseColor.rgb = mix(waterCol, uBayFoam, pow(bayFoam, 1.45) * 0.55);
+  float br = bayDepthBreak(vBayWorld.z);
+  float crestFoam = bayCrestFoam(vBayWorld, uBayTime) * br;
+  float foamMix = saturate(pow(bayFoam, 1.22) * 0.72 + crestFoam * 0.26);
+  diffuseColor.rgb = mix(waterCol, uBayFoam, foamMix);
 }`,
     );
 

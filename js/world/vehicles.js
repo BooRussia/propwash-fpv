@@ -108,8 +108,8 @@ const TAXI_YELLOW = 0xffc21a;
 const BUS_LIVERY = [0x2f7fd8, 0x35a371, 0xe8e4da, 0xc9772f];
 
 // ---- Ocean Drive curb roll (Desi + Reesy) --------------------------------
-// Fold eight of the 34 street.js carSpots. Lanes and wrap are that ribbon:
-//   x = -560 + i*34 …, z = i%2 ? 39.5 : 48.5, rotY = i%2 ? 0 : π
+// Fold eight of the 34 street.js carSpots. Travel lanes sit inside the
+// 14 m carriageway; parked cars live on PARK_LANE_* shoulders in street.js.
 // Odds travel +X, evens −X. BUS_I=16 stays at the shelter. No ped.js / traffic.js.
 export const FLEET_ROLL_I = Object.freeze([3, 6, 11, 14, 19, 22, 27, 30]);
 export const FLEET_BUS_I = 16;
@@ -123,8 +123,10 @@ export const FLEET_ZEBRA_HALF = 1.8;   // road.js zebra BoxGeometry(3.6, …)
 export const FLEET_HOLD = 2;
 export const FLEET_SPEED_MIN = 6;      // 13–18 mph so enamel still reads
 export const FLEET_SPEED_MAX = 8;
-export const FLEET_LANE_BEACH_Z = 39.5;
-export const FLEET_LANE_CITY_Z = 48.5;
+export const FLEET_LANE_BEACH_Z = 41.7;
+export const FLEET_LANE_CITY_Z = 46.3;
+export const PARK_LANE_BEACH_Z = 38.45;
+export const PARK_LANE_CITY_Z = 49.55;
 
 const FLEET_ROLL_SET = new Set(FLEET_ROLL_I);
 
@@ -132,7 +134,7 @@ export function fleetIsRoller(i) {
   return FLEET_ROLL_SET.has(i);
 }
 
-/** street.js carSpots lane. Odds +X on z=39.5; evens −X on z=48.5. */
+/** street.js roller lane. Odds +X on the beach travel lane; evens −X city. */
 export function fleetLaneOf(i) {
   return (i % 2)
     ? { z: FLEET_LANE_BEACH_Z, rotY: 0, dir: 1 }

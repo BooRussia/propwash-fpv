@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Props-v2 geometry helpers (parasols, lifeguard towers, boats, facades).
 // Builders return BufferGeometries with position/normal/uv (+vertex colors
@@ -205,4 +206,78 @@ export function buildDecoMidriseGeos(w, h, d, tileU, tileV, offU = 0, offV = 0) 
   const soffit = soffitGeo(w, d, 0, -h / 2, 0);
   const cornice = cBox(w + 0.38, 0.32, d + 0.38, 0xd4c4a8, 0, h / 2 + 0.14, 0);
   return { walls, roof, soffit, cornice };
+}
+
+/**
+ * Walkable stair flight. Origin at the bottom-tread front; rises +Y, runs +Z.
+ * Front: first riser; back: last riser; left/right: tread ends + two rail posts
+ * and a top rail; top: treads; bottom: soffit of the lowest step.
+ * Vertex colours. Does not consume any rng stream.
+ */
+export function buildStairFlightGeo(opts = {}) {
+  const steps = opts.steps ?? 8;
+  const width = opts.width ?? 3.2;
+  const rise = opts.rise ?? 0.16;
+  const run = opts.run ?? 0.32;
+  const stone = opts.stone ?? 0x6a655c;
+  const rail = opts.rail ?? 0x2b3138;
+  const G = [];
+  for (let i = 0; i < steps; i++) {
+    G.push(cBox(width, rise, run, stone, 0, (i + 0.5) * rise, (i + 0.5) * run));
+  }
+  const postH = 0.9;
+  const postW = 0.05;
+  const px = width / 2 - postW * 0.5;
+  const z0 = run * 0.3;
+  const z1 = (steps - 0.3) * run;
+  const y0 = rise + postH / 2;
+  const y1 = steps * rise + postH / 2;
+  G.push(cBox(postW, postH, postW, rail, px, y0, z0));
+  G.push(cBox(postW, postH, postW, rail, px, y1, z1));
+  G.push(cTube(
+    new THREE.Vector3(px, y0 + postH / 2, z0),
+    new THREE.Vector3(px, y1 + postH / 2, z1),
+    0.022, 6, rail,
+  ));
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/**
+ * Round concrete pilotis. Origin at ground; grows +Y.
+ * Front/back/left/right: tapered shaft; top: capital; bottom: plinth.
+ * Vertex colours. Does not consume any rng stream.
+ */
+export function buildPilotisColumnGeo(opts = {}) {
+  const height = opts.height ?? 9.5;
+  const radius = opts.radius ?? 0.38;
+  const hex = opts.hex ?? 0x8a8680;
+  const plinthH = 0.28;
+  const capH = 0.22;
+  const shaftH = Math.max(0.4, height - plinthH - capH);
+  const plinthR = radius * 1.28;
+  const capR = radius * 1.18;
+  const G = [
+    cCyl(plinthR, plinthR, plinthH, 12, hex, 0, plinthH / 2, 0),
+    cCyl(radius * 0.88, radius, shaftH, 12, hex, 0, plinthH + shaftH / 2, 0),
+    cCyl(capR, radius * 0.92, capH, 12, hex, 0, plinthH + shaftH + capH / 2, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
+}
+
+/**
+ * Single rooftop AC pack. Origin at roof deck. ~1.7 × 0.95 × 1.25 m.
+ * Front: grille; back: access panel; left/right: galvanized body;
+ * top: fan shroud; bottom: sleepers. Vertex colours.
+ */
+export function buildRoofAcUnitGeo() {
+  const galv = 0x9ba3ab, shroud = 0x3c4249, rail = 0x6d747c;
+  const G = [
+    cBox(1.7, 0.95, 1.25, galv, 0, 0.48, 0),
+    cBox(1.55, 0.62, 0.04, 0x5c646c, 0, 0.5, -0.645),
+    cBox(0.4, 0.5, 0.04, 0x4a5158, 0, 0.48, 0.645),
+    cCyl(0.52, 0.52, 0.06, 12, shroud, 0, 0.98, 0),
+    cBox(0.16, 0.08, 1.15, rail, -0.55, 0.04, 0),
+    cBox(0.16, 0.08, 1.15, rail, 0.55, 0.04, 0),
+  ];
+  const m = mergeGeometries(G); G.forEach((g) => g.dispose()); return m;
 }

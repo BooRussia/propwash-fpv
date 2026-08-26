@@ -75,15 +75,20 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'planter', planters, 'kenney-planters');
 
-  // Stop signs at the signed Ocean Drive gaps.
+  // Stop signs at the signed Ocean Drive gaps — city approach (z=50.6)
+  // and beach approach (z=37.6) so both directions are signed.
   const signs = [];
   for (let i = 0; i < GAP_X.length; i++) {
-    const x = GAP_X[i] + 3.4;
-    const z = 50.6;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.25, y, 2.6)) continue;
-    signs.push({ x, y, z, scale: 1.0, rotY: Math.PI });
-    addCyl(x, y, z, 0.12, 2.5);
+    const pair = [
+      { x: GAP_X[i] + 3.4, z: 50.6, rotY: Math.PI },
+      { x: GAP_X[i] - 3.4, z: 37.6, rotY: 0 },
+    ];
+    for (const p of pair) {
+      const y = groundHeight(p.x, p.z);
+      if (!clear(p.x, p.z, 0.25, y, 2.6)) continue;
+      signs.push({ x: p.x, y, z: p.z, scale: 1.0, rotY: p.rotY });
+      addCyl(p.x, y, p.z, 0.12, 2.5);
+    }
   }
   await scatterSafe(ctx, 'stop_sign', signs, 'kenney-stop-signs');
 
@@ -100,6 +105,27 @@ export async function buildKenneyDressing(ctx) {
     }
   }
   await scatterSafe(ctx, 'traffic_cone', cones, 'kenney-cones');
+
+  // Traffic lights at Ocean Drive × cross-street corners (GAP_X; CROSS_X
+  // is the zebra subset). ~2 per intersection: city sidewalk (z 53.2–54.0)
+  // and beach sidewalk (z 34.4–35.2), ±7 m off the gap so they sit on the
+  // corner, not in the roadway. Signal face is −X; yaw toward the road.
+  const trafficLights = [];
+  for (let i = 0; i < GAP_X.length; i++) {
+    const corners = [
+      { dx: 7, z: 53.2 + hash01(i, 233) * 0.8, rotY: -Math.PI / 2 },
+      { dx: -7, z: 34.4 + hash01(i, 239) * 0.8, rotY: Math.PI / 2 },
+    ];
+    for (const c of corners) {
+      const x = GAP_X[i] + c.dx;
+      const z = c.z;
+      const y = groundHeight(x, z);
+      if (!clear(x, z, 0.3, y, 4.6)) continue;
+      trafficLights.push({ x, y, z, scale: 1.0, rotY: c.rotY });
+      addCyl(x, y, z, 0.16, 4.4);
+    }
+  }
+  await scatterSafe(ctx, 'traffic_light', trafficLights, 'kenney-traffic-lights');
 
   // Beach chairs on the sand (ocean of the boardwalk kiss).
   const chairs = [];
@@ -160,6 +186,24 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'potted_plant_02', pots, 'potted-tropicals');
 
+  // Kenney awnings as extra storefront accents on the city sidewalk
+  // landward edge. Sparse hash skip. Awning extrudes +Z; yaw π so it
+  // faces Ocean Drive.
+  const awnings = [];
+  for (let i = 0; i < 14; i++) {
+    if (hash01(i, 271) < 0.62) continue;
+    const x = sidewalkX(i, 14) + (hash01(i, 277) - 0.5) * 6;
+    const z = 56 + hash01(i, 281) * 2;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.55, y, 1.4)) continue;
+    const sc = 2.4 + hash01(i, 283) * 0.9;
+    awnings.push({ x, y, z, scale: sc, rotY: Math.PI });
+    addCollider(x, y, z, sc * 0.42, sc * 0.42, sc * 0.16);
+  }
+  await scatterSafe(ctx, 'awning', awnings, 'kenney-awnings');
+
   // Succulents at storefront beds (city sidewalk planting strip).
   const succs = [];
   for (let i = 0; i < 14; i++) {
@@ -202,12 +246,34 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'kenney_cactus', cacti, 'kenney-cactus');
 
+  // Kenney palms on leftover city dirt / promenade landward of the walk.
+  const kenneyPalms = [];
+  for (let i = 0; i < 16; i++) {
+    const x = -500 + hash01(i, 241) * 1000;
+    const z = 58 + hash01(i, 251) * 14;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 9)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.7, y, 3.2)) continue;
+    kenneyPalms.push({
+      x, y, z,
+      scale: 2.4 + hash01(i, 257) * 1.6,
+      rotY: hash01(i, 263) * Math.PI * 2,
+    });
+    addCyl(x, y, z, 0.2, 2.6);
+  }
+  await scatterSafe(ctx, 'kenney_palm', kenneyPalms, 'kenney-palms');
+
   // Far authored skyline — Kenney buildings already have separate roof/wall
   // materials. Sit them behind the cheap 60-box LOD (z 300–620).
   const far = [];
   const farSlugs = [
     { slug: 'kenney_skyscraper_a', n: 5, size: 38 },
+    { slug: 'kenney_skyscraper_b', n: 4, size: 36 },
     { slug: 'kenney_skyscraper_c', n: 4, size: 42 },
+    { slug: 'kenney_skyscraper_d', n: 3, size: 40 },
+    { slug: 'kenney_midrise_a', n: 4, size: 26 },
     { slug: 'kenney_midrise_e', n: 5, size: 28 },
   ];
   for (const spec of farSlugs) {
@@ -228,6 +294,71 @@ export async function buildKenneyDressing(ctx) {
     far.push(...placements);
   }
 
+  // Suburban low-rise infill behind the 60-box LOD (z 300–620) and the
+  // authored Kenney skyline row (z>640).
+  const houses = [];
+  for (let i = 0; i < 8; i++) {
+    const x = -400 + hash01(i, 269) * 800;
+    const z = 720 + hash01(i, 307) * 100;
+    const y = CITY_Y;
+    const size = 18;
+    if (z < 720 || z > 820) continue;
+    if (!clear(x, z, size * 0.35, y, size * 0.9)) continue;
+    houses.push({
+      x, y, z,
+      scale: size / 10,
+      rotY: (hash01(i, 311) * 4 | 0) * (Math.PI / 2),
+    });
+    addCollider(x, y, z, size * 0.7, size * 0.9, size * 0.7);
+  }
+  await scatterSafe(ctx, 'kenney_house_a', houses, 'kenney-houses');
+
+  // Kenney trees in leftover city dirt (hash, not rng).
+  const trees = [];
+  for (let i = 0; i < 18; i++) {
+    const x = -500 + hash01(i, 331) * 1000;
+    const z = 64 + hash01(i, 337) * 40;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 10)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 1.1, y, 4.5)) continue;
+    trees.push({
+      x, y, z,
+      scale: 2.2 + hash01(i, 347) * 1.4,
+      rotY: hash01(i, 353) * Math.PI * 2,
+    });
+    addCyl(x, y, z, 0.28, 3.2);
+  }
+  await scatterSafe(ctx, 'kenney_tree_large', trees, 'kenney-trees');
+
+  // Covered cars in mid-block voids (not on Ocean Drive).
+  const covered = [];
+  for (let i = 0; i < 10; i++) {
+    const x = -480 + hash01(i, 359) * 960;
+    const z = 88 + hash01(i, 367) * 40;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 1.4, y, 1.4)) continue;
+    covered.push({
+      x, y, z,
+      scale: 1.0,
+      rotY: (hash01(i, 373) < 0.5 ? 0 : Math.PI / 2),
+    });
+    addCollider(x, y, z, 4.4, 1.5, 1.9);
+  }
+  await scatterSafe(ctx, 'covered_car', covered, 'covered-cars');
+
   setTag('world');
-  return { dumpsters: dumpsters.length, lights: lights.length, far: far.length };
+  return {
+    dumpsters: dumpsters.length,
+    lights: lights.length,
+    trafficLights: trafficLights.length,
+    palms: kenneyPalms.length,
+    houses: houses.length,
+    awnings: awnings.length,
+    signs: signs.length,
+    far: far.length,
+  };
 }

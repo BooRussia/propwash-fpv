@@ -28,6 +28,25 @@ export const MODEL_KEYS = [
   'kenney_skyscraper_a', 'kenney_skyscraper_c', 'kenney_midrise_e', 'kenney_house_a',
   'kenney_cactus', 'kenney_palm',
   'potted_plant_02', 'potted_plant_04', 'plastic_monobloc_chair_01', 'shrub_04', 'lambis_shell',
+  // Poly Haven CC0 street / rooftop / dock props (1k glTF).
+  'fire_hydrant', 'metal_trash_can', 'exterior_aircon_unit', 'wooden_crate_02',
+  'Barrel_01', 'Barrel_02', 'wooden_barrels_01', 'wooden_picnic_table',
+  'modular_street_seating', 'covered_car', 'old_tyre', 'utility_box_01',
+  'concrete_road_barrier', 'outdoor_table_chair_set_01', 'planter_box_01',
+  'ocean_buoy', 'security_camera_01', 'CoffeeCart_01',
+  // Extra Kenney City Kit Roads / Suburban / Commercial / Nature (unused kit meshes).
+  'construction_barrier', 'construction_fence', 'construction_light', 'electricity_pole',
+  'street_sign', 'warning_sign', 'traffic_light_horizontal', 'highway_sign', 'street_light_double',
+  'fence', 'kenney_tree_large', 'kenney_tree_small',
+  'kenney_house_b', 'kenney_house_c', 'kenney_house_d',
+  'awning_wide', 'overhang', 'parasol_b',
+  'kenney_skyscraper_b', 'kenney_skyscraper_d', 'kenney_skyscraper_e',
+  'kenney_midrise_a', 'kenney_midrise_c',
+  'kenney_palm_tall', 'kenney_palm_bend', 'kenney_cactus_tall', 'kenney_bush',
+  // Kenney Car Kit (GLB + Textures/colormap.png).
+  'kenney_sedan', 'kenney_sedan_sports', 'kenney_taxi', 'kenney_suv', 'kenney_suv_luxury',
+  'kenney_van', 'kenney_hatchback', 'kenney_police', 'kenney_ambulance',
+  'kenney_firetruck', 'kenney_garbage_truck', 'kenney_delivery', 'kenney_truck',
 ];
 export const HDRI_KEYS = ['beach_day', 'sunset', 'night', 'day_clear', 'overcast'];
 

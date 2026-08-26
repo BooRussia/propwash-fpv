@@ -66,17 +66,36 @@ for slug in \
   potted_plant_04 \
   plastic_monobloc_chair_01 \
   shrub_04 \
-  lambis_shell
+  lambis_shell \
+  fire_hydrant \
+  metal_trash_can \
+  exterior_aircon_unit \
+  wooden_crate_02 \
+  Barrel_01 \
+  Barrel_02 \
+  wooden_barrels_01 \
+  wooden_picnic_table \
+  modular_street_seating \
+  covered_car \
+  old_tyre \
+  utility_box_01 \
+  concrete_road_barrier \
+  outdoor_table_chair_set_01 \
+  planter_box_01 \
+  ocean_buoy \
+  security_camera_01 \
+  CoffeeCart_01
 do
   ph_model "$slug"
 done
 
-# ---------------- Kenney City / Nature kits (CC0 zip, public URLs) ----------------
+# ---------------- Kenney City / Nature / Car kits (CC0 zip, public URLs) ----------------
 KENNEY_ZIPS=(
   "suburban|https://kenney.nl/media/pages/assets/city-kit-suburban/2c871b7af2-1745479373/kenney_city-kit-suburban_20.zip"
   "commercial|https://kenney.nl/media/pages/assets/city-kit-commercial/a742d900eb-1753115042/kenney_city-kit-commercial_2.1.zip"
   "roads|https://kenney.nl/media/pages/assets/city-kit-roads/74288c9459-1787042796/kenney_city-kit-roads.zip"
   "nature|https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip"
+  "car|https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip"
 )
 
 for spec in "${KENNEY_ZIPS[@]}"; do
@@ -111,6 +130,7 @@ SUB="$TMP/kenney_suburban/Models/GLB format"
 COM="$TMP/kenney_commercial/Models/GLB format"
 ROAD="$TMP/kenney_roads/Models/GLB format"
 NAT="$TMP/kenney_nature/Models/GLTF format"
+CAR="$TMP/kenney_car/Models/GLB format"
 
 copy_kenney_glb dumpster "$ROAD/dumpster.glb" "$ROAD/Textures/colormap.png"
 copy_kenney_glb traffic_cone "$ROAD/construction-cone.glb" "$ROAD/Textures/colormap.png"
@@ -129,10 +149,61 @@ copy_kenney_glb kenney_house_a "$SUB/building-type-a.glb" "$SUB/Textures/colorma
 copy_kenney_glb kenney_cactus "$NAT/cactus_short.glb" ""
 copy_kenney_glb kenney_palm "$NAT/tree_palmDetailedShort.glb" ""
 
+# Extra City Kit Roads street dressing (skip tiled road meshes — another agent owns roads)
+copy_kenney_glb construction_barrier "$ROAD/construction-barrier.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb construction_fence "$ROAD/construction-fence.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb construction_light "$ROAD/construction-light.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb electricity_pole "$ROAD/electricity-pole.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb street_sign "$ROAD/road-sign-object-street.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb warning_sign "$ROAD/road-sign-object-warning.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb traffic_light_horizontal "$ROAD/traffic-light-object-horizontal.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb highway_sign "$ROAD/sign-highway.glb" "$ROAD/Textures/colormap.png"
+copy_kenney_glb street_light_double "$ROAD/light-curved-double.glb" "$ROAD/Textures/colormap.png"
+
+# Extra suburban houses / fence / trees
+copy_kenney_glb fence "$SUB/fence.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_tree_large "$SUB/tree-large.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_tree_small "$SUB/tree-small.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_house_b "$SUB/building-type-b.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_house_c "$SUB/building-type-c.glb" "$SUB/Textures/colormap.png"
+copy_kenney_glb kenney_house_d "$SUB/building-type-d.glb" "$SUB/Textures/colormap.png"
+
+# Extra commercial awnings / parasols / skyline
+copy_kenney_glb awning_wide "$COM/detail-awning-wide.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb overhang "$COM/detail-overhang.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb parasol_b "$COM/detail-parasol-b.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_skyscraper_b "$COM/building-skyscraper-b.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_skyscraper_d "$COM/building-skyscraper-d.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_skyscraper_e "$COM/building-skyscraper-e.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_midrise_a "$COM/building-a.glb" "$COM/Textures/colormap.png"
+copy_kenney_glb kenney_midrise_c "$COM/building-c.glb" "$COM/Textures/colormap.png"
+
+# Extra nature palms / cactus / bush (vertex-coloured, no atlas)
+copy_kenney_glb kenney_palm_tall "$NAT/tree_palmDetailedTall.glb" ""
+copy_kenney_glb kenney_palm_bend "$NAT/tree_palmBend.glb" ""
+copy_kenney_glb kenney_cactus_tall "$NAT/cactus_tall.glb" ""
+copy_kenney_glb kenney_bush "$NAT/plant_bushDetailed.glb" ""
+
+# Car Kit street vehicles (colormap atlas, same as City Kits)
+copy_kenney_glb kenney_sedan "$CAR/sedan.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_sedan_sports "$CAR/sedan-sports.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_taxi "$CAR/taxi.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_suv "$CAR/suv.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_suv_luxury "$CAR/suv-luxury.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_van "$CAR/van.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_hatchback "$CAR/hatchback-sports.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_police "$CAR/police.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_ambulance "$CAR/ambulance.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_firetruck "$CAR/firetruck.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_garbage_truck "$CAR/garbage-truck.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_delivery "$CAR/delivery.glb" "$CAR/Textures/colormap.png"
+copy_kenney_glb kenney_truck "$CAR/truck.glb" "$CAR/Textures/colormap.png"
+
 cp -f "$TMP/kenney_suburban/License.txt" "$VENDOR/License-suburban.txt"
 cp -f "$TMP/kenney_commercial/License.txt" "$VENDOR/License-commercial.txt"
 cp -f "$TMP/kenney_roads/License.txt" "$VENDOR/License-roads.txt"
 cp -f "$TMP/kenney_nature/License.txt" "$VENDOR/License-nature.txt"
+cp -f "$TMP/kenney_car/License.txt" "$VENDOR/License-car.txt"
 
 echo "DONE. models:"
 du -sh "$ASSETS"/* | sort

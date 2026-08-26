@@ -214,6 +214,233 @@ export function decoFacadeTextures(cols = 4, rows = 4) {
   return { albedo: mk(ca, true), emissive: mk(ce, true) };
 }
 
+// Shared albedo + emissive CanvasTexture pair. Both canvases share ONE window
+// grid so night lights land on daylight openings. Own mulberry32 seed — never
+// a layout stream. Wall atlases only; callers map via facadeUV + stripBoxCaps.
+//   seed, cols, rows, size=512, wall, paint(a, r, grid), cell(...) → pane rect
+export function facadeCanvasPair(opts) {
+  const {
+    seed, cols, rows, size = 512, wall = '#ffffff', paint, cell,
+    lit = 0.55, warmBias = 0.72,
+  } = opts;
+  const S = size;
+  const cw = S / cols, ch = S / rows;
+  const r = mulberry32(seed);
+  const ca = document.createElement('canvas'); ca.width = ca.height = S;
+  const ce = document.createElement('canvas'); ce.width = ce.height = S;
+  const a = ca.getContext('2d');
+  const e = ce.getContext('2d');
+  a.fillStyle = wall; a.fillRect(0, 0, S, S);
+  e.fillStyle = '#000000'; e.fillRect(0, 0, S, S);
+  if (paint) paint(a, r, { S, cols, rows, cw, ch });
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x0 = col * cw, y0 = row * ch;
+      const pane = cell({ a, e, r, x0, y0, cw, ch, col, row, S });
+      if (!pane) continue;
+      if (r() < lit) {
+        e.fillStyle = r() < warmBias
+          ? `rgba(255,${196 + (r() * 40) | 0},142,${0.7 + r() * 0.3})`
+          : `rgba(178,214,255,${0.55 + r() * 0.35})`;
+        e.fillRect(pane.wx, pane.wy, pane.ww, pane.wh);
+      }
+    }
+  }
+  const mk = (canvas) => {
+    const t = new THREE.CanvasTexture(canvas);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 8;
+    return t;
+  };
+  return { albedo: mk(ca), emissive: mk(ce) };
+}
+
+// Red/tan Miami Beach brick, punched windows, dark reveals, limestone sills.
+// ~6 bays x 8 floors on a 512 canvas. Brick color lives in the albedo.
+export function brickFacadeTextures(cols = 6, rows = 8) {
+  return facadeCanvasPair({
+    seed: 0xB81C4,
+    cols, rows,
+    wall: '#c47a5c',
+    paint(a, r, { S }) {
+      a.fillStyle = '#d9cfc0'; a.fillRect(0, 0, S, S);
+      const bh = 8, bw = 16;
+      const nRows = S / bh, nCols = S / bw;
+      for (let j = 0; j < nRows; j++) {
+        const off = (j % 2) ? bw / 2 : 0;
+        for (let i = 0; i < nCols; i++) {
+          const tan = r() < 0.22;
+          const rr = tan ? 186 + (r() * 36) | 0 : 154 + (r() * 42) | 0;
+          const gg = tan ? 128 + (r() * 32) | 0 : 72 + (r() * 38) | 0;
+          const bb = tan ? 96 + (r() * 24) | 0 : 58 + (r() * 26) | 0;
+          a.fillStyle = `rgb(${rr},${gg},${bb})`;
+          const x = (i * bw + off) % S;
+          const y = j * bh;
+          const w = bw - 2, h = bh - 2;
+          if (x + w <= S) a.fillRect(x + 1, y + 1, w, h);
+          else {
+            a.fillRect(x + 1, y + 1, S - x - 1, h);
+            a.fillRect(0, y + 1, w - (S - x - 1), h);
+          }
+        }
+      }
+      for (let i = 0; i < 400; i++) {
+        a.fillStyle = `rgba(40,28,22,${r() * 0.06})`;
+        a.fillRect(r() * S, r() * S, 2 + r() * 6, 1 + r() * 3);
+      }
+    },
+    cell({ a, x0, y0, cw, ch }) {
+      const wx = x0 + cw * 0.18, wy = y0 + ch * 0.22;
+      const ww = cw * 0.64, wh = ch * 0.52;
+      a.fillStyle = '#8a4a38';
+      a.fillRect(wx - 4, wy - 6, ww + 8, 5);
+      a.fillStyle = 'rgba(28,22,18,0.72)';
+      a.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+      const g = a.createLinearGradient(wx, wy, wx, wy + wh);
+      g.addColorStop(0, '#1e2830');
+      g.addColorStop(1, '#3a4a54');
+      a.fillStyle = g;
+      a.fillRect(wx, wy, ww, wh);
+      a.fillStyle = 'rgba(32,30,28,0.85)';
+      a.fillRect(wx + ww / 2 - 1, wy, 2, wh);
+      a.fillRect(wx, wy + wh * 0.45, ww, 2);
+      a.fillStyle = '#e6e0d2';
+      a.fillRect(wx - 4, wy + wh, ww + 8, ch * 0.08);
+      a.fillStyle = 'rgba(255,255,255,0.35)';
+      a.fillRect(wx - 4, wy + wh, ww + 8, 1.5);
+      a.fillStyle = 'rgba(90,82,70,0.28)';
+      a.fillRect(wx - 4, wy + wh + ch * 0.07, ww + 8, 1.5);
+      return { wx, wy, ww, wh };
+    },
+  });
+}
+
+// Warm cream stucco condo. Sliding-glass balcony doors (no deco eyebrow).
+// White-based albedo so a per-tower pastel can tint it.
+export function stuccoCondoTextures(cols = 4, rows = 6) {
+  return facadeCanvasPair({
+    seed: 0x57CC0,
+    cols, rows,
+    wall: '#ffffff',
+    paint(a, r, { S }) {
+      for (let i = 0; i < 1500; i++) {
+        a.fillStyle = `rgba(${r() < 0.5 ? '232,220,204' : '255,255,255'},${0.05 + r() * 0.12})`;
+        const s = 3 + r() * 12;
+        a.beginPath();
+        a.ellipse(r() * S, r() * S, s, s * (0.5 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2);
+        a.fill();
+      }
+    },
+    cell({ a, x0, y0, cw, ch }) {
+      a.fillStyle = 'rgba(120,114,106,0.22)';
+      a.fillRect(x0, y0 + ch - 3, cw, 3);
+      const wx = x0 + cw * 0.08, wy = y0 + ch * 0.12;
+      const ww = cw * 0.84, wh = ch * 0.72;
+      a.fillStyle = 'rgba(210,206,198,0.95)';
+      a.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+      const g = a.createLinearGradient(wx, wy, wx + ww, wy + wh);
+      g.addColorStop(0, '#6a8a96');
+      g.addColorStop(0.45, '#8aadb8');
+      g.addColorStop(1, '#5c7c88');
+      a.fillStyle = g;
+      a.fillRect(wx, wy, ww, wh);
+      a.fillStyle = 'rgba(236,232,224,0.92)';
+      a.fillRect(wx + ww * 0.5 - 2, wy, 4, wh);
+      a.fillStyle = 'rgba(80,84,88,0.55)';
+      a.fillRect(wx + ww * 0.5 + 6, wy + wh * 0.48, 3, 8);
+      a.fillStyle = 'rgba(228,224,216,0.9)';
+      a.fillRect(x0 + cw * 0.04, wy + wh, cw * 0.92, ch * 0.06);
+      a.fillStyle = 'rgba(90,86,80,0.28)';
+      a.fillRect(x0 + cw * 0.04, wy + wh + ch * 0.055, cw * 0.92, 2);
+      a.fillStyle = 'rgba(40,48,52,0.45)';
+      a.fillRect(x0 + cw * 0.05, wy + wh - ch * 0.02, cw * 0.9, 2);
+      for (let k = 0; k < 5; k++) {
+        a.fillRect(x0 + cw * (0.12 + k * 0.18), wy + wh - ch * 0.12, 1.5, ch * 0.1);
+      }
+      return { wx, wy, ww, wh };
+    },
+  });
+}
+
+// Teal/green curtain wall with horizontal spandrels — not the blue-grey glass
+// photo. Vision panes and night lights share the same grid.
+export function tealGlassTextures(cols = 8, rows = 10) {
+  return facadeCanvasPair({
+    seed: 0x7EA155,
+    cols, rows,
+    wall: '#1a3c40',
+    paint(a, r, { S, cols: nCols, rows: nRows, cw, ch }) {
+      for (let row = 0; row < nRows; row++) {
+        const y0 = row * ch;
+        a.fillStyle = '#24383c';
+        a.fillRect(0, y0, S, ch * 0.22);
+        a.fillStyle = 'rgba(18,40,42,0.55)';
+        a.fillRect(0, y0 + ch * 0.18, S, 2);
+        a.fillStyle = `rgba(120,180,170,${0.08 + r() * 0.06})`;
+        a.fillRect(0, y0, S, 1);
+      }
+      for (let col = 0; col < nCols; col++) {
+        a.fillStyle = 'rgba(12,28,30,0.65)';
+        a.fillRect(col * cw, 0, 3, S);
+        a.fillStyle = 'rgba(160,190,186,0.18)';
+        a.fillRect(col * cw + 3, 0, 1, S);
+      }
+    },
+    cell({ a, r, x0, y0, cw, ch }) {
+      const wx = x0 + 4, wy = y0 + ch * 0.24;
+      const ww = cw - 7, wh = ch * 0.72;
+      const g = a.createLinearGradient(wx, wy, wx + ww, wy + wh);
+      g.addColorStop(0, '#2d6e72');
+      g.addColorStop(0.4, '#4aa090');
+      g.addColorStop(1, '#1e5558');
+      a.fillStyle = g;
+      a.fillRect(wx, wy, ww, wh);
+      a.fillStyle = `rgba(180,230,220,${0.08 + r() * 0.1})`;
+      a.fillRect(wx + ww * 0.15, wy, ww * 0.18, wh);
+      return { wx, wy, ww, wh };
+    },
+  });
+}
+
+// Coral/salmon punched-window hotel. White-based so a material color tints it.
+export function coralCondoTextures(cols = 5, rows = 6) {
+  return facadeCanvasPair({
+    seed: 0xC0A1A,
+    cols, rows,
+    wall: '#ffffff',
+    paint(a, r, { S }) {
+      for (let i = 0; i < 1600; i++) {
+        a.fillStyle = r() < 0.55
+          ? `rgba(255,214,200,${0.06 + r() * 0.12})`
+          : `rgba(255,255,255,${0.05 + r() * 0.14})`;
+        const s = 3 + r() * 11;
+        a.beginPath();
+        a.ellipse(r() * S, r() * S, s, s * (0.5 + r() * 0.6), r() * Math.PI, 0, Math.PI * 2);
+        a.fill();
+      }
+    },
+    cell({ a, x0, y0, cw, ch }) {
+      a.fillStyle = 'rgba(200,160,150,0.16)';
+      a.fillRect(x0, y0 + ch - 2, cw, 2);
+      const wx = x0 + cw * 0.22, wy = y0 + ch * 0.24;
+      const ww = cw * 0.56, wh = ch * 0.48;
+      a.fillStyle = 'rgba(90,70,64,0.45)';
+      a.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+      const g = a.createLinearGradient(wx, wy, wx, wy + wh);
+      g.addColorStop(0, '#3a4248');
+      g.addColorStop(1, '#5a6870');
+      a.fillStyle = g;
+      a.fillRect(wx, wy, ww, wh);
+      a.fillStyle = 'rgba(255,244,238,0.85)';
+      a.fillRect(wx + ww / 2 - 1.5, wy, 3, wh);
+      a.fillStyle = 'rgba(255,248,242,0.92)';
+      a.fillRect(wx - 4, wy + wh, ww + 8, ch * 0.05);
+      return { wx, wy, ww, wh };
+    },
+  });
+}
+
 // Weathered stucco — the art-deco hotel skin. Pastel is applied per-vertex,
 // this sheet only supplies the tonal break-up and the trowel texture.
 export function stuccoTexture() {

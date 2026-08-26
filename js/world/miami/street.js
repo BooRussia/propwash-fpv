@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { createVehicleFleet, fleetIsRoller } from '../vehicles.js';
+import {
+  createVehicleFleet, fleetIsRoller,
+  FLEET_LANE_BEACH_Z, FLEET_LANE_CITY_Z,
+  PARK_LANE_BEACH_Z, PARK_LANE_CITY_Z,
+} from '../vehicles.js';
 import {
   CITY_Y, PIER_X, GAP_X, CROSS_X, PLAZA_X0, PLAZA_X1, CLUB_X, groundHeight, stripY,
 } from './constants.js';
@@ -203,13 +207,16 @@ export async function buildStreet(ctx) {
   const TAXI_A = 14, TAXI_B = 21;
   for (let i = 0; i < NC; i++) {
     const x = -560 + i * 34 + (rng() - 0.5) * 8;      // legacy draw
-    const z = i % 2 ? 39.5 : 48.5;
+    const rolling = fleetIsRoller(i);
+    const z = rolling
+      ? (i % 2 ? FLEET_LANE_BEACH_Z : FLEET_LANE_CITY_Z)
+      : (i % 2 ? PARK_LANE_BEACH_Z : PARK_LANE_CITY_Z);
     let colorHex = carCols[(rng() * carCols.length) | 0];   // legacy draw
     const roll = rng4();
     let kind = roll < 0.42 ? 'sedan' : roll < 0.72 ? 'suv' : roll < 0.88 ? 'pickup' : 'sports';
     if (i === BUS_I) { kind = 'bus'; colorHex = 0xe9eef2; }
     else if (i === TAXI_A || i === TAXI_B) { kind = 'taxi'; colorHex = 0xffc400; }
-    carSpots.push({ x, z, rotY: i % 2 ? 0 : Math.PI, kind, colorHex });
+    carSpots.push({ x, z, rotY: i % 2 ? 0 : Math.PI, kind, colorHex, parked: !rolling });
     const b = CAR_BOX[kind] || CAR_BOX.sedan;
     // Rollers drop the parked AABB — the physics grid is baked once, so a
     // moving box goes stale. Kiss = ghost; stay in lane, never dodge.
@@ -363,6 +370,15 @@ export function buildStreetFurniture(ctx, street) {
     if (blocked(mx)) continue;
     stamp(meterGeo, mx, stripY(51.35), 51.35, (rng4() - 0.5) * 0.2);
     addCyl(mx, stripY(51.35), 51.35, 0.11, 1.42);
+  }
+  // beach-shoulder meters — hash yaw only (rng4 count in this pass stays put)
+  for (const s of carSpots) {
+    if (s.z > 44 || s.kind === 'bus' || s.parked === false) continue;
+    const mx = s.x + 2.1;
+    if (blocked(mx)) continue;
+    const mz = 36.65;
+    stamp(meterGeo, mx, stripY(mz), mz, (hash01((s.x * 10) | 0, 36) - 0.5) * 0.2);
+    addCyl(mx, stripY(mz), mz, 0.11, 1.42);
   }
   // bike racks — flanking the two crosswalks + by the bus stop
   const rack = (rx) => {

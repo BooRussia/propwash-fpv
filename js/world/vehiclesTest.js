@@ -29,7 +29,7 @@ function loadFleetMotion() {
       FLEET_ROLL_I, FLEET_BUS_I, FLEET_X0, FLEET_DX, FLEET_N,
       FLEET_WRAP0, FLEET_WRAP_SPAN, FLEET_CROSS_X, FLEET_ZEBRA_HALF,
       FLEET_HOLD, FLEET_SPEED_MIN, FLEET_SPEED_MAX,
-      FLEET_LANE_BEACH_Z, FLEET_LANE_CITY_Z,
+      FLEET_LANE_BEACH_Z, FLEET_LANE_CITY_Z, PARK_LANE_BEACH_Z, PARK_LANE_CITY_Z,
       fleetIsRoller, fleetLaneOf, fleetCrawlSpeed, fleetWrapX,
       fleetStopAhead, stepFleetRoller,
     };`)();
@@ -59,14 +59,22 @@ export function runVehiclesTests() {
     && M.FLEET_ROLL_I.join() === '3,6,11,14,19,22,27,30');
   ok('bus 16 is not a roller', M.FLEET_BUS_I === 16 && !M.fleetIsRoller(16)
     && !M.FLEET_ROLL_I.includes(16));
-  ok('odds +X on z=39.5', [3, 11, 19, 27].every((i) => {
+  ok('odds +X on beach travel lane', [3, 11, 19, 27].every((i) => {
     const L = M.fleetLaneOf(i);
-    return L.z === 39.5 && L.rotY === 0 && L.dir === 1;
+    return L.z === M.FLEET_LANE_BEACH_Z && L.rotY === 0 && L.dir === 1
+      && M.FLEET_LANE_BEACH_Z === 41.7;
   }));
-  ok('evens −X on z=48.5', [6, 14, 22, 30].every((i) => {
+  ok('evens −X on city travel lane', [6, 14, 22, 30].every((i) => {
     const L = M.fleetLaneOf(i);
-    return L.z === 48.5 && L.rotY === Math.PI && L.dir === -1;
+    return L.z === M.FLEET_LANE_CITY_Z && L.rotY === Math.PI && L.dir === -1
+      && M.FLEET_LANE_CITY_Z === 46.3;
   }));
+  ok('shoulders sit outside the travel lanes',
+    M.PARK_LANE_BEACH_Z === 38.45 && M.PARK_LANE_CITY_Z === 49.55
+    && M.PARK_LANE_BEACH_Z < M.FLEET_LANE_BEACH_Z
+    && M.FLEET_LANE_BEACH_Z < 44
+    && 44 < M.FLEET_LANE_CITY_Z
+    && M.FLEET_LANE_CITY_Z < M.PARK_LANE_CITY_Z);
   ok('crawl 6–8 m/s', M.FLEET_ROLL_I.every((i) => {
     const s = M.fleetCrawlSpeed(i);
     return s >= 6 && s <= 8;
@@ -101,7 +109,7 @@ export function runVehiclesTests() {
   // +X car approaching −129: stop at near (west) zebra edge, hold 2s, then go
   {
     const stop = -129 - M.FLEET_ZEBRA_HALF;
-    const st = { x: stop - 1.0, hold: 0, dir: 1, speed: 7, z: 39.5, rotY: 0 };
+    const st = { x: stop - 1.0, hold: 0, dir: 1, speed: 7, z: M.FLEET_LANE_BEACH_Z, rotY: 0 };
     M.stepFleetRoller(st, 0.2);                       // 1.4 m would overshoot
     ok('+X stops at −129 near edge', Math.abs(st.x - stop) < 1e-9 && st.hold === 2);
     const held = { ...st };
@@ -111,19 +119,19 @@ export function runVehiclesTests() {
     ok('+X still on the line at hold end', Math.abs(st.x - stop) < 1e-9 && st.hold === 0);
     M.stepFleetRoller(st, 0.1);
     ok('+X continues through the zebra', st.x > stop && st.x < -129 + M.FLEET_ZEBRA_HALF + 2);
-    ok('+X stayed on beach lane', st.z === 39.5);
+    ok('+X stayed on beach lane', st.z === M.FLEET_LANE_BEACH_Z);
   }
 
   // −X car approaching 57: stop at near (east) zebra edge
   {
     const stop = 57 + M.FLEET_ZEBRA_HALF;
-    const st = { x: stop + 0.8, hold: 0, dir: -1, speed: 6.5, z: 48.5, rotY: Math.PI };
+    const st = { x: stop + 0.8, hold: 0, dir: -1, speed: 6.5, z: M.FLEET_LANE_CITY_Z, rotY: Math.PI };
     M.stepFleetRoller(st, 0.2);
     ok('−X stops at 57 near edge', Math.abs(st.x - stop) < 1e-9 && st.hold === 2);
     M.stepFleetRoller(st, 2.05);
     M.stepFleetRoller(st, 0.1);
     ok('−X continues west through 57', st.x < stop && st.x > 57 - 4);
-    ok('−X stayed on city lane', st.z === 48.5);
+    ok('−X stayed on city lane', st.z === M.FLEET_LANE_CITY_Z);
   }
 
   {

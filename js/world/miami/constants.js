@@ -42,7 +42,8 @@ export const FUEL_Z = -30;                // fuel dock, out over the water
 
 // ---- Ocean Drive ----
 export const ROAD_Z = 44;          // road centre line
-export const ROAD_HALF = 6;        // 12 m carriageway
+export const ROAD_HALF = 6;        // legacy keep-out half (ROAD_Z0–Z1)
+export const ROAD_VISUAL_W = 14;   // painted carriageway: 2 park + 2 travel
 export const ROAD_Z0 = 37.5;       // road band (nothing solid may stand inside)
 export const ROAD_Z1 = 50.5;
 // Thin granite curbs at the carriageway faces — NOT the old 2.4 m fat
