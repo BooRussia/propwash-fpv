@@ -1164,6 +1164,16 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-370, 96, 4, 2, 0.15) === false
     && leftoverLotOverlap(-690, 96, 4, 2, 0.15) === false
     && leftoverLotOverlap(-60, 210, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-350, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-280, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-630, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-20, 210, 4, 2, 0.15) === false
+    && leftoverLotOverlap(20, 210, 4, 2, 0.15) === false
+    && leftoverLotOverlap(0, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-40, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(130, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-350, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(110, 210, 0.8, 2.4, 0.15) === false
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && leftoverLotOverlap(210, 96, 6.2, 6.2, 0.15) === false

@@ -1692,6 +1692,17 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "roof-whoops-mid",
+      "title": "More rooftop AC gaps and z=210 rings on arcade plates, leftoverLot unmoved",
+      "status": "done",
+      "notes": "AC at [-350,-280,-630]@96 and [-20,20]@210; rings at [0,-40,130,-350,110]@210; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
