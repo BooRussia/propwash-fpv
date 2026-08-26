@@ -532,6 +532,26 @@
       "id": "hotel-flags",
       "title": "Signed flags on Ocean Drive hotel crowns, hash01, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "court-more",
+      "title": "Two more courtyard drop-wells on remaining z=152/210 plates, fly −Y, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "arcade-inland",
+      "title": "Ground-floor fly-through arcades on z=210 mid-rises, jambs only, hash01",
+      "status": "pending"
+    },
+    {
+      "id": "npc-inland-2",
+      "title": "Walkers on z=152/210 sidewalks between the new mid-rises, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "roof-rings-2",
+      "title": "Billboard rings on remaining z=259/210 roofs that miss court wells, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
