@@ -732,7 +732,13 @@
     {
       "id": "npc-sit-96",
       "title": "Sitters under z=96 inland arcades, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nArcade96Sit=12 under z=96 INLAND_ARCADE_CELLS [-600,-540,-190]; hash01; no colliders; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "hotel-canopy",

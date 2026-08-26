@@ -196,6 +196,10 @@ export function runMiamiCrowdTests() {
     && crowd.includes('87.6') && crowd.includes('104.4')
     && crowd.includes('hash01(i + 3800')
     && !crowd.includes('addCollider'));
+  ok('crowd sits under z=96 inland arcades',
+    crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
+    && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes("kind: 'arcade-sit'")
+    && !crowd.includes('addCollider'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd people have torso + limbs, not a single box',
     crowd.includes('personTorsoGeo') && crowd.includes('personLimbGeo')
@@ -983,6 +987,36 @@ function FRONT_Z_OK() {
     && arcadeSitSpots.some((p) => p.x > 0)
     && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after arcade sitters',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const arcade96 = INLAND_ARCADE_CELLS.filter(([, z]) => z === 96);
+  const arcade96SitSpots = [];
+  for (let i = 0; i < 12; i++) {
+    const cell = arcade96[i % arcade96.length];
+    const [cx, cz] = cell;
+    const x = cx + (hash01(i + 3900, 3) - 0.5) * (INLAND_ARCADE_OPEN_W - 1.2);
+    const z = cz + (hash01(i + 3900, 5) - 0.5) * 8.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    arcade96SitSpots.push({ x, z });
+  }
+  ok('arcade sitters sit under z=96 inland arcades, miss leftoverLot / travel',
+    crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
+    && crowd.includes("kind: 'arcade-sit'")
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && arcade96.length === 3
+    && arcade96.every(([x, z]) => x < 240 && z === 96
+      && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false)
+    && arcade96SitSpots.length >= 9
+    && arcade96SitSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z > TRAVEL_Z1)
+    && arcade96SitSpots.some((p) => p.x < -500)
+    && arcade96SitSpots.some((p) => p.x > -250)
+    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after z=96 arcade sitters',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const ROW96_WALK_ZS = [87.6, 104.4];

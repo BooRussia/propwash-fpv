@@ -1185,6 +1185,11 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-80, 210, 4.4, 14, 0.15) === false
     && leftoverLotOverlap(90, 210, 4.4, 14, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=96 arcade sitters miss leftoverLot A–H',
+    leftoverLotOverlap(-600, 96, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(-540, 96, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(-190, 96, 4.4, 14, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=181 alley pipes miss leftoverLot A–H',
     leftoverLotOverlap(-600, 181, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-540, 181, 2.4, 2.6, 0.15) === false

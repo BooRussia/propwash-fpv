@@ -221,12 +221,13 @@ export function buildCrowd(ctx) {
   const nBeachWalk = 24;
   const nMidrise = 40;
   const nArcadeSit = 16;
+  const nArcade96Sit = 12;
   const nRow96 = 24;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
-    + nWestSwim + nReefSwim + nMidrise + nArcadeSit + nRow96;
+    + nWestSwim + nReefSwim + nMidrise + nArcadeSit + nArcade96Sit + nRow96;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -709,6 +710,23 @@ export function buildCrowd(ctx) {
       yaw: hash01(i + 3700, 7) < 0.5 ? 0 : Math.PI,
       speed: 0, phase: hash01(i + 3700, 11) * Math.PI * 2,
       shirt: pick(SHIRT, i + 3700, 13), skin: pick(SKIN, i + 3700, 17),
+    });
+  }
+
+  const arcade96 = INLAND_ARCADE_CELLS.filter(([, z]) => z === 96);
+  for (let i = 0; i < nArcade96Sit; i++) {
+    const cell = arcade96[i % arcade96.length];
+    if (!cell) continue;
+    const [cx, cz] = cell;
+    const x = cx + (hash01(i + 3900, 3) - 0.5) * (INLAND_ARCADE_OPEN_W - 1.2);
+    const z = cz + (hash01(i + 3900, 5) - 0.5) * 8.0;
+    if (npcOffLimits(x, z)) continue;
+    actors.push({
+      kind: 'arcade-sit', i: actors.length, extra: -1,
+      x, z, y: CITY_Y + 0.06, dir: 0,
+      yaw: hash01(i + 3900, 7) < 0.5 ? 0 : Math.PI,
+      speed: 0, phase: hash01(i + 3900, 11) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3900, 13), skin: pick(SKIN, i + 3900, 17),
     });
   }
 
