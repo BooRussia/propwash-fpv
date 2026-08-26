@@ -898,13 +898,15 @@ export function gap429Shops() {
 // an alley-pipe whoop (fly +X). West of x=240. Miss GAP_X, leftoverLot
 // A–H, convention z1=166, helipad W (x -452..-408, z1=128), travel
 // lanes 40.2–47.8. West pair at x=-600 is west of x=-430 and misses
-// helipad W on both axes. West pair at x=-660 is 60 m west of -600,
-// still on the 1500 m city plate (x > -750). New RESERVED west of x=240.
+// helipad W on both axes. West pair at x=-660 is 60 m west of -600;
+// west pair at x=-720 is 60 m west of -660. Both stay on the 1500 m
+// city plate (x0=-729 > -750). New RESERVED west of x=240.
 // Do not slide leftoverLot A–H.
 export const INLAND_MIDRISE_W = 18;
 export const INLAND_MIDRISE_D = 14;
 export const INLAND_MIDRISE_H = 32;
 export const INLAND_MIDRISE_CELLS = Object.freeze([
+  [-720, 237], [-720, 259],
   [-660, 237], [-660, 259],
   [-600, 237], [-600, 259],
   [-540, 237], [-540, 259],

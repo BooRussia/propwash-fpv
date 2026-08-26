@@ -918,10 +918,12 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 54
+    INLAND_MIDRISE_CELLS.length === 56
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 152)
@@ -947,7 +949,12 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 54);
+  ok('signed inland mid-rises', inlandList.length === 56);
+  ok('x=-720 skyline pair stays on 1500 m city plate',
+    inlandList.filter((g) => g.x === -720).length === 2
+    && inlandList.some((g) => g.x === -720 && g.z === 237)
+    && inlandList.some((g) => g.x === -720 && g.z === 259)
+    && inlandList.filter((g) => g.x === -720).every((g) => g.x0 > -750 && g.x0 === -729));
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < inlandList.length; i++) {

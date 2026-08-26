@@ -1222,6 +1222,14 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('x=-720 skyline pair misses leftoverLot A–H and stays on the city plate',
+    leftoverLotOverlap(-720, 237, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-720, 259, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-720, 248, 1.2, 1.0, 0.15) === false
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 259)
+    && (-720 - 18 / 2) > -750
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=152/210/skyline density fill misses leftoverLot A–H',
     leftoverLotOverlap(-660, 152, 18, 14, 0.15) === false
     && leftoverLotOverlap(-160, 152, 18, 14, 0.15) === false
