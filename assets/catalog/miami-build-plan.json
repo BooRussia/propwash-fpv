@@ -111,6 +111,26 @@
       "id": "city-skyline",
       "title": "Inland city dressing (rooftop kits, alleys, more six-sided mid-rises) without burning rng",
       "status": "pending"
+    },
+    {
+      "id": "npc-inland",
+      "title": "Crowd on Fifth and Española sidewalks plus more beach/boardwalk density",
+      "status": "pending"
+    },
+    {
+      "id": "lincoln-walk",
+      "title": "Pedestrian mall analogue inland of Ocean Drive (z~120) with fly-under pergolas, west of leftoverLot A",
+      "status": "pending"
+    },
+    {
+      "id": "washington-ave",
+      "title": "Second N-S street west of Ocean Drive with painted lanes, parked cars, and one fly-under arcade",
+      "status": "pending"
+    },
+    {
+      "id": "rooftop-whoops",
+      "title": "Signed rooftop AC gaps and billboard rings as extra FPV whoops, hash01, no rng burn",
+      "status": "pending"
     }
   ],
   "landmarks": {
@@ -125,7 +145,7 @@
     "cinema": { "x": 166, "frontZ": 57.6, "status": "done" },
     "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" },
     "espanolaWay": { "x": 243, "frontX": 234.1, "status": "done", "note": "GAP_X=243 west face only, east of cinema, west of leftoverLot A" },
-    "espanola": { "x": 243, "frontZ": 48.1, "status": "in_progress", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" }
+    "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",
