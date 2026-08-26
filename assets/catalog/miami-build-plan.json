@@ -126,7 +126,8 @@
     {
       "id": "npc-inland",
       "title": "Crowd on Fifth and Española sidewalks plus more beach/boardwalk density",
-      "status": "pending"
+      "status": "done",
+      "files": ["js/world/miami/crowd.js", "js/world/miami/crowdTest.js"]
     },
     {
       "id": "lincoln-walk",

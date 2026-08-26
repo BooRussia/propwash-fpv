@@ -127,12 +127,17 @@ export function runMiamiCrowdTests() {
     && crowd.includes('inCarriageway') && crowd.includes('ROAD_Z0'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd is thicker',
-    crowd.includes('const nWalk = 110') && crowd.includes('const nBike = 32')
-    && crowd.includes('const nBeach = 52') && crowd.includes('const nSwim = 28'));
+    crowd.includes('const nWalk = 140') && crowd.includes('const nBike = 32')
+    && crowd.includes('const nBeach = 68') && crowd.includes('const nSwim = 36')
+    && crowd.includes('const nInland = 36'));
   ok('crowd has parked bikes, volleyball, lifeguard sitters',
     crowd.includes("kind: 'parked'") && crowd.includes("kind: 'vball'")
     && crowd.includes("kind: 'guard'") && crowd.includes('BIKE_RACK_XS')
     && crowd.includes('LIFEGUARD_SIT_CELLS') && crowd.includes('buildBikeRacks'));
+  ok('crowd walks Fifth and Española sidewalks',
+    crowd.includes("kind: 'inland'") && crowd.includes('FIFTH_WALK_XS')
+    && crowd.includes('ESPA_WALK_X') && crowd.includes('INLAND_WALK_Z0')
+    && crowd.includes('leftoverLotOverlap'));
   ok('parked bikes sit on the city walk, not travel lanes',
     crowd.includes('BIKE_RACK_XS') && !BIKE_RACK_TRAVEL
     && cityZ > TRAVEL_Z1 && VBALL_Z1 < TRAVEL_Z0
@@ -541,6 +546,12 @@ export function runMiamiCrowdTests() {
   ok('leftoverLot A–H still signed after inland mid-rises',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  ok('inland sidewalks miss travel lanes and leftoverLot A–H',
+    crowd.includes('INLAND_WALK_Z0') && crowd.includes('92')
+    && crowd.includes('ESPA_WALK_X') && crowd.includes('235.3')
+    && leftoverLotOverlap(235.3, 92, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(48.9, 114, 0.6, 0.6, 0.15) === false
+    && 92 > TRAVEL_Z1 && 235.3 < 240);
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }

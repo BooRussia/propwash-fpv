@@ -8,7 +8,7 @@ import {
   SHORE_Z, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y,
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
-  groundHeight, inKeepout,
+  groundHeight, inKeepout, leftoverLotOverlap,
 } from './constants.js';
 
 // ============================================================
@@ -29,6 +29,10 @@ export const LIFEGUARD_SIT_CELLS = Object.freeze([
   [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
 ]);
 export const LIFEGUARD_DECK = 2.52;
+export const FIFTH_WALK_XS = Object.freeze([48.9, 64.7]);
+export const ESPA_WALK_X = 235.3;
+export const INLAND_WALK_Z0 = 92;
+export const INLAND_WALK_Z1 = 168;
 const VBALL_PITCH = 26;
 
 const SKIN = [0xf3d4b8, 0xd4a574, 0x8d5524, 0xc68642, 0xffdbac, 0x6b3f2a];
@@ -78,16 +82,17 @@ export function buildCrowd(ctx) {
   const { root, track } = ctx;
   const actors = [];
 
-  const nWalk = 110;
+  const nWalk = 140;
   const nBike = 32;
-  const nSkate = 24;
-  const nBeach = 52;
-  const nSwim = 28;
-  const nSit = 22;
+  const nSkate = 32;
+  const nBeach = 68;
+  const nSwim = 36;
+  const nSit = 28;
   const nParked = BIKE_RACK_XS.length * BIKE_RACK_N;
   const nVball = 12;
   const nGuard = LIFEGUARD_SIT_CELLS.length;
-  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard;
+  const nInland = 36;
+  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard + nInland;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -251,6 +256,24 @@ export function buildCrowd(ctx) {
     });
   }
 
+  const inlandXs = [FIFTH_WALK_XS[0], FIFTH_WALK_XS[1], ESPA_WALK_X];
+  for (let i = 0; i < nInland; i++) {
+    const x = inlandXs[i % inlandXs.length];
+    const z = INLAND_WALK_Z0 + hash01(i + 1400, 3) * (INLAND_WALK_Z1 - INLAND_WALK_Z0);
+    const dir = hash01(i + 1400, 5) < 0.5 ? 1 : -1;
+    if (inTravelLane(z) || inCarriageway(z) || inKeepout(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (x >= 240 && leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    actors.push({
+      kind: 'inland', i: actors.length, extra: -1,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
+      speed: 1.05 + hash01(i + 1400, 7) * 0.45,
+      phase: hash01(i + 1400, 11) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1400, 13), skin: pick(SKIN, i + 1400, 17),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -298,6 +321,16 @@ function stepActors(state, dt) {
     if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard') continue;
     if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
+    if (a.kind === 'inland') {
+      a.z += a.dir * a.speed * dt;
+      if (a.z > INLAND_WALK_Z1) { a.z = INLAND_WALK_Z1; a.dir = -1; a.yaw = -Math.PI / 2; }
+      if (a.z < INLAND_WALK_Z0) { a.z = INLAND_WALK_Z0; a.dir = 1; a.yaw = Math.PI / 2; }
+      if (inTravelLane(a.z) || inCarriageway(a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      continue;
+    }
     if (a.kind === 'swim') {
       a.x = wrapX(a.x + Math.cos(a.yaw) * a.speed * dt);
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -319,7 +352,7 @@ function stampAll(state) {
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
-      || (a.kind === 'beach' && a.speed))
+      || a.kind === 'inland' || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
