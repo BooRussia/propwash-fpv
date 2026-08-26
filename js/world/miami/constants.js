@@ -948,6 +948,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // (−112..16, z 104–166). Skip [-430,128] helipad W. Skip Lincoln
   // x=-250. leftoverLot A–H unmoved.
   [-720, 128], [-660, 128], [-600, 128], [-540, 128], [-390, 128], [-190, 128],
+  [210, 128],
   // z=196 row: inland of Washington (z 173–187), ocean of z=210.
   // West of WASH_X0=-480 so the plates miss Washington reserved.
   // leftoverLot A–H unmoved.
@@ -1074,6 +1075,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-720, 96], [-720, 210], [-720, 237],
   [-160, 237], [130, 237], [190, 237], [-600, 237],
   [-40, 237], [40, 237],
+  [210, 128],
 ]);
 
 export function isInlandArcadeCell(x, z) {
