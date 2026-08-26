@@ -1052,12 +1052,13 @@ export function inlandArcadeColliderShapesAt(shapes, g) {
 // ---- rooftop whoops (signed AC gaps + billboard rings; hash01 never at const-eval) ----
 // Sit on inland mid-rise plates west of x=240. Fly +X through the gap / disc.
 // Collider is the unit / tube, never a filled sash. leftoverLot A–H unmoved.
-// z=96 AC sits on plates that miss court wells (arcade plates).
+// z=96 AC sits on plates that miss court wells (arcade plates), including
+// the east-of-cinema plate at [210,96] west of leftoverLot A / x=240.
 export const ROOF_WHOOP_Y = CITY_Y + INLAND_MIDRISE_H;
 export const ROOF_AC_CELLS = Object.freeze([
   [-250, 237], [100, 237], [-430, 237], [-80, 237],
   [-540, 152], [-190, 152], [210, 152], [90, 210],
-  [-600, 96], [-540, 96], [-190, 96],
+  [-600, 96], [-540, 96], [-190, 96], [210, 96],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([
   [-80, 259], [100, 259],

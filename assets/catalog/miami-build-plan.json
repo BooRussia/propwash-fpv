@@ -768,7 +768,14 @@
     {
       "id": "roof-east96",
       "title": "AC-gap or ring whoop on the east z=96 plate, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "ROOF_AC_CELLS +[210,96] on arcade plate; miss court wells; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-east96",
