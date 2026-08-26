@@ -815,7 +815,14 @@
     {
       "id": "npc-hotel-porch",
       "title": "Visual sitters under Majestic/Cavalier/Breakwater/Winterhaven porches, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nHotelPorchSit=16 under Majestic/Cavalier/Breakwater/Winterhaven porches; hash01; no colliders; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "fill-west600",

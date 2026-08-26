@@ -73,7 +73,7 @@ import {
   BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   CROSS_X, PED_SIGNAL_CELLS, FLEX_POST_CELLS,
   PALM_BEACH_LAWN_CELLS, PLANT_BEACH_Z,
-  HOTEL_FLAG_CELLS,
+  HOTEL_FLAG_CELLS, HOTEL_PORCH_CELLS,
   PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS,
   PIER_DECK_Z, PIER_DECK_W, PIER_DECK_D, PIER_DECK_TOP, PAVILION_Z,
 } from './constants.js';
@@ -205,6 +205,10 @@ export function runMiamiCrowdTests() {
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes("kind: 'arcade-sit'")
+    && !crowd.includes('addCollider'));
+  ok('crowd sits under Majestic/Cavalier/Breakwater/Winterhaven porches',
+    crowd.includes('const nHotelPorchSit = 16') && crowd.includes('hash01(i + 4100')
+    && crowd.includes('HOTEL_PORCH_CELLS') && crowd.includes("kind: 'porch-sit'")
     && !crowd.includes('addCollider'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd people have torso + limbs, not a single box',
@@ -1173,6 +1177,47 @@ function FRONT_Z_OK() {
     && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
     && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after east z=96 walkers',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const porchSitSpots = [];
+  for (let i = 0; i < 16; i++) {
+    const cell = HOTEL_PORCH_CELLS[i % HOTEL_PORCH_CELLS.length];
+    const [cx, cz, w] = cell;
+    const openW = w - 2.4;
+    const x = cx + (hash01(i + 4100, 3) - 0.5) * (openW - 1.2);
+    const z = cz + (hash01(i + 4100, 5) - 0.5) * 2.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    porchSitSpots.push({ x, z, cx, cz, w });
+  }
+  ok('porch sitters sit under Majestic/Cavalier/Breakwater/Winterhaven, miss leftoverLot / travel',
+    crowd.includes("kind: 'porch-sit'") && crowd.includes('const nHotelPorchSit = 16')
+    && crowd.includes('HOTEL_PORCH_CELLS') && crowd.includes('hash01(i + 4100')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && HOTEL_PORCH_CELLS.length === 4
+    && HOTEL_PORCH_CELLS.every(([x, z, w]) => x < 240 && z > TRAVEL_Z1
+      && leftoverLotOverlap(x, z, w, 3.4, 0.15) === false
+      && x + w / 2 + 1.2 < 240 && x + w / 2 + 1.2 < 251)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === MAJESTIC_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === CAVALIER_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === BREAKWATER_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === WINTERHAVEN_X)
+    && porchSitSpots.length >= 12
+    && porchSitSpots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z > TRAVEL_Z1
+      && !!inFlyVoid(p.x, p.z)
+      && Math.abs(p.x - p.cx) < p.w / 2 - 1.0
+      && Math.abs(p.z - p.cz) < 1.2)
+    && porchSitSpots.some((p) => p.cx === MAJESTIC_X)
+    && porchSitSpots.some((p) => p.cx === CAVALIER_X)
+    && porchSitSpots.some((p) => p.cx === BREAKWATER_X)
+    && porchSitSpots.some((p) => p.cx === WINTERHAVEN_X)
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
+    && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after hotel porch sitters',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',

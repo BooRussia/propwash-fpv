@@ -82,7 +82,7 @@ import {
   leftoverLotGeom, leftoverLotVoids, leftoverLotColliderShapes,
   leftoverLotPlantSpots, inLeftoverLotGate, leftoverLotOverlap,
   inLeftoverLotReserved,
-  HOTEL_FLAG_CELLS, COURT_WELL_CELLS, INLAND_ARCADE_CELLS, INLAND_MIDRISE_CELLS,
+  HOTEL_FLAG_CELLS, HOTEL_PORCH_CELLS, COURT_WELL_CELLS, INLAND_ARCADE_CELLS, INLAND_MIDRISE_CELLS,
   MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_SOFFIT,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_SOFFIT,
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_SOFFIT,
@@ -1254,6 +1254,16 @@ export function runMiamiLeftoverLotTests() {
     && BREAKWATER_X + BREAKWATER_W / 2 + 1.2 < 240
     && FLY_VOIDS.some((v) => v.id === 'winterhaven-arcade')
     && FLY_VOIDS.some((v) => v.id === 'breakwater-arcade')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('hotel porch sitters miss leftoverLot A–H',
+    HOTEL_PORCH_CELLS.length === 4
+    && HOTEL_PORCH_CELLS.every(([x, z, w]) => x < 240 && x < 251
+      && leftoverLotOverlap(x, z, w, 3.4, 0.15) === false
+      && x + w / 2 + 1.2 < 240)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === MAJESTIC_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === CAVALIER_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === BREAKWATER_X)
+    && HOTEL_PORCH_CELLS.some(([x]) => x === WINTERHAVEN_X)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------

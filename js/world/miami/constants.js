@@ -190,6 +190,17 @@ export const WINTERHAVEN_W = 16;
 export const WINTERHAVEN_D = 18;
 export const WINTERHAVEN_SOFFIT = 3.5;
 
+// Sitters under Majestic / Cavalier / Breakwater / Winterhaven porch
+// arcades. [x, z, w] with z at the fly-under centre (FRONT_Z − 1.7).
+// Ocean of travel 40.2–47.8. West of leftoverLot A / x=240.
+// hash01 never at const-eval.
+export const HOTEL_PORCH_CELLS = Object.freeze([
+  [MAJESTIC_X, MAJESTIC_FRONT_Z - 1.7, MAJESTIC_W],
+  [BREAKWATER_X, BREAKWATER_FRONT_Z - 1.7, BREAKWATER_W],
+  [CAVALIER_X, CAVALIER_FRONT_Z - 1.7, CAVALIER_W],
+  [WINTERHAVEN_X, WINTERHAVEN_FRONT_Z - 1.7, WINTERHAVEN_W],
+]);
+
 // Signed flags on Ocean Drive hotel crowns. [x, z, y] with y on the
 // parapet / crown deck. West of leftoverLot A. Inland of travel 40.2–47.8.
 // hash01 never at const-eval. Art-deco xs already fly a crown pole — skip.
