@@ -58,7 +58,7 @@ import {
   gap429Shops, GAP_X,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
-  BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
+  BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS, BEACH_CHAIR_WALK_RUNS,
 } from './constants.js';
 import { hash01 } from './rng.js';
 
@@ -1251,6 +1251,77 @@ function FRONT_Z_OK() {
     && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
   ok('leftoverLot A–H still signed after beach chairs',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('crowd walks the signed beach chair rows',
+    crowd.includes("kind: 'chair-walk'") && crowd.includes('const nChairWalk = 24')
+    && crowd.includes("kind: 'towel-sit'") && crowd.includes('BEACH_CHAIR_CELLS')
+    && crowd.includes('BEACH_CHAIR_WALK_RUNS')
+    && crowd.includes('const nTowelSit = BEACH_CHAIR_CELLS.length')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider')
+    && !/\brng2?\s*\(/.test(crowd) && !/\brng3\s*\(/.test(crowd)
+    && !/\brng4\s*\(/.test(crowd) && crowd.includes('hash01'));
+  ok('chair-walk runs sit on the sand, miss leftoverLot / travel / x>=240',
+    BEACH_CHAIR_WALK_RUNS.length === 6
+    && BEACH_CHAIR_WALK_RUNS.length === BEACH_CHAIR_CELLS.length / 2
+    && BEACH_CHAIR_WALK_RUNS.every(([x0, x1]) => x1 < 240 && x0 < x1
+      && leftoverLotOverlap((x0 + x1) / 2, 7.2, 0.6, 0.6, 0.15) === false)
+    && BEACH_CHAIR_CELLS.every(([x, z], i) => {
+      const run = BEACH_CHAIR_WALK_RUNS[(i / 2) | 0];
+      return x >= run[0] && x <= run[1] && z < TRAVEL_Z0 && z > 4
+        && !(z > TRAVEL_Z0 && z < TRAVEL_Z1);
+    }));
+
+  const chairWalkSpots = [];
+  for (let i = 0; i < 24; i++) {
+    const run = BEACH_CHAIR_WALK_RUNS[i % BEACH_CHAIR_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 2500, 3) * (run[1] - run[0]);
+    const z = 7.2 + (hash01(i + 2500, 5) - 0.5) * 4.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (inKeepout(x, z)) continue;
+    if (z < -28.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    chairWalkSpots.push({ x, z });
+  }
+  const towelSitSpots = [];
+  for (let i = 0; i < BEACH_CHAIR_CELLS.length; i++) {
+    const [cx, cz] = BEACH_CHAIR_CELLS[i];
+    const side = hash01(i + 2511, 3) < 0.5 ? -1 : 1;
+    const x = cx + side * 0.85;
+    const z = cz - 1.55;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (inKeepout(x, z)) continue;
+    if (z < -28.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    towelSitSpots.push({ x, z, cx, cz });
+  }
+  ok('chair-row walkers fill the sand, miss leftoverLot / travel / x>=240',
+    chairWalkSpots.length >= 20
+    && chairWalkSpots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < TRAVEL_Z0 && p.z > 4
+      && inKeepout(p.x, p.z) === false)
+    && chairWalkSpots.some((p) => p.x < -500)
+    && chairWalkSpots.some((p) => p.x > 18));
+  ok('towel sitters sit ocean of the chair rows, miss leftoverLot / travel',
+    towelSitSpots.length >= 10
+    && towelSitSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < TRAVEL_Z0 && p.z > 4
+      && Math.abs(p.x - p.cx) < 1.0 && p.z < p.cz
+      && inKeepout(p.x, p.z) === false));
+  ok('chair-row NPCs have no colliders and leftoverLot A–H unmoved',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'chair-walk'") && crowd.includes("kind: 'towel-sit'")
+    && crowd.includes('npcOffLimits')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   let plan = null;

@@ -355,7 +355,13 @@
     {
       "id": "npc-beach",
       "title": "More beach walkers and towel sitters near the new chair rows, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nChairWalk=24 on BEACH_CHAIR_WALK_RUNS + nTowelSit=12 ocean of chairs; hash01; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "gap-501",

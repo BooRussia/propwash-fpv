@@ -15,6 +15,7 @@ import {
   COLLINS_WALK_Z, COLLINS_WALK_RUNS,
   MARINA_FINGER_XS, MARINA_DOCK_HALF_X, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
+  BEACH_CHAIR_CELLS, BEACH_CHAIR_WALK_RUNS,
   groundHeight, inKeepout, leftoverLotOverlap,
   onLincolnWalk, onWashingtonWalk, onCollinsWalk,
 } from './constants.js';
@@ -59,6 +60,8 @@ export const GAP315_WALK_Z_RUNS = Object.freeze([
   [92, 168],
   [190, 220],
 ]);
+// Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
+export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS };
 // City slab in front of Majestic / Avalon / Colony. Walk +X. Skip GAP_X=-129.
 export { COLLINS_WALK_Z, COLLINS_WALK_RUNS };
 const WASH_WALK_RUNS = washingtonRuns();
@@ -148,9 +151,12 @@ export function buildCrowd(ctx) {
   const nCollins = 36;
   const nLummus = 24;
   const nLummusSit = LUMMUS_EXTRA_BENCH_CELLS.length;
+  const nChairWalk = 24;
+  const nTowelSit = BEACH_CHAIR_CELLS.length;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
-    + nMarinaSwim + nEighth + nGap315 + nCollins + nLummus + nLummusSit;
+    + nMarinaSwim + nEighth + nGap315 + nCollins + nLummus + nLummusSit
+    + nChairWalk + nTowelSit;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -481,6 +487,48 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nChairWalk; i++) {
+    const runI = i % BEACH_CHAIR_WALK_RUNS.length;
+    const run = BEACH_CHAIR_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 2500, 3) * (run[1] - run[0]);
+    const z = 7.2 + (hash01(i + 2500, 5) - 0.5) * 4.0;
+    const dir = hash01(i + 2500, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || inKeepout(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z < SHORE_Z + 1.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.12) continue;
+    actors.push({
+      kind: 'chair-walk', i: actors.length, extra: -1, run: runI,
+      x, z, y, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 0.85 + hash01(i + 2500, 11) * 0.45,
+      phase: hash01(i + 2500, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2500, 17), skin: pick(SKIN, i + 2500, 19),
+    });
+  }
+
+  for (let i = 0; i < nTowelSit; i++) {
+    const [cx, cz] = BEACH_CHAIR_CELLS[i];
+    const side = hash01(i + 2511, 3) < 0.5 ? -1 : 1;
+    const x = cx + side * 0.85;
+    const z = cz - 1.55;
+    if (npcOffLimits(x, z) || inKeepout(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z < SHORE_Z + 1.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.12) continue;
+    actors.push({
+      kind: 'towel-sit', i: actors.length, extra: -1,
+      x, z, y, dir: 0,
+      yaw: Math.PI / 2,
+      speed: 0, phase: hash01(i + 2511, 7) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2511, 11), skin: pick(SKIN, i + 2511, 13),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -526,7 +574,8 @@ function stepActors(state, dt) {
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
     if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard'
-        || a.kind === 'lincoln-sit' || a.kind === 'lummus-sit') continue;
+        || a.kind === 'lincoln-sit' || a.kind === 'lummus-sit'
+        || a.kind === 'towel-sit') continue;
     if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
     if (a.kind === 'inland') {
@@ -604,6 +653,18 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'chair-walk') {
+      a.x += a.dir * a.speed * dt;
+      const run = BEACH_CHAIR_WALK_RUNS[a.run] || BEACH_CHAIR_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)
+          || inKeepout(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'marina-swim') {
       a.x += Math.cos(a.yaw) * a.speed * dt;
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -642,12 +703,13 @@ function stampAll(state) {
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
       || a.kind === 'eighth' || a.kind === 'gap315' || a.kind === 'collins' || a.kind === 'lummus'
+      || a.kind === 'chair-walk'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
     const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit'
-      || a.kind === 'lummus-sit') ? 0.28
+      || a.kind === 'lummus-sit' || a.kind === 'towel-sit') ? 0.28
       : (a.kind === 'swim' || a.kind === 'marina-swim') ? 0.12
         : a.kind === 'parked' ? 0.22 : 0.36;
     const bodyY = (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y : a.y + crouch + bob;
@@ -656,7 +718,7 @@ function stampAll(state) {
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
     _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit'
-      || a.kind === 'lummus-sit') ? 0.72 : 1, 1);
+      || a.kind === 'lummus-sit' || a.kind === 'towel-sit') ? 0.72 : 1, 1);
     _dummy.updateMatrix();
     bodyMesh.setMatrixAt(i, _dummy.matrix);
     _color.setHex(a.shirt);

@@ -51,6 +51,16 @@ export const BEACH_UMBRELLA_CELLS = Object.freeze([
   [-520, 9.0], [-380, 8.4], [-280, 7.6], [-90, 8.8],
   [-40, 7.2], [28, 7.4], [110, 6.8], [220, 8.0],
 ]);
+// Patrol X around each signed chair pair. Ocean of travel 40.2–47.8.
+// West of leftoverLot A. hash01 never at const-eval.
+export const BEACH_CHAIR_WALK_RUNS = Object.freeze([
+  [-528.4, -511.6],
+  [-388.2, -371.8],
+  [-288.2, -271.8],
+  [-98.2, -81.8],
+  [-48.2, -31.8],
+  [19.8, 36.2],
+]);
 
 // ---- MIAMI letter sign ----
 export const SIGN_X = 60, SIGN_Z = 14;
