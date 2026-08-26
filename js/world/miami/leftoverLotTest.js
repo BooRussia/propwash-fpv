@@ -1158,10 +1158,13 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-250, 201.6, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(210, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
-  ok('inland z=210 arcades miss leftoverLot A–H',
-    INLAND_ARCADE_CELLS.length === 4
-    && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && z === 210
+  ok('inland z=210/152 arcades miss leftoverLot A–H',
+    INLAND_ARCADE_CELLS.length === 8
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 4
+    && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && (z === 210 || z === 152)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 152)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------

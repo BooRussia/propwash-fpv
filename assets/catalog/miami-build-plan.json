@@ -609,7 +609,15 @@
     {
       "id": "arcade-152",
       "title": "Ground-floor fly-throughs on z=152 mid-rises that miss court wells, jambs only, fly ±Z",
-      "status": "pending"
+      "status": "done",
+      "notes": "4 extra INLAND_ARCADE_CELLS on z=152 plates that miss court wells; jambs+soffit, fly ±Z; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "hotel-pilotis",
