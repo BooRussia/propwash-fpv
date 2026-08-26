@@ -1386,6 +1386,8 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(80, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(130, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(160, 223, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(190, 223, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(210, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-280, 223, 2.4, 2.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('x=-660 inland mid-rise pair misses leftoverLot A–H',

@@ -1439,6 +1439,24 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "alley-223-tail",
+      "title": "Alley-pipe whoops at z=223 on x=190/210, leftoverLot unmoved",
+      "status": "done",
+      "notes": "[190,210]@223 last skyline z=223 holes west of leftoverLot A; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "alley-248-west",
+      "title": "Alley-pipe whoops at z=248 on x=-720/-600, leftoverLot unmoved",
+      "status": "pending",
+      "notes": "missing skyline-pair alleys; fly +X; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
