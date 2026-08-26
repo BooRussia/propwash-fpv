@@ -873,6 +873,11 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [90, 152], [160, 152], [210, 152],
   [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210], [-190, 210],
   [-80, 210], [90, 210], [160, 210], [210, 210],
+  // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
+  // Same west-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
+  // East of cinema reserved (x>208) hits abando (214..235, z1=90) before x=240 — skipped.
+  // leftoverLot A–H unmoved. Miss GAP_X, travel 40.2–47.8.
+  [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
