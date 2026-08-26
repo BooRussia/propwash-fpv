@@ -977,7 +977,13 @@
     {
       "id": "npc-196",
       "title": "Walkers on sidewalks ocean/inland of the z=196 row, hash01, no colliders, west of WASH_X0",
-      "status": "pending"
+      "status": "done",
+      "notes": "nRow196=12 on E-W sidewalks 187.6/204.4; run -730..-508 west of WASH_X0=-480 and GAP -501; hash01; no colliders; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

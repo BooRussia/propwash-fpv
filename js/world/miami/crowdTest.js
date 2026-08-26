@@ -54,7 +54,7 @@ import {
   LINCOLN_S_CELLS, LINCOLN_N_CELLS, LINCOLN_PERGOLA_CELLS, LINCOLN_WALK_RUNS,
   LINCOLN_SOFFIT, LINCOLN_PASS_W, LINCOLN_PASS_H, LINCOLN_PERGOLA_POST_H,
   lincolnShops, lincolnPergolas, onLincolnWalk,
-  WASH_Z, WASH_HALF, WASH_X1, WASH_ARCADE_X, WASH_ARCADE_Z, WASH_ARCADE_POST_H,
+  WASH_Z, WASH_HALF, WASH_X0, WASH_X1, WASH_ARCADE_X, WASH_ARCADE_Z, WASH_ARCADE_POST_H,
   WASH_TRAVEL_Z0, WASH_TRAVEL_Z1, WASH_PARK_OCEAN_Z, WASH_PARK_INLAND_Z,
   WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
   washingtonRuns, washingtonCars, washingtonArcadeGeom, onWashingtonRoad,
@@ -202,6 +202,11 @@ export function runMiamiCrowdTests() {
     crowd.includes("kind: 'east96'") && crowd.includes('const nEast96 = 8')
     && crowd.includes('EAST96_WALK_RUNS') && crowd.includes('onEast96Walk')
     && crowd.includes('hash01(i + 4000')
+    && !crowd.includes('addCollider'));
+  ok('crowd walks ocean/inland of the z=196 row west of WASH_X0',
+    crowd.includes("kind: 'row196'") && crowd.includes('const nRow196 = 12')
+    && crowd.includes('ROW196_WALK_ZS') && crowd.includes('onRow196Walk')
+    && crowd.includes('hash01(i + 4400')
     && !crowd.includes('addCollider'));
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
@@ -1244,6 +1249,48 @@ function FRONT_Z_OK() {
     && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
     && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after east z=96 walkers',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const ROW196_WALK_ZS = [187.6, 204.4];
+  const ROW196_WALK_RUNS = [
+    [-730, -508],
+  ];
+  const row196Spots = [];
+  for (let i = 0; i < 12; i++) {
+    const run = ROW196_WALK_RUNS[i % ROW196_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 4400, 3) * (run[1] - run[0]);
+    const z = ROW196_WALK_ZS[i % ROW196_WALK_ZS.length]
+      + (hash01(i + 4400, 5) - 0.5) * 0.8;
+    if (x >= 240 || x >= WASH_X0) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    if (GAP_X.some((gx) => Math.abs(x - gx) <= XS_HALF)) continue;
+    row196Spots.push({ x, z });
+  }
+  ok('z=196 sidewalk walkers fill west-of-Washington frontage, miss leftoverLot / travel / GAP',
+    crowd.includes("kind: 'row196'") && crowd.includes('const nRow196 = 12')
+    && crowd.includes('ROW196_WALK_ZS') && crowd.includes('ROW196_WALK_RUNS')
+    && crowd.includes('onRow196Walk') && crowd.includes('hash01(i + 4400')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && ROW196_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(-600, z, 0.6, 0.6, 0.15) === false)
+    && ROW196_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240 && x1 < WASH_X0
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
+    && row196Spots.length >= 8
+    && row196Spots.every((p) => p.x < 240 && p.x < WASH_X0
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF))
+    && row196Spots.some((p) => p.z < 196)
+    && row196Spots.some((p) => p.z > 196)
+    && row196Spots.some((p) => p.x < -660)
+    && row196Spots.some((p) => p.x > -600)
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
+    && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after z=196 walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const porchSitSpots = [];

@@ -13,7 +13,7 @@ import {
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
   LINCOLN_WALK_RUNS,
   washingtonRuns, WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
-  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
+  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1, WASH_X0,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS,
   MARINA_FINGER_XS, MARINA_DOCK_HALF_X, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
@@ -100,6 +100,13 @@ export const EAST96_WALK_ZS = ROW96_WALK_ZS;
 export const EAST96_WALK_RUNS = Object.freeze([
   [201, 216],
 ]);
+// E-W sidewalks ocean/inland of the z=196 row west of WASH_X0=-480.
+// 1.4 m off the plate face (189 / 203). Walk +X. Skip GAP_X.
+// Miss Washington travel 176.2–183.8 and Ocean Drive travel 40.2–47.8.
+export const ROW196_WALK_ZS = Object.freeze([187.6, 204.4]);
+export const ROW196_WALK_RUNS = Object.freeze([
+  [-730, -508],
+]);
 // Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
 export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS, BEACH_WALK_RUNS };
 export { BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1 };
@@ -183,6 +190,20 @@ function onEast96Walk(x, z) {
   return false;
 }
 
+function onRow196Walk(x, z) {
+  if (x >= WASH_X0) return false;
+  let onZ = false;
+  for (let i = 0; i < ROW196_WALK_ZS.length; i++) {
+    if (Math.abs(z - ROW196_WALK_ZS[i]) <= 0.9) { onZ = true; break; }
+  }
+  if (!onZ) return false;
+  for (let i = 0; i < ROW196_WALK_RUNS.length; i++) {
+    const r = ROW196_WALK_RUNS[i];
+    if (x >= r[0] && x <= r[1]) return true;
+  }
+  return false;
+}
+
 function onMarinaDock(x, z) {
   if (z < MARINA_DOCK_Z0 || z > MARINA_DOCK_Z1) return false;
   for (let i = 0; i < MARINA_FINGER_XS.length; i++) {
@@ -248,12 +269,13 @@ export function buildCrowd(ctx) {
   const nHotelPorchSit = 16;
   const nGarageStand = GARAGE_STAND_CELLS.length;
   const nArcadeWestSit = 8;
+  const nRow196 = 12;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
     + nWestSwim + nReefSwim + nMidrise + nArcadeSit + nArcade96Sit + nRow96
-    + nEast96 + nHotelPorchSit + nGarageStand + nArcadeWestSit;
+    + nEast96 + nHotelPorchSit + nGarageStand + nArcadeWestSit + nRow196;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -810,6 +832,24 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nRow196; i++) {
+    const runI = i % ROW196_WALK_RUNS.length;
+    const run = ROW196_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 4400, 3) * (run[1] - run[0]);
+    const z = ROW196_WALK_ZS[i % ROW196_WALK_ZS.length]
+      + (hash01(i + 4400, 5) - 0.5) * 0.8;
+    const dir = hash01(i + 4400, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || !onRow196Walk(x, z) || onCross(x)) continue;
+    actors.push({
+      kind: 'row196', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 4400, 11) * 0.45,
+      phase: hash01(i + 4400, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 4400, 17), skin: pick(SKIN, i + 4400, 19),
+    });
+  }
+
   for (let i = 0; i < nHotelPorchSit; i++) {
     const cell = HOTEL_PORCH_CELLS[i % HOTEL_PORCH_CELLS.length];
     if (!cell) continue;
@@ -1066,6 +1106,17 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'row196') {
+      a.x += a.dir * a.speed * dt;
+      const run = ROW196_WALK_RUNS[a.run] || ROW196_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onRow196Walk(a.x, a.z) || onCross(a.x)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'beach-walk') {
       a.x += a.dir * a.speed * dt;
       const run = BEACH_WALK_RUNS[a.run] || BEACH_WALK_RUNS[0];
@@ -1197,7 +1248,7 @@ function stampAll(state) {
       || a.kind === 'eighth' || a.kind === 'gap315' || a.kind === 'gap501'
       || a.kind === 'collins' || a.kind === 'lummus'
       || a.kind === 'chair-walk' || a.kind === 'beach-walk' || a.kind === 'midrise'
-      || a.kind === 'row96' || a.kind === 'east96'
+      || a.kind === 'row96' || a.kind === 'east96' || a.kind === 'row196'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

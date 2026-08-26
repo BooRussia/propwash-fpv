@@ -1244,6 +1244,14 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=196 sidewalks miss leftoverLot A–H',
+    leftoverLotOverlap(-720, 187.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-660, 204.4, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-600, 187.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-540, 204.4, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-730, 187.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-508, 204.4, 0.6, 0.6, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=196 inland mid-rise row misses leftoverLot A–H',
     INLAND_MIDRISE_CELLS.filter(([, z]) => z === 196).length === 4
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 196).every(([x]) => x < 240 && x < 251
