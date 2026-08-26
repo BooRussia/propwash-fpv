@@ -916,7 +916,14 @@
     {
       "id": "fill-196",
       "title": "z=196 mid-rises west of WASH_X0=-480 between Washington and the z=210 row",
-      "status": "pending"
+      "status": "done",
+      "notes": "[-720,-660,-600,-540]@196 west of WASH_X0=-480; arcades at [-720,196]/[-540,196]; court well [-660,196]; roof AC [-600,196]; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "arcade-skyline",

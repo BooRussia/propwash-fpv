@@ -937,6 +937,10 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // (−112..16, z 104–166). Skip [-430,128] helipad W. Skip Lincoln
   // x=-250. leftoverLot A–H unmoved.
   [-720, 128], [-660, 128], [-600, 128], [-540, 128], [-390, 128], [-190, 128],
+  // z=196 row: inland of Washington (z 173–187), ocean of z=210.
+  // West of WASH_X0=-480 so the plates miss Washington reserved.
+  // leftoverLot A–H unmoved.
+  [-720, 196], [-660, 196], [-600, 196], [-540, 196],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
@@ -971,6 +975,7 @@ export const COURT_WELL_CELLS = Object.freeze([
   [-390, 152], [210, 210],
   [-390, 96], [-250, 96],
   [-160, 152], [130, 152], [-660, 210],
+  [-660, 196],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 
@@ -1044,6 +1049,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-600, 152], [-430, 152], [-190, 152], [160, 152], [-660, 152],
   [-600, 96], [-540, 96], [-190, 96], [210, 96],
   [-660, 237], [-660, 259],
+  [-720, 196], [-540, 196],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1111,6 +1117,7 @@ export const ROOF_AC_CELLS = Object.freeze([
   [-250, 237], [100, 237], [-430, 237], [-80, 237],
   [-540, 152], [-190, 152], [210, 152], [90, 210],
   [-600, 96], [-540, 96], [-190, 96], [210, 96], [-660, 96], [190, 152],
+  [-600, 196],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([
   [-80, 259], [100, 259],

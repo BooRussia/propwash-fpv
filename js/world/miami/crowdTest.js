@@ -918,7 +918,7 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 62
+    INLAND_MIDRISE_CELLS.length === 66
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -939,6 +939,10 @@ function FRONT_Z_OK() {
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).length === 6
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).every(([x]) => x < 240
       && x !== -430 && x !== -250 && x < -112)
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 196).length === 4
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 196).every(([x]) => x < -480 && x < 240)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 196)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -540 && z === 196)
     && inland.includes('buildDecoMidriseGeos')
     && inland.includes('buildRooftopKitGeo'));
   ok('inland does not draw layout rng, ShaderMaterial, or ped/traffic',
@@ -952,7 +956,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 62);
+  ok('signed inland mid-rises', inlandList.length === 66);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     inlandList.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && inlandList.some((g) => g.x === -720 && g.z === 237)
@@ -981,18 +985,19 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 12
+    COURT_WELL_CELLS.length === 13
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 130 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 196)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
     && !isCourtWellCell(210, 96)
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 96 || z === 152 || z === 210)
+      && (z === 96 || z === 152 || z === 210 || z === 196)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false
@@ -1010,15 +1015,16 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 15
+    INLAND_ARCADE_CELLS.length === 17
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240
-      && (z === 210 || z === 152 || z === 96 || z === 237 || z === 259)
+      && (z === 210 || z === 152 || z === 96 || z === 237 || z === 259 || z === 196)
       && isInlandArcadeCell(x, z) && !isCourtWellCell(x, z)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z))
@@ -1026,6 +1032,8 @@ function FRONT_Z_OK() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 152)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 259)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -720 && z === 196)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -540 && z === 196)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
