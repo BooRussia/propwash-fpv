@@ -273,7 +273,14 @@
     {
       "id": "alley-dumpsters",
       "title": "Signed dumpsters and loading docks on inland alleys at z=248, hash01, not in pipe/fire-escape bays",
-      "status": "pending"
+      "status": "done",
+      "notes": "4 dumpsters + 4 docks on z=248 alleys; miss pipe/fire-escape bays; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "lummus-fill",

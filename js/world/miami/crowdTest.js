@@ -37,6 +37,8 @@ import {
   MARINA_OCEAN_PILE_CELLS, MARINA_OCEAN_CLEAT_CELLS, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises,
+  ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS, ALLEY_DUMP_W, ALLEY_DUMP_D,
+  ALLEY_DOCK_W, ALLEY_DOCK_D, alleySolidHitsWhoop,
   LINCOLN_Z, LINCOLN_HALF, LINCOLN_S_FRONT_Z, LINCOLN_N_FRONT_Z,
   LINCOLN_S_CELLS, LINCOLN_N_CELLS, LINCOLN_PERGOLA_CELLS, LINCOLN_WALK_RUNS,
   LINCOLN_SOFFIT, LINCOLN_PASS_W, LINCOLN_PASS_H, LINCOLN_PERGOLA_POST_H,
@@ -698,6 +700,17 @@ function FRONT_Z_OK() {
   ok('leftoverLot A–H still signed after inland mid-rises',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',
+    ALLEY_DUMPSTER_CELLS.length === 4 && ALLEY_DOCK_CELLS.length === 4
+    && inland.includes('ALLEY_DUMPSTER_CELLS') && inland.includes('inland-alley-dumpsters')
+    && ALLEY_DUMPSTER_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && leftoverLotOverlap(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D, 0.15) === false
+      && alleySolidHitsWhoop(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1))
+    && ALLEY_DOCK_CELLS.every(([x, z]) => x < 240
+      && leftoverLotOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D, 0.15) === false
+      && alleySolidHitsWhoop(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)));
   ok('inland sidewalks miss travel lanes and leftoverLot A–H',
     crowd.includes('INLAND_WALK_Z0') && crowd.includes('92')
     && crowd.includes('ESPA_WALK_X') && crowd.includes('235.3')

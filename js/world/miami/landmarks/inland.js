@@ -6,6 +6,10 @@ import {
   streetOverlap,
   ROOF_AC_CELLS, ROOF_RING_CELLS,
   roofAcGapGeom, roofRingGeom, installFlyColliders,
+  ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
+  ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DUMP_H,
+  ALLEY_DOCK_W, ALLEY_DOCK_D, ALLEY_DOCK_H,
+  alleySolidHitsWhoop,
 } from '../constants.js';
 import { hash01 } from '../rng.js';
 import { buildDecoMidriseGeos, buildRoofAcUnitGeo, cBox, cCyl, cTorus } from '../geo.js';
@@ -203,6 +207,49 @@ export function buildInland(ctx) {
   }));
   placeInstanced(group, track(buildPalletWoodGeo()), alleyMat, pallets, 'inland-alley-pallets');
   placeInstanced(group, track(buildCardboardStackGeo()), alleyMat, cardboard, 'inland-alley-cardboard');
+
+  const DUMP = 0x2f6a3a, DUMP2 = 0x3d7a48, RUST = 0x6a3a28;
+  const CONC = 0x8a8680, RUBBER = 0x1a1c20;
+  const dumpBits = [];
+  for (let i = 0; i < ALLEY_DUMPSTER_CELLS.length; i++) {
+    const [x, z] = ALLEY_DUMPSTER_CELLS[i];
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D, 0.15)) continue;
+    if (streetOverlap(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D)) continue;
+    if (alleySolidHitsWhoop(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D)) continue;
+    const y0 = CITY_Y;
+    dumpBits.push(cBox(ALLEY_DUMP_W, ALLEY_DUMP_H, ALLEY_DUMP_D, DUMP,
+      x, y0 + ALLEY_DUMP_H / 2, z));
+    dumpBits.push(cBox(ALLEY_DUMP_W + 0.04, 0.06, ALLEY_DUMP_D + 0.04, DUMP2,
+      x, y0 + ALLEY_DUMP_H + 0.02 + hash01(i, 2201) * 0.03, z));
+    dumpBits.push(cBox(0.06, 0.22, ALLEY_DUMP_D * 0.55, RUST,
+      x + ALLEY_DUMP_W / 2 + 0.02, y0 + ALLEY_DUMP_H * 0.62, z));
+    addCollider(x, y0, z, ALLEY_DUMP_W - 0.08, ALLEY_DUMP_H, ALLEY_DUMP_D - 0.08);
+  }
+  for (let i = 0; i < ALLEY_DOCK_CELLS.length; i++) {
+    const [x, z] = ALLEY_DOCK_CELLS[i];
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D, 0.15)) continue;
+    if (streetOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D)) continue;
+    if (alleySolidHitsWhoop(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D)) continue;
+    const y0 = CITY_Y;
+    dumpBits.push(cBox(ALLEY_DOCK_W, ALLEY_DOCK_H, ALLEY_DOCK_D, CONC,
+      x, y0 + ALLEY_DOCK_H / 2, z));
+    dumpBits.push(cBox(ALLEY_DOCK_W + 0.08, 0.22, 0.16, RUBBER,
+      x, y0 + ALLEY_DOCK_H + 0.10, z + ALLEY_DOCK_D / 2 - 0.08));
+    addCollider(x, y0, z, ALLEY_DOCK_W, ALLEY_DOCK_H, ALLEY_DOCK_D);
+  }
+  if (dumpBits.length) {
+    const geo = track(mergeGeometries(dumpBits));
+    dumpBits.forEach((g) => g.dispose());
+    const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.82, metalness: 0.12,
+    })));
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = 'inland-alley-dumpsters';
+    group.add(mesh);
+  }
 
   root.add(group);
   setTag('world');

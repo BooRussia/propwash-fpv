@@ -11,6 +11,9 @@ import {
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
   leftoverLotOverlap, streetOverlap,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
+  ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
+  ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DOCK_W, ALLEY_DOCK_D,
+  alleySolidHitsWhoop,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
   ROOF_AC_CELLS, ROOF_RING_CELLS, ROOF_AC_CLEAR, ROOF_AC_H,
@@ -114,6 +117,35 @@ export function runMiamiInlandTests() {
       leftoverLotOverlap(x, z, 2.4, 2.6, 0.15) === false
       && streetOverlap(x, z, 0.4, 2.6) === false
       && z > TRAVEL_Z1);
+  }
+
+  ok('four signed alley dumpsters + four loading docks at z=248',
+    ALLEY_DUMPSTER_CELLS.length === 4 && ALLEY_DOCK_CELLS.length === 4
+    && ALLEY_DUMPSTER_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 252)
+    && ALLEY_DOCK_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && x < 251));
+  ok('inland.js builds alley dumpsters, hash01, no layout rng',
+    inland.includes('ALLEY_DUMPSTER_CELLS') && inland.includes('ALLEY_DOCK_CELLS')
+    && inland.includes('inland-alley-dumpsters')
+    && inland.includes('alleySolidHitsWhoop')
+    && !/\brng2?\s*\(/.test(inland) && !/\brng3\s*\(/.test(inland)
+    && !/\brng4\s*\(/.test(inland));
+  for (let i = 0; i < ALLEY_DUMPSTER_CELLS.length; i++) {
+    const [x, z] = ALLEY_DUMPSTER_CELLS[i];
+    ok(`dumpster ${x}/${z} misses leftoverLot / street / travel / whoops`,
+      leftoverLotOverlap(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D, 0.15) === false
+      && streetOverlap(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && alleySolidHitsWhoop(x, z, ALLEY_DUMP_W, ALLEY_DUMP_D) === false
+      && x < 240);
+  }
+  for (let i = 0; i < ALLEY_DOCK_CELLS.length; i++) {
+    const [x, z] = ALLEY_DOCK_CELLS[i];
+    ok(`dock ${x}/${z} misses leftoverLot / street / travel / whoops`,
+      leftoverLotOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D, 0.15) === false
+      && streetOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && alleySolidHitsWhoop(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D) === false
+      && x < 240);
   }
 
   ok('leftoverLot A–H unmoved',

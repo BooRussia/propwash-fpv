@@ -674,6 +674,47 @@ export function fireEscapes() {
   return out;
 }
 
+// ---- inland alley dumpsters + loading docks (z=248 band) ----
+// Signed solids on the service alleys between inland mid-rise pairs.
+// West of x=240. Miss leftoverLot A–H, travel 40.2–47.8, alley-pipe bays
+// at pair x, and fire-escape flanks at plateX±9. hash01 never at const-eval.
+export const ALLEY_DUMP_W = 1.68;
+export const ALLEY_DUMP_D = 0.92;
+export const ALLEY_DUMP_H = 1.12;
+export const ALLEY_DUMPSTER_CELLS = Object.freeze([
+  [-433.2, 244.8],
+  [-253.2, 244.8],
+  [-83.2, 244.8],
+  [96.8, 244.8],
+]);
+export const ALLEY_DOCK_W = 2.40;
+export const ALLEY_DOCK_D = 1.20;
+export const ALLEY_DOCK_H = 0.36;
+export const ALLEY_DOCK_CELLS = Object.freeze([
+  [-426.8, 251.2],
+  [-246.8, 251.2],
+  [-76.8, 251.2],
+  [103.2, 251.2],
+]);
+
+/** True when an alley solid would sit in a pipe or fire-escape bay. */
+export function alleySolidHitsWhoop(x, z, w, d) {
+  const hw = w / 2, hd = d / 2;
+  for (let i = 0; i < ALLEY_PIPE_CELLS.length; i++) {
+    const px = ALLEY_PIPE_CELLS[i][0], pz = ALLEY_PIPE_CELLS[i][1];
+    if (Math.abs(x - px) < hw + 1.2 && Math.abs(z - pz) < hd + ALLEY_PIPE_HALF_Z) {
+      return true;
+    }
+  }
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    const fx = FIRE_ESCAPE_CELLS[i][0], fz = FIRE_ESCAPE_CELLS[i][1];
+    if (Math.abs(x - fx) < hw + 1.2 && Math.abs(z - fz) < hd + FIRE_ESCAPE_HALF_Z) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ---- Lincoln Road analogue (z=120): E–W pedestrian mall + fly-under pergolas ----
 // Inland of Ocean Drive, parallel to the facade plane. West of leftoverLot A
 // (x>=251). New RESERVED west of x=240. Miss GAP_X, fifth/espa plates, house
@@ -5029,6 +5070,16 @@ export const KEEPOUT = [
     x0: x - 1.2, x1: x + 1.2,
     z0: z - FIRE_ESCAPE_HALF_Z - 0.8, z1: z + FIRE_ESCAPE_HALF_Z + 0.8,
     tag: 'fire-escape',
+  })),
+  ...ALLEY_DUMPSTER_CELLS.map(([x, z]) => ({
+    x0: x - ALLEY_DUMP_W / 2 - 0.4, x1: x + ALLEY_DUMP_W / 2 + 0.4,
+    z0: z - ALLEY_DUMP_D / 2 - 0.4, z1: z + ALLEY_DUMP_D / 2 + 0.4,
+    tag: 'inland-alley',
+  })),
+  ...ALLEY_DOCK_CELLS.map(([x, z]) => ({
+    x0: x - ALLEY_DOCK_W / 2 - 0.4, x1: x + ALLEY_DOCK_W / 2 + 0.4,
+    z0: z - ALLEY_DOCK_D / 2 - 0.4, z1: z + ALLEY_DOCK_D / 2 + 0.4,
+    tag: 'inland-alley',
   })),
   ...PARK_RING_CELLS.map(([x, z]) => ({
     x0: x - PARK_RING_TUBE - 0.8, x1: x + PARK_RING_TUBE + 0.8,
