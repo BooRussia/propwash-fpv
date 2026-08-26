@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   CITY_Y, PIER_X, GAP_X, CROSS_X, MARINA_X, groundHeight, inKeepout, deckTop,
   BOARDWALK_TOP, leftoverLotOverlap, BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
+  BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS,
 } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
@@ -855,6 +856,44 @@ export async function buildKenneyDressing(ctx) {
     addCyl(x, y, z, 0.08, 2.1);
   }
   await scatterSafe(ctx, 'parasol_a', extraUmbrellas, 'beach-umbrellas-signed');
+
+  // Extra signed boardwalk benches + lamps. hash01 yaw only.
+  // Skip keepouts / leftoverLot / travel. Do not restack loops above.
+  const extraBenches = [];
+  for (let i = 0; i < BOARDWALK_BENCH_CELLS.length; i++) {
+    const [x, z] = BOARDWALK_BENCH_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 1.8, 0.7, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if ([-80, -20, 40, 160, 220].some((ax) => Math.abs(x - ax) < 8)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < BOARDWALK_TOP - 0.01) continue;
+    if (!clear(x, z, 1.0, y, 0.9)) continue;
+    extraBenches.push({ x, y, z, scale: 1.0, rotY: Math.PI / 2 + (hash01(i, 2501) - 0.5) * 0.12 });
+    addCollider(x, y, z, 1.78, 0.99, 0.66);
+  }
+  await scatterSafe(ctx, 'modular_street_seating', extraBenches, 'boardwalk-benches-signed');
+
+  const extraLamps = [];
+  for (let i = 0; i < BOARDWALK_LAMP_CELLS.length; i++) {
+    const [x, z] = BOARDWALK_LAMP_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 0.4, 0.4, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if ([-80, -20, 40, 160, 220].some((ax) => Math.abs(x - ax) < 8)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < BOARDWALK_TOP - 0.01) continue;
+    if (!clear(x, z, 0.22, y, 1.1)) continue;
+    extraLamps.push({ x, y, z, scale: 0.42, rotY: hash01(i, 2511) * Math.PI * 2 });
+    addCyl(x, y, z, 0.15, 1.08);
+  }
+  await scatterSafe(ctx, 'street_light_square', extraLamps, 'boardwalk-lamps-signed');
 
   setTag('world');
   return {

@@ -61,6 +61,7 @@ import {
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
   BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS, BEACH_CHAIR_WALK_RUNS,
+  BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS, BOARDWALK_Z, BOARDWALK_TOP,
 } from './constants.js';
 import { hash01 } from './rng.js';
 
@@ -1305,6 +1306,30 @@ function FRONT_Z_OK() {
     && !kenney.includes('ShaderMaterial')
     && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
   ok('leftoverLot A–H still signed after beach chairs',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('signed boardwalk benches and lamps sit on the deck, skip keepouts',
+    BOARDWALK_BENCH_CELLS.length === 6 && BOARDWALK_LAMP_CELLS.length === 6
+    && BOARDWALK_BENCH_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0
+      && Math.abs(z - BOARDWALK_Z) < BOARDWALK_TOP
+      && leftoverLotOverlap(x, z, 1.8, 0.7, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && inKeepout(x, z, 0.6) === false
+      && GAP_X.every((gx) => Math.abs(x - gx) > XS_HALF + 0.55))
+    && BOARDWALK_LAMP_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0
+      && leftoverLotOverlap(x, z, 0.4, 0.4, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && inKeepout(x, z, 0.6) === false)
+    && kenney.includes('BOARDWALK_BENCH_CELLS') && kenney.includes('BOARDWALK_LAMP_CELLS')
+    && kenney.includes("'boardwalk-benches-signed'") && kenney.includes("'boardwalk-lamps-signed'")
+    && kenney.includes('hash01(i, 2501)') && kenney.includes('hash01(i, 2511)')
+    && !/\brng2?\s*\(/.test(kenney) && !kenney.includes('ShaderMaterial'));
+  ok('crowd adds boardwalk skaters, no colliders',
+    crowd.includes('const nBoardwalkSkate = 16')
+    && crowd.includes('hash01(i + 2600')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB'));
+  ok('leftoverLot A–H still signed after boardwalk fill',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

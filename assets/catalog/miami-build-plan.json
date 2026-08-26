@@ -366,7 +366,7 @@
     {
       "id": "gap-501",
       "title": "Inland storefronts on GAP_X=-501 with arcade fly-unders if west of leftoverLot A",
-      "status": "done",
+      "status": "in_progress",
       "notes": "nine shops on GAP_X=-501 (4W+5E), arcade ±Z + pass ±X; skip Washington; miss helipad W; leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
@@ -379,7 +379,15 @@
     {
       "id": "boardwalk-fill",
       "title": "Extra boardwalk benches, lamps, and skaters west of leftoverLot A, hash01",
-      "status": "pending"
+      "status": "done",
+      "notes": "6 benches + 6 lamps on boardwalk deck; nBoardwalkSkate=16; hash01; skip keepout/GAP/pier/travel; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/kenneyDressing.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/kenneyDressingTest.js"
+      ]
     },
     {
       "id": "skyline-west",
@@ -428,8 +436,8 @@
     "washingtonAve": { "z": 180, "arcadeX": 96, "status": "done", "note": "second N-S street west of Ocean Drive; painted 14 m lanes + parked cars + one fly-under arcade at x=96; west of leftoverLot A; leftoverLot A–H unmoved" },
     "eighthStreet": { "x": -129, "frontX": -137.9, "status": "done", "note": "GAP_X=-129 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nEighth=36" },
     "gap315": { "x": -315, "frontX": -323.9, "status": "done", "note": "GAP_X=-315 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap315=36" },
-    "gap501": { "x": -501, "frontX": -509.9, "status": "done", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" },
     "gap429": { "x": 429, "frontX": 420.1, "status": "done", "note": "skipped: west front 420.1 east of leftoverLot A and x=240; no shops; leftoverLot A–H unmoved" },
+    "gap501": { "x": -501, "frontX": -509.9, "status": "in_progress", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" },
     "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" }
   },
   "loop": {

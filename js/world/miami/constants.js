@@ -61,6 +61,16 @@ export const BEACH_CHAIR_WALK_RUNS = Object.freeze([
   [-48.2, -31.8],
   [19.8, 36.2],
 ]);
+// Extra signed benches + bollard lamps on the boardwalk deck. West of leftoverLot A.
+// Ocean of travel 40.2–47.8. Skip GAP_X / pier / keepout at place time. hash01 never at const-eval.
+export const BOARDWALK_BENCH_CELLS = Object.freeze([
+  [-480, 28.4], [-360, 28.4], [-220, 28.4],
+  [-60, 28.4], [80, 28.4], [180, 28.4],
+]);
+export const BOARDWALK_LAMP_CELLS = Object.freeze([
+  [-420, 29.6], [-300, 29.6], [-180, 29.6],
+  [20, 29.6], [100, 29.6], [200, 29.6],
+]);
 
 // ---- MIAMI letter sign ----
 export const SIGN_X = 60, SIGN_Z = 14;

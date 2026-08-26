@@ -95,6 +95,12 @@ export function runMiamiKenneyDressingTests() {
     && kenney.includes('hash01(i, 2401)') && kenney.includes('hash01(i, 2411)')
     && kenney.includes('z = 5.2 + hash01(i, 103) * 11')
     && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
+  ok('signed boardwalk benches / lamps skip keepouts, hash01 only',
+    kenney.includes('BOARDWALK_BENCH_CELLS') && kenney.includes('BOARDWALK_LAMP_CELLS')
+    && kenney.includes("'boardwalk-benches-signed'") && kenney.includes("'boardwalk-lamps-signed'")
+    && kenney.includes('hash01(i, 2501)') && kenney.includes('hash01(i, 2511)')
+    && kenney.includes('inKeepout(x, z, 0.6)') && kenney.includes('leftoverLotOverlap')
+    && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
   ok('far row sits behind the 60-box LOD (z>=640)',
     kenney.includes('640 + hash01')
     && kenney.includes('kenney_skyscraper_b')

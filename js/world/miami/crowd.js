@@ -135,6 +135,7 @@ export function buildCrowd(ctx) {
   const nWalk = 140;
   const nBike = 32;
   const nSkate = 32;
+  const nBoardwalkSkate = 16;
   const nBeach = 68;
   const nSwim = 36;
   const nSit = 28;
@@ -156,11 +157,12 @@ export function buildCrowd(ctx) {
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nCollins + nLummus + nLummusSit
-    + nChairWalk + nTowelSit;
+    + nChairWalk + nTowelSit + nBoardwalkSkate;
 
-  const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
-  const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
-  const extraMesh = makeInstanced(track, new THREE.BoxGeometry(0.9, 0.08, 0.28), nBike + nSkate + nParked);
+  const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
+  const limbMesh = makeInstanced(track, personLimbGeo(), total);
+  const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.12, 10, 8), total);
+  const extraMesh = makeInstanced(track, extraPropGeo(), nBike + nSkate + nParked + nBoardwalkSkate);
 
   let extraI = 0;
 
@@ -230,6 +232,20 @@ export function buildCrowd(ctx) {
       speed: 3.4 + hash01(i + 400, 13) * 1.3,
       phase: hash01(i + 400, 17) * Math.PI * 2,
       shirt: pick(SHIRT, i + 400, 19), skin: pick(SKIN, i + 400, 23),
+    });
+  }
+
+  for (let i = 0; i < nBoardwalkSkate; i++) {
+    const dir = hash01(i + 2600, 5) < 0.5 ? 1 : -1;
+    const x = -350 + hash01(i + 2600, 7) * 580;
+    const z = BOARDWALK_Z + (hash01(i + 2600, 11) - 0.5) * 3.2;
+    if (npcOffLimits(x, z) || inTravelLane(z) || inCarriageway(z)) continue;
+    actors.push({
+      kind: 'skate', i: actors.length, extra: extraI++,
+      x, z, y: BOARDWALK_TOP, dir, yaw: dir > 0 ? 0 : Math.PI,
+      speed: 3.4 + hash01(i + 2600, 13) * 1.3,
+      phase: hash01(i + 2600, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2600, 19), skin: pick(SKIN, i + 2600, 23),
     });
   }
 
@@ -534,17 +550,19 @@ export function buildCrowd(ctx) {
   // Re-index after skips so instance slots stay dense.
   const used = actors.length;
   bodyMesh.count = used;
+  limbMesh.count = used;
   headMesh.count = used;
   extraMesh.count = extraI;
 
   const group = new THREE.Group();
   group.name = 'ocean-drive-crowd';
   group.add(bodyMesh);
+  group.add(limbMesh);
   group.add(headMesh);
   group.add(extraMesh);
   root.add(group);
 
-  const state = { bodyMesh, headMesh, extraMesh, actors, t: 0 };
+  const state = { bodyMesh, limbMesh, headMesh, extraMesh, actors, t: 0 };
   stampAll(state);
 
   return {
@@ -696,8 +714,35 @@ function stepActors(state, dt) {
   }
 }
 
+function personTorsoGeo() {
+  return new THREE.BoxGeometry(0.34, 0.40, 0.20);
+}
+
+function personLimbGeo() {
+  const G = [
+    cBox(0.09, 0.32, 0.09, 0xffffff, 0.08, -0.20, 0.01),
+    cBox(0.09, 0.32, 0.09, 0xffffff, -0.08, -0.20, 0.01),
+    cBox(0.07, 0.30, 0.07, 0xffffff, 0.22, 0.04, 0.00),
+    cBox(0.07, 0.30, 0.07, 0xffffff, -0.22, 0.04, 0.00),
+  ];
+  const m = mergeGeometries(G);
+  G.forEach((g) => g.dispose());
+  return m;
+}
+
+function extraPropGeo() {
+  const G = [
+    cBox(0.78, 0.05, 0.06, 0xffffff, 0, 0.14, 0),
+    cCyl(0.15, 0.15, 0.045, 8, 0xffffff, -0.30, 0.15, 0, Math.PI / 2, 0, 0),
+    cCyl(0.15, 0.15, 0.045, 8, 0xffffff, 0.30, 0.15, 0, Math.PI / 2, 0, 0),
+  ];
+  const m = mergeGeometries(G);
+  G.forEach((g) => g.dispose());
+  return m;
+}
+
 function stampAll(state) {
-  const { bodyMesh, headMesh, extraMesh, actors, t } = state;
+  const { bodyMesh, limbMesh, headMesh, extraMesh, actors, t } = state;
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
@@ -724,7 +769,11 @@ function stampAll(state) {
     _color.setHex(a.shirt);
     if (bodyMesh.setColorAt) bodyMesh.setColorAt(i, _color);
 
-    _dummy.position.set(a.x, (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y + 0.35 : bodyY + 0.48, a.z);
+    limbMesh.setMatrixAt(i, _dummy.matrix);
+    _color.setHex(a.skin);
+    if (limbMesh.setColorAt) limbMesh.setColorAt(i, _color);
+
+    _dummy.position.set(a.x, (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y + 0.35 : bodyY + 0.36, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
     _dummy.scale.set(1, 1, 1);
     _dummy.updateMatrix();
@@ -745,9 +794,11 @@ function stampAll(state) {
     }
   }
   bodyMesh.instanceMatrix.needsUpdate = true;
+  limbMesh.instanceMatrix.needsUpdate = true;
   headMesh.instanceMatrix.needsUpdate = true;
   extraMesh.instanceMatrix.needsUpdate = true;
   if (bodyMesh.instanceColor) bodyMesh.instanceColor.needsUpdate = true;
+  if (limbMesh.instanceColor) limbMesh.instanceColor.needsUpdate = true;
   if (headMesh.instanceColor) headMesh.instanceColor.needsUpdate = true;
   if (extraMesh.instanceColor) extraMesh.instanceColor.needsUpdate = true;
 }
