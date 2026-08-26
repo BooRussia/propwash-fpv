@@ -779,6 +779,26 @@
       "id": "drop-garage",
       "title": "Tighten garage-mouth fly-through lighting and soffit so the Ocean Drive drop reads clearly",
       "status": "pending"
+    },
+    {
+      "id": "court-east96",
+      "title": "Skip court well on x=210 z=96 if the arcade already occupies the plate; otherwise add a drop-well",
+      "status": "pending"
+    },
+    {
+      "id": "npc-hotel-porch",
+      "title": "Visual sitters under Majestic/Cavalier/Breakwater/Winterhaven porches, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "fill-west600",
+      "title": "One more inland mid-rise pair west of x=-600 at x=-660 if it misses the map edge and leftoverLot",
+      "status": "pending"
+    },
+    {
+      "id": "pier-whoop-light",
+      "title": "Night emissive on pier-bay rings so undercroft whoops read after dusk, regDN, no ShaderMaterial",
+      "status": "pending"
     }
   ],
   "landmarks": {
