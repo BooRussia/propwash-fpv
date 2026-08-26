@@ -11,10 +11,11 @@ import {
   LINCOLN_WALK_RUNS,
   washingtonRuns, WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
   WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
+  COLLINS_WALK_Z, COLLINS_WALK_RUNS,
   MARINA_FINGER_XS, MARINA_DOCK_HALF_X, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
   groundHeight, inKeepout, leftoverLotOverlap,
-  onLincolnWalk, onWashingtonWalk,
+  onLincolnWalk, onWashingtonWalk, onCollinsWalk,
 } from './constants.js';
 
 // ============================================================
@@ -50,6 +51,8 @@ export const EIGHTH_WALK_Z_RUNS = Object.freeze([
   [92, 168],
   [190, 220],
 ]);
+// City slab in front of Majestic / Avalon / Colony. Walk +X. Skip GAP_X=-129.
+export { COLLINS_WALK_Z, COLLINS_WALK_RUNS };
 const WASH_WALK_RUNS = washingtonRuns();
 const VBALL_PITCH = 26;
 
@@ -133,9 +136,10 @@ export function buildCrowd(ctx) {
   const nWashington = 36;
   const nMarinaSwim = 24;
   const nEighth = 36;
+  const nCollins = 36;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
-    + nMarinaSwim + nEighth;
+    + nMarinaSwim + nEighth + nCollins;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -402,6 +406,23 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nCollins; i++) {
+    const runI = i % COLLINS_WALK_RUNS.length;
+    const run = COLLINS_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 2200, 3) * (run[1] - run[0]);
+    const z = COLLINS_WALK_Z + (hash01(i + 2200, 13) - 0.5) * 0.8;
+    const dir = hash01(i + 2200, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || !onCollinsWalk(x, z)) continue;
+    actors.push({
+      kind: 'collins', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 2200, 11) * 0.45,
+      phase: hash01(i + 2200, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2200, 19), skin: pick(SKIN, i + 2200, 23),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -493,6 +514,17 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'collins') {
+      a.x += a.dir * a.speed * dt;
+      const run = COLLINS_WALK_RUNS[a.run] || COLLINS_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onCollinsWalk(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'marina-swim') {
       a.x += Math.cos(a.yaw) * a.speed * dt;
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -530,7 +562,7 @@ function stampAll(state) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
-      || a.kind === 'eighth'
+      || a.kind === 'eighth' || a.kind === 'collins'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

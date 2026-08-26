@@ -48,6 +48,7 @@ import {
   onWashingtonWalk,
   EIGHTH_X, EIGHTH_W_CELLS, EIGHTH_E_CELLS, EIGHTH_W_FRONT_X, EIGHTH_E_FRONT_X,
   EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
+  COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
 } from './constants.js';
 import { hash01 } from './rng.js';
@@ -973,6 +974,65 @@ function FRONT_Z_OK() {
     && EIGHTH_WALK_XS.every((x) => leftoverLotOverlap(x, 114, 0.6, 0.6, 0.15) === false)
     && EIGHTH_WALK_Z_RUNS.every((run) => run[0] > TRAVEL_Z1
       && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0)));
+
+  ok('crowd walks Collins sidewalk in front of Avalon/Majestic/Colony',
+    crowd.includes("kind: 'collins'") && crowd.includes('COLLINS_WALK_RUNS')
+    && crowd.includes('const nCollins = 36')
+    && crowd.includes('onCollinsWalk')
+    && crowd.includes('npcOffLimits')
+    && crowd.includes('hash01')
+    && !/\brng2?\s*\(/.test(crowd) && !/\brng3\s*\(/.test(crowd)
+    && !/\brng4\s*\(/.test(crowd)
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB'));
+  ok('Collins walk runs sit on the city sidewalk, west of leftoverLot A',
+    COLLINS_WALK_Z === (SW_CITY_Z0 + SW_CITY_Z1) / 2
+    && COLLINS_WALK_Z > TRAVEL_Z1
+    && COLLINS_WALK_RUNS.length === 3
+    && COLLINS_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240 && x0 > -315 + XS_HALF)
+    && Math.abs(COLLINS_WALK_RUNS[0][0] - (MAJESTIC_X - MAJESTIC_W / 2)) < 1e-6
+    && Math.abs(COLLINS_WALK_RUNS[1][0] - (AVALON_X - AVALON_W / 2)) < 1e-6
+    && Math.abs(COLLINS_WALK_RUNS[2][0] - (COLONY_X - COLONY_W / 2)) < 1e-6
+    && COLLINS_WALK_RUNS.every(([x0, x1]) => {
+      const mid = (x0 + x1) / 2;
+      return leftoverLotOverlap(mid, COLLINS_WALK_Z, 0.6, 0.6, 0.15) === false
+        && Math.abs(mid + 129) > XS_HALF + 0.55
+        && onCollinsWalk(mid, COLLINS_WALK_Z)
+        && !(COLLINS_WALK_Z > TRAVEL_Z0 && COLLINS_WALK_Z < TRAVEL_Z1);
+    })
+    && !onCollinsWalk(258, COLLINS_WALK_Z)
+    && !onCollinsWalk(-129, COLLINS_WALK_Z));
+
+  const collinsSpots = [];
+  for (let i = 0; i < 36; i++) {
+    const run = COLLINS_WALK_RUNS[i % COLLINS_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 2200, 3) * (run[1] - run[0]);
+    const z = COLLINS_WALK_Z + (hash01(i + 2200, 13) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (!onCollinsWalk(x, z)) continue;
+    collinsSpots.push({ x, z });
+  }
+  ok('collins walkers fill Avalon/Majestic/Colony sidewalks, miss travel / leftoverLot',
+    collinsSpots.length >= 32
+    && collinsSpots.every((p) => onCollinsWalk(p.x, p.z)
+      && p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z >= SW_CITY_Z0 && p.z <= SW_CITY_Z1
+      && Math.abs(p.x + 129) > XS_HALF)
+    && collinsSpots.some((p) => p.x >= MAJESTIC_X - MAJESTIC_W / 2
+      && p.x <= MAJESTIC_X + MAJESTIC_W / 2)
+    && collinsSpots.some((p) => p.x >= AVALON_X - AVALON_W / 2
+      && p.x <= AVALON_X + AVALON_W / 2)
+    && collinsSpots.some((p) => p.x >= COLONY_X - COLONY_W / 2
+      && p.x <= COLONY_X + COLONY_W / 2));
+  ok('collins NPCs have no colliders and leftoverLot A–H unmoved',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'collins'")
+    && crowd.includes('npcOffLimits')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   ok('marina.js exists', existsSync(marinaPath));
   ok('marina ocean dressing is hash01, leftoverLot unmoved',

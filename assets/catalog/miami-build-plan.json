@@ -262,7 +262,13 @@
     {
       "id": "npc-collins",
       "title": "Visual sidewalk crowd in front of Avalon/Majestic/Colony, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nCollins=36 on city sidewalk in front of Majestic/Avalon/Colony; skip GAP_X=-129; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "alley-dumpsters",

@@ -151,6 +151,14 @@ export const CROSS_X = [-129, 57];                        // zebra crossings nea
 export const GAP_X = [-501, -315, -129, 57, 243, 429];    // cross-street columns
 export const XS_HALF = 6.5;        // cross-street half width
 export const XS_Z0 = 52.9, XS_Z1 = 268;
+// City sidewalk in front of Majestic / Avalon / Colony. Walk +X.
+// Skip GAP_X=-129. Miss travel 40.2–47.8. leftoverLot A–H unmoved.
+export const COLLINS_WALK_Z = (SW_CITY_Z0 + SW_CITY_Z1) / 2;
+export const COLLINS_WALK_RUNS = Object.freeze([
+  [MAJESTIC_X - MAJESTIC_W / 2, MAJESTIC_X + MAJESTIC_W / 2],
+  [AVALON_X - AVALON_W / 2, AVALON_X + AVALON_W / 2],
+  [COLONY_X - COLONY_W / 2, COLONY_X + COLONY_W / 2],
+]);
 
 // ---- boardwalk + pier deck (visuals in landmarks/pier.js) ----
 // Boardwalk: Box 1240 × 0.5 × 8 at (0, CITY_Y+0.05, CITY_Z-3).
@@ -5155,6 +5163,18 @@ export function onLincolnWalk(x, z) {
   if (Math.abs(z - LINCOLN_Z) > LINCOLN_HALF + 0.4) return false;
   for (let i = 0; i < LINCOLN_WALK_RUNS.length; i++) {
     const a = LINCOLN_WALK_RUNS[i][0], b = LINCOLN_WALK_RUNS[i][1];
+    if (x >= a && x <= b) return true;
+  }
+  return false;
+}
+
+/** City sidewalk in front of Majestic / Avalon / Colony. West of leftoverLot A. */
+export function onCollinsWalk(x, z) {
+  if (x >= 240) return false;
+  if (z < SW_CITY_Z0 || z > SW_CITY_Z1) return false;
+  if (sidewalkInterrupted(x)) return false;
+  for (let i = 0; i < COLLINS_WALK_RUNS.length; i++) {
+    const a = COLLINS_WALK_RUNS[i][0], b = COLLINS_WALK_RUNS[i][1];
     if (x >= a && x <= b) return true;
   }
   return false;
