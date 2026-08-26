@@ -55,6 +55,11 @@ export function runMiamiInlandTests() {
   ok('no ShaderMaterial / ped / traffic',
     !inland.includes('ShaderMaterial')
     && !inland.includes('ped.js') && !inland.includes('traffic.js'));
+  ok('inland windows glow warm after dusk via regDN, not ShaderMaterial',
+    inland.includes('regDN') && inland.includes('emissiveMap')
+    && inland.includes('0xffb060') && inland.includes('2.45')
+    && !inland.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(inland));
   ok('index calls buildInland after espa, before flythrough',
     index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)')

@@ -774,6 +774,10 @@ function FRONT_Z_OK() {
     && !/\brng4\s*\(/.test(inland) && inland.includes('hash01')
     && !inland.includes('ShaderMaterial')
     && !inland.includes('ped.js') && !inland.includes('traffic.js'));
+  ok('inland mid-rise windows are warm regDN emissives after dusk',
+    inland.includes('regDN') && inland.includes('emissiveMap: decoTex.emissive')
+    && inland.includes('0xffb060') && inland.includes('2.45')
+    && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
   ok('ten signed inland mid-rises', inlandList.length === 10);

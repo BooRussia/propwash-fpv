@@ -440,7 +440,13 @@
     {
       "id": "night-windows",
       "title": "Warm window emissives on inland mid-rises after dusk via regDN, no ShaderMaterial",
-      "status": "pending"
+      "status": "done",
+      "notes": "inland mid-rise walls emissive 0xffb060 via emissiveMap + regDN 0→2.45; MeshStandardMaterial only; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "npc-density-2",

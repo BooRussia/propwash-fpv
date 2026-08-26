@@ -86,8 +86,8 @@ export function buildInland(ctx) {
       color, roughness: 0.75,
       map: decoTex.albedo,
       emissiveMap: decoTex.emissive,
-      emissive: 0xfff0d0, emissiveIntensity: 0,
-    })), 0.0, 1.35);
+      emissive: 0xffb060, emissiveIntensity: 0,
+    })), 0.0, 2.45);
     wallMat.color.lerp(new THREE.Color(0xffffff), 0.1);
 
     const walls = new THREE.Mesh(track(kit.walls), wallMat);
