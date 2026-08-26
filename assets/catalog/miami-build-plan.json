@@ -719,7 +719,15 @@
     {
       "id": "alley-181",
       "title": "Alley-pipe whoops at z=181 between z=152 and Washington if they miss WASH reserved",
-      "status": "pending"
+      "status": "done",
+      "notes": "2 pipes at [-600,181]/[-540,181] west of WASH_X0=-480; other 152/210 x hit WASH reserved z 173–187; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/flythrough.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-sit-96",

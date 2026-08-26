@@ -547,9 +547,11 @@ function FRONT_Z_OK() {
   }
 
   ok('alley pipes are signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 13
+    ALLEY_PIPE_CELLS.length === 15
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
-    && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1);
+    && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1
+    && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 2
+    && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < -480));
   ok('inland service-alley pipes sit at z=248',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4
     && ALLEY_PIPE_CELLS.slice(4).every(([x]) => x < 240));

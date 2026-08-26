@@ -367,6 +367,10 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-250, 223],
   [-80, 223],
   [100, 223],
+  // Between z=152 fill and z=210 fill at z=181. Only x west of WASH_X0=-480
+  // miss Washington reserved (z 173–187, x -480..228). Fly +X.
+  [-600, 181],
+  [-540, 181],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.

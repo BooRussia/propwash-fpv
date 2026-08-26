@@ -12,6 +12,7 @@ import {
   COURT_WELL_CELLS, COURT_WELL_W, COURT_WELL_D, isCourtWellCell,
   INLAND_ARCADE_CELLS, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W, isInlandArcadeCell, courtWellGeom,
   leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
+  WASH_X0, WASH_Z0, WASH_Z1,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
   ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DOCK_W, ALLEY_DOCK_D,
@@ -112,8 +113,22 @@ export function runMiamiInlandTests() {
   ok('four inland alley pipes at z=248',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4);
   ok('five alley pipes between z=210 fill and z=237 skyline',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 223).length === 5
-    && ALLEY_PIPE_CELLS.length === 13);
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 223).length === 5);
+  ok('two alley pipes at z=181 west of Washington reserved',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 2
+    && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < WASH_X0 && x < 240)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 181)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -540 && z === 181)
+    && ALLEY_PIPE_CELLS.length === 15);
+  for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 181)) {
+    const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
+    ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
+      !!v && inKeepout(x, z) && x < 240 && x < WASH_X0
+      && leftoverLotOverlap(x, z, 2.4, 2.6, 0.15) === false
+      && streetOverlap(x, z, 0.4, 2.6) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && !(x >= WASH_X0 && z > WASH_Z0 && z < WASH_Z1));
+  }
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 248)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout`, !!v && inKeepout(x, z) && x < 240);
