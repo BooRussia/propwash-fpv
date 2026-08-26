@@ -246,7 +246,10 @@ export function buildInland(ctx) {
   const pallets = [];
   const cardboard = [];
   // Existing 0–3 keep hash01(i) pallet draws. West pair at x=-600 is last.
-  const alleys = [[-430, 248], [-250, 248], [-80, 248], [100, 248], [-600, 248]];
+  const alleys = [
+    [-430, 248], [-250, 248], [-80, 248], [100, 248], [-600, 248],
+    [-660, 248], [-540, 248], [-390, 248], [-190, 248], [160, 248], [210, 248],
+  ];
   for (let i = 0; i < alleys.length; i++) {
     const [cx, cz] = alleys[i];
     for (const sx of [-5.6, 5.6]) {

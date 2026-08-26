@@ -18,6 +18,7 @@ import {
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D, WINTERHAVEN_SOFFIT,
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_SOFFIT, GARAGE_AISLE_W,
+  GARAGE_STAND_CELLS,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
@@ -210,6 +211,12 @@ export function runMiamiCrowdTests() {
     crowd.includes('const nHotelPorchSit = 16') && crowd.includes('hash01(i + 4100')
     && crowd.includes('HOTEL_PORCH_CELLS') && crowd.includes("kind: 'porch-sit'")
     && !crowd.includes('addCollider'));
+  ok('crowd stands at the garage mouth sidewalk',
+    crowd.includes("kind: 'garage-stand'") && crowd.includes('GARAGE_STAND_CELLS')
+    && crowd.includes('hash01(i + 4200') && !crowd.includes('addCollider'));
+  ok('crowd sits under x=-660 skyline arcades',
+    crowd.includes('const nArcadeWestSit = 8') && crowd.includes('hash01(i + 4300')
+    && crowd.includes("kind: 'arcade-sit'") && !crowd.includes('addCollider'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd people have torso + limbs, not a single box',
     crowd.includes('personTorsoGeo') && crowd.includes('personLimbGeo')
@@ -618,13 +625,13 @@ function FRONT_Z_OK() {
   }
 
   ok('alley pipes are signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 15
+    ALLEY_PIPE_CELLS.length === 21
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 2
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < -480));
   ok('inland service-alley pipes sit at z=248',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 10
     && ALLEY_PIPE_CELLS.slice(4).every(([x]) => x < 240));
   ok('flythrough builds alley pipes',
     fly.includes('ALLEY_PIPE_CELLS') && fly.includes("setTag('alley-pipe')")
@@ -776,6 +783,11 @@ function FRONT_Z_OK() {
   ok('pier.js builds extra bay rings',
     pierSrc.includes('buildPierBayRings') && pierSrc.includes('PIER_EXTRA_BAY_IS')
     && !/\brng[2-4]?\s*\(/.test(pierSrc) && !pierSrc.includes('ShaderMaterial'));
+  ok('pier-bay rings glow after dusk via regDN, no ShaderMaterial',
+    pierSrc.includes('pier-bay-rings-night') && pierSrc.includes('regDN')
+    && pierSrc.includes('0xffc56a') && pierSrc.includes('2.4')
+    && pierSrc.includes('MeshStandardMaterial')
+    && !pierSrc.includes('ShaderMaterial'));
   ok('obstacles do not draw layout rng or ShaderMaterial',
     !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly)
     && !/\brng4\s*\(/.test(fly) && !fly.includes('ShaderMaterial')
@@ -906,15 +918,19 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 37
+    INLAND_MIDRISE_CELLS.length === 54
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 152)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -540 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
-    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 6
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 7
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x !== -430
       && (x < -112 || x === 210))
@@ -931,7 +947,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 37);
+  ok('signed inland mid-rises', inlandList.length === 54);
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < inlandList.length; i++) {
@@ -955,9 +971,12 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 9
+    COURT_WELL_CELLS.length === 12
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 130 && z === 152)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
@@ -981,16 +1000,22 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 12
+    INLAND_ARCADE_CELLS.length === 15
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 4
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
-    && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && (z === 210 || z === 152 || z === 96)
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 1
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
+    && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240
+      && (z === 210 || z === 152 || z === 96 || z === 237 || z === 259)
       && isInlandArcadeCell(x, z) && !isCourtWellCell(x, z)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z))
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 152)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 152)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
@@ -1001,7 +1026,7 @@ function FRONT_Z_OK() {
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const MIDRISE_WALK_ZS = [143.6, 160.4, 201.6, 218.4];
   const MIDRISE_WALK_RUNS = [
-    [-610, -508], [-494, -322], [-308, -136], [-122, 50], [64, 230],
+    [-670, -508], [-494, -322], [-308, -136], [-122, 50], [64, 230],
   ];
   const midriseSpots = [];
   for (let i = 0; i < 40; i++) {
@@ -1098,7 +1123,7 @@ function FRONT_Z_OK() {
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const ROW96_WALK_ZS = [87.6, 104.4];
   const ROW96_WALK_RUNS = [
-    [-610, -508], [-494, -458], [-402, -322], [-308, -136],
+    [-670, -508], [-494, -458], [-402, -322], [-308, -136],
   ];
   const row96Spots = [];
   for (let i = 0; i < 24; i++) {
@@ -1222,6 +1247,23 @@ function FRONT_Z_OK() {
   ok('leftoverLot A–H still signed after hotel porch sitters',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  ok('garage-mouth standers miss leftoverLot / travel / aisle',
+    crowd.includes("kind: 'garage-stand'") && crowd.includes('GARAGE_STAND_CELLS')
+    && crowd.includes('hash01(i + 4200')
+    && GARAGE_STAND_CELLS.length === 8
+    && GARAGE_STAND_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && leftoverLotOverlap(x, z, 0.6, 0.6, 0.15) === false
+      && Math.abs(x - GARAGE_X) > GARAGE_AISLE_W / 2 - 0.2
+      && z < GARAGE_FRONT_Z + 1.2
+      && x + 0.8 < 240)
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
+  ok('x=-660 arcade sitters miss leftoverLot / travel',
+    crowd.includes('const nArcadeWestSit = 8') && crowd.includes('hash01(i + 4300')
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 259)
+    && leftoverLotOverlap(-660, 237, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(-660, 259, 4.4, 14, 0.15) === false);
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',
     ALLEY_DUMPSTER_CELLS.length === 4 && ALLEY_DOCK_CELLS.length === 4
     && inland.includes('ALLEY_DUMPSTER_CELLS') && inland.includes('inland-alley-dumpsters')

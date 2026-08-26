@@ -388,6 +388,14 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   // miss Washington reserved (z 173–187, x -480..228). Fly +X.
   [-600, 181],
   [-540, 181],
+  // New skyline-pair alleys at z=248. Appended so existing hash01 alley
+  // pallet draws stay put. Fly +X. West of leftoverLot A / x=240.
+  [-660, 248],
+  [-540, 248],
+  [-390, 248],
+  [-190, 248],
+  [160, 248],
+  [210, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -446,6 +454,19 @@ export const GARAGE_WALL_H = 4.40;
 export const GARAGE_AISLE_W = 6.40;  // clear between inner jambs
 export const GARAGE_SOFFIT = 3.60;
 export const GARAGE_ROOF_H = 0.28;
+// Visual standers at the Ocean Drive garage mouth sidewalk. Outside the
+// 6.4 m aisle so the ±Z fly-through stays empty. Ocean of travel 40.2–47.8.
+// West of leftoverLot A / x=240. hash01 never at const-eval.
+export const GARAGE_STAND_CELLS = Object.freeze([
+  [GARAGE_X - 4.8, GARAGE_FRONT_Z - 1.15],
+  [GARAGE_X + 4.8, GARAGE_FRONT_Z - 1.15],
+  [GARAGE_X - 5.6, GARAGE_FRONT_Z - 0.45],
+  [GARAGE_X + 5.6, GARAGE_FRONT_Z - 0.45],
+  [GARAGE_X - 4.2, GARAGE_FRONT_Z - 1.85],
+  [GARAGE_X + 4.2, GARAGE_FRONT_Z - 1.85],
+  [GARAGE_X - 6.2, GARAGE_FRONT_Z + 0.35],
+  [GARAGE_X + 6.2, GARAGE_FRONT_Z + 0.35],
+]);
 
 // ---- 5th-street analogue (GAP_X=57): inland storefronts + fly-unders ----
 // Facades face the cross-street column. Arcade fly ±Z along the walk;
@@ -886,21 +907,28 @@ export const INLAND_MIDRISE_H = 32;
 export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-660, 237], [-660, 259],
   [-600, 237], [-600, 259],
+  [-540, 237], [-540, 259],
   [-430, 237], [-430, 259],
+  [-390, 237], [-390, 259],
   [-250, 237], [-250, 259],
+  [-190, 237], [-190, 259],
   [-80, 237], [-80, 259],
   [100, 237], [100, 259],
+  [160, 237], [160, 259],
+  [210, 237], [210, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
-  [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152], [-190, 152],
-  [90, 152], [160, 152], [210, 152],
-  [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210], [-190, 210],
-  [-80, 210], [90, 210], [160, 210], [210, 210],
+  // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
+  [-660, 152], [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152],
+  [-190, 152], [-160, 152], [90, 152], [130, 152], [160, 152], [190, 152], [210, 152],
+  [-660, 210], [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210],
+  [-190, 210], [-160, 210], [-80, 210], [90, 210], [160, 210], [210, 210],
   // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
   // [210,96] east of cinema reserved (x1=208), west of leftoverLot A / x=240.
-  // Miss GAP_X, travel 40.2–47.8. leftoverLot A–H unmoved.
-  [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
+  // [-660,96] continues the west skyline column. Miss GAP_X, travel 40.2–47.8.
+  // leftoverLot A–H unmoved.
+  [-660, 96], [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
   [210, 96],
 ]);
 
@@ -935,6 +963,7 @@ export const COURT_WELL_CELLS = Object.freeze([
   [-250, 152], [90, 152], [-430, 210], [160, 210], [-600, 210],
   [-390, 152], [210, 210],
   [-390, 96], [-250, 96],
+  [-160, 152], [130, 152], [-660, 210],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 
@@ -996,17 +1025,18 @@ export function courtWellColliderShapesAt(shapes, g) {
   });
 }
 
-// Ground-floor fly-through arcades on z=210, z=152, and z=96 mid-rises.
-// Jambs + soffit only, never a box in the bay. Fly ±Z. Miss court wells.
-// z=96 arcades skip [-390,96]/[-250,96] court wells. [210,96] is the
-// east-of-cinema plate, west of leftoverLot A / x=240.
+// Ground-floor fly-through arcades on z=210, z=152, z=96, and the x=-660
+// skyline pair (z=237/259). Jambs + soffit only, never a box in the bay.
+// Fly ±Z. Miss court wells. z=96 arcades skip [-390,96]/[-250,96] court wells.
+// [210,96] is the east-of-cinema plate, west of leftoverLot A / x=240.
 // leftoverLot A–H unmoved. hash01 never at const-eval.
 export const INLAND_ARCADE_SOFFIT = 3.40;
 export const INLAND_ARCADE_OPEN_W = 4.40;
 export const INLAND_ARCADE_CELLS = Object.freeze([
   [-540, 210], [-250, 210], [-80, 210], [90, 210],
-  [-600, 152], [-430, 152], [-190, 152], [160, 152],
+  [-600, 152], [-430, 152], [-190, 152], [160, 152], [-660, 152],
   [-600, 96], [-540, 96], [-190, 96], [210, 96],
+  [-660, 237], [-660, 259],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1073,12 +1103,13 @@ export const ROOF_WHOOP_Y = CITY_Y + INLAND_MIDRISE_H;
 export const ROOF_AC_CELLS = Object.freeze([
   [-250, 237], [100, 237], [-430, 237], [-80, 237],
   [-540, 152], [-190, 152], [210, 152], [90, 210],
-  [-600, 96], [-540, 96], [-190, 96], [210, 96],
+  [-600, 96], [-540, 96], [-190, 96], [210, 96], [-660, 96], [190, 152],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([
   [-80, 259], [100, 259],
   [-600, 259], [-430, 259], [-250, 259],
   [-540, 210], [-390, 210], [-250, 210], [-190, 210], [-80, 210],
+  [-540, 259], [-390, 259], [-190, 259], [160, 259], [210, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;

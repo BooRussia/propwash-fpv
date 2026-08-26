@@ -70,12 +70,14 @@ export function buildPier(ctx) {
 
 /** Timber whoop rings in extra undercroft bays. Disc stays empty; fly ±Z. */
 function buildPierBayRings(ctx) {
-  const { root, track, addCollider } = ctx;
+  const { root, track, addCollider, regDN } = ctx;
   const TIMBER = 0x6e5340;
   const bits = [];
+  const glowBits = [];
   for (let i = 0; i < PIER_EXTRA_BAY_IS.length; i++) {
     const g = pierBayRingGeom(PIER_EXTRA_BAY_IS[i]);
     bits.push(cTorus(g.r, g.tube, 8, 20, TIMBER, g.x, g.y, g.z, 0, 0, 0));
+    glowBits.push(cTorus(g.r, g.tube * 0.55, 8, 20, 0xffd27a, g.x, g.y, g.z, 0, 0, 0));
   }
   if (!bits.length) return;
   const geo = track(mergeGeometries(bits));
@@ -86,6 +88,17 @@ function buildPierBayRings(ctx) {
   mesh.castShadow = true;
   mesh.name = 'pier-bay-rings';
   root.add(mesh);
+
+  if (glowBits.length) {
+    const glowGeo = track(mergeGeometries(glowBits));
+    glowBits.forEach((x) => x.dispose());
+    const glow = new THREE.Mesh(glowGeo, regDN(track(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.35, metalness: 0.12,
+      emissive: 0xffc56a, emissiveIntensity: 0,
+    })), 0.15, 2.4));
+    glow.name = 'pier-bay-rings-night';
+    root.add(glow);
+  }
 
   const shapes = pierFlyShapes();
   for (let i = 0; i < shapes.length; i++) {
