@@ -79,7 +79,7 @@ export function runMiamiInlandTests() {
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
   ok('signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 56
+    INLAND_MIDRISE_CELLS.length === 62
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -100,12 +100,17 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x !== -430
-      && (x < -112 || x === 210)));
+      && (x < -112 || x === 210))
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).length === 6
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).every(([x]) => x < 240 && x !== -430
+      && x !== -250 && x < -112)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 128)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -190 && z === 128));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 56);
+  ok('geom count matches cells', plates.length === 62);
   ok('x=-720 skyline pair stays on 1500 m city plate',
-    plates.filter((g) => g.x === -720).length === 2
+    plates.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && plates.some((g) => g.x === -720 && g.z === 237)
     && plates.some((g) => g.x === -720 && g.z === 259)
     && plates.filter((g) => g.x === -720).every((g) => g.x0 > -750 && g.x0 === -729

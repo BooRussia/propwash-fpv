@@ -1222,6 +1222,13 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=128 inland mid-rise row misses leftoverLot A–H',
+    INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).length === 6
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).every(([x]) => x < 240 && x < 251
+      && leftoverLotOverlap(x, 128, 18, 14, 0.15) === false)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 128)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -190 && z === 128)
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('x=-720 skyline pair misses leftoverLot A–H and stays on the city plate',
     leftoverLotOverlap(-720, 237, 18, 14, 0.15) === false
     && leftoverLotOverlap(-720, 259, 18, 14, 0.15) === false

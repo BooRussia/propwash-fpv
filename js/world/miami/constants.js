@@ -932,6 +932,11 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // leftoverLot A–H unmoved.
   [-660, 96], [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
   [210, 96],
+  // z=128 row: inland of z=96, ocean of z=152. West of Lincoln mall
+  // (walk runs −258..−242 / 88..144 / 182..198) and convention
+  // (−112..16, z 104–166). Skip [-430,128] helipad W. Skip Lincoln
+  // x=-250. leftoverLot A–H unmoved.
+  [-720, 128], [-660, 128], [-600, 128], [-540, 128], [-390, 128], [-190, 128],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
