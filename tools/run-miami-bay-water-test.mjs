@@ -3,8 +3,9 @@
 //
 //   node ./tools/run-miami-bay-water-test.mjs
 //
-// Registers the three stub so the test can import foamTermAt / encodeShoreFoam
-// from bayWater.js without a browser WebGL renderer.
+// Registers the three stub so the test can import foamTermAt / encodeShoreFoam /
+// FOAM_PERSIST / persistStep / stepPersistField / shoreBandAt from bayWater.js
+// without a browser WebGL renderer.
 
 import { register } from 'node:module';
 

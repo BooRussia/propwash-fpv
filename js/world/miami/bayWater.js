@@ -7,7 +7,10 @@
 // The 256² / 19 m cascade still drives the tiled chop maps; world-space
 // waves at 13.7 / 8.3 / 37.1 / 61.3 m break that period in the fragment.
 // Foam stays a plate-UV ClampToEdge DataTexture (no 19 m RepeatWrap).
-// SSR stays off.
+// Persist is STATE on that same 512² field (Df/Dt = s(1-f) − f/τ), not a
+// per-frame film, not a Water Pro drop-in, not a lofted strip / GLB.
+// Shore foam is a BAND at SHORE_Z in that field. Wet-sand fade is
+// roughness/albedo on this MeshPhysicalMaterial. SSR stays off.
 
 import * as THREE from 'three';
 import { BAY_PRESET, createBaySim } from './baySim.js';
@@ -35,6 +38,16 @@ export const SHORE_WAVES = Object.freeze([13.7, 8.3, 37.1, 61.3]);
 // 256² / 19 m chop stays on normals + displacement — those may still tile.
 const FOAM_N = 512;
 
+// Reesy persist lock. Methods only — not Water Pro, not their ±80 m window.
+export const FOAM_PERSIST = Object.freeze({
+  crestStrength: 2.5,
+  windwardStrength: 1.5,
+  decayTime: 0.5,          // e-fold seconds
+  columnLo: 0.025,         // φ (horizontal / crest height), metres
+  columnHi: 0.09,
+  shoreRange: 2.0,         // η−zb band at SHORE_Z, metres — not φ
+});
+
 // One Catmull-Rom rip: a seaward channel that cuts the SHORE_Z break.
 // Control points are derived from the signed bay frame only
 // (BAY_X, BAY_Z, BAY_W, BAY_D, SHORE_Z). Not a reserved cell.
@@ -54,6 +67,27 @@ function clamp01(v) {
   if (v <= 0) return 0;
   if (v >= 1) return 1;
   return v;
+}
+
+function smoothstep(a, b, x) {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+}
+
+/** Df/Dt = s(1-f) − f/τ. Forward Euler, clamped. */
+export function persistStep(f, s, dt) {
+  const tau = FOAM_PERSIST.decayTime;
+  let next = f + dt * (s * (1 - f) - f / tau);
+  if (next < 0) return 0;
+  if (next > 1) return 1;
+  return next;
+}
+
+/** Integrate a persist field in place. */
+export function stepPersistField(persist, source, dt) {
+  for (let i = 0, n = persist.length; i < n; i++) {
+    persist[i] = persistStep(persist[i], source[i] || 0, dt);
+  }
 }
 
 // THREE.CatmullRomCurve3('catmullrom', tension 0.5) — same cubic, no three.
@@ -122,6 +156,22 @@ function shoreDepth(z) {
   if (z > SHORE_Z) return 0;
   const bed = Math.max(-6, -0.4 + (z - SHORE_Z) * 0.08);
   return -bed;
+}
+
+/** Column gate on φ (horizontal / crest height). Not η−zb. */
+function columnGate(phi) {
+  return smoothstep(FOAM_PERSIST.columnLo, FOAM_PERSIST.columnHi, phi);
+}
+
+/**
+ * Shore foam BAND in the 512² field at SHORE_Z.
+ * Gated by η−zb over ~2 m — not φ, not a lofted mesh / strip / GLB.
+ */
+export function shoreBandAt(z) {
+  if (z > 0) return 0;
+  const depth = shoreDepth(z);
+  if (depth <= 0 || depth >= FOAM_PERSIST.shoreRange) return 0;
+  return Math.sin(Math.PI * depth / FOAM_PERSIST.shoreRange);
 }
 
 /** Depth-break gate toward SHORE_Z. Zero on flats and inland of the dip. */
@@ -248,12 +298,20 @@ function encodeHeight(sim, heightBytes) {
   }
 }
 
-/** Plate-UV foam: depth-break + one rip + world-space boat wakes. Not the 19 m cascade. */
+/**
+ * Plate-UV foam: #89 film is the source term s (depth-break + rip +
+ * crest from sampleHeight). When `opts.persist` is set, integrate
+ * Df/Dt = s(1-f) − f/τ on the 512² world-fixed field and write THAT.
+ * No persist → write the film so existing encode probes stay honest.
+ * Not the 19 m cascade. Not a lofted strip.
+ */
 export function encodeShoreFoam(sim, foamBytes, opts = {}) {
   const n = opts.n || FOAM_N;
   const poly = opts.ripPoly || getRipPoly();
   const t = opts.time != null ? opts.time
     : (sim && typeof sim.time === 'number' ? sim.time : 0);
+  const persist = opts.persist;
+  const dt = opts.dt != null ? opts.dt : 1 / 24;
   const sampleH = sim && typeof sim.sampleHeight === 'function'
     ? (x, z) => sim.sampleHeight(x, z)
     : () => 0;
@@ -261,18 +319,21 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
     ? (x, z) => sim.wakeAt(x, z)
     : () => 0;
   let p = 0;
+  let idx = 0;
   for (let j = 0; j < n; j++) {
     const z = plateZ(j, n);
     for (let i = 0; i < n; i++) {
       const x = plateX(i, n);
-      let raw = 0;
+      let film = 0;
+      let height = 0;
       if (z <= 0) {
         const br = depthBreakGate(z);
         const nearRip = x >= RIP_X_MIN && x <= RIP_X_MAX
           && z >= RIP_Z_END - 90 && z <= SHORE_Z + 12;
         if (br > 0 || nearRip) {
-          raw = foamTermAt(x, z, sampleH(x, z), poly);
-          if (raw > 0) {
+          height = sampleH(x, z);
+          film = foamTermAt(x, z, height, poly);
+          if (film > 0) {
             const cell = cellular(x, z, 3.2);
             const cellFine = cellular(x, z, 1.15);
             const cellStreak = cellular(x * 0.35, z, 6.4);
@@ -281,21 +342,46 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
             const fine = 1 - Math.min(1, cellFine * 1.45);
             const longWisp = 1 - Math.min(1, cellStreak * 1.10);
             const cellMask = holes * (0.42 + 0.58 * fine) * (0.55 + 0.45 * longWisp);
-            raw = raw * (0.52 + 0.62 * cellMask * (0.18 + 0.82 * crest));
-            if (raw > 1) raw = 1;
+            film = film * (0.52 + 0.62 * cellMask * (0.18 + 0.82 * crest));
+            if (film > 1) film = 1;
           }
         }
+      }
+      let out = film;
+      if (persist) {
+        if (z > 0) {
+          persist[idx] = 0;
+          out = 0;
+        } else {
+          // s: #89 film × crest (φ) + shoreline band (η−zb). Surface off.
+          // φ and η−zb are not interchangeable. Rip film still injects
+          // when the column is below the crest gate (optional shore phase).
+          const col = columnGate(height);
+          const shore = shoreBandAt(z);
+          const rip = ripMaskAt(x, z, poly);
+          const phase = rip > 0 ? 0.65 + 0.35 * shoreCrest(x, z, t) : 1;
+          const crestW = col > 0 ? col : (film > 0 ? 0.22 : 0);
+          let s = film * FOAM_PERSIST.crestStrength * crestW
+            + film * FOAM_PERSIST.windwardStrength * shore * phase;
+          if (s > 1) s = 1;
+          persist[idx] = persistStep(persist[idx], s, dt);
+          out = persist[idx];
+        }
+      }
+      if (z <= 0) {
         // Hull / Kelvin stamps sit in world metres on this plate (foamGain 0).
+        // Wake field is already stateful in baySim — do not fold it into s.
         const wake = sampleWake(x, z);
-        if (wake > 0) raw = raw + wake > 1 ? 1 : raw + wake;
+        if (wake > 0) out = out + wake > 1 ? 1 : out + wake;
       }
       // Floor kills the salt-and-pepper leftovers; honest breaks stay.
-      const f = (raw <= 0.05 ? 0 : (raw - 0.05) / 0.95) * 255;
+      const f = (out <= 0.05 ? 0 : (out - 0.05) / 0.95) * 255;
       foamBytes[p] = f;
       foamBytes[p + 1] = f;
       foamBytes[p + 2] = f;
       foamBytes[p + 3] = 255;
       p += 4;
+      idx++;
     }
   }
 }
@@ -327,7 +413,7 @@ function applyRepeat(tex, w, d, L) {
  * World-space Gerstner + Fresnel + foam albedo. Not a second material.
  */
 function applyCoastalOptics(mat) {
-  mat.customProgramCacheKey = () => 'pw-bay-coastal-v6';
+  mat.customProgramCacheKey = () => 'pw-bay-coastal-v7';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uBayTime = { value: 0 };
     shader.uniforms.uShoreZ = { value: SHORE_Z };
@@ -336,6 +422,7 @@ function applyCoastalOptics(mat) {
     shader.uniforms.uBayShallow = { value: new THREE.Color(0x2aa8a0).convertSRGBToLinear() };
     shader.uniforms.uBayFoam = { value: new THREE.Color(0xf7f4ee).convertSRGBToLinear() };
     shader.uniforms.uBayScatter = { value: new THREE.Color(0x3ed4b4).convertSRGBToLinear() };
+    shader.uniforms.uBayWetSand = { value: new THREE.Color(0x2a241c).convertSRGBToLinear() };
     mat.userData.shader = shader;
 
     shader.vertexShader = shader.vertexShader.replace(
@@ -360,13 +447,27 @@ uniform vec3 uBayDeep;
 uniform vec3 uBayShallow;
 uniform vec3 uBayFoam;
 uniform vec3 uBayScatter;
+uniform vec3 uBayWetSand;
+
+// η−zb column depth. Not φ (horizontal / crest height).
+float bayColumnDepth(float z) {
+  if (z > 0.0) return -1.0;
+  float bed = max(-6.0, -0.4 + (z - uShoreZ) * 0.08);
+  return z > uShoreZ ? 0.0 : -bed;
+}
 
 float bayDepthBreak(float z) {
   if (z > 0.0) return 0.0;
-  float bed = max(-6.0, -0.4 + (z - uShoreZ) * 0.08);
-  float depth = z > uShoreZ ? 0.0 : -bed;
+  float depth = bayColumnDepth(z);
   if (depth < 0.28 || depth > 3.4) return 0.0;
   return sin(3.14159265 * (depth - 0.28) / 3.12);
+}
+
+// Wet-sand fade: albedo/roughness on this material, ~2 m η−zb. Not a strip GLB.
+float bayWetSand(float z) {
+  float d = bayColumnDepth(z);
+  if (d <= 0.0 || d >= 2.0) return 0.0;
+  return 1.0 - d / 2.0;
 }
 
 void bayAddWave(vec2 dir, float amp, float lambda, float t, float steep, vec2 xz, inout vec3 T, inout vec3 B) {
@@ -429,6 +530,8 @@ float baySteepFoam(vec3 n) {
   float distOut = max(0.0, uShoreZ - vBayWorld.z);
   float shallow = 1.0 - saturate(distOut / 70.0);
   vec3 waterCol = mix(uBayDeep, uBayShallow, shallow * 0.72);
+  float wetSand = bayWetSand(vBayWorld.z);
+  waterCol = mix(waterCol, uBayWetSand, wetSand * 0.42);
   float br = bayDepthBreak(vBayWorld.z);
   float crestFoam = bayCrestFoam(vBayWorld, uBayTime);
   float shoreCrest = crestFoam * br;
@@ -472,6 +575,7 @@ float baySteepFoam(vec3 n) {
   #endif
   roughnessFactor = mix(roughnessFactor, 0.78, foamR);
   roughnessFactor = mix(roughnessFactor, 0.045, (1.0 - foamR) * 0.35);
+  roughnessFactor = mix(roughnessFactor, 0.62, bayWetSand(vBayWorld.z) * 0.5);
 }`,
     );
   };
@@ -503,9 +607,11 @@ export function buildBayWater(ctx, opts = {}) {
   const normalBytes = new Uint8Array(n * n * 4);
   const heightBytes = new Uint8Array(n * n * 4);
   const foamBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
+  const persist = new Float32Array(FOAM_N * FOAM_N);
+  const STEP = 1 / 24;          // sim at 24 Hz — 256² FFT is cheap, not free
   encodeNormals(sim, normalBytes);
   encodeHeightFoam(sim, heightBytes, foamBytes, {
-    n: FOAM_N, ripPoly: ripFromCurve, time: sim.time,
+    n: FOAM_N, ripPoly: ripFromCurve, time: sim.time, persist, dt: STEP,
   });
 
   const normalMap = track(makeDataTex(n, n, normalBytes, THREE.RepeatWrapping));
@@ -574,7 +680,6 @@ export function buildBayWater(ctx, opts = {}) {
   };
 
   let acc = 0;
-  const STEP = 1 / 24;          // sim at 24 Hz — 256² FFT is cheap, not free
 
   const update = (dt, extras = {}) => {
     const tod = extras.timeOfDay;
@@ -606,7 +711,7 @@ export function buildBayWater(ctx, opts = {}) {
     if (stepped) {
       encodeNormals(sim, normalBytes);
       encodeHeightFoam(sim, heightBytes, foamBytes, {
-        n: FOAM_N, ripPoly: ripFromCurve, time: sim.time,
+        n: FOAM_N, ripPoly: ripFromCurve, time: sim.time, persist, dt: STEP,
       });
       normalMap.needsUpdate = true;
       displacementMap.needsUpdate = true;

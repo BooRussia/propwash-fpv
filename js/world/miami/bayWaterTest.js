@@ -17,7 +17,8 @@ import {
 } from './constants.js';
 import { clampCameraToFloor } from '../../camera/floor.js';
 import {
-  BAY_PLANE, FOAM_N, RIP_CTRL, SHORE_WAVES, encodeShoreFoam, foamTermAt,
+  BAY_PLANE, FOAM_N, FOAM_PERSIST, RIP_CTRL, SHORE_WAVES,
+  encodeShoreFoam, foamTermAt, persistStep, shoreBandAt, stepPersistField,
 } from './bayWater.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -249,6 +250,76 @@ export function runBayWaterTests() {
   ok('encoded deep flats stay 0', foamAtWorld(800, -2200) === 0);
   ok('foam map is plate-scale, not 256² cascade', FOAM_N === 512);
 
+  // ---- persist: STATE on the 512 field, not per-frame film ---------------
+  ok('persist numbers locked',
+    FOAM_PERSIST.crestStrength === 2.5
+    && FOAM_PERSIST.windwardStrength === 1.5
+    && FOAM_PERSIST.decayTime === 0.5
+    && FOAM_PERSIST.columnLo === 0.025
+    && FOAM_PERSIST.columnHi === 0.09
+    && FOAM_PERSIST.shoreRange === 2.0);
+  ok('shore band is ~2 m η−zb at SHORE_Z, dry inland',
+    shoreBandAt(2) === 0
+    && shoreBandAt(0.01) === 0
+    && shoreBandAt(SHORE_Z - 16) > 0.2
+    && shoreBandAt(-2000) === 0
+    && shoreBandAt(SHORE_Z + 8) === 0);
+
+  const pField = new Float32Array(8);
+  const sField = new Float32Array(8);
+  sField[3] = 1;
+  for (let i = 0; i < 8; i++) stepPersistField(pField, sField, 1 / 24);
+  const peak = pField[3];
+  ok('crest source injects into persist state', peak > 0.15);
+  sField[3] = 0;
+  const beforeFrame = pField[3];
+  stepPersistField(pField, sField, 1 / 24);
+  ok('crest source does not vanish next frame',
+    pField[3] > beforeFrame * 0.85 && pField[3] < beforeFrame);
+  pField[3] = peak;
+  let decayedT = 0;
+  while (decayedT < FOAM_PERSIST.decayTime - 1e-9) {
+    stepPersistField(pField, sField, 1 / 24);
+    decayedT += 1 / 24;
+  }
+  ok('crest lingers ~decayTime e-fold',
+    pField[3] > peak * 0.30 && pField[3] < peak * 0.42);
+  ok('persist flats stay 0', pField[0] === 0 && pField[1] === 0 && pField[7] === 0);
+  ok('ODE is s(1-f) − f/τ',
+    Math.abs(persistStep(0.4, 0, 0.5) - (0.4 + 0.5 * (0 - 0.4 / 0.5))) < 1e-9);
+
+  const persist = new Float32Array(FOAM_N * FOAM_N);
+  const persistBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
+  const persistAtWorld = (x, z) => {
+    const u = (x - BAY_PLANE.x) / BAY_PLANE.w + 0.5;
+    const v = (BAY_PLANE.z - z) / BAY_PLANE.d + 0.5;
+    const i = Math.min(FOAM_N - 1, Math.max(0, Math.floor(u * FOAM_N)));
+    const j = Math.min(FOAM_N - 1, Math.max(0, Math.floor(v * FOAM_N)));
+    return persist[j * FOAM_N + i];
+  };
+  const persistByteAt = (x, z) => {
+    const u = (x - BAY_PLANE.x) / BAY_PLANE.w + 0.5;
+    const v = (BAY_PLANE.z - z) / BAY_PLANE.d + 0.5;
+    const i = Math.min(FOAM_N - 1, Math.max(0, Math.floor(u * FOAM_N)));
+    const j = Math.min(FOAM_N - 1, Math.max(0, Math.floor(v * FOAM_N)));
+    return persistBytes[(j * FOAM_N + i) * 4];
+  };
+  persist.fill(0.85);
+  encodeShoreFoam(sim, persistBytes, { persist, dt: 1 / 24 });
+  ok('persist encode wipes inland z>+0',
+    persistAtWorld(0, 12) === 0
+    && persistAtWorld(200, 40) === 0
+    && persistByteAt(0, 12) === 0
+    && persistByteAt(-80, 6) === 0);
+  persist.fill(0);
+  for (let k = 0; k < 16; k++) {
+    encodeShoreFoam(sim, persistBytes, { persist, dt: 1 / 24, time: k / 24 });
+  }
+  ok('persist injects on the SHORE_Z band', persistAtWorld(360, zBreak) > 0.02);
+  ok('persist injects on the rip', persistAtWorld(ripMid.x, ripMid.z) > 0.01);
+  ok('persist flats stay 0 after many steps', persistAtWorld(800, -2200) === 0);
+  ok('persist encode keeps leftoverLot A dry', persistByteAt(258, 84) === 0);
+
   // ---- world-space boat wakes on the plate (not the 19 m tile) ------------
   const simWake = createBaySim();
   // Marina finger water, seaward of the SHORE_Z crash band so the encode is wake-only.
@@ -293,10 +364,27 @@ export function runBayWaterTests() {
     !index.includes("uniforms['time']") && !index.includes('waterColor'));
   ok('hero material is MeshPhysicalMaterial',
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
-  ok('coastal v6 has crest scatter and steepness foam',
-    bayWater.includes('pw-bay-coastal-v6') && bayWater.includes('uBayScatter')
+  ok('coastal v7 has crest scatter, steepness foam, wet-sand fade',
+    bayWater.includes('pw-bay-coastal-v7') && bayWater.includes('uBayScatter')
     && bayWater.includes('baySteepFoam') && bayWater.includes('ior: 1.333')
+    && bayWater.includes('uBayWetSand') && bayWater.includes('bayWetSand')
     && !bayWater.includes('WaterSystem') && !bayWater.includes('threejswaterpro'));
+  ok('persist numbers appear in source',
+    /crestStrength:\s*2\.5/.test(bayWater)
+    && /windwardStrength:\s*1\.5/.test(bayWater)
+    && /decayTime:\s*0\.5/.test(bayWater)
+    && bayWater.includes('s * (1 - f)')
+    && bayWater.includes('0.025') && bayWater.includes('0.09')
+    && /shoreRange:\s*2/.test(bayWater));
+  ok('no lofted foam mesh / strip GLB / 4 m tile / Vice kit',
+    (bayWater.match(/new THREE\.Mesh\(/g) || []).length === 1
+    && !/\.glb/i.test(bayWater)
+    && !/surf-foam-strip/.test(bayWater)
+    && !/Vice Beach/i.test(bayWater)
+    && !/pastel/.test(bayWater)
+    && !/applyRepeat\(\s*foamMap/.test(bayWater));
+  ok('leftoverLot I stays dropped',
+    !/leftoverLot\s*I/.test(bayWater) && !/leftoverLot I/.test(bayWater));
   ok('coastal optics inject via onBeforeCompile',
     bayWater.includes('applyCoastalOptics') && bayWater.includes('onBeforeCompile')
     && bayWater.includes('uBayTime'));
