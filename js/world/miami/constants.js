@@ -238,9 +238,10 @@ export const PARK_RING_CELLS = Object.freeze([
   [-75, 14.6],
   [-45, 14.6],
 ]);
-// Extra pier undercroft bays (existing pylons) plus timber rings in two of them.
-// Fly ±Z along the pier. Not a slide of leftoverLot A–H. Pylon count stays 10.
-export const PIER_EXTRA_BAY_IS = Object.freeze([1, 6]);
+// Extra pier undercroft bays (existing pylons) plus timber rings.
+// Bays 2 and 7 sit seaward of 1 and 6. Fly ±Z along the pier.
+// Not a slide of leftoverLot A–H. Pylon count stays 10.
+export const PIER_EXTRA_BAY_IS = Object.freeze([1, 2, 6, 7]);
 export const PIER_BAY_RING_R = 1.15;
 export const PIER_BAY_RING_TUBE = 0.08;
 export const PIER_BAY_RING_Y = 0.95;

@@ -516,9 +516,17 @@ function FRONT_Z_OK() {
 
   const pierKit = pierFlyShapes();
   ok('pier still has ten pylon stations', PIER_PYLON_COUNT === 10);
-  ok('pier extra bays are two signed undercroft whoops',
-    PIER_EXTRA_BAY_IS.length === 2 && PIER_EXTRA_BAY_IS[0] === 1
-    && PIER_EXTRA_BAY_IS[1] === 6);
+  ok('pier extra bays are four signed undercroft whoops',
+    PIER_EXTRA_BAY_IS.length === 4 && PIER_EXTRA_BAY_IS[0] === 1
+    && PIER_EXTRA_BAY_IS[1] === 2 && PIER_EXTRA_BAY_IS[2] === 6
+    && PIER_EXTRA_BAY_IS[3] === 7);
+  ok('new pier-bay rings sit seaward of the original extra bays',
+    pierBayRingGeom(2).z < pierBayRingGeom(1).z
+    && pierBayRingGeom(7).z < pierBayRingGeom(6).z
+    && pierBayRingGeom(2).z < TRAVEL_Z0
+    && pierBayRingGeom(7).z < TRAVEL_Z0
+    && leftoverLotOverlap(PIER_X, pierBayRingGeom(2).z, 2.4, 2.4, 0.15) === false
+    && leftoverLotOverlap(PIER_X, pierBayRingGeom(7).z, 2.4, 2.4, 0.15) === false);
   for (let i = 0; i < PIER_EXTRA_BAY_IS.length; i++) {
     const bayI = PIER_EXTRA_BAY_IS[i];
     const under = FLY_VOIDS.find((f) => f.id === `pier-undercroft-${bayI}`);

@@ -252,7 +252,12 @@
     {
       "id": "pier-rings",
       "title": "Two more pier-bay rings seaward of the existing extra bays, pylon count stays 10",
-      "status": "pending"
+      "status": "done",
+      "notes": "PIER_EXTRA_BAY_IS=[1,2,6,7]; 2 and 7 seaward of 1 and 6; pylon count stays 10; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "npc-collins",
