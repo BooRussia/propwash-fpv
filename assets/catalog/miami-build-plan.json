@@ -1169,6 +1169,19 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "city-skyline",
+      "title": "Skyline pairs at x=-350 and x=-280 z=237/259 in the gap between -390 and -250, miss GAP_X=-315",
+      "status": "done",
+      "notes": "[-350,-280]@237 arcade, @259 roof rings, z=248 alley pipes; miss GAP_X=-315; reservedOverlap was false; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
