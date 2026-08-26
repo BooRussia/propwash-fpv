@@ -1182,6 +1182,12 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fill-220-col",
+      "title": "Finish the x=-220 column at z=96/128/152 plus [110,152] arcade",
+      "status": "done",
+      "notes": "[-220,96]/[-220,128]/[-220,152]/[110,152] arcades; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
