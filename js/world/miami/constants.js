@@ -56,6 +56,33 @@ export const CARDOZO_FRONT_Z = 57.6;
 export const CARDOZO_W = 18;
 export const CARDOZO_D = 24;
 
+// ---- Colony Hotel analogue (736 Ocean Drive; west of deco row, east of GAP -129) ----
+export const COLONY_X = -108;
+export const COLONY_FRONT_Z = 57.6;
+export const COLONY_W = 20;
+export const COLONY_D = 24;
+export const COLONY_SOFFIT = 3.5;
+
+// ---- Breakwater analogue (940 Ocean Drive; deco-row / Clevelander gap) ----
+export const BREAKWATER_X = 42;
+export const BREAKWATER_FRONT_Z = 57.6;
+export const BREAKWATER_W = 12;
+export const BREAKWATER_D = 22;
+
+// ---- Cavalier analogue (1320 Ocean Drive; Cardozo / cinema gap) ----
+export const CAVALIER_X = 134;
+export const CAVALIER_FRONT_Z = 57.6;
+export const CAVALIER_W = 16;
+export const CAVALIER_D = 24;
+
+// ---- Winterhaven analogue (1400 Ocean Drive; garage / GAP 243) ----
+// Shallow plate: mass z1 = 75.6, reserved z1 = 76, west of x=240.
+// Misses abando reserved z0 ≈ 77.8. Do not slide leftoverLot A–H.
+export const WINTERHAVEN_X = 222;
+export const WINTERHAVEN_FRONT_Z = 57.6;
+export const WINTERHAVEN_W = 16;
+export const WINTERHAVEN_D = 18;
+
 // ---- marina + yacht club ----
 export const MARINA_X = 300;
 export const CLUB_X = 313, CLUB_Z = 12;   // between the outer two fingers
@@ -2968,6 +2995,14 @@ export const RESERVED = [
     z0: 55.6, z1: 90, tag: 'casa' },
   { x0: CARDOZO_X - CARDOZO_W / 2 - 1.2, x1: CARDOZO_X + CARDOZO_W / 2 + 1.2,
     z0: 55.6, z1: 86, tag: 'cardozo' },
+  { x0: COLONY_X - COLONY_W / 2 - 1.2, x1: COLONY_X + COLONY_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'colony' },
+  { x0: BREAKWATER_X - BREAKWATER_W / 2 - 1.2, x1: BREAKWATER_X + BREAKWATER_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'breakwater' },
+  { x0: CAVALIER_X - CAVALIER_W / 2 - 1.2, x1: CAVALIER_X + CAVALIER_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'cavalier' },
+  { x0: WINTERHAVEN_X - WINTERHAVEN_W / 2 - 1.2, x1: WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2,
+    z0: 55.6, z1: 76, tag: 'winterhaven' },
   { x0: -112, x1: 16, z0: 104, z1: 166, tag: 'convention' },
   { x0: 126, x1: 208, z0: 55.6, z1: 100, tag: 'cinema' },
   { x0: 190, x1: 210, z0: 54.4, z1: 72.4, tag: 'garage' },
@@ -3948,6 +3983,8 @@ export const KEEPOUT = [
     z0: CASA_FRONT_Z - CASA_LOGGIA_D - 0.2, z1: CASA_FRONT_Z + 0.2, tag: 'casa' },
   { x0: CLEVELANDER_X - CLEVELANDER_W / 2 + 1.0, x1: CLEVELANDER_X + CLEVELANDER_W / 2 - 1.0,
     z0: CLEVELANDER_FRONT_Z - 3.4, z1: CLEVELANDER_FRONT_Z + 0.3, tag: 'clevelander' },
+  { x0: COLONY_X - COLONY_W / 2 + 1.0, x1: COLONY_X + COLONY_W / 2 - 1.0,
+    z0: COLONY_FRONT_Z - 3.4, z1: COLONY_FRONT_Z + 0.3, tag: 'colony' },
   { x0: -80 - GATE_HALF_X - 0.8, x1: -80 + GATE_HALF_X + 0.8,
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
   { x0: -20 - GATE_HALF_X - 0.8, x1: -20 + GATE_HALF_X + 0.8,
@@ -4183,6 +4220,16 @@ export const FLY_VOIDS = [
     openW: CLEVELANDER_W - 2.4, openH: CLEVELANDER_SOFFIT,
   },
   {
+    id: 'colony-arcade', kind: 'kit',
+    x: COLONY_X, z: COLONY_FRONT_Z - 1.7,
+    y: CITY_Y + COLONY_SOFFIT * 0.48,
+    x0: COLONY_X - COLONY_W / 2 + 1.2,
+    x1: COLONY_X + COLONY_W / 2 - 1.2,
+    z0: COLONY_FRONT_Z - 3.15, z1: COLONY_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + COLONY_SOFFIT - 0.06,
+    openW: COLONY_W - 2.4, openH: COLONY_SOFFIT,
+  },
+  {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
     y: CITY_Y + GARAGE_SOFFIT * 0.48,
@@ -4288,6 +4335,21 @@ export function flyColliderShapes() {
     type: 'aabb', tag: 'clevelander',
     x: CLEVELANDER_X, z: cleveZ, sx: CLEVELANDER_W - 0.6, sz: 3.2,
     y0: CITY_Y + CLEVELANDER_SOFFIT, sy: 0.26,
+  });
+
+  // Colony arcade jambs — centre bay empty, fly ±X under the soffit.
+  const colonyZ = COLONY_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'colony',
+      x: COLONY_X + s * (COLONY_W / 2 - 0.7), z: colonyZ, r: 0.2,
+      y0: CITY_Y, h: COLONY_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'colony',
+    x: COLONY_X, z: colonyZ, sx: COLONY_W - 0.6, sz: 3.2,
+    y0: CITY_Y + COLONY_SOFFIT, sy: 0.26,
   });
   return shapes;
 }

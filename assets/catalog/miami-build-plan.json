@@ -52,7 +52,14 @@
     {
       "id": "more-deco",
       "title": "Fill remaining Ocean Drive facade gaps with named deco hotels",
-      "status": "pending"
+      "status": "done",
+      "files": [
+        "js/world/miami/landmarks/decoHotels.js",
+        "js/world/miami/constants.js",
+        "js/world/miami/index.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/landmarks/artdeco.js"
+      ]
     },
     {
       "id": "obstacles",
@@ -86,10 +93,14 @@
     }
   ],
   "landmarks": {
-    "artdecoHotels": { "x": [-75, -43, -9, 24], "frontZ": 57.6, "status": "done" },
+    "artdecoHotels": { "x": [-75, -43, -9, 24], "frontZ": 57.6, "status": "done", "names": ["park-central", "waldorf", "edison", "beacon"] },
     "clevelander": { "x": 60, "frontZ": 57.6, "status": "done" },
     "casaCasuarina": { "x": 90, "frontZ": 57.6, "status": "done" },
     "cardozo": { "x": 115, "frontZ": 57.6, "status": "done" },
+    "colony": { "x": -108, "frontZ": 57.6, "status": "done" },
+    "breakwater": { "x": 42, "frontZ": 57.6, "status": "done" },
+    "cavalier": { "x": 134, "frontZ": 57.6, "status": "done" },
+    "winterhaven": { "x": 222, "frontZ": 57.6, "status": "done" },
     "cinema": { "x": 166, "frontZ": 57.6, "status": "done" }
   },
   "loop": {

@@ -11,10 +11,15 @@ import {
   CASA_X, CASA_FRONT_Z, CASA_W, CASA_D, CASA_LOGGIA_H, CASA_LOGGIA_D,
   CLEVELANDER_X, CLEVELANDER_FRONT_Z, CLEVELANDER_W, CLEVELANDER_SOFFIT,
   CARDOZO_X, CARDOZO_FRONT_Z, CARDOZO_W,
+  COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
+  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
+  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D,
+  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   FLY_VOIDS, flyColliderShapes, inKeepout, inFlyVoid,
-  leftoverLotOverlap, reservedOverlap, inReserved,
+  leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
+  LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,6 +63,7 @@ export function runMiamiCrowdTests() {
   const crowdPath = join(here, 'crowd.js');
   const casaPath = join(here, 'landmarks/casa.js');
   const clevePath = join(here, 'landmarks/clevelander.js');
+  const decoPath = join(here, 'landmarks/decoHotels.js');
   const indexPath = join(here, 'index.js');
   const flyPath = join(here, 'landmarks/flythrough.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
@@ -65,6 +71,7 @@ export function runMiamiCrowdTests() {
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
   const casa = existsSync(casaPath) ? readFileSync(casaPath, 'utf8') : '';
   const cleve = existsSync(clevePath) ? readFileSync(clevePath, 'utf8') : '';
+  const deco = existsSync(decoPath) ? readFileSync(decoPath, 'utf8') : '';
   const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
   const fly = existsSync(flyPath) ? readFileSync(flyPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
@@ -102,6 +109,11 @@ export function runMiamiCrowdTests() {
   ok('index updates crowd', index.includes('crowd?.update?.(dt)'));
   ok('index builds casa and clevelander',
     index.includes('buildCasa(ctx)') && index.includes('buildClevelander(ctx)'));
+  ok('index builds named deco hotels',
+    existsSync(decoPath)
+    && index.includes("from './landmarks/decoHotels.js'")
+    && index.includes('buildDecoHotels(ctx)')
+    && index.indexOf('buildDecoHotels(ctx)') > index.indexOf('buildCasa(ctx)'));
 
   ok('CASA sits in the deco/cinema gap',
     CASA_X === 90 && CASA_FRONT_Z === 57.6 && CASA_W === 28 && CASA_D === 26
@@ -164,11 +176,72 @@ export function runMiamiCrowdTests() {
     !/\brng2?\s*\(/.test(casa) && !/\brng3\s*\(/.test(casa)
     && !/\brng2?\s*\(/.test(cleve) && !/\brng4\s*\(/.test(cleve));
   ok('no ShaderMaterial in new landmarks',
-    !casa.includes('ShaderMaterial') && !cleve.includes('ShaderMaterial'));
+    !casa.includes('ShaderMaterial') && !cleve.includes('ShaderMaterial')
+    && !deco.includes('ShaderMaterial'));
   ok('constants still name leftoverLot A at 258',
     constants.includes('LEFTOVER_LOT_X') && LEFTOVER_LOT_X === 258);
 
   ok('travel-lane numbers unchanged', TRAVEL_Z0 === 40.2 && TRAVEL_Z1 === 47.8);
+
+  ok('Colony sits west of the deco row on the facade plane',
+    COLONY_X === -108 && COLONY_FRONT_Z === 57.6 && COLONY_W === 20
+    && COLONY_D === 24 && COLONY_SOFFIT === 3.5
+    && COLONY_X + COLONY_W / 2 < -88);
+  ok('Breakwater sits in the deco / Clevelander gap',
+    BREAKWATER_X === 42 && BREAKWATER_FRONT_Z === 57.6
+    && BREAKWATER_W === 12 && BREAKWATER_D === 22
+    && BREAKWATER_X - BREAKWATER_W / 2 >= 35
+    && BREAKWATER_X + BREAKWATER_W / 2 <= 49);
+  ok('Cavalier sits in the Cardozo / cinema gap',
+    CAVALIER_X === 134 && CAVALIER_FRONT_Z === 57.6
+    && CAVALIER_W === 16 && CAVALIER_D === 24
+    && CAVALIER_X - CAVALIER_W / 2 >= 124
+    && CAVALIER_X + CAVALIER_W / 2 <= 143);
+  ok('Winterhaven sits east of the garage, west of GAP 243 and x=240',
+    WINTERHAVEN_X === 222 && WINTERHAVEN_FRONT_Z === 57.6
+    && WINTERHAVEN_W === 16 && WINTERHAVEN_D === 18
+    && WINTERHAVEN_X - WINTERHAVEN_W / 2 >= 210
+    && WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 240
+    && WINTERHAVEN_FRONT_Z + WINTERHAVEN_D <= 76);
+  ok('named deco hotels are reserved and miss leftoverLot A–H',
+    reservedOverlap(COLONY_X, COLONY_FRONT_Z + 8, COLONY_W, COLONY_D, 0.15)
+    && reservedOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + 8, BREAKWATER_W, BREAKWATER_D, 0.15)
+    && reservedOverlap(CAVALIER_X, CAVALIER_FRONT_Z + 8, CAVALIER_W, CAVALIER_D, 0.15)
+    && reservedOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + 8, WINTERHAVEN_W, WINTERHAVEN_D, 0.15)
+    && leftoverLotOverlap(COLONY_X, COLONY_FRONT_Z + 8, COLONY_W, COLONY_D, 0.15) === false
+    && leftoverLotOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + 8, BREAKWATER_W, BREAKWATER_D, 0.15) === false
+    && leftoverLotOverlap(CAVALIER_X, CAVALIER_FRONT_Z + 8, CAVALIER_W, CAVALIER_D, 0.15) === false
+    && leftoverLotOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + 8, WINTERHAVEN_W, WINTERHAVEN_D, 0.15) === false);
+  ok('named deco hotels miss the carriageway and travel lanes',
+    streetOverlap(COLONY_X, COLONY_FRONT_Z + COLONY_D / 2, COLONY_W, COLONY_D) === false
+    && streetOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + BREAKWATER_D / 2, BREAKWATER_W, BREAKWATER_D) === false
+    && streetOverlap(CAVALIER_X, CAVALIER_FRONT_Z + CAVALIER_D / 2, CAVALIER_W, CAVALIER_D) === false
+    && streetOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + WINTERHAVEN_D / 2, WINTERHAVEN_W, WINTERHAVEN_D) === false
+    && COLONY_FRONT_Z - 3.4 > TRAVEL_Z1
+    && WINTERHAVEN_FRONT_Z > TRAVEL_Z1);
+  ok('leftoverLot A–H were not slid',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  const colonyArcade = FLY_VOIDS.find((v) => v.id === 'colony-arcade');
+  ok('colony-arcade fly void exists',
+    !!colonyArcade && colonyArcade.openH === COLONY_SOFFIT && colonyArcade.openW >= 8);
+  ok('colony-arcade keepout + inFlyVoid',
+    !!colonyArcade && !!inKeepout(colonyArcade.x, colonyArcade.z)
+    && !!inFlyVoid(colonyArcade.x, colonyArcade.z));
+  if (colonyArcade) {
+    const hit = probeBlocked(kit, colonyArcade.x, colonyArcade.y, colonyArcade.z, 0.28);
+    ok('colony arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+  }
+  ok('decoHotels does not draw layout rng',
+    !/\brng2?\s*\(/.test(deco) && !/\brng3\s*\(/.test(deco)
+    && !/\brng4\s*\(/.test(deco));
+  ok('decoHotels has no ShaderMaterial and no ped/traffic',
+    !deco.includes('ShaderMaterial') && !deco.includes('ped.js')
+    && !deco.includes('traffic.js'));
+  ok('Winterhaven reserved stays west of leftoverLot A',
+    WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 251
+    && inReserved(258, 84));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }

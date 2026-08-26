@@ -36,6 +36,7 @@ import { buildMarina } from './landmarks/marina.js';
 import { buildArtDeco } from './landmarks/artdeco.js';
 import { buildClevelander } from './landmarks/clevelander.js';
 import { buildCasa } from './landmarks/casa.js';
+import { buildDecoHotels } from './landmarks/decoHotels.js';
 import { buildCrowd } from './crowd.js';
 import { buildLighthouse } from './landmarks/lighthouse.js';
 import { buildConvention } from './landmarks/convention.js';
@@ -220,6 +221,7 @@ export async function buildMiami(scene, env) {
   buildArtDeco(ctx);
   buildClevelander(ctx);
   buildCasa(ctx);
+  buildDecoHotels(ctx);
   const lighthouse = buildLighthouse(ctx);
   buildConvention(ctx);
   buildLummus(ctx);

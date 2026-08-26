@@ -24,10 +24,10 @@ const GH = 4.2;            // ground-floor height (tall lobby storey)
 const FH = 3.3;            // upper floor height
 
 const HOTELS = [
-  { x: -75, w: 26, floors: 4, body: 0xf3efe6, trim: 0x7fd4c1, neon: 0x2fe0ff, name: 0x1d6f7a },
-  { x: -43, w: 24, floors: 3, body: 0xf7dcb4, trim: 0xf6f2e9, neon: 0xffb01f, name: 0x8a4d16 },
-  { x: -9, w: 30, floors: 4, body: 0xf6f2e9, trim: 0xf2a6bb, neon: 0xff3d8b, name: 0x8c2350 },
-  { x: 24, w: 22, floors: 3, body: 0xd8ece8, trim: 0xf6f2e9, neon: 0x2fe0ff, name: 0x1d6f7a },
+  { id: 'park-central', x: -75, w: 26, floors: 4, body: 0xf3efe6, trim: 0x7fd4c1, neon: 0x2fe0ff, name: 0x1d6f7a },
+  { id: 'waldorf', x: -43, w: 24, floors: 3, body: 0xf7dcb4, trim: 0xf6f2e9, neon: 0xffb01f, name: 0x8a4d16 },
+  { id: 'edison', x: -9, w: 30, floors: 4, body: 0xf6f2e9, trim: 0xf2a6bb, neon: 0xff3d8b, name: 0x8c2350 },
+  { id: 'beacon', x: 24, w: 22, floors: 3, body: 0xd8ece8, trim: 0xf6f2e9, neon: 0x2fe0ff, name: 0x1d6f7a },
 ];
 
 /**
