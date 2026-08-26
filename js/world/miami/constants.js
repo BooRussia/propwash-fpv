@@ -450,6 +450,10 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-220, 223],
   [-190, 223],
   [-160, 223],
+  [-480, 223],
+  [-110, 223],
+  [-40, 223],
+  [0, 223],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
