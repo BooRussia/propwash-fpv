@@ -1161,8 +1161,14 @@
     {
       "id": "fill-210-220",
       "title": "z=210 mid-rise at x=-220 continuing the skyline-220 column",
-      "status": "pending",
-      "notes": "reservedOverlap was false; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-220,210] arcade; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
