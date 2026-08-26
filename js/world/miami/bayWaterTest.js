@@ -259,6 +259,10 @@ export function runBayWaterTests() {
     !index.includes("uniforms['time']") && !index.includes('waterColor'));
   ok('hero material is MeshPhysicalMaterial',
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
+  ok('coastal v6 has crest scatter and steepness foam',
+    bayWater.includes('pw-bay-coastal-v6') && bayWater.includes('uBayScatter')
+    && bayWater.includes('baySteepFoam') && bayWater.includes('ior: 1.333')
+    && !bayWater.includes('WaterSystem') && !bayWater.includes('threejswaterpro'));
   ok('coastal optics inject via onBeforeCompile',
     bayWater.includes('applyCoastalOptics') && bayWater.includes('onBeforeCompile')
     && bayWater.includes('uBayTime'));

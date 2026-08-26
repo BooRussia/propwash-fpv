@@ -26,7 +26,7 @@ const BAY_Y = -0.18;
 // fills a fly-under (MacArthur 20 m / Venetian west 3.7 m / Broad ~4.9 m).
 const COLLIDER_H = 0.16;
 
-const BAY_COLOR = 0x14656a;     // coastal Jerlov-ish teal — not Water.js 0x00404f, not abyssal
+const BAY_COLOR = 0x0e6b72;     // coastal Jerlov-ish teal — not Water.js 0x00404f, not abyssal
 
 // World-space Gerstner bands. None is the 19 m FFT cascade.
 export const SHORE_WAVES = Object.freeze([13.7, 8.3, 37.1, 61.3]);
@@ -192,9 +192,12 @@ export function foamTermAt(x, z, height = 0, poly = getRipPoly()) {
   const crest = crestFromHeight(height);
   const br = depthBreakGate(z);
   const rip = ripMaskAt(x, z, poly);
-  const crash = br * (0.16 + 0.84 * crest) * (1 - 0.82 * rip);
-  const outflow = rip * (0.40 + 0.48 * crest);
-  const raw = crash + outflow;
+  const crash = br * (0.28 + 0.92 * crest) * (1 - 0.78 * rip);
+  const outflow = rip * (0.48 + 0.52 * crest);
+  // Shore-parallel wisps, not a 19 m lattice (periods 13.7 / 8.3).
+  const streak = br * (0.18 + 0.22 * crest)
+    * clamp01(0.55 + 0.45 * Math.sin(x * (Math.PI * 2 / 13.7) + z * 0.11));
+  const raw = crash + outflow + streak * 0.55;
   return raw > 1 ? 1 : raw;
 }
 
@@ -269,11 +272,13 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
           if (raw > 0) {
             const cell = cellular(x, z, 3.2);
             const cellFine = cellular(x, z, 1.15);
+            const cellStreak = cellular(x * 0.35, z, 6.4);
             const crest = shoreCrest(x, z, t);
-            const holes = 1 - Math.min(1, cell * 1.35);
-            const fine = 1 - Math.min(1, cellFine * 1.55);
-            const cellMask = holes * (0.55 + 0.45 * fine);
-            raw = raw * (0.64 + 0.48 * cellMask * (0.20 + 0.80 * crest));
+            const holes = 1 - Math.min(1, cell * 1.22);
+            const fine = 1 - Math.min(1, cellFine * 1.45);
+            const longWisp = 1 - Math.min(1, cellStreak * 1.10);
+            const cellMask = holes * (0.42 + 0.58 * fine) * (0.55 + 0.45 * longWisp);
+            raw = raw * (0.52 + 0.62 * cellMask * (0.18 + 0.82 * crest));
             if (raw > 1) raw = 1;
           }
         }
@@ -316,14 +321,15 @@ function applyRepeat(tex, w, d, L) {
  * World-space Gerstner + Fresnel + foam albedo. Not a second material.
  */
 function applyCoastalOptics(mat) {
-  mat.customProgramCacheKey = () => 'pw-bay-coastal-v5';
+  mat.customProgramCacheKey = () => 'pw-bay-coastal-v6';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uBayTime = { value: 0 };
     shader.uniforms.uShoreZ = { value: SHORE_Z };
     shader.uniforms.uCamUnder = { value: 0 };
-    shader.uniforms.uBayDeep = { value: new THREE.Color(0x0a3a40).convertSRGBToLinear() };
-    shader.uniforms.uBayShallow = { value: new THREE.Color(0x1f7a78).convertSRGBToLinear() };
-    shader.uniforms.uBayFoam = { value: new THREE.Color(0xf3f1ea).convertSRGBToLinear() };
+    shader.uniforms.uBayDeep = { value: new THREE.Color(0x07343c).convertSRGBToLinear() };
+    shader.uniforms.uBayShallow = { value: new THREE.Color(0x2aa8a0).convertSRGBToLinear() };
+    shader.uniforms.uBayFoam = { value: new THREE.Color(0xf7f4ee).convertSRGBToLinear() };
+    shader.uniforms.uBayScatter = { value: new THREE.Color(0x3ed4b4).convertSRGBToLinear() };
     mat.userData.shader = shader;
 
     shader.vertexShader = shader.vertexShader.replace(
@@ -347,6 +353,7 @@ uniform float uCamUnder;
 uniform vec3 uBayDeep;
 uniform vec3 uBayShallow;
 uniform vec3 uBayFoam;
+uniform vec3 uBayScatter;
 
 float bayDepthBreak(float z) {
   if (z > 0.0) return 0.0;
@@ -391,8 +398,13 @@ float bayCrestFoam(vec3 wp, float t) {
   float k2 = 6.28318530718 / 8.3;
   float f1 = k1 * (dot(d1, shore) - sqrt(9.81 / k1) * t);
   float f2 = k2 * (dot(d2, shore) - sqrt(9.81 / k2) * t * 1.12);
-  float c = saturate(0.70 * cos(f1) + 0.40 * cos(f2) - 0.38);
+  float c = saturate(0.78 * cos(f1) + 0.46 * cos(f2) - 0.28);
   return c * c;
+}
+
+// Steepness proxy from Gerstner (Jacobian-like). Not the 19 m FFT fold.
+float baySteepFoam(vec3 n) {
+  return saturate((0.92 - n.y) * 2.4);
 }`,
     );
 
@@ -409,15 +421,22 @@ float bayCrestFoam(vec3 wp, float t) {
     bayFoam = texture2D(emissiveMap, plateUv).r;
   #endif
   float distOut = max(0.0, uShoreZ - vBayWorld.z);
-  float shallow = 1.0 - saturate(distOut / 90.0);
-  vec3 waterCol = mix(uBayDeep, uBayShallow, shallow * 0.55);
+  float shallow = 1.0 - saturate(distOut / 70.0);
+  vec3 waterCol = mix(uBayDeep, uBayShallow, shallow * 0.72);
   float br = bayDepthBreak(vBayWorld.z);
-  float crestFoam = bayCrestFoam(vBayWorld, uBayTime) * br;
-  float foamMix = saturate(pow(bayFoam, 1.22) * 0.72 + crestFoam * 0.26);
+  float crestFoam = bayCrestFoam(vBayWorld, uBayTime);
+  float shoreCrest = crestFoam * br;
+  vec3 gwCol = bayGerstnerNormal(vBayWorld, uBayTime);
+  float steepFoam = baySteepFoam(gwCol) * (0.22 + 0.78 * br);
+  float foamMix = saturate(pow(bayFoam, 0.82) * 0.95 + shoreCrest * 0.48 + steepFoam * 0.22);
   diffuseColor.rgb = mix(waterCol, uBayFoam, foamMix);
+  // Crest scatter: light leaking through thin peaks (not a second material).
+  float sss = saturate(1.0 - abs(gwCol.y)) * (0.18 + 0.55 * crestFoam) * (0.35 + 0.65 * shallow);
+  diffuseColor.rgb += uBayScatter * sss * (1.0 - foamMix * 0.55);
   if (uCamUnder > 0.5) {
-    vec3 underCol = mix(uBayShallow, uBayDeep, 0.42);
-    diffuseColor.rgb = mix(underCol, uBayFoam, foamMix * 0.22);
+    vec3 underCol = mix(uBayShallow * 0.55, uBayDeep, 0.58);
+    diffuseColor.rgb = mix(underCol, uBayFoam, foamMix * 0.16);
+    diffuseColor.rgb += uBayScatter * 0.12;
   }
 }`,
     );
@@ -445,7 +464,8 @@ float bayCrestFoam(vec3 wp, float t) {
   #ifdef USE_EMISSIVEMAP
     foamR = texture2D(emissiveMap, plateUvR).r;
   #endif
-  roughnessFactor = mix(roughnessFactor, 0.62, foamR);
+  roughnessFactor = mix(roughnessFactor, 0.78, foamR);
+  roughnessFactor = mix(roughnessFactor, 0.045, (1.0 - foamR) * 0.35);
 }`,
     );
   };
@@ -492,21 +512,21 @@ export function buildBayWater(ctx, opts = {}) {
   const geo = track(new THREE.PlaneGeometry(BAY_W, BAY_D, 160, 115));
   const mat = track(new THREE.MeshPhysicalMaterial({
     color: BAY_COLOR,
-    roughness: 0.11,
+    roughness: 0.065,
     metalness: 0.0,
     ior: 1.333,
-    specularIntensity: 0.82,
-    envMapIntensity: 1.12,
-    clearcoat: 0.55,
-    clearcoatRoughness: 0.18,
+    specularIntensity: 1.0,
+    envMapIntensity: 1.42,
+    clearcoat: 0.82,
+    clearcoatRoughness: 0.08,
     normalMap,
     normalScale: new THREE.Vector2(BAY_PRESET.scale, BAY_PRESET.scale),
     displacementMap,
     displacementScale: 0.22,
     displacementBias: -0.11,
-    emissive: 0xf4f1ea,
+    emissive: 0xf7f4ee,
     emissiveMap: foamMap,
-    emissiveIntensity: 0.08,
+    emissiveIntensity: 0.16,
     polygonOffset: true,
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
@@ -537,10 +557,10 @@ export function buildBayWater(ctx, opts = {}) {
     if (Math.abs(dayF - lastDayF) < 0.008) return dayF;
     lastDayF = dayF;
     mat.color.copy(colorNight).lerp(colorDay, 0.12 + 0.88 * dayF);
-    mat.envMapIntensity = 0.28 + 0.84 * dayF;
-    mat.emissiveIntensity = 0.02 + 0.07 * dayF;
-    mat.roughness = 0.10 + 0.16 * (1 - dayF);
-    mat.clearcoat = 0.22 + 0.38 * dayF;
+    mat.envMapIntensity = 0.32 + 1.10 * dayF;
+    mat.emissiveIntensity = 0.04 + 0.14 * dayF;
+    mat.roughness = 0.055 + 0.18 * (1 - dayF);
+    mat.clearcoat = 0.28 + 0.54 * dayF;
     return dayF;
   };
 

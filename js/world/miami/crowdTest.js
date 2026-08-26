@@ -175,6 +175,10 @@ export function runMiamiCrowdTests() {
     crowd.includes('TRAVEL_Z0') && crowd.includes('inTravelLane')
     && crowd.includes('inCarriageway') && crowd.includes('ROAD_Z0'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
+  ok('crowd people have torso + limbs, not a single box',
+    crowd.includes('personTorsoGeo') && crowd.includes('personLimbGeo')
+    && crowd.includes('limbMesh') && crowd.includes('extraPropGeo')
+    && !crowd.includes('BoxGeometry(0.32, 0.72, 0.2)'));
   ok('crowd is thicker',
     crowd.includes('const nWalk = 140') && crowd.includes('const nBike = 32')
     && crowd.includes('const nBeach = 68') && crowd.includes('const nSwim = 36')
