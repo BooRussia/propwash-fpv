@@ -217,7 +217,7 @@
     {
       "id": "npc-eighth",
       "title": "Visual crowd on 8th-street sidewalks, hash01, no colliders, leftoverLot unmoved",
-      "status": "in_progress",
+      "status": "done",
       "notes": "nEighth=36 on both GAP_X=-129 sidewalks (-136.7 / -121.3); z-runs 92–168 and 190–220 skip Washington; skip keepout so shop frontage fills; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
       "files": [
         "js/world/miami/crowd.js",
