@@ -71,6 +71,17 @@ export const BOARDWALK_LAMP_CELLS = Object.freeze([
   [-420, 29.6], [-300, 29.6], [-180, 29.6],
   [20, 29.6], [100, 29.6], [200, 29.6],
 ]);
+// Ped-signal extras + flex posts at CROSS_X zebras. Sit on Ocean Drive
+// sidewalks / curbs, never in travel 40.2–47.8. Off the XS cut (XS_HALF+2).
+// West of leftoverLot A. hash01 never at const-eval.
+export const PED_SIGNAL_CELLS = Object.freeze([
+  [-137.5, 34.9], [-120.5, 34.9], [-137.5, 52.9], [-120.5, 52.9],
+  [48.5, 34.9], [65.5, 34.9], [48.5, 52.9], [65.5, 52.9],
+]);
+export const FLEX_POST_CELLS = Object.freeze([
+  [-138.2, 37.33], [-119.8, 37.33], [-138.2, 50.67], [-119.8, 50.67],
+  [48.2, 37.33], [65.8, 37.33], [48.2, 50.67], [65.8, 50.67],
+]);
 
 // ---- MIAMI letter sign ----
 export const SIGN_X = 60, SIGN_Z = 14;

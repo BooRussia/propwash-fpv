@@ -3,6 +3,7 @@ import {
   CITY_Y, PIER_X, GAP_X, CROSS_X, MARINA_X, groundHeight, inKeepout, deckTop,
   BOARDWALK_TOP, leftoverLotOverlap, BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
   BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS,
+  PED_SIGNAL_CELLS, FLEX_POST_CELLS,
 } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
@@ -894,6 +895,37 @@ export async function buildKenneyDressing(ctx) {
     addCyl(x, y, z, 0.15, 1.08);
   }
   await scatterSafe(ctx, 'street_light_square', extraLamps, 'boardwalk-lamps-signed');
+
+  // Signed ped-signal extras + flex posts at CROSS_X zebras. hash01 yaw only.
+  // Skip keepouts / leftoverLot / travel. Do not restack loops above.
+  const pedSignals = [];
+  for (let i = 0; i < PED_SIGNAL_CELLS.length; i++) {
+    const [x, z] = PED_SIGNAL_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 0.4, 0.4, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.28, y, 3.2)) continue;
+    const towardRoad = z < 44 ? 0 : Math.PI;
+    pedSignals.push({ x, y, z, scale: 0.85, rotY: towardRoad + (hash01(i, 2601) - 0.5) * 0.1 });
+    addCyl(x, y, z, 0.14, 3.1);
+  }
+  await scatterSafe(ctx, 'traffic_light_horizontal', pedSignals, 'crosswalk-ped-signals');
+
+  const flexPosts = [];
+  for (let i = 0; i < FLEX_POST_CELLS.length; i++) {
+    const [x, z] = FLEX_POST_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 0.3, 0.3, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.18, y, 1.05)) continue;
+    flexPosts.push({ x, y, z, scale: 1.05, rotY: hash01(i, 2611) * Math.PI * 2 });
+    addCyl(x, y, z, 0.12, 0.95);
+  }
+  await scatterSafe(ctx, 'traffic_cone', flexPosts, 'crosswalk-flex-posts');
 
   setTag('world');
   return {

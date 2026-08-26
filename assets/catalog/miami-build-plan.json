@@ -428,7 +428,14 @@
     {
       "id": "crosswalk-props",
       "title": "Signed ped-signal extras and flex posts at CROSS_X, never in travel lanes 40.2–47.8",
-      "status": "pending"
+      "status": "done",
+      "notes": "8 ped-signals (traffic_light_horizontal) + 8 flex posts at CROSS_X=-129/57 sidewalks and curbs; miss travel 40.2–47.8; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/kenneyDressing.js",
+        "js/world/miami/kenneyDressingTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "night-windows",
