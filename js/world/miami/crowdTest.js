@@ -211,7 +211,7 @@ export function runMiamiCrowdTests() {
   ok('crowd walks ocean of the z=237 skyline row',
     crowd.includes("kind: 'skyline'") && crowd.includes('const nSkyline = 24')
     && crowd.includes('SKYLINE_WALK_ZS') && crowd.includes('onSkylineWalk')
-    && crowd.includes('hash01(i + 4500')
+    && crowd.includes('hash01(i + 4500') && crowd.includes('228.6')
     && !crowd.includes('addCollider'));
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
@@ -647,13 +647,13 @@ function FRONT_Z_OK() {
   }
 
   ok('alley pipes are signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 24
+    ALLEY_PIPE_CELLS.length === 26
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 2
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < -480));
   ok('inland service-alley pipes sit at z=248',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 13
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 15
     && ALLEY_PIPE_CELLS.slice(4).every(([x]) => x < 240));
   ok('flythrough builds alley pipes',
     fly.includes('ALLEY_PIPE_CELLS') && fly.includes("setTag('alley-pipe')")
@@ -940,7 +940,7 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 77
+    INLAND_MIDRISE_CELLS.length === 81
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -955,6 +955,8 @@ function FRONT_Z_OK() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 190 && z === 210)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -40 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 40 && z === 259)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 15
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 8
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 96)
@@ -981,7 +983,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 77);
+  ok('signed inland mid-rises', inlandList.length === 81);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     inlandList.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && inlandList.some((g) => g.x === -720 && g.z === 237)
@@ -1045,12 +1047,12 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96/128 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 31
+    INLAND_ARCADE_CELLS.length === 33
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 6
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 5
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 9
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 11
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 128).length === 3
@@ -1080,6 +1082,8 @@ function FRONT_Z_OK() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -160 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 190 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -40 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 40 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_OPEN_W')
@@ -1324,6 +1328,7 @@ function FRONT_Z_OK() {
     if (x >= 240) continue;
     if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
     if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
     if (GAP_X.some((gx) => Math.abs(x - gx) <= XS_HALF)) continue;
     skylineSpots.push({ x, z });
   }
@@ -1333,17 +1338,19 @@ function FRONT_Z_OK() {
     && crowd.includes('onSkylineWalk') && crowd.includes('hash01(i + 4500')
     && !crowd.includes('addCollider') && !crowd.includes('addOBB')
     && SKYLINE_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
       && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false)
     && SKYLINE_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240
       && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
-    && skylineSpots.length >= 16
+    && skylineSpots.length >= 18
     && skylineSpots.every((p) => p.x < 240
       && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
       && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
-      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF))
-    && skylineSpots.every((p) => Math.abs(p.z - 228.6) <= 0.9)
-    && skylineSpots.some((p) => p.x < -500)
-    && skylineSpots.some((p) => p.x > 60)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF)
+      && p.z > 218 && p.z < 237)
+    && skylineSpots.some((p) => p.x < -600)
+    && skylineSpots.some((p) => p.x > 100)
     && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
     && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after skyline walkers',
