@@ -222,7 +222,7 @@ function buildBoardwalkGate(ctx, g = boardwalkGateGeom()) {
 }
 
 function buildGarageMouth(ctx) {
-  const { root, track } = ctx;
+  const { root, track, regDN } = ctx;
   const CONC = 0x6a655c, CONC2 = 0x5a564e, REVEAL = 0x3f3c37;
   const aisle = GARAGE_AISLE_W;
   const sideW = (GARAGE_W - aisle) / 2;
@@ -271,6 +271,41 @@ function buildGarageMouth(ctx) {
   lid.receiveShadow = true;
   lid.name = 'garage-roof';
   root.add(lid);
+
+  // Soffit underside + night strips. Visual only — never a box in the aisle.
+  // MeshStandardMaterial + regDN. leftoverLot A–H unmoved.
+  const soffit = new THREE.Mesh(
+    track(new THREE.BoxGeometry(aisle - 0.24, 0.06, GARAGE_D - 0.4)),
+    track(new THREE.MeshStandardMaterial({
+      color: 0xe8dcc8, roughness: 0.92, metalness: 0.02,
+    })),
+  );
+  soffit.position.set(GARAGE_X, CITY_Y + GARAGE_SOFFIT - 0.03, gz);
+  soffit.receiveShadow = true;
+  soffit.name = 'garage-mouth-soffit';
+  root.add(soffit);
+
+  const stripGeo = track(new THREE.BoxGeometry(0.12, 0.04, GARAGE_D - 0.8));
+  const stripMat = regDN(track(new THREE.MeshStandardMaterial({
+    color: 0xfff2cc, emissive: 0xffd27a, emissiveIntensity: 0, roughness: 0.45,
+  })), 0.15, 2.4);
+  for (const s of [-1, 1]) {
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.position.set(
+      GARAGE_X + s * (aisle / 2 - 0.28),
+      CITY_Y + GARAGE_SOFFIT - 0.08,
+      gz,
+    );
+    strip.name = 'garage-mouth-strip';
+    root.add(strip);
+  }
+  const mouthGlow = new THREE.Mesh(
+    track(new THREE.BoxGeometry(aisle - 0.4, 0.06, 0.08)),
+    stripMat,
+  );
+  mouthGlow.position.set(GARAGE_X, CITY_Y + GARAGE_SOFFIT - 0.14, GARAGE_FRONT_Z + 0.18);
+  mouthGlow.name = 'garage-mouth-lintel-glow';
+  root.add(mouthGlow);
 }
 
 function buildSidewalkArcade(ctx, g) {

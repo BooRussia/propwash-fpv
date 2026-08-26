@@ -87,6 +87,7 @@ import {
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_SOFFIT,
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_SOFFIT,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_SOFFIT,
+  GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D,
   FLY_VOIDS,
 } from './constants.js';
 import { tryPlace } from './planting.js';
@@ -1227,6 +1228,12 @@ export function runMiamiLeftoverLotTests() {
     && CAVALIER_X + CAVALIER_W / 2 + 1.2 < 240
     && FLY_VOIDS.some((v) => v.id === 'majestic-arcade')
     && FLY_VOIDS.some((v) => v.id === 'cavalier-arcade')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('garage-mouth misses leftoverLot A–H',
+    leftoverLotOverlap(GARAGE_X, GARAGE_FRONT_Z + GARAGE_D / 2, GARAGE_W, GARAGE_D, 0.15) === false
+    && GARAGE_X + GARAGE_W / 2 + 0.8 < 240
+    && GARAGE_X + GARAGE_W / 2 + 0.8 < 251
+    && FLY_VOIDS.some((v) => v.id === 'garage-mouth')
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('Winterhaven/Breakwater porch arcades miss leftoverLot A–H',
     WINTERHAVEN_SOFFIT === 3.5 && BREAKWATER_SOFFIT === 3.5

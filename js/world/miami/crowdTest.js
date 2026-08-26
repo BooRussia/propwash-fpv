@@ -17,6 +17,7 @@ import {
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D, BREAKWATER_SOFFIT,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D, WINTERHAVEN_SOFFIT,
+  GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_SOFFIT, GARAGE_AISLE_W,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
@@ -340,6 +341,22 @@ export function runMiamiCrowdTests() {
 
   ok('flythrough builds promenade arches',
     fly.includes('PROMENADE_ARCH_XS') && fly.includes("setTag('promenade-arch')"));
+  ok('garage-mouth soffit + night strips via regDN, no ShaderMaterial',
+    fly.includes('garage-mouth-soffit') && fly.includes('garage-mouth-strip')
+    && fly.includes('garage-mouth-lintel-glow') && fly.includes('regDN')
+    && fly.includes('0xffd27a') && fly.includes('2.4')
+    && fly.includes('GARAGE_SOFFIT') && fly.includes('MeshStandardMaterial')
+    && !fly.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly) && !/\brng4\s*\(/.test(fly));
+  const garageMouth = FLY_VOIDS.find((v) => v.id === 'garage-mouth');
+  ok('garage-mouth fly void still open, west of leftoverLot / travel',
+    !!garageMouth && garageMouth.openW >= 6 && garageMouth.openH >= 3.2
+    && GARAGE_SOFFIT === 3.6 && GARAGE_AISLE_W === 6.4
+    && leftoverLotOverlap(GARAGE_X, GARAGE_FRONT_Z + GARAGE_D / 2, GARAGE_W, GARAGE_D, 0.15) === false
+    && GARAGE_FRONT_Z - 0.7 > TRAVEL_Z1
+    && GARAGE_X + GARAGE_W / 2 + 0.8 < 240
+    && garageMouth.z > TRAVEL_Z1
+    && !probeBlocked(kit, garageMouth.x, garageMouth.y, garageMouth.z, 0.28));
   ok('casa loggia height is flyable', CASA_LOGGIA_H >= 3.2 && CASA_LOGGIA_D >= 3);
   ok('casa/clevelander do not draw layout rng',
     !/\brng2?\s*\(/.test(casa) && !/\brng3\s*\(/.test(casa)

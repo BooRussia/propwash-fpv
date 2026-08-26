@@ -791,7 +791,13 @@
     {
       "id": "drop-garage",
       "title": "Tighten garage-mouth fly-through lighting and soffit so the Ocean Drive drop reads clearly",
-      "status": "pending"
+      "status": "done",
+      "notes": "soffit underside + night strips/lintel glow via regDN 0.15→2.4; MeshStandardMaterial; aisle/openH unmoved; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/landmarks/flythrough.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "court-east96",
