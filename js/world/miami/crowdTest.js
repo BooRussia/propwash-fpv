@@ -31,6 +31,8 @@ import {
   FIFTH_SOFFIT, FIFTH_PASS_W, FIFTH_PASS_H, fifthShops,
   ESPA_X, ESPA_W_CELLS, ESPA_W_FRONT_X, ESPA_SOFFIT, ESPA_PASS_W, ESPA_PASS_H,
   ESPA_D, espaShops, CINEMA_X, CINEMA_W, MARINA_X,
+  MARINA_FINGER_XS, MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
+  MARINA_OCEAN_PILE_CELLS, MARINA_OCEAN_CLEAT_CELLS, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises,
   LINCOLN_Z, LINCOLN_HALF, LINCOLN_S_FRONT_Z, LINCOLN_N_FRONT_Z,
@@ -105,6 +107,7 @@ export function runMiamiCrowdTests() {
   const lincolnPath = join(here, 'landmarks/lincoln.js');
   const washingtonPath = join(here, 'landmarks/washington.js');
   const eighthPath = join(here, 'landmarks/eighth.js');
+  const marinaPath = join(here, 'landmarks/marina.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -119,6 +122,7 @@ export function runMiamiCrowdTests() {
   const lincoln = existsSync(lincolnPath) ? readFileSync(lincolnPath, 'utf8') : '';
   const washington = existsSync(washingtonPath) ? readFileSync(washingtonPath, 'utf8') : '';
   const eighth = existsSync(eighthPath) ? readFileSync(eighthPath, 'utf8') : '';
+  const marina = existsSync(marinaPath) ? readFileSync(marinaPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -149,6 +153,10 @@ export function runMiamiCrowdTests() {
     crowd.includes('const nWalk = 140') && crowd.includes('const nBike = 32')
     && crowd.includes('const nBeach = 68') && crowd.includes('const nSwim = 36')
     && crowd.includes('const nInland = 36'));
+  ok('crowd swims the marina fingers',
+    crowd.includes("kind: 'marina-swim'") && crowd.includes('const nMarinaSwim = 24')
+    && crowd.includes('MARINA_SWIM_X0') && crowd.includes('onMarinaDock')
+    && !crowd.includes('addCollider'));
   ok('crowd has parked bikes, volleyball, lifeguard sitters',
     crowd.includes("kind: 'parked'") && crowd.includes("kind: 'vball'")
     && crowd.includes("kind: 'guard'") && crowd.includes('BIKE_RACK_XS')
@@ -838,6 +846,51 @@ export function runMiamiCrowdTests() {
     }
   }
   ok('leftoverLot A–H still signed after 8th-street',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('marina.js exists', existsSync(marinaPath));
+  ok('marina ocean dressing is hash01, leftoverLot unmoved',
+    marina.includes('hash01') && marina.includes('buildMarinaOceanDressing')
+    && marina.includes('MARINA_OCEAN_PILE_CELLS')
+    && marina.includes('leftoverLotOverlap')
+    && !marina.includes('ShaderMaterial')
+    && !marina.includes('ped.js') && !marina.includes('traffic.js'));
+  ok('marina boat rng stream still legacy-ordered',
+    marina.includes('const sizeDraw = 0.8 + rng() * 0.5')
+    && marina.includes('const isSail = rng() < 0.6'));
+  ok('marina fingers and swim basin sit in the water, not leftoverLot A–H',
+    MARINA_FINGER_XS.length === 3 && MARINA_FINGER_XS[0] === MARINA_X
+    && MARINA_SWIM_Z1 < -30 && MARINA_SWIM_Z0 < MARINA_SWIM_Z1
+    && MARINA_DOCK_Z0 < MARINA_DOCK_Z1
+    && MARINA_OCEAN_PILE_CELLS.length === 12
+    && MARINA_OCEAN_CLEAT_CELLS.length === 12
+    && MARINA_OCEAN_PILE_CELLS.every(([x, z]) => z < -30 && z > TRAVEL_Z1 === false
+      && leftoverLotOverlap(x, z, 0.5, 0.5, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1))
+    && MARINA_OCEAN_CLEAT_CELLS.every(([x, z]) => z < -30
+      && leftoverLotOverlap(x, z, 0.4, 0.3, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)));
+  const marinaSwimSpots = [];
+  for (let i = 0; i < 24; i++) {
+    const x = MARINA_SWIM_X0 + hash01(i + 2000, 3) * (MARINA_SWIM_X1 - MARINA_SWIM_X0);
+    const z = MARINA_SWIM_Z0 + hash01(i + 2000, 5) * (MARINA_SWIM_Z1 - MARINA_SWIM_Z0);
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    const onDock = z >= MARINA_DOCK_Z0 && z <= MARINA_DOCK_Z1
+      && MARINA_FINGER_XS.some((fx) => Math.abs(x - fx) < 2.2);
+    if (onDock) continue;
+    if (z > -32) continue;
+    marinaSwimSpots.push({ x, z });
+  }
+  ok('marina swimmers fill the fingers, miss leftoverLot / travel / docks',
+    marinaSwimSpots.length >= 16
+    && marinaSwimSpots.every((p) => leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < -30
+      && !MARINA_FINGER_XS.some((fx) => Math.abs(p.x - fx) < 2.2
+        && p.z >= MARINA_DOCK_Z0 && p.z <= MARINA_DOCK_Z1)));
+  ok('leftoverLot A–H still signed after marina fill',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

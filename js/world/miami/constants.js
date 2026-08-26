@@ -85,6 +85,28 @@ export const WINTERHAVEN_D = 18;
 
 // ---- marina + yacht club ----
 export const MARINA_X = 300;
+export const MARINA_FINGER_XS = Object.freeze([300, 326, 352]);
+export const MARINA_DOCK_HALF_X = 2.2;
+export const MARINA_DOCK_Z0 = -100;
+export const MARINA_DOCK_Z1 = -10;
+export const MARINA_SWIM_X0 = 284;
+export const MARINA_SWIM_X1 = 368;
+export const MARINA_SWIM_Z0 = -98;
+export const MARINA_SWIM_Z1 = -34;
+// Ocean-half finger dressing. Signed cells. hash01 never at const-eval.
+// East of leftoverLot A (x>=251 z~84) but in the water (z<=-44). Do not
+// slide leftoverLot A–H. Not a new RESERVED east of 240 — marina keepout
+// already covers the fingers.
+export const MARINA_OCEAN_PILE_CELLS = Object.freeze([
+  [297.5, -88], [302.5, -88], [297.5, -56], [302.5, -56],
+  [323.5, -88], [328.5, -88], [323.5, -56], [328.5, -56],
+  [349.5, -88], [354.5, -88], [349.5, -56], [354.5, -56],
+]);
+export const MARINA_OCEAN_CLEAT_CELLS = Object.freeze([
+  [298.35, -82], [301.65, -82], [298.35, -50], [301.65, -50],
+  [324.35, -82], [327.65, -82], [324.35, -50], [327.65, -50],
+  [350.35, -82], [353.65, -82], [350.35, -50], [353.65, -50],
+]);
 export const CLUB_X = 313, CLUB_Z = 12;   // between the outer two fingers
 export const FUEL_Z = -30;                // fuel dock, out over the water
 

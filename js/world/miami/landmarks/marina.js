@@ -1,6 +1,13 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { plankTexture } from '../textures.js';
 import { buildSailboat, buildMotorYacht } from './yachts.js';
+import { hash01 } from '../rng.js';
+import { cBox, cCyl } from '../geo.js';
+import {
+  leftoverLotOverlap,
+  MARINA_OCEAN_PILE_CELLS, MARINA_OCEAN_CLEAT_CELLS,
+} from '../constants.js';
 
 /** Marina docks + boats. Returns { boats } for bobbing update. */
 export function buildMarina(ctx) {
@@ -62,6 +69,40 @@ export function buildMarina(ctx) {
       }
     }
   }
+  buildMarinaOceanDressing(ctx);
   setTag('world');
   return { boats };
+}
+
+/** Ocean-half finger piles + cleats. hash01 only; never rng. leftoverLot unmoved. */
+function buildMarinaOceanDressing(ctx) {
+  const { root, track, addCollider, addCyl } = ctx;
+  const WOOD = 0x6a5344, WOOD2 = 0x4e3d32, CAP = 0xd8d4c8, IRON = 0x4a5158, GALV = 0x8a9298;
+  const bits = [];
+  for (let i = 0; i < MARINA_OCEAN_PILE_CELLS.length; i++) {
+    const [x, z] = MARINA_OCEAN_PILE_CELLS[i];
+    if (leftoverLotOverlap(x, z, 0.5, 0.5, 0.15)) continue;
+    if (hash01(i, 2101) < 0.08) continue;
+    bits.push(cCyl(0.17, 0.20, 2.18, 10, WOOD, x, 1.09, z));
+    bits.push(cCyl(0.02, 0.20, 0.16, 8, CAP, x, 2.26, z));
+    bits.push(cCyl(0.178, 0.188, 0.08, 10, WOOD2, x, 0.55, z));
+    addCyl(x, 0, z, 0.22, 2.4);
+  }
+  for (let i = 0; i < MARINA_OCEAN_CLEAT_CELLS.length; i++) {
+    const [x, z] = MARINA_OCEAN_CLEAT_CELLS[i];
+    if (leftoverLotOverlap(x, z, 0.4, 0.3, 0.15)) continue;
+    bits.push(cBox(0.30, 0.05, 0.16, IRON, x, 0.825, z));
+    bits.push(cCyl(0.024, 0.024, 0.18, 8, GALV, x, 0.90, z, 0, 0, Math.PI / 2));
+    addCollider(x, 0.8, z, 0.35, 0.16, 0.18);
+  }
+  if (!bits.length) return;
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((g) => g.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.18,
+  })));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'marina-ocean-dressing';
+  root.add(mesh);
 }

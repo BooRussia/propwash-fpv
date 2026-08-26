@@ -11,6 +11,8 @@ import {
   LINCOLN_WALK_RUNS,
   washingtonRuns, WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
   WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
+  MARINA_FINGER_XS, MARINA_DOCK_HALF_X, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
+  MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
   groundHeight, inKeepout, leftoverLotOverlap,
   onLincolnWalk, onWashingtonWalk,
 } from './constants.js';
@@ -79,6 +81,14 @@ function npcOffLimits(x, z) {
   return leftoverLotOverlap(x, z, 0.6, 0.6, 0.15);
 }
 
+function onMarinaDock(x, z) {
+  if (z < MARINA_DOCK_Z0 || z > MARINA_DOCK_Z1) return false;
+  for (let i = 0; i < MARINA_FINGER_XS.length; i++) {
+    if (Math.abs(x - MARINA_FINGER_XS[i]) < MARINA_DOCK_HALF_X) return true;
+  }
+  return false;
+}
+
 function wrapX(x) {
   const span = CROWD_X1 - CROWD_X0;
   let u = x;
@@ -113,8 +123,10 @@ export function buildCrowd(ctx) {
   const nLincoln = 40;
   const nLincolnSit = 14;
   const nWashington = 36;
+  const nMarinaSwim = 24;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
-    + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington;
+    + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
+    + nMarinaSwim;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -218,6 +230,23 @@ export function buildCrowd(ctx) {
       speed: 0.55 + hash01(i + 800, 13) * 0.4,
       phase: hash01(i + 800, 17) * Math.PI * 2,
       shirt: pick(SHIRT, i + 800, 19), skin: pick(SKIN, i + 800, 23),
+    });
+  }
+
+  for (let i = 0; i < nMarinaSwim; i++) {
+    const x = MARINA_SWIM_X0 + hash01(i + 2000, 3) * (MARINA_SWIM_X1 - MARINA_SWIM_X0);
+    const z = MARINA_SWIM_Z0 + hash01(i + 2000, 5) * (MARINA_SWIM_Z1 - MARINA_SWIM_Z0);
+    if (inTravelLane(z) || inCarriageway(z) || inWashTravel(z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (onMarinaDock(x, z)) continue;
+    if (z > SHORE_Z - 2) continue;
+    actors.push({
+      kind: 'marina-swim', i: actors.length, extra: -1,
+      x, z, y: -0.45, dir: hash01(i + 2000, 7) < 0.5 ? 1 : -1,
+      yaw: hash01(i + 2000, 11) * Math.PI * 2,
+      speed: 0.55 + hash01(i + 2000, 13) * 0.4,
+      phase: hash01(i + 2000, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2000, 19), skin: pick(SKIN, i + 2000, 23),
     });
   }
 
@@ -427,6 +456,21 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'marina-swim') {
+      a.x += Math.cos(a.yaw) * a.speed * dt;
+      a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
+      if (a.x < MARINA_SWIM_X0) { a.x = MARINA_SWIM_X0; a.yaw = Math.PI - a.yaw; }
+      if (a.x > MARINA_SWIM_X1) { a.x = MARINA_SWIM_X1; a.yaw = Math.PI - a.yaw; }
+      if (a.z > MARINA_SWIM_Z1) { a.z = MARINA_SWIM_Z1; a.yaw += Math.PI; }
+      if (a.z < MARINA_SWIM_Z0) { a.z = MARINA_SWIM_Z0; a.yaw += Math.PI; }
+      if (a.z > SHORE_Z - 2) { a.z = SHORE_Z - 2; a.yaw += Math.PI; }
+      if (onMarinaDock(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)
+          || inTravelLane(a.z) || inCarriageway(a.z)) {
+        a.yaw += Math.PI;
+      }
+      a.y = -0.45 + Math.sin(state.t * 2.2 + a.phase) * 0.12;
+      continue;
+    }
     if (a.kind === 'swim') {
       a.x = wrapX(a.x + Math.cos(a.yaw) * a.speed * dt);
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -454,9 +498,10 @@ function stampAll(state) {
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
     const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit') ? 0.28
-      : a.kind === 'swim' ? 0.12 : a.kind === 'parked' ? 0.22 : 0.36;
-    const bodyY = a.kind === 'swim' ? a.y : a.y + crouch + bob;
-    const rx = a.kind === 'swim' ? Math.PI / 2 : 0;
+      : (a.kind === 'swim' || a.kind === 'marina-swim') ? 0.12
+        : a.kind === 'parked' ? 0.22 : 0.36;
+    const bodyY = (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y : a.y + crouch + bob;
+    const rx = (a.kind === 'swim' || a.kind === 'marina-swim') ? Math.PI / 2 : 0;
 
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
@@ -466,7 +511,7 @@ function stampAll(state) {
     _color.setHex(a.shirt);
     if (bodyMesh.setColorAt) bodyMesh.setColorAt(i, _color);
 
-    _dummy.position.set(a.x, a.kind === 'swim' ? a.y + 0.35 : bodyY + 0.48, a.z);
+    _dummy.position.set(a.x, (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y + 0.35 : bodyY + 0.48, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
     _dummy.scale.set(1, 1, 1);
     _dummy.updateMatrix();
