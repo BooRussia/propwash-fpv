@@ -611,6 +611,21 @@ export function gap315PassVoid(g) {
   };
 }
 
+// ---- GAP_X=429 inland storefronts — skipped ----
+// West front = 429 − XS_HALF − 2.4 = 420.1, east of leftoverLot A (x>=251)
+// and east of the x=240 RESERVED line. East face is further east (437.9).
+// Espanola (GAP 243) could keep its west face because frontX=234.1 < 240;
+// this column cannot. Both faces stay empty. leftoverLot A–H unmoved.
+export const GAP429_X = 429;
+export const GAP429_W_FRONT_X = GAP429_X - XS_HALF - 2.4;
+export const GAP429_E_FRONT_X = GAP429_X + XS_HALF + 2.4;
+export const GAP429_W_CELLS = Object.freeze([]);
+export const GAP429_E_CELLS = Object.freeze([]);
+
+export function gap429Shops() {
+  return [];
+}
+
 // ---- inland six-sided mid-rises (hash01; no layout rng) ----
 // Ocean of the 60-box backdrop (z 300), inland of the back tower row
 // (z~185). Paired on X so a 8 m E–W service alley sits at z=248 with

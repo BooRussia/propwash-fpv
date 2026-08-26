@@ -54,6 +54,8 @@ import {
   EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
   GAP315_X, GAP315_W_CELLS, GAP315_E_CELLS, GAP315_W_FRONT_X, GAP315_E_FRONT_X,
   GAP315_SOFFIT, GAP315_PASS_W, GAP315_PASS_H, GAP315_D, gap315Shops,
+  GAP429_X, GAP429_W_FRONT_X, GAP429_E_FRONT_X, GAP429_W_CELLS, GAP429_E_CELLS,
+  gap429Shops, GAP_X,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
   BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
@@ -1165,6 +1167,22 @@ function FRONT_Z_OK() {
       && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0))
     && Math.abs(GAP315_WALK_XS[0] - (GAP315_X - XS_HALF - 1.2)) < 1e-6
     && Math.abs(GAP315_WALK_XS[1] - (GAP315_X + XS_HALF + 1.2)) < 1e-6);
+
+  ok('GAP_X=429 west face sits east of leftoverLot A — skip shops',
+    GAP429_X === 429 && GAP429_X === GAP_X[5]
+    && GAP429_W_FRONT_X === GAP429_X - XS_HALF - 2.4
+    && GAP429_E_FRONT_X === GAP429_X + XS_HALF + 2.4
+    && GAP429_W_FRONT_X > 240 && GAP429_E_FRONT_X > 240
+    && GAP429_W_FRONT_X > 251
+    && GAP429_W_CELLS.length === 0 && GAP429_E_CELLS.length === 0
+    && gap429Shops().length === 0);
+  ok('index does not restack leftoverLot with GAP_X=429 shops',
+    !index.includes('buildGap429')
+    && !existsSync(join(here, 'landmarks/gap429.js'))
+    && !/\brng2?\s*\(/.test(constants) && constants.includes('GAP429_W_CELLS'));
+  ok('leftoverLot A–H still signed after GAP_X=429 skip',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   ok('marina.js exists', existsSync(marinaPath));
   ok('marina ocean dressing is hash01, leftoverLot unmoved',
