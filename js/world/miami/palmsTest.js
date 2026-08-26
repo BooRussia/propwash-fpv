@@ -9,6 +9,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   BOARDWALK_Z, BOARDWALK_D, BOARDWALK_SHOULDER,
+  PALM_BEACH_LAWN_CELLS, PLANT_BEACH_Z, GAP_X, XS_HALF, PIER_X,
+  leftoverLotOverlap, onPavement,
+  LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
+  LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -158,6 +162,34 @@ export function runMiamiPalmsTests() {
     && !palms.includes('blades.js')
     && !palms.includes('pocketPark')
     && !existsSync(join(here, 'landmarks/leftoverLotI.js')));
+
+  const TRAVEL_Z0 = 40.2, TRAVEL_Z1 = 47.8;
+  const index = readFileSync(join(here, 'index.js'), 'utf8');
+  const qFn = palms.slice(
+    palms.indexOf('export function queueBeachLawnPalms'),
+    palms.indexOf('export function planPalms'),
+  );
+  ok('queueBeachLawnPalms is hash01 + tryPlace, no layout rng',
+    qFn.includes('export function queueBeachLawnPalms')
+    && qFn.includes('tryPlace')
+    && qFn.includes('PALM_BEACH_LAWN_CELLS')
+    && qFn.includes('hash01(i, 3301)')
+    && !/\brng[2-5]?\s*\(/.test(qFn)
+    && index.includes('queueBeachLawnPalms(ctx)')
+    && index.indexOf('queueBeachLawnPalms(ctx)') < index.indexOf('materializePalms(ctx, palmPlan)'));
+  ok('extraPalms honor authored rotY so hash01 does not burn rng5',
+    palms.includes('e.rotY !== undefined ? e.rotY : rng5()'));
+  ok('beach tree-lawn palm cells sit on PLANT_BEACH_Z, miss leftoverLot / travel / GAP / pier',
+    PALM_BEACH_LAWN_CELLS.length === 13
+    && PALM_BEACH_LAWN_CELLS.every(([x, z]) => x < 240 && z === PLANT_BEACH_Z
+      && leftoverLotOverlap(x, z, 1.2, 1.2, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && onPavement(x, z) === false
+      && GAP_X.every((gx) => Math.abs(x - gx) >= XS_HALF + 2.4)
+      && Math.abs(x - PIER_X) >= 12));
+  ok('leftoverLot A–H unmoved after beach lawn palms',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   if (fails.length) {
     console.error('[miami-palms] FAIL');

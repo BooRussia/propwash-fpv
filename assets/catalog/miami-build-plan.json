@@ -535,7 +535,15 @@
     {
       "id": "palm-row-fill",
       "title": "Extra hash01 palms on remaining beach tree-lawn cells, tryPlace, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "13 PALM_BEACH_LAWN_CELLS at z=36.5; tryPlace; hash01 rotY; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/palms.js",
+        "js/world/miami/index.js",
+        "js/world/miami/palmsTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "hotel-flags",

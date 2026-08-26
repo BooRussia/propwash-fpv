@@ -69,6 +69,7 @@ import {
   BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS, BOARDWALK_Z, BOARDWALK_TOP, BOARDWALK_D,
   BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   CROSS_X, PED_SIGNAL_CELLS, FLEX_POST_CELLS,
+  PALM_BEACH_LAWN_CELLS, PLANT_BEACH_Z,
   PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS,
   PIER_DECK_Z, PIER_DECK_W, PIER_DECK_D, PIER_DECK_TOP, PAVILION_Z,
 } from './constants.js';
@@ -1706,6 +1707,18 @@ function FRONT_Z_OK() {
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15)
     && leftoverLotOverlap(251, 84, 0.6, 0.6, 0.15));
+
+  ok('extra beach tree-lawn palms sit on PLANT_BEACH_Z, miss leftoverLot / travel',
+    PALM_BEACH_LAWN_CELLS.length === 13
+    && PALM_BEACH_LAWN_CELLS.every(([x, z]) => x < 240 && z === PLANT_BEACH_Z
+      && leftoverLotOverlap(x, z, 1.2, 1.2, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(x - gx) >= XS_HALF + 2.4)
+      && Math.abs(x - PIER_X) >= 12)
+    && index.includes('queueBeachLawnPalms(ctx)'));
+  ok('leftoverLot A–H still signed after beach lawn palms',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   const onPierDeck = (x, z) => Math.abs(x - PIER_X) <= PIER_DECK_W / 2
     && Math.abs(z - PIER_DECK_Z) <= PIER_DECK_D / 2;

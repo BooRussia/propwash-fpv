@@ -227,6 +227,14 @@ export const SW_H = 0.13;
 export const SW_CUT = 0.55;        // extra gap at each GAP_X beyond XS_HALF
 export const PLANT_BEACH_Z = 36.5;
 export const PLANT_CITY_Z = 51.5;
+// Extra hash01 palms on remaining beach tree-lawn cells (z=36.5).
+// Skip GAP_X / pier. West of leftoverLot A. Ocean of travel 40.2–47.8.
+// tryPlace at queue time. hash01 never at const-eval.
+export const PALM_BEACH_LAWN_CELLS = Object.freeze([
+  [-560, 36.5], [-520, 36.5], [-440, 36.5], [-380, 36.5],
+  [-260, 36.5], [-200, 36.5], [-80, 36.5], [-40, 36.5],
+  [10, 36.5], [90, 36.5], [130, 36.5], [180, 36.5], [210, 36.5],
+]);
 export const CROSS_X = [-129, 57];                        // zebra crossings near spawn
 export const GAP_X = [-501, -315, -129, 57, 243, 429];    // cross-street columns
 export const XS_HALF = 6.5;        // cross-street half width

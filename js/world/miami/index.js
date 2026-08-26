@@ -26,7 +26,7 @@ import { buildGround, buildOcean } from './terrain.js';
 import { buildUnderwater } from './underwater.js';
 import { buildPier } from './landmarks/pier.js';
 import { buildRoad } from './road.js';
-import { planPalms, materializePalms } from './palms.js';
+import { planPalms, materializePalms, queueBeachLawnPalms } from './palms.js';
 import { buildBeachProps } from './landmarks/beachProps.js';
 import { buildStreet, buildStreetFurniture, buildBoardwalkEdge } from './street.js';
 import { buildSkyline, cullReserved, buildStreetLevel, buildHelipads } from './buildings.js';
@@ -270,6 +270,7 @@ export async function buildMiami(scene, env) {
   const { palmsEntry } = await buildLandscaping(ctx, landscape);
 
   // ---------------- palms: PLACE (rejection-tested against every collider) --
+  queueBeachLawnPalms(ctx);
   const { palms } = await materializePalms(ctx, palmPlan);
 
   // ---------------- photoscan rocks + tropical dressing (rng2 only) ----------------

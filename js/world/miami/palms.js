@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { createPalms } from '../vegetation.js';
 import {
-  PIER_X, ROAD_Z0, ROAD_Z1,
+  PIER_X, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF,
   BOARDWALK_Z, BOARDWALK_D,
-  groundHeight, stripY, inKeepout, onPavement,
+  PALM_BEACH_LAWN_CELLS,
+  groundHeight, stripY, inKeepout, onPavement, leftoverLotOverlap,
 } from './constants.js';
+import { hash01 } from './rng.js';
+import { tryPlace } from './planting.js';
 
 // ============================================================
 // Palms — planned on the legacy layout stream, PLACED after every structure
@@ -35,6 +38,28 @@ const CROWN_MARGIN = 1.2;      // metres of air demanded around the crown
 const CROWN_R = 3.64;
 const TRUNK_R = 0.30;          // collider radius of a unit-scale trunk
 const MIN_SPACING = 3.4;       // trunk-to-trunk
+
+/**
+ * Queue extra beach tree-lawn palms. hash01 only; tryPlace drop, never remap.
+ * Must run after landmarks have published colliders, before materializePalms.
+ */
+export function queueBeachLawnPalms(ctx) {
+  const extras = ctx.extraPalms || (ctx.extraPalms = []);
+  for (let i = 0; i < PALM_BEACH_LAWN_CELLS.length; i++) {
+    const [x, z] = PALM_BEACH_LAWN_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 1.2, 1.2, 0.15)) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < XS_HALF + 2.4)) continue;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (!tryPlace(ctx, x, z, { r: 0.9, h: 6.2, minY: 0.1, keepout: 1.0 })) continue;
+    extras.push({
+      x, z,
+      sc: 0.85 + hash01(i, 3301) * 0.35,
+      rotY: hash01(i, 3311) * Math.PI * 2,
+    });
+  }
+}
 
 /** Legacy candidate draw. Consumes exactly the rng draws it always did. */
 export function planPalms(ctx) {
@@ -113,7 +138,10 @@ export async function materializePalms(ctx, plan) {
     const sc = e.sc === undefined ? 0.95 : e.sc;
     const y = palmFits(ctx, e.x, e.z, sc, palmPlacements, true);
     if (!y) { rejected++; continue; }
-    palmPlacements.push({ x: e.x, y, z: e.z, sc, rotY: rng5() * Math.PI * 2 });
+    palmPlacements.push({
+      x: e.x, y, z: e.z, sc,
+      rotY: e.rotY !== undefined ? e.rotY : rng5() * Math.PI * 2,
+    });
     addCyl(e.x, y, e.z, TRUNK_R * sc, 6.2 * sc);
   }
 
