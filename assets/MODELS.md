@@ -2,6 +2,8 @@
 
 All files under `assets/models/` are CC0 or public-domain equivalents, free for commercial use.
 
+The Miami scatter plan lives in `assets/catalog/miami-props.json` (placement bands, skins, wrap kind, status). Iterate items there; `js/world/miami/propCatalog.js` is the loader. Do not consume rng/rng2/rng3/rng4.
+
 ## Kenney CC0 (City Kit Suburban / Commercial / Roads + Nature Kit + Car Kit)
 
 Downloaded from kenney.nl (direct zip URLs). Creative Commons CC0.

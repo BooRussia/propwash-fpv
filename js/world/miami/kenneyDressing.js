@@ -1,6 +1,42 @@
-import { CITY_Y, PIER_X, GAP_X, CROSS_X, groundHeight, inKeepout } from './constants.js';
+import * as THREE from 'three';
+import { CITY_Y, PIER_X, GAP_X, CROSS_X, XS_HALF, SW_CUT, MARINA_X, groundHeight, inKeepout, deckTop, BOARDWALK_TOP } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
+import { buildCurbRampGeo, buildStairHandrailGeo } from './props/stairs-entry.js';
+import {
+  buildBollardSteelGeo,
+  buildBollardFlexGeo,
+  buildPedSignalGeo,
+} from './props/traffic-control.js';
+import {
+  buildDockCleatGeo,
+  buildDockPileGeo,
+  buildPalletWoodGeo,
+  buildCardboardStackGeo,
+} from './props/alley-lot-marina.js';
+import { buildLifeRingGeo } from './props/beach-boardwalk.js';
+import {
+  buildMailboxGeo,
+  buildPaperStackGeo,
+  buildDogBagDispenserGeo,
+  buildStreetFountainGeo,
+  buildPayphoneKioskGeo,
+} from './props/sidewalk-furniture.js';
+import {
+  buildUtilityPoleWoodGeo,
+  buildPowerSpanGeo,
+  buildPoleTransformerGeo,
+  buildTrafficCabinetGeo,
+  buildManholeCoverGeo,
+  buildStandpipeSiameseGeo,
+} from './props/utilities-power.js';
+import {
+  buildPipeRailingGeo,
+  buildChainLinkRunGeo,
+  buildSwingGateGeo,
+} from './props/fence-rail.js';
+import { buildTreeGrateGeo } from './props/planting-landscape.js';
+import { buildWindowAcRowGeo, buildFlagpoleGeo } from './props/building-dressing.js';
 
 // CC0 GLBs/glTFs (assets/models/<slug>/<slug>.glb|.gltf).
 // Positions are hash-driven so rng/rng2/rng3/rng4 streams stay untouched.
@@ -24,12 +60,42 @@ function sidewalkX(i, n) {
   return -560 + ((i + 0.5) / n) * 1120;
 }
 
+function instanceAuthored(ctx, geo, mat, spots, name) {
+  if (!spots.length) {
+    geo.dispose();
+    mat.dispose();
+    return 0;
+  }
+  const track = ctx.track || ((o) => o);
+  const im = new THREE.InstancedMesh(track(geo), track(mat), spots.length);
+  im.name = name;
+  im.castShadow = true;
+  im.receiveShadow = true;
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const p = new THREE.Vector3();
+  const s = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i < spots.length; i++) {
+    const sp = spots[i];
+    const sc = sp.scale == null ? 1 : sp.scale;
+    p.set(sp.x, sp.y, sp.z);
+    q.setFromAxisAngle(up, sp.rotY || 0);
+    s.set(sc, sc, sc);
+    m4.compose(p, q, s);
+    im.setMatrixAt(i, m4);
+  }
+  im.instanceMatrix.needsUpdate = true;
+  ctx.root.add(im);
+  return spots.length;
+}
+
 /**
  * Extra CC0 street/beach props + a far authored-skyline row.
  * Call AFTER colliders exist. Missing models no-op.
  */
 export async function buildKenneyDressing(ctx) {
-  const { blocked, addCyl, addCollider, setTag } = ctx;
+  const { blocked, addCyl, addCollider, addOBB, setTag } = ctx;
   setTag('kenney');
   const clear = (x, z, r, y0, h) => !inKeepout(x, z, 0.6) && !blocked(x, z, r, y0, y0 + h);
 
@@ -332,6 +398,61 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'kenney_tree_large', trees, 'kenney-trees');
 
+  // Tall Kenney palms on the promenade (catalog planting-landscape, hash01).
+  const tallPalms = [];
+  for (let i = 0; i < 12; i++) {
+    const x = -500 + hash01(i, 501) * 1000;
+    const z = 56 + hash01(i, 503) * 5.5;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 9)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.7, y, 3.8)) continue;
+    tallPalms.push({
+      x, y, z,
+      scale: 2.6 + hash01(i, 509) * 1.4,
+      rotY: hash01(i, 521) * Math.PI * 2,
+    });
+    addCyl(x, y, z, 0.18, 3.4);
+  }
+  await scatterSafe(ctx, 'kenney_palm_tall', tallPalms, 'kenney-palms-tall');
+
+  // Small Kenney street trees on the city tree lawn (z 51.5).
+  const smallTrees = [];
+  for (let i = 0; i < 14; i++) {
+    const x = sidewalkX(i, 14) + (hash01(i, 523) - 0.5) * 4;
+    const z = 51.5 + (hash01(i, 529) - 0.5) * 0.4;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.55, y, 2.0)) continue;
+    smallTrees.push({
+      x, y, z,
+      scale: 2.4 + hash01(i, 541) * 1.2,
+      rotY: hash01(i, 547) * Math.PI * 2,
+    });
+    addCyl(x, y, z, 0.22, 1.8);
+  }
+  await scatterSafe(ctx, 'kenney_tree_small', smallTrees, 'kenney-trees-small');
+
+  // Kenney bushes in leftover alley dirt (pass-through, no collider).
+  const bushes = [];
+  for (let i = 0; i < 16; i++) {
+    const x = -480 + hash01(i, 557) * 960;
+    const z = 84 + hash01(i, 563) * 40;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 10)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.5, y, 0.8)) continue;
+    bushes.push({
+      x, y, z,
+      scale: 1.8 + hash01(i, 569) * 1.4,
+      rotY: hash01(i, 571) * Math.PI * 2,
+    });
+  }
+  await scatterSafe(ctx, 'kenney_bush', bushes, 'kenney-bushes');
+
   // Covered cars in mid-block voids (not on Ocean Drive).
   const covered = [];
   for (let i = 0; i < 10; i++) {
@@ -349,6 +470,508 @@ export async function buildKenneyDressing(ctx) {
     addCollider(x, y, z, 4.4, 1.5, 1.9);
   }
   await scatterSafe(ctx, 'covered_car', covered, 'covered-cars');
+
+  // Approved catalog slug security_camera_01 — storefront fascia, hash01 only.
+  const cams = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 401) < 0.28) continue;
+    const x = sidewalkX(i, 10) + (hash01(i, 409) - 0.5) * 6;
+    const z = 56.2 + hash01(i, 419) * 1.4;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z) + 2.45 + hash01(i, 421) * 0.55;
+    if (!clear(x, z, 0.25, y - 0.2, 0.5)) continue;
+    cams.push({ x, y, z, scale: 1.0, rotY: 0 });
+  }
+  await scatterSafe(ctx, 'security_camera_01', cams, 'security-cams');
+
+  // Approved stairs-entry slugs (hash01 only). Do not restack loops above.
+  setTag('stairs-entry');
+  const ramps = [];
+  for (let i = 0; i < GAP_X.length; i++) {
+    for (const s of [-1, 1]) {
+      const x = GAP_X[i] + s * (XS_HALF + SW_CUT + 0.35);
+      const z = 52.45;
+      if (Math.abs(x - PIER_X) < 12) continue;
+      const y = groundHeight(x, z);
+      if (!clear(x, z, 0.85, y, 0.28)) continue;
+      ramps.push({ x, y, z, rotY: s > 0 ? Math.PI / 2 : -Math.PI / 2 });
+      addCollider(x, y, z, 2.24, 0.22, 1.68);
+    }
+  }
+  instanceAuthored(ctx, buildCurbRampGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), ramps, 'catalog-curb-ramps');
+
+  const rails = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1103) < 0.42) continue;
+    const x = sidewalkX(i, 12) + (hash01(i, 1109) - 0.5) * 5;
+    const z = 56.15 + hash01(i, 1117) * 1.5;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.35, y, 2.0)) continue;
+    rails.push({ x, y, z, rotY: -Math.PI / 2 });
+    addCollider(x, y, z, 2.15, 1.9, 0.14);
+  }
+  instanceAuthored(ctx, buildStairHandrailGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, color: 0xe8eef0, roughness: 0.28, metalness: 0.18,
+  }), rails, 'catalog-stair-handrails');
+
+  const awningWide = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1123) < 0.58) continue;
+    const x = sidewalkX(i, 12) + (hash01(i, 1129) - 0.5) * 6;
+    const z = 56.6 + hash01(i, 1135) * 1.8;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.7, y, 1.2)) continue;
+    const sc = 2.05 + hash01(i, 1141) * 0.7;
+    awningWide.push({ x, y, z, scale: sc, rotY: Math.PI });
+    addCollider(x, y, z, sc * 0.80, sc * 0.40, sc * 0.15);
+  }
+  await scatterSafe(ctx, 'awning_wide', awningWide, 'kenney-awning-wide');
+
+  const overhangs = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1147) < 0.52) continue;
+    const x = sidewalkX(i, 10) + (hash01(i, 1153) - 0.5) * 5;
+    const z = 56.3 + hash01(i, 1159) * 1.6;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.6, y, 1.2)) continue;
+    const sc = 2.3 + hash01(i, 1163) * 0.8;
+    overhangs.push({ x, y, z, scale: sc, rotY: Math.PI });
+    addCollider(x, y, z, sc * 0.50, sc * 0.40, sc * 0.20);
+  }
+  await scatterSafe(ctx, 'overhang', overhangs, 'kenney-overhangs');
+
+  // Approved traffic-control slugs (hash01 only). Do not restack loops above.
+  setTag('traffic-control');
+  const steelBollards = [];
+  for (let i = 0; i < CROSS_X.length; i++) {
+    for (const s of [-1, 1]) {
+      const x = CROSS_X[i] + s * (3.4 + hash01(i, 1301) * 0.5);
+      const z = 52.55 + (hash01(i, 1307) - 0.5) * 0.35;
+      if (Math.abs(x - PIER_X) < 12) continue;
+      const y = groundHeight(x, z);
+      if (!clear(x, z, 0.18, y, 1.05)) continue;
+      steelBollards.push({ x, y, z, rotY: hash01(i + s, 1319) * Math.PI * 2 });
+      addCyl(x, y, z, 0.12, 1.05);
+    }
+  }
+  instanceAuthored(ctx, buildBollardSteelGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), steelBollards, 'catalog-bollard-steel');
+
+  const flexBollards = [];
+  for (let i = 0; i < 18; i++) {
+    if (hash01(i, 1321) < 0.42) continue;
+    const x = sidewalkX(i, 18) + (hash01(i, 1333) - 0.5) * 8;
+    const z = 38.45 + (hash01(i, 1349) - 0.5) * 0.55;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.14, y, 0.85)) continue;
+    flexBollards.push({ x, y, z, rotY: hash01(i, 1361) * Math.PI * 2 });
+    addCyl(x, y, z, 0.08, 0.85);
+  }
+  instanceAuthored(ctx, buildBollardFlexGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), flexBollards, 'catalog-bollard-flex');
+
+  const pedHeads = [];
+  for (let i = 0; i < CROSS_X.length; i++) {
+    for (const s of [-1, 1]) {
+      const x = CROSS_X[i] + s * (XS_HALF + 0.9);
+      const z = 53.15;
+      if (Math.abs(x - PIER_X) < 12) continue;
+      const y = groundHeight(x, z);
+      if (!clear(x, z, 0.25, y, 0.7)) continue;
+      const rotY = s < 0 ? Math.PI / 2 : -Math.PI / 2;
+      pedHeads.push({ x, y, z, rotY });
+      addOBB(x, y, z, 0.35, 0.7, 0.2, rotY);
+    }
+  }
+  const pedMat = new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.62, metalness: 0.12,
+    emissive: 0xffd27a, emissiveIntensity: 0,
+  });
+  if (ctx.regDN) ctx.regDN(pedMat, 0, 1.15);
+  instanceAuthored(ctx, buildPedSignalGeo(), pedMat, pedHeads, 'catalog-ped-signal');
+
+  // Approved alley-lot-marina slugs (hash01 only). Do not restack loops above.
+  setTag('alley-lot-marina');
+  const alleyVC = () => new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.88, metalness: 0.2,
+  });
+
+  const crates = [];
+  for (let i = 0; i < 14; i++) {
+    if (hash01(i, 1403) < 0.38) continue;
+    const x = -480 + hash01(i, 1409) * 960;
+    const z = 84 + hash01(i, 1417) * 40;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.7, y, 0.5)) continue;
+    crates.push({ x, y, z, rotY: hash01(i, 1423) < 0.5 ? 0 : Math.PI });
+    addCollider(x, y, z, 0.53, 0.46, 1.17);
+  }
+  await scatterSafe(ctx, 'wooden_crate_02', crates, 'catalog-crates');
+
+  const pallets = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1429) < 0.4) continue;
+    const x = -480 + hash01(i, 1433) * 960;
+    const z = 84 + hash01(i, 1439) * 40;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.7, y, 0.16)) continue;
+    pallets.push({ x, y, z, rotY: hash01(i, 1447) < 0.5 ? 0 : Math.PI });
+    addCollider(x, y, z, 1.2, 0.14, 1.0);
+  }
+  instanceAuthored(ctx, buildPalletWoodGeo(), alleyVC(), pallets, 'catalog-pallets');
+
+  const cardboard = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1451) < 0.42) continue;
+    const x = -480 + hash01(i, 1453) * 960;
+    const z = 84 + hash01(i, 1459) * 40;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.5, y, 0.82)) continue;
+    cardboard.push({ x, y, z, rotY: hash01(i, 1461) < 0.5 ? 0 : Math.PI });
+    addCollider(x, y, z, 0.8, 0.82, 0.43);
+  }
+  instanceAuthored(ctx, buildCardboardStackGeo(), alleyVC(), cardboard, 'catalog-cardboard');
+
+  const MAR_DOCKS = [0, 26, 52];
+  const DOCK_TOP = 0.8;
+  const barrels = [];
+  for (let i = 0; i < 8; i++) {
+    if (hash01(i, 1471) < 0.35) continue;
+    const x = MARINA_X + MAR_DOCKS[i % 3] + (hash01(i, 1477) - 0.5) * 2.2;
+    const z = -34 + hash01(i, 1481) * 22;
+    if (!clear(x, z, 0.32, 0.82, 0.88)) continue;
+    barrels.push({ x, y: DOCK_TOP, z, rotY: hash01(i, 1483) * Math.PI * 2 });
+    addCyl(x, DOCK_TOP, z, 0.28, 0.88);
+  }
+  await scatterSafe(ctx, 'Barrel_01', barrels, 'catalog-barrels');
+
+  const cleats = [];
+  for (let i = 0; i < 12; i++) {
+    const side = hash01(i, 1487) < 0.5 ? -1.65 : 1.65;
+    const x = MARINA_X + MAR_DOCKS[i % 3] + side;
+    const z = -34 + hash01(i, 1493) * 22;
+    if (!clear(x, z, 0.2, 0.82, 0.16)) continue;
+    const rotY = Math.PI / 2;
+    cleats.push({ x, y: DOCK_TOP, z, rotY });
+    addOBB(x, DOCK_TOP, z, 0.35, 0.16, 0.18, rotY);
+  }
+  instanceAuthored(ctx, buildDockCleatGeo(), alleyVC(), cleats, 'catalog-cleats');
+
+  const piles = [];
+  for (let i = 0; i < 12; i++) {
+    const side = hash01(i, 1501) < 0.5 ? -2.5 : 2.5;
+    const x = MARINA_X + MAR_DOCKS[i % 3] + side;
+    const z = -34 + hash01(i, 1511) * 22;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.28, y, 2.4)) continue;
+    piles.push({ x, y, z, rotY: hash01(i, 1523) * Math.PI * 2 });
+    addCyl(x, y, z, 0.22, 2.4);
+  }
+  instanceAuthored(ctx, buildDockPileGeo(), alleyVC(), piles, 'catalog-piles');
+
+  // Approved beach-boardwalk slugs (hash01 only). Do not restack loops above.
+  setTag('beach-boardwalk');
+  const parasolB = [];
+  for (let i = 0; i < 12; i++) {
+    const x = -470 + hash01(i, 1601) * 940;
+    const z = 6.2 + hash01(i, 1607) * 10;
+    if (Math.abs(x - PIER_X) < 18) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.2) continue;
+    if (!clear(x, z, 0.35, y, 0.5)) continue;
+    parasolB.push({ x, y, z, scale: 1.0, rotY: hash01(i, 1609) * Math.PI * 2 });
+    addCyl(x, y, z, 0.2, 0.45);
+  }
+  await scatterSafe(ctx, 'parasol_b', parasolB, 'kenney-parasols-b');
+
+  const picnics = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1613) < 0.38) continue;
+    const x = sidewalkX(i, 10) + (hash01(i, 1619) - 0.5) * 10;
+    const z = 24.8 + (hash01(i, 1621) - 0.5) * 1.6;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < BOARDWALK_TOP - 0.01) continue;
+    if (!clear(x, z, 1.4, y, 0.8)) continue;
+    picnics.push({ x, y, z, scale: 1.0, rotY: Math.PI / 2 });
+    addCollider(x, y, z, 3.02, 0.75, 2.24);
+  }
+  await scatterSafe(ctx, 'wooden_picnic_table', picnics, 'boardwalk-picnics');
+
+  const carts = [];
+  for (let i = 0; i < 8 && carts.length < 2; i++) {
+    if (hash01(i, 1627) < 0.4) continue;
+    const x = sidewalkX(i, 8) + (hash01(i, 1637) - 0.5) * 8;
+    const z = 25.2 + (hash01(i, 1657) - 0.5) * 1.2;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < BOARDWALK_TOP - 0.01) continue;
+    if (!clear(x, z, 1.2, y, 1.8)) continue;
+    carts.push({ x, y, z, scale: 1.0, rotY: hash01(i, 1663) < 0.5 ? 0 : Math.PI });
+    addCollider(x, y, z, 2.17, 1.72, 1.07);
+  }
+  await scatterSafe(ctx, 'CoffeeCart_01', carts, 'boardwalk-coffee-carts');
+
+  const rings = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1667) < 0.28) continue;
+    const side = hash01(i, 1669) < 0.5 ? -1 : 1;
+    const x = PIER_X + side * 5.35;
+    const z = -132 + hash01(i, 1693) * 145;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < 3.6) continue;
+    if (!clear(x, z, 0.22, y, 1.4)) continue;
+    rings.push({ x, y, z, rotY: side > 0 ? Math.PI / 2 : -Math.PI / 2 });
+    addCyl(x, y, z, 0.12, 1.4);
+  }
+  instanceAuthored(ctx, buildLifeRingGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), rings, 'catalog-life-ring');
+
+  // Remaining approved authored geos (hash01). Colliders match catalog.
+  setTag('sidewalk-furniture');
+  const vc = (opts = {}) => new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: opts.roughness ?? 0.72, metalness: opts.metalness ?? 0.08,
+  });
+  const mailboxes = [];
+  for (let i = 0; i < 8; i++) {
+    const x = sidewalkX(i, 8) + (hash01(i, 1703) - 0.5) * 6;
+    const z = 52.45 + (hash01(i, 1709) - 0.5) * 0.4;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.4, y, 1.3)) continue;
+    mailboxes.push({ x, y, z, rotY: Math.PI });
+    addCollider(x, y, z, 0.55, 1.3, 0.5);
+  }
+  instanceAuthored(ctx, buildMailboxGeo(), vc(), mailboxes, 'catalog-mailbox');
+
+  const papers = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1713) < 0.45) continue;
+    const x = -480 + hash01(i, 1719) * 960;
+    const z = 84 + hash01(i, 1721) * 36;
+    if (GAP_X.some((c) => Math.abs(x - c) < 10)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.3, y, 0.26)) continue;
+    papers.push({ x, y, z, rotY: hash01(i, 1723) * Math.PI });
+    addCollider(x, y, z, 0.4, 0.25, 0.3);
+  }
+  instanceAuthored(ctx, buildPaperStackGeo(), vc({ roughness: 0.88 }), papers, 'catalog-paper-stack');
+
+  const bags = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1729) < 0.4) continue;
+    const x = sidewalkX(i, 10) + (hash01(i, 1733) - 0.5) * 5;
+    const z = 36.5 + (hash01(i, 1739) - 0.5) * 0.3;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.14, y, 1.1)) continue;
+    bags.push({ x, y, z, rotY: 0 });
+    addCyl(x, y, z, 0.08, 1.1);
+  }
+  instanceAuthored(ctx, buildDogBagDispenserGeo(), vc(), bags, 'catalog-dog-bag');
+
+  const fountains = [];
+  for (let i = 0; i < 6; i++) {
+    const x = sidewalkX(i, 6) + (hash01(i, 1741) - 0.5) * 8;
+    const z = 34.9 + (hash01(i, 1747) - 0.5) * 0.4;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 10)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.32, y, 0.95)) continue;
+    fountains.push({ x, y, z, rotY: 0 });
+    addCyl(x, y, z, 0.28, 0.95);
+  }
+  instanceAuthored(ctx, buildStreetFountainGeo(), vc(), fountains, 'catalog-fountain');
+
+  const phones = [];
+  for (let i = 0; i < 8 && phones.length < 3; i++) {
+    if (hash01(i, 1753) < 0.45) continue;
+    const x = sidewalkX(i, 8) + (hash01(i, 1759) - 0.5) * 5;
+    const z = 56.4 + hash01(i, 1763) * 1.4;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.5, y, 2.2)) continue;
+    phones.push({ x, y, z, rotY: Math.PI });
+    addCollider(x, y, z, 0.8, 2.2, 0.5);
+  }
+  instanceAuthored(ctx, buildPayphoneKioskGeo(), vc(), phones, 'catalog-payphone');
+
+  setTag('utilities-power');
+  const poles = [];
+  const xfmrs = [];
+  for (let i = 0; i < 16; i++) {
+    const x = -520 + i * 28;
+    const z = 92 + (hash01(i, 1769) - 0.5) * 6;
+    if (Math.abs(x - PIER_X) < 16) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.28, y, 9.5)) continue;
+    poles.push({ x, y, z, rotY: 0 });
+    addCyl(x, y, z, 0.2, 9.5);
+    if (i % 3 === 1) {
+      const ty = y + 8.2;
+      xfmrs.push({ x, y: ty, z, rotY: 0 });
+      addCyl(x, ty, z, 0.28, 0.7);
+    }
+  }
+  instanceAuthored(ctx, buildUtilityPoleWoodGeo(), vc({ roughness: 0.88, metalness: 0.2 }),
+    poles, 'catalog-utility-poles');
+  instanceAuthored(ctx, buildPoleTransformerGeo(), vc({ roughness: 0.88, metalness: 0.2 }),
+    xfmrs, 'catalog-transformers');
+  const spans = [];
+  for (let i = 0; i < poles.length - 1; i++) {
+    const a = poles[i], b = poles[i + 1];
+    if (Math.abs(b.x - a.x - 28) > 4) continue;
+    spans.push({ x: a.x, y: a.y, z: a.z, rotY: 0 });
+  }
+  instanceAuthored(ctx, buildPowerSpanGeo(), vc({ roughness: 0.5, metalness: 0.35 }),
+    spans, 'catalog-power-spans');
+
+  const cabinets = [];
+  for (let i = 0; i < GAP_X.length; i++) {
+    const x = GAP_X[i] + 4.2;
+    const z = 53.2;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.4, y, 1.35)) continue;
+    cabinets.push({ x, y, z, rotY: 0 });
+    addCollider(x, y, z, 0.7, 1.35, 0.5);
+  }
+  instanceAuthored(ctx, buildTrafficCabinetGeo(), vc({ roughness: 0.88 }), cabinets, 'catalog-cabinets');
+
+  const holes = [];
+  for (let x = -540; x <= 540; x += 55) {
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const z = 44 + (hash01(x | 0, 1777) - 0.5) * 2;
+    holes.push({ x, y: CITY_Y + 0.07, z, rotY: hash01(x | 0, 1783) * Math.PI });
+  }
+  instanceAuthored(ctx, buildManholeCoverGeo(), vc(), holes, 'catalog-manholes');
+
+  const pipes = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1789) < 0.4) continue;
+    const x = sidewalkX(i, 10) + (hash01(i, 1793) - 0.5) * 5;
+    const z = 56.8 + hash01(i, 1799) * 1.6;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.3, y, 0.7)) continue;
+    pipes.push({ x, y, z, rotY: Math.PI });
+    addCollider(x, y, z, 0.45, 0.7, 0.25);
+  }
+  instanceAuthored(ctx, buildStandpipeSiameseGeo(), vc({ roughness: 0.88 }), pipes, 'catalog-standpipe');
+
+  setTag('fence-rail');
+  const chain = [];
+  for (let i = 0; i < 10; i++) {
+    if (hash01(i, 1801) < 0.4) continue;
+    const x = -500 + hash01(i, 1807) * 1000;
+    const z = 88 + hash01(i, 1811) * 28;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 1.2, y, 1.7)) continue;
+    chain.push({ x, y, z, rotY: hash01(i, 1813) < 0.5 ? 0 : Math.PI / 2 });
+    addCollider(x, y, z, 2.4, 1.7, 0.08);
+  }
+  instanceAuthored(ctx, buildChainLinkRunGeo(), vc({ roughness: 0.88 }), chain, 'catalog-chain-link');
+
+  const gates = [];
+  for (let i = 0; i < 6; i++) {
+    if (hash01(i, 1823) < 0.45) continue;
+    const x = -500 + hash01(i, 1829) * 1000;
+    const z = 90 + hash01(i, 1831) * 24;
+    if (GAP_X.some((c) => Math.abs(x - c) < 12)) continue;
+    const y = groundHeight(x, z);
+    if (y < CITY_Y - 0.05) continue;
+    if (!clear(x, z, 0.8, y, 1.2)) continue;
+    gates.push({ x, y, z, rotY: 0 });
+    addCollider(x, y, z, 1.4, 1.2, 0.08);
+  }
+  instanceAuthored(ctx, buildSwingGateGeo(), vc({ roughness: 0.88 }), gates, 'catalog-gates');
+
+  const pipeRails = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1837) < 0.5) continue;
+    const x = sidewalkX(i, 12) + (hash01(i, 1841) - 0.5) * 5;
+    const z = 56.2 + hash01(i, 1843) * 1.2;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.4, y, 1.05)) continue;
+    pipeRails.push({ x, y, z, rotY: -Math.PI / 2 });
+    addCollider(x, y, z, 2.0, 1.05, 0.08);
+  }
+  instanceAuthored(ctx, buildPipeRailingGeo(), vc({ roughness: 0.28, metalness: 0.18 }),
+    pipeRails, 'catalog-pipe-rail');
+
+  const grates = [];
+  for (let i = 0; i < 14; i++) {
+    if (hash01(i, 1853) < 0.35) continue;
+    const x = sidewalkX(i, 14) + (hash01(i, 1859) - 0.5) * 4;
+    const z = 51.5 + (hash01(i, 1861) - 0.5) * 0.3;
+    if (Math.abs(x - PIER_X) < 12) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 7)) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.6, y, 0.06)) continue;
+    grates.push({ x, y: y + 0.02, z, rotY: 0 });
+  }
+  instanceAuthored(ctx, buildTreeGrateGeo(), vc(), grates, 'catalog-tree-grate');
+
+  const acs = [];
+  for (let i = 0; i < 12; i++) {
+    if (hash01(i, 1867) < 0.48) continue;
+    const x = sidewalkX(i, 12) + (hash01(i, 1871) - 0.5) * 6;
+    const z = 57.4 + hash01(i, 1873) * 1.2;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
+    const y = groundHeight(x, z) + 2.15;
+    acs.push({ x, y, z, rotY: Math.PI });
+  }
+  instanceAuthored(ctx, buildWindowAcRowGeo(), vc({ roughness: 0.88 }), acs, 'catalog-window-ac');
+
+  const flags = [];
+  for (let i = 0; i < 6 && flags.length < 4; i++) {
+    if (hash01(i, 1879) < 0.35) continue;
+    const x = sidewalkX(i, 6) + (hash01(i, 1883) - 0.5) * 8;
+    const z = 57.8;
+    if (Math.abs(x - PIER_X) < 14) continue;
+    const y = groundHeight(x, z);
+    if (!clear(x, z, 0.16, y, 7)) continue;
+    flags.push({ x, y, z, rotY: 0 });
+    addCyl(x, y, z, 0.08, 7);
+  }
+  instanceAuthored(ctx, buildFlagpoleGeo(), vc(), flags, 'catalog-flagpole');
 
   setTag('world');
   return {

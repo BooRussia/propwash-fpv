@@ -48,6 +48,39 @@ export function runMiamiKenneyDressingTests() {
     && kenney.includes("'kenney_palm'")
     && kenney.includes("'kenney_house_a'")
     && kenney.includes("'awning'"));
+  ok('approved stairs-entry extras hash-scattered',
+    kenney.includes("'awning_wide'")
+    && kenney.includes("'overhang'")
+    && kenney.includes('buildCurbRampGeo')
+    && kenney.includes('buildStairHandrailGeo')
+    && kenney.includes('hash01(i, 1103)')
+    && !/\brng2?\(/.test(kenney));
+  ok('approved beach-boardwalk extras hash-scattered',
+    kenney.includes("'parasol_b'")
+    && kenney.includes("'wooden_picnic_table'")
+    && kenney.includes("'CoffeeCart_01'")
+    && kenney.includes('buildLifeRingGeo')
+    && kenney.includes('hash01(i, 1601)')
+    && !/\brng2?\(/.test(kenney));
+  ok('approved sidewalk-furniture extras hash-scattered',
+    kenney.includes('buildMailboxGeo')
+    && kenney.includes('buildStreetFountainGeo')
+    && kenney.includes('buildPayphoneKioskGeo')
+    && kenney.includes('hash01(i, 1703)')
+    && !/\brng2?\(/.test(kenney));
+  ok('approved utilities-power extras hash-scattered',
+    kenney.includes('buildUtilityPoleWoodGeo')
+    && kenney.includes('buildPowerSpanGeo')
+    && kenney.includes('buildManholeCoverGeo'));
+  ok('approved alley-lot-marina extras hash-scattered',
+    kenney.includes("'wooden_crate_02'")
+    && kenney.includes("'Barrel_01'")
+    && kenney.includes('buildDockCleatGeo')
+    && kenney.includes('buildDockPileGeo')
+    && kenney.includes('buildPalletWoodGeo')
+    && kenney.includes('buildCardboardStackGeo')
+    && kenney.includes('hash01(i, 1403)')
+    && !/\brng2?\(/.test(kenney));
   ok('beach chairs sit ocean of the boardwalk kiss',
     kenney.includes('z = 5.2 + hash01(i, 103) * 11'));
   ok('far row sits behind the 60-box LOD (z>=640)',
