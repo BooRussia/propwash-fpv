@@ -1354,6 +1354,17 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=96 at x=90/100 skipped — graze Casa reserved, leftoverLot A–H unmoved',
+    !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
+    && reservedOverlap(90, 96, 18, 14, 0.15)
+    && reservedOverlap(100, 96, 18, 14, 0.15)
+    && leftoverLotOverlap(90, 96, 18, 14, 0.15) === false
+    && leftoverLotOverlap(100, 96, 18, 14, 0.15) === false
+    && 90 < 240 && 100 < 240 && 90 < 251 && 100 < 251
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=96 sidewalks miss leftoverLot A–H',
     leftoverLotOverlap(-600, 87.6, 0.6, 0.6, 0.15) === false

@@ -963,6 +963,8 @@ function FRONT_Z_OK() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x !== -430
       && (x < -112 || x === 210))
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).length === 7
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).every(([x]) => x < 240
       && x !== -430 && x !== -250 && (x < -112 || x === 210))
@@ -1044,6 +1046,17 @@ function FRONT_Z_OK() {
     isInlandArcadeCell(210, 96) && !isCourtWellCell(210, 96)
     && leftoverLotOverlap(210, 96, 18, 14, 0.15) === false
     && 210 < 240);
+  ok('z=96 at x=90/100 skipped — graze Casa reserved',
+    !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
+    && reservedOverlap(90, 96, 18, 14, 0.15)
+    && reservedOverlap(100, 96, 18, 14, 0.15)
+    && leftoverLotOverlap(90, 96, 18, 14, 0.15) === false
+    && leftoverLotOverlap(100, 96, 18, 14, 0.15) === false
+    && 90 < 240 && 100 < 240 && 90 < 251 && 100 < 251
+    && 90 + INLAND_MIDRISE_W / 2 < 126 && 100 + INLAND_MIDRISE_W / 2 < 126
+    && !isInlandArcadeCell(90, 96) && !isInlandArcadeCell(100, 96)
+    && !isCourtWellCell(90, 96) && !isCourtWellCell(100, 96));
   ok('leftoverLot A–H still signed after extra court wells',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));

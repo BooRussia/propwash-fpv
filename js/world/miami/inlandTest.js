@@ -12,6 +12,7 @@ import {
   COURT_WELL_CELLS, COURT_WELL_W, COURT_WELL_D, isCourtWellCell,
   INLAND_ARCADE_CELLS, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W, isInlandArcadeCell, inlandArcadeGeom, courtWellGeom,
   leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
+  reservedOverlap,
   WASH_X0, WASH_Z0, WASH_Z1,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
@@ -116,6 +117,8 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x !== -430
       && (x < -112 || x === 210))
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).length === 7
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 128).every(([x]) => x < 240 && x !== -430
       && x !== -250 && (x < -112 || x === 210))
@@ -285,6 +288,21 @@ export function runMiamiInlandTests() {
     && 210 < 240 && 210 < 251
     && !FLY_VOIDS.some((f) => String(f.id).startsWith('court-well-') && f.x === 210 && f.z === 96)
     && FLY_VOIDS.some((f) => String(f.id).startsWith('inland-arcade-') && f.x === 210 && f.z === 96));
+  ok('z=96 at x=90/100 skipped — graze Casa reserved',
+    !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 96)
+    && !INLAND_MIDRISE_CELLS.some(([x, z]) => x === 100 && z === 96)
+    && reservedOverlap(90, 96, 18, 14, 0.15)
+    && reservedOverlap(100, 96, 18, 14, 0.15)
+    && leftoverLotOverlap(90, 96, 18, 14, 0.15) === false
+    && leftoverLotOverlap(100, 96, 18, 14, 0.15) === false
+    && streetOverlap(90, 96, 18, 14) === false
+    && streetOverlap(100, 96, 18, 14) === false
+    && 90 + 9 < 126 && 100 + 9 < 126
+    && 90 < 240 && 100 < 240 && 90 < 251 && 100 < 251
+    && !isInlandArcadeCell(90, 96) && !isInlandArcadeCell(100, 96)
+    && !isCourtWellCell(90, 96) && !isCourtWellCell(100, 96)
+    && !ROOF_AC_CELLS.some(([x, z]) => (x === 90 || x === 100) && z === 96)
+    && !ROOF_RING_CELLS.some(([x, z]) => (x === 90 || x === 100) && z === 96));
   ok('inland.js hollows court wells, no layout rng',
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && inland.includes('isInlandArcadeCell')

@@ -942,6 +942,8 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
   // [210,96] east of cinema reserved (x1=208), west of leftoverLot A / x=240.
   // [-660,96] continues the west skyline column. Miss GAP_X, travel 40.2–47.8.
+  // Skip [90,96]/[100,96]: 18×14 plate z0=89 grazes Casa reserved z1=90
+  // (and drop z1=90.9). Cinema reserved x0=126 is east of both plates.
   // leftoverLot A–H unmoved.
   [-720, 96], [-660, 96], [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
   [-160, 96],

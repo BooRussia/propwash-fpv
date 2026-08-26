@@ -1087,7 +1087,14 @@
     {
       "id": "fill-96-casa",
       "title": "Skip z=96 at x=90/100 if they graze Casa or cinema reserved; otherwise add",
-      "status": "pending"
+      "status": "done",
+      "notes": "skipped: [90,96]/[100,96] graze Casa reserved z1=90 (plate z0=89) and drop z1=90.9; cinema reserved x0=126 is east of both; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
