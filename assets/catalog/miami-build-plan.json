@@ -1291,8 +1291,14 @@
     {
       "id": "alley-181-west",
       "title": "Alley-pipe whoops at z=181 on x=-720/-660 west of WASH_X0, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "pipes at [-720,181]/[-660,181] west of WASH_X0=-480; fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-720,181]/[-660,181] pipes west of WASH_X0=-480; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

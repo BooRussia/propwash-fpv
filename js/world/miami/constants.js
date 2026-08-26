@@ -416,6 +416,10 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   // Gap between -430 and -390, miss helipad W. Appended so existing
   // hash01 alley pallet draws stay put. Fly +X.
   [-410, 248],
+  // Extra z=181 pipes west of WASH_X0=-480. Appended so existing
+  // hash01 alley-pipe draws stay put. Fly +X.
+  [-720, 181],
+  [-660, 181],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
