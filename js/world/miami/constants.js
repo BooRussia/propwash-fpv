@@ -736,12 +736,15 @@ export function gap429Shops() {
 // Ocean of the 60-box backdrop (z 300), inland of the back tower row
 // (z~185). Paired on X so a 8 m E–W service alley sits at z=248 with
 // an alley-pipe whoop (fly +X). West of x=240. Miss GAP_X, leftoverLot
-// A–H, convention z1=166, helipad W z1=128, travel lanes 40.2–47.8.
-// New RESERVED west of x=240. Do not slide leftoverLot A–H.
+// A–H, convention z1=166, helipad W (x -452..-408, z1=128), travel
+// lanes 40.2–47.8. West pair at x=-600 is west of x=-430 and misses
+// helipad W on both axes. New RESERVED west of x=240. Do not slide
+// leftoverLot A–H.
 export const INLAND_MIDRISE_W = 18;
 export const INLAND_MIDRISE_D = 14;
 export const INLAND_MIDRISE_H = 32;
 export const INLAND_MIDRISE_CELLS = Object.freeze([
+  [-600, 237], [-600, 259],
   [-430, 237], [-430, 259],
   [-250, 237], [-250, 259],
   [-80, 237], [-80, 259],
@@ -4494,6 +4497,23 @@ export function inHelipadReserved(x, z) {
     const r = RESERVED[i];
     if (r.tag !== 'helipadE' && r.tag !== 'helipadW') continue;
     if (x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1) return true;
+  }
+  return false;
+}
+
+/**
+ * Axis-aligned footprint vs helipad E/W reserved only.
+ * Inland mid-rises use this so a west plate cannot restack helipad W.
+ */
+export function helipadOverlap(x, z, w, d, margin = 0.15) {
+  const hw = w / 2, hd = d / 2;
+  for (let i = 0; i < RESERVED.length; i++) {
+    const r = RESERVED[i];
+    if (r.tag !== 'helipadE' && r.tag !== 'helipadW') continue;
+    const ox = Math.min(x + hw, r.x1) - Math.max(x - hw, r.x0);
+    if (ox <= margin) continue;
+    const oz = Math.min(z + hd, r.z1) - Math.max(z - hd, r.z0);
+    if (oz > margin) return true;
   }
   return false;
 }

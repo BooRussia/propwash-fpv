@@ -28,6 +28,7 @@ import {
   LUMMUS_EXTRA_BENCH_CELLS, LUMMUS_DRINKER_CELLS,
   FLY_VOIDS, flyColliderShapes, pierFlyShapes, inKeepout, inFlyVoid,
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
+  helipadOverlap, inHelipadReserved,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
   CITY_Y,
@@ -708,9 +709,12 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 8
+    INLAND_MIDRISE_CELLS.length === 10
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length === 2
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && inland.includes('buildDecoMidriseGeos')
     && inland.includes('buildRooftopKitGeo'));
   ok('inland does not draw layout rng, ShaderMaterial, or ped/traffic',
@@ -720,13 +724,16 @@ function FRONT_Z_OK() {
     && !inland.includes('ped.js') && !inland.includes('traffic.js'));
 
   const inlandList = inlandMidrises();
-  ok('eight signed inland mid-rises', inlandList.length === 8);
+  ok('ten signed inland mid-rises', inlandList.length === 10);
+  ok('helipad W reserved still signed',
+    inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < inlandList.length; i++) {
     const g = inlandList[i];
     ok(`${g.id} reserved west of 240`, g.x1 + 0.8 < 240 && inReserved(g.x, g.z));
-    ok(`${g.id} misses leftoverLot / street / travel`,
+    ok(`${g.id} misses leftoverLot / street / travel / helipad W`,
       leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15) === false
       && streetOverlap(g.x, g.z, g.w, g.d) === false
+      && helipadOverlap(g.x, g.z, g.w, g.d, 0.15) === false
       && g.z0 > TRAVEL_Z1);
     ok(`${g.id} keepout`, !!inKeepout(g.x, g.z));
   }

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
-  leftoverLotOverlap, streetOverlap,
+  leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
   ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DOCK_W, ALLEY_DOCK_D,
@@ -68,20 +68,26 @@ export function runMiamiInlandTests() {
   ok('far Kenney gained midrise_c behind the 60-box LOD',
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
-  ok('eight signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 8
+  ok('ten signed plates west of 240',
+    INLAND_MIDRISE_CELLS.length === 10
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
-    && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300));
+    && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
+    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length === 2
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 8);
+  ok('geom count matches cells', plates.length === 10);
+  ok('helipad W reserved still signed',
+    inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < plates.length; i++) {
     const g = plates[i];
     ok(`${g.id} reserved + keepout west of 240`,
       g.x1 + 0.8 < 240 && inReserved(g.x, g.z) && inKeepout(g.x, g.z));
-    ok(`${g.id} misses leftoverLot / street / travel`,
+    ok(`${g.id} misses leftoverLot / street / travel / helipad W`,
       leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15) === false
       && streetOverlap(g.x, g.z, g.w, g.d) === false
+      && helipadOverlap(g.x, g.z, g.w, g.d, 0.15) === false
       && g.z0 > TRAVEL_Z1 && g.z1 < 300
       && !(g.z0 < TRAVEL_Z1 && g.z1 > TRAVEL_Z0));
   }

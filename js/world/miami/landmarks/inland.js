@@ -4,6 +4,7 @@ import {
   inlandMidrises,
   leftoverLotOverlap,
   streetOverlap,
+  helipadOverlap,
   ROOF_AC_CELLS, ROOF_RING_CELLS,
   roofAcGapGeom, roofRingGeom, installFlyColliders,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
@@ -73,6 +74,7 @@ export function buildInland(ctx) {
     const g = plates[i];
     if (g.x1 + 0.8 >= 240) continue;
     if (leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15)) continue;
+    if (helipadOverlap(g.x, g.z, g.w, g.d, 0.15)) continue;
     if (streetOverlap(g.x, g.z, g.w, g.d)) continue;
 
     const offU = hash01((g.x * 7) | 0, (g.z * 13) | 0);
@@ -184,7 +186,8 @@ export function buildInland(ctx) {
   setTag('inland-alley');
   const pallets = [];
   const cardboard = [];
-  const alleys = [[-430, 248], [-250, 248], [-80, 248], [100, 248]];
+  // Existing 0–3 keep hash01(i) pallet draws. West pair at x=-600 is last.
+  const alleys = [[-430, 248], [-250, 248], [-80, 248], [100, 248], [-600, 248]];
   for (let i = 0; i < alleys.length; i++) {
     const [cx, cz] = alleys[i];
     for (const sx of [-5.6, 5.6]) {
