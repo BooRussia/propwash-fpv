@@ -210,6 +210,85 @@ export const GARAGE_AISLE_W = 6.40;  // clear between inner jambs
 export const GARAGE_SOFFIT = 3.60;
 export const GARAGE_ROOF_H = 0.28;
 
+// ---- 5th-street analogue (GAP_X=57): inland storefronts + fly-unders ----
+// Facades face the cross-street column. Arcade fly ±Z along the walk;
+// mid-block passage fly ±X through the plate. Not leftoverLot A–H.
+// New RESERVED west of x=240. Miss Clevelander z1=86, Casa z1=90,
+// Drop, Convention x1=16, alley pipe 78/102, travel lanes 40.2–47.8.
+export const FIFTH_X = 57;
+export const FIFTH_SOFFIT = 3.40;
+export const FIFTH_ARCADE_D = 3.20;
+export const FIFTH_PASS_W = 2.20;
+export const FIFTH_PASS_H = 3.20;
+export const FIFTH_D = 12.0;
+export const FIFTH_H = 8.40;
+export const FIFTH_JAMB = 0.28;
+export const FIFTH_W_FRONT_X = FIFTH_X - XS_HALF - 2.4;
+export const FIFTH_E_FRONT_X = FIFTH_X + XS_HALF + 2.4;
+export const FIFTH_W_CELLS = Object.freeze([[114, 16], [136, 16], [158, 16]]);
+export const FIFTH_E_CELLS = Object.freeze([[95, 8], [114, 16], [136, 16], [158, 16]]);
+
+/** One 5th-street shop. side 'W' faces +X; 'E' faces −X. Never remaps x/z. */
+export function fifthShopGeom(side, z, len, id) {
+  const frontX = side === 'W' ? FIFTH_W_FRONT_X : FIFTH_E_FRONT_X;
+  const inward = side === 'W' ? -1 : 1;
+  const xBack = frontX + inward * FIFTH_D;
+  const xArcadeInner = frontX + inward * FIFTH_ARCADE_D;
+  const x0 = Math.min(frontX, xBack);
+  const x1 = Math.max(frontX, xBack);
+  const x = (x0 + x1) / 2;
+  const arcadeX = (frontX + xArcadeInner) / 2;
+  const z0 = z - len / 2;
+  const z1 = z + len / 2;
+  const passZ0 = z - FIFTH_PASS_W / 2;
+  const passZ1 = z + FIFTH_PASS_W / 2;
+  const jamb = FIFTH_JAMB;
+  return {
+    id, side, z, len, x, frontX, inward, xBack, xArcadeInner, x0, x1,
+    z0, z1, arcadeX, passZ0, passZ1,
+    openArcadeW: len - 2.4, openArcadeH: FIFTH_SOFFIT,
+    openPassW: FIFTH_PASS_W, openPassH: FIFTH_PASS_H,
+    jamb, tag: 'fifth',
+  };
+}
+
+export function fifthShops() {
+  const shops = [];
+  for (let i = 0; i < FIFTH_W_CELLS.length; i++) {
+    const [z, len] = FIFTH_W_CELLS[i];
+    shops.push(fifthShopGeom('W', z, len, `fifth-w-${i}`));
+  }
+  for (let i = 0; i < FIFTH_E_CELLS.length; i++) {
+    const [z, len] = FIFTH_E_CELLS[i];
+    shops.push(fifthShopGeom('E', z, len, `fifth-e-${i}`));
+  }
+  return shops;
+}
+
+export function fifthArcadeVoid(g) {
+  const xLo = Math.min(g.frontX, g.xArcadeInner);
+  const xHi = Math.max(g.frontX, g.xArcadeInner);
+  return {
+    id: `${g.id}-arcade`, kind: 'kit',
+    x: g.arcadeX, z: g.z, y: CITY_Y + FIFTH_SOFFIT * 0.48,
+    x0: xLo + 0.12, x1: xHi - 0.12,
+    z0: g.z0 + 1.2, z1: g.z1 - 1.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + FIFTH_SOFFIT - 0.06,
+    openW: g.openArcadeW, openH: g.openArcadeH,
+  };
+}
+
+export function fifthPassVoid(g) {
+  return {
+    id: `${g.id}-pass`, kind: 'kit',
+    x: g.x, z: g.z, y: CITY_Y + FIFTH_PASS_H * 0.48,
+    x0: g.x0 + 0.10, x1: g.x1 - 0.10,
+    z0: g.passZ0 + 0.06, z1: g.passZ1 - 0.06,
+    y0: CITY_Y + 0.08, y1: CITY_Y + FIFTH_PASS_H - 0.06,
+    openW: g.openPassW, openH: g.openPassH,
+  };
+}
+
 // ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
 // Vacant city parcel east of the cinema, west of GAP 243. Not a street
 // and not the boardwalk. Scatter still uses tryPlace — this reservation
@@ -3292,6 +3371,11 @@ export const RESERVED = [
     z0: z - ALLEY_PIPE_HALF_Z - 1.5, z1: z + ALLEY_PIPE_HALF_Z + 1.4,
     tag: 'alley-pipe',
   })),
+  ...fifthShops().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: g.z0 - 1.5, z1: g.z1 + 1.4,
+    tag: 'fifth',
+  })),
 ];
 
 export function inReserved(x, z) {
@@ -4204,6 +4288,11 @@ export const KEEPOUT = [
     z1: z + PARK_RING_R + PARK_RING_TUBE + 0.8,
     tag: 'park-ring',
   })),
+  ...fifthShops().map((g) => ({
+    x0: g.x0 - 0.6, x1: g.x1 + 0.6,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'fifth',
+  })),
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4461,6 +4550,7 @@ export const FLY_VOIDS = [
   ...PIER_EXTRA_BAY_IS.map((bayI) => pierUndercroftVoid(bayI, `pier-undercroft-${bayI}`)),
   ...PIER_EXTRA_BAY_IS.map((bayI) => pierBayRingVoid(
     pierBayRingGeom(bayI), `pier-bay-ring-${bayI}`)),
+  ...fifthShops().flatMap((g) => [fifthArcadeVoid(g), fifthPassVoid(g)]),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -4584,7 +4674,48 @@ export function flyColliderShapes() {
   for (let i = 0; i < PARK_RING_CELLS.length; i++) {
     parkRingColliderShapesAt(shapes, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
   }
+  const fifth = fifthShops();
+  for (let i = 0; i < fifth.length; i++) {
+    fifthColliderShapesAt(shapes, fifth[i]);
+  }
   return shapes;
+}
+
+function fifthColliderShapesAt(shapes, g) {
+  const jamb = g.jamb;
+  for (const dz of [g.z0 + 0.7, g.z1 - 0.7]) {
+    shapes.push({
+      type: 'cyl', tag: 'fifth',
+      x: g.arcadeX, z: dz, r: 0.20,
+      y0: CITY_Y, h: FIFTH_SOFFIT,
+    });
+  }
+  const ax0 = Math.min(g.frontX, g.xArcadeInner);
+  const ax1 = Math.max(g.frontX, g.xArcadeInner);
+  shapes.push({
+    type: 'aabb', tag: 'fifth',
+    x: g.arcadeX, z: g.z, sx: ax1 - ax0 + 0.2, sz: g.len - 0.4,
+    y0: CITY_Y + FIFTH_SOFFIT, sy: 0.26,
+  });
+  const massX0 = Math.min(g.xBack, g.xArcadeInner);
+  const massX1 = Math.max(g.xBack, g.xArcadeInner);
+  const massX = (massX0 + massX1) / 2;
+  const massSx = massX1 - massX0;
+  for (const side of [-1, 1]) {
+    const zEdge = side < 0 ? (g.z0 + g.passZ0) / 2 : (g.passZ1 + g.z1) / 2;
+    const sz = side < 0 ? (g.passZ0 - g.z0) : (g.z1 - g.passZ1);
+    if (sz < 0.4) continue;
+    shapes.push({
+      type: 'aabb', tag: 'fifth',
+      x: massX, z: zEdge, sx: massSx, sz: sz - 0.04,
+      y0: CITY_Y, sy: FIFTH_PASS_H,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'fifth',
+    x: g.x, z: g.z, sx: g.x1 - g.x0, sz: FIFTH_PASS_W + jamb * 2,
+    y0: CITY_Y + FIFTH_PASS_H, sy: 0.24,
+  });
 }
 
 function sidewalkArcadeColliderShapesAt(shapes, g) {

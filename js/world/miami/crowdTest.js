@@ -25,6 +25,8 @@ import {
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
+  FIFTH_X, FIFTH_W_CELLS, FIFTH_E_CELLS, FIFTH_W_FRONT_X, FIFTH_E_FRONT_X,
+  FIFTH_SOFFIT, FIFTH_PASS_W, FIFTH_PASS_H, fifthShops,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -79,6 +81,7 @@ export function runMiamiCrowdTests() {
   const decoPath = join(here, 'landmarks/decoHotels.js');
   const indexPath = join(here, 'index.js');
   const flyPath = join(here, 'landmarks/flythrough.js');
+  const fifthPath = join(here, 'landmarks/fifth.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -87,6 +90,7 @@ export function runMiamiCrowdTests() {
   const deco = existsSync(decoPath) ? readFileSync(decoPath, 'utf8') : '';
   const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
   const fly = existsSync(flyPath) ? readFileSync(flyPath, 'utf8') : '';
+  const fifth = existsSync(fifthPath) ? readFileSync(fifthPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -384,6 +388,53 @@ export function runMiamiCrowdTests() {
   ok('leftoverLot A–H still signed after obstacles',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('fifth.js exists', existsSync(fifthPath));
+  ok('index builds 5th-street storefronts after convention',
+    index.includes("from './landmarks/fifth.js'")
+    && index.includes('buildFifth(ctx)')
+    && index.indexOf('buildFifth(ctx)') > index.indexOf('buildConvention(ctx)'));
+  ok('5th-street is GAP_X=57, west of x=240',
+    FIFTH_X === 57 && FIFTH_W_FRONT_X < FIFTH_X && FIFTH_E_FRONT_X > FIFTH_X
+    && FIFTH_E_FRONT_X + 12 < 240);
+  ok('5th-street cells are signed inland of Ocean Drive',
+    FIFTH_W_CELLS.length === 3 && FIFTH_E_CELLS.length === 4
+    && FIFTH_W_CELLS.every(([, len]) => len >= 8)
+    && FIFTH_E_CELLS[0][0] === 95 && FIFTH_E_CELLS[0][1] === 8);
+  ok('5th-street soffit and passage are flyable',
+    FIFTH_SOFFIT >= 3.2 && FIFTH_PASS_W >= 2.0 && FIFTH_PASS_H >= 2.0);
+  ok('fifth does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(fifth) && !/\brng3\s*\(/.test(fifth)
+    && !/\brng4\s*\(/.test(fifth) && !fifth.includes('ShaderMaterial')
+    && !fifth.includes('ped.js') && !fifth.includes('traffic.js')
+    && fifth.includes('installFlyColliders'));
+
+  const shops = fifthShops();
+  ok('seven signed 5th-street shops', shops.length === 7);
+  for (let i = 0; i < shops.length; i++) {
+    const g = shops[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 1.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.x1 - g.x0, g.len, 0.15) === false
+      && streetOverlap(g.x, g.z, g.x1 - g.x0, g.len) === false
+      && g.z0 > TRAVEL_Z1);
+    const arcade = FLY_VOIDS.find((v) => v.id === `${g.id}-arcade`);
+    const pass = FLY_VOIDS.find((v) => v.id === `${g.id}-pass`);
+    ok(`${g.id}-arcade listed`, !!arcade && arcade.openH === FIFTH_SOFFIT);
+    ok(`${g.id}-pass listed`, !!pass && pass.openW === FIFTH_PASS_W);
+    if (arcade) {
+      const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      ok(`${g.id}-arcade keepout + open`,
+        !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+    if (pass) {
+      const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);
+      ok(`${g.id}-pass keepout + open`,
+        !!inKeepout(pass.x, pass.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+  }
+  ok('leftoverLot A–H still signed after 5th-street',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }

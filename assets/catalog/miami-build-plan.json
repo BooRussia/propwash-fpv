@@ -82,7 +82,13 @@
     {
       "id": "inland-5th",
       "title": "Expand inland along GAP_X=57 (5th-street analogue) with storefronts and fly-unders",
-      "status": "pending"
+      "status": "done",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/fifth.js",
+        "js/world/miami/index.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "inland-espa",
