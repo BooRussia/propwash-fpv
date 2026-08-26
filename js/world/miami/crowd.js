@@ -20,7 +20,7 @@ import {
   BEACH_CHAIR_CELLS, BEACH_CHAIR_WALK_RUNS, BEACH_WALK_RUNS,
   BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   LIFEGUARD_CELLS, LIFEGUARD_SAND_SIT_CELLS, LIFEGUARD_DECK,
-  groundHeight, inKeepout, leftoverLotOverlap,
+  groundHeight, inKeepout, leftoverLotOverlap, inHelipadReserved,
   onLincolnWalk, onWashingtonWalk, onCollinsWalk,
   INLAND_ARCADE_CELLS, INLAND_ARCADE_OPEN_W,
 } from './constants.js';
@@ -81,6 +81,27 @@ export const MIDRISE_WALK_RUNS = Object.freeze([
   [-122, 50],
   [64, 230],
 ]);
+// E-W sidewalks ocean/inland of the z=96 mid-rise row. 1.4 m off the
+// plate face so keepout (plate ±0.6) misses. Walk +X. Skip GAP_X and
+// convention (x -112..16). West of leftoverLot A / x=240. Miss travel
+// 40.2–47.8. West-of-convention x-runs only.
+export const ROW96_WALK_ZS = Object.freeze([87.6, 104.4]);
+export const ROW96_WALK_RUNS = Object.freeze([
+  [-610, -508],
+  [-494, -322],
+  [-308, -136],
+]);
+// E-W sidewalks ocean/inland of the z=96 mid-rise row.
+// 1.4 m off the plate face so keepout (plate ±0.6) misses. Walk +X.
+// Skip GAP_X and helipad W (x -452..-408, z 74–128). West of leftoverLot A / x=240.
+// Miss travel 40.2–47.8. No plates east of cinema reserved — skip those runs.
+export const ROW96_WALK_ZS = Object.freeze([87.6, 104.4]);
+export const ROW96_WALK_RUNS = Object.freeze([
+  [-610, -508],
+  [-494, -458],
+  [-402, -322],
+  [-308, -136],
+]);
 // Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
 export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS, BEACH_WALK_RUNS };
 export { BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1 };
@@ -133,6 +154,32 @@ function onMidriseWalk(x, z) {
   if (!onZ) return false;
   for (let i = 0; i < MIDRISE_WALK_RUNS.length; i++) {
     const r = MIDRISE_WALK_RUNS[i];
+    if (x >= r[0] && x <= r[1]) return true;
+  }
+  return false;
+}
+
+function onRow96Walk(x, z) {
+  let onZ = false;
+  for (let i = 0; i < ROW96_WALK_ZS.length; i++) {
+    if (Math.abs(z - ROW96_WALK_ZS[i]) <= 0.9) { onZ = true; break; }
+  }
+  if (!onZ) return false;
+  for (let i = 0; i < ROW96_WALK_RUNS.length; i++) {
+    const r = ROW96_WALK_RUNS[i];
+    if (x >= r[0] && x <= r[1]) return true;
+  }
+  return false;
+}
+
+function onRow96Walk(x, z) {
+  let onZ = false;
+  for (let i = 0; i < ROW96_WALK_ZS.length; i++) {
+    if (Math.abs(z - ROW96_WALK_ZS[i]) <= 0.9) { onZ = true; break; }
+  }
+  if (!onZ) return false;
+  for (let i = 0; i < ROW96_WALK_RUNS.length; i++) {
+    const r = ROW96_WALK_RUNS[i];
     if (x >= r[0] && x <= r[1]) return true;
   }
   return false;
@@ -197,11 +244,12 @@ export function buildCrowd(ctx) {
   const nBeachWalk = 24;
   const nMidrise = 40;
   const nArcadeSit = 16;
+  const nRow96 = 24;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
-    + nWestSwim + nReefSwim + nMidrise + nArcadeSit;
+    + nWestSwim + nReefSwim + nMidrise + nArcadeSit + nRow96;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -705,6 +753,24 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nRow96; i++) {
+    const runI = i % ROW96_WALK_RUNS.length;
+    const run = ROW96_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 3800, 3) * (run[1] - run[0]);
+    const z = ROW96_WALK_ZS[i % ROW96_WALK_ZS.length]
+      + (hash01(i + 3800, 5) - 0.5) * 0.8;
+    const dir = hash01(i + 3800, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || !onRow96Walk(x, z)) continue;
+    actors.push({
+      kind: 'row96', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 3800, 11) * 0.45,
+      phase: hash01(i + 3800, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3800, 17), skin: pick(SKIN, i + 3800, 19),
+    });
+  }
+
   for (let i = 0; i < nBeachWalk; i++) {
     const runI = i % BEACH_WALK_RUNS.length;
     const run = BEACH_WALK_RUNS[runI];
@@ -888,6 +954,28 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'row96') {
+      a.x += a.dir * a.speed * dt;
+      const run = ROW96_WALK_RUNS[a.run] || ROW96_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onRow96Walk(a.x, a.z) || inHelipadReserved(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
+    if (a.kind === 'row96') {
+      a.x += a.dir * a.speed * dt;
+      const run = ROW96_WALK_RUNS[a.run] || ROW96_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onRow96Walk(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'beach-walk') {
       a.x += a.dir * a.speed * dt;
       const run = BEACH_WALK_RUNS[a.run] || BEACH_WALK_RUNS[0];
@@ -1019,6 +1107,8 @@ function stampAll(state) {
       || a.kind === 'eighth' || a.kind === 'gap315' || a.kind === 'gap501'
       || a.kind === 'collins' || a.kind === 'lummus'
       || a.kind === 'chair-walk' || a.kind === 'beach-walk' || a.kind === 'midrise'
+      || a.kind === 'row96'
+      || a.kind === 'row96'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

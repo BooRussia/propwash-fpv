@@ -1163,6 +1163,12 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-250, 201.6, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(210, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=96 sidewalks miss leftoverLot A–H',
+    leftoverLotOverlap(-600, 87.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-540, 104.4, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-250, 87.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(-190, 104.4, 0.6, 0.6, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('inland z=210/152/96 arcades miss leftoverLot A–H',
     INLAND_ARCADE_CELLS.length === 11
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
