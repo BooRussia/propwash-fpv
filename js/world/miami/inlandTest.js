@@ -252,7 +252,7 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 248)
-    && ALLEY_PIPE_CELLS.length === 89);
+    && ALLEY_PIPE_CELLS.length === 92);
   ok('fourteen alley pipes at z=140 between z=128 fill and z=152 fill',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).length === 14
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).every(([x]) => x < 240)
@@ -270,14 +270,17 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -220 && z === 140)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -190 && z === 140)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 210 && z === 140)
-    && ALLEY_PIPE_CELLS.length === 89);
-  ok('four alley pipes at z=112 between z=96 fill and z=128 fill',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 112).length === 4
+    && ALLEY_PIPE_CELLS.length === 92);
+  ok('seven alley pipes at z=112 between z=96 fill and z=128 fill',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 112).length === 7
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 112).every(([x]) => x < WASH_X0 && x < 240)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 112)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -660 && z === 112)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 112)
-    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -540 && z === 112));
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -540 && z === 112)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -690 && z === 112)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -630 && z === 112)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 112));
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 181)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
