@@ -780,7 +780,13 @@
     {
       "id": "npc-east96",
       "title": "Walkers on sidewalks ocean/inland of x=210 z=96, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nEast96=8 on E-W sidewalks 87.6/104.4 ocean/inland of [210,96]; run 201–216 east of cinema mass, west of abando; skip GAP_X; hash01; no colliders; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "drop-garage",

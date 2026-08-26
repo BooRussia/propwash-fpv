@@ -196,6 +196,11 @@ export function runMiamiCrowdTests() {
     && crowd.includes('87.6') && crowd.includes('104.4')
     && crowd.includes('hash01(i + 3800')
     && !crowd.includes('addCollider'));
+  ok('crowd walks ocean/inland of the east z=96 plate at x=210',
+    crowd.includes("kind: 'east96'") && crowd.includes('const nEast96 = 8')
+    && crowd.includes('EAST96_WALK_RUNS') && crowd.includes('onEast96Walk')
+    && crowd.includes('hash01(i + 4000')
+    && !crowd.includes('addCollider'));
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes("kind: 'arcade-sit'")
@@ -1102,6 +1107,48 @@ function FRONT_Z_OK() {
     && row96Spots.some((p) => p.x > -250)
     && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after z=96 walkers',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const EAST96_WALK_ZS = [87.6, 104.4];
+  const EAST96_WALK_RUNS = [
+    [201, 216],
+  ];
+  const east96Spots = [];
+  for (let i = 0; i < 8; i++) {
+    const run = EAST96_WALK_RUNS[i % EAST96_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 4000, 3) * (run[1] - run[0]);
+    const z = EAST96_WALK_ZS[i % EAST96_WALK_ZS.length]
+      + (hash01(i + 4000, 5) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    if (GAP_X.some((gx) => Math.abs(x - gx) <= XS_HALF)) continue;
+    east96Spots.push({ x, z });
+  }
+  ok('east z=96 sidewalk walkers fill x=210 ocean/inland frontage, miss leftoverLot / travel / GAP',
+    crowd.includes("kind: 'east96'") && crowd.includes('const nEast96 = 8')
+    && crowd.includes('EAST96_WALK_ZS') && crowd.includes('EAST96_WALK_RUNS')
+    && crowd.includes('onEast96Walk') && crowd.includes('hash01(i + 4000')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && EAST96_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(210, z, 0.6, 0.6, 0.15) === false)
+    && EAST96_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240 && x0 > 189
+      && x1 < 217 && x0 < 210 && x1 > 210
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
+    && east96Spots.length >= 6
+    && east96Spots.every((p) => p.x < 240 && p.x < 217 && p.x > 189
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF))
+    && east96Spots.some((p) => p.z < 96)
+    && east96Spots.some((p) => p.z > 96)
+    && east96Spots.some((p) => p.x >= 201 && p.x <= 216)
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
+    && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after east z=96 walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',

@@ -1216,6 +1216,8 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-190, 104.4, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(210, 87.6, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(210, 104.4, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(201, 87.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(216, 104.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('Majestic/Cavalier porch arcades miss leftoverLot A–H',
     MAJESTIC_SOFFIT === 3.5 && CAVALIER_SOFFIT === 3.5
