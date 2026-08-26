@@ -605,6 +605,26 @@
         "js/world/miami/inlandTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "arcade-152",
+      "title": "Ground-floor fly-throughs on z=152 mid-rises that miss court wells, jambs only, fly ±Z",
+      "status": "pending"
+    },
+    {
+      "id": "hotel-pilotis",
+      "title": "Fly-under columns at two more Ocean Drive hotel porches, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "npc-arcade",
+      "title": "Visual sitters under z=210 inland arcades, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "fill-96",
+      "title": "One more inland mid-rise row at z=96 west of convention and east of cinema reserved, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
