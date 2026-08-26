@@ -1212,6 +1212,12 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-430, 152, 4, 2, 0.15) === false
     && leftoverLotOverlap(-350, 152, 4, 2, 0.15) === false
     && leftoverLotOverlap(-220, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-280, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-370, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-455, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-410, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(160, 152, 4, 2, 0.15) === false
+    && leftoverLotOverlap(110, 152, 4, 2, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('mid-rise sidewalks miss leftoverLot A–H',
     leftoverLotOverlap(-80, 143.6, 0.6, 0.6, 0.15) === false
