@@ -1443,19 +1443,24 @@ function FRONT_Z_OK() {
     CROSS_X.length === 2 && CROSS_X[0] === -129 && CROSS_X[1] === 57
     && PED_SIGNAL_CELLS.length === 8 && FLEX_POST_CELLS.length === 8
     && PED_SIGNAL_CELLS.every(([x, z]) => x < 240
-      && leftoverLotOverlap(x, z, 0.4, 0.4, 0.15) === false
+      && leftoverLotOverlap(x, z, 0.35, 0.2, 0.15) === false
       && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && !(z > 37.5 && z < 50.5)
+      && (z === 34.9 || z === 52.9)
       && inKeepout(x, z, 0.6) === false
       && CROSS_X.some((cx) => Math.abs(x - cx) > XS_HALF && Math.abs(x - cx) < 12))
     && FLEX_POST_CELLS.every(([x, z]) => x < 240
-      && leftoverLotOverlap(x, z, 0.3, 0.3, 0.15) === false
+      && leftoverLotOverlap(x, z, 0.22, 0.22, 0.15) === false
       && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && !(z > 37.5 && z < 50.5)
+      && (z === 36.5 || z === 51.5)
       && inKeepout(x, z, 0.6) === false
       && CROSS_X.some((cx) => Math.abs(x - cx) > XS_HALF && Math.abs(x - cx) < 12))
     && kenney.includes('PED_SIGNAL_CELLS') && kenney.includes('FLEX_POST_CELLS')
     && kenney.includes("'crosswalk-ped-signals'") && kenney.includes("'crosswalk-flex-posts'")
+    && kenney.includes('buildPedSignalGeo') && kenney.includes('buildBollardFlexGeo')
     && kenney.includes('hash01(i, 2601)') && kenney.includes('hash01(i, 2611)')
-    && kenney.includes("'traffic_light_horizontal'")
+    && !kenney.includes("'traffic_light_horizontal'")
     && !/\brng2?\s*\(/.test(kenney) && !kenney.includes('ShaderMaterial')
     && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
   ok('leftoverLot A–H still signed after crosswalk props',

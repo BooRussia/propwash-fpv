@@ -429,7 +429,7 @@
       "id": "crosswalk-props",
       "title": "Signed ped-signal extras and flex posts at CROSS_X, never in travel lanes 40.2–47.8",
       "status": "done",
-      "notes": "8 ped-signals (traffic_light_horizontal) + 8 flex posts at CROSS_X=-129/57 sidewalks and curbs; miss travel 40.2–47.8; leftoverLot A–H unmoved",
+      "notes": "8 authored ped-signal heads + 8 flex posts at CROSS_X=-129/57 sidewalks/tree lawns; miss travel 40.2–47.8 and carriageway 37.5–50.5; leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
         "js/world/miami/kenneyDressing.js",
@@ -493,7 +493,8 @@
     "gap429": { "x": 429, "frontX": 420.1, "status": "done", "note": "skipped: west front 420.1 east of leftoverLot A and x=240; no shops; leftoverLot A–H unmoved" },
     "gap501": { "x": -501, "frontX": -509.9, "status": "done", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap501=36" },
     "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" },
-    "lifeguardFill": { "cells": [[-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0]], "rings": [[-520, 16.2], [-335, 14.8], [-90.4, 12.0], [45, 14.2], [235, 16.6]], "status": "done", "note": "sand sitters + whoop rings at west-of-240 stands; skip x=420; hash01; leftoverLot A–H unmoved" }
+    "lifeguardFill": { "cells": [[-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0]], "rings": [[-520, 16.2], [-335, 14.8], [-90.4, 12.0], [45, 14.2], [235, 16.6]], "status": "done", "note": "sand sitters + whoop rings at west-of-240 stands; skip x=420; hash01; leftoverLot A–H unmoved" },
+    "crosswalkProps": { "x": [-129, 57], "ped": [[-137.5, 34.9], [-120.5, 34.9], [-137.5, 52.9], [-120.5, 52.9], [48.5, 34.9], [65.5, 34.9], [48.5, 52.9], [65.5, 52.9]], "flex": [[-138.2, 36.5], [-119.8, 36.5], [-138.2, 51.5], [-119.8, 51.5], [48.2, 36.5], [65.8, 36.5], [48.2, 51.5], [65.8, 51.5]], "status": "done", "note": "authored ped-signal extras + flex posts at CROSS_X sidewalks/tree lawns; miss travel 40.2–47.8; leftoverLot A–H unmoved" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

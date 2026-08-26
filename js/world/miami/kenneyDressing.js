@@ -31,6 +31,7 @@ import {
   buildSwingGateGeo,
 } from './props/fence-rail.js';
 import { buildWindowAcRowGeo, buildFlagpoleGeo } from './props/building-dressing.js';
+import { buildPedSignalGeo, buildBollardFlexGeo } from './props/traffic-control.js';
 
 // CC0 GLBs/glTFs (assets/models/<slug>/<slug>.glb|.gltf).
 // Positions are hash-driven so rng/rng2/rng3/rng4 streams stay untouched.
@@ -896,36 +897,47 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'street_light_square', extraLamps, 'boardwalk-lamps-signed');
 
-  // Signed ped-signal extras + flex posts at CROSS_X zebras. hash01 yaw only.
-  // Skip keepouts / leftoverLot / travel. Do not restack loops above.
+  // Signed ped-signal extras + flex posts at CROSS_X zebras. Authored geos
+  // (buildPedSignalGeo / buildBollardFlexGeo), not rejected Kenney heads/cones.
+  // hash01 yaw only. Skip keepouts / leftoverLot / travel. Do not restack
+  // loops above. Plan already owns the four city-walk heads at ±(XS_HALF+0.9).
+  setTag('traffic-control');
   const pedSignals = [];
   for (let i = 0; i < PED_SIGNAL_CELLS.length; i++) {
     const [x, z] = PED_SIGNAL_CELLS[i];
     if (x >= 240) continue;
     if (z > 40.2 && z < 47.8) continue;
-    if (leftoverLotOverlap(x, z, 0.4, 0.4, 0.15)) continue;
+    if (leftoverLotOverlap(x, z, 0.35, 0.2, 0.15)) continue;
     if (inKeepout(x, z, 0.6)) continue;
     const y = groundHeight(x, z);
-    if (!clear(x, z, 0.28, y, 3.2)) continue;
+    if (!clear(x, z, 0.28, y, 0.7)) continue;
     const towardRoad = z < 44 ? 0 : Math.PI;
-    pedSignals.push({ x, y, z, scale: 0.85, rotY: towardRoad + (hash01(i, 2601) - 0.5) * 0.1 });
-    addCyl(x, y, z, 0.14, 3.1);
+    const rotY = towardRoad + (hash01(i, 2601) - 0.5) * 0.1;
+    pedSignals.push({ x, y, z, rotY });
+    addOBB(x, y, z, 0.35, 0.7, 0.2, rotY);
   }
-  await scatterSafe(ctx, 'traffic_light_horizontal', pedSignals, 'crosswalk-ped-signals');
+  const pedMat = new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.55, metalness: 0.12,
+    emissive: 0xffd27a, emissiveIntensity: 0,
+  });
+  if (ctx.regDN) ctx.regDN(pedMat, 0, 1.15);
+  instanceAuthored(ctx, buildPedSignalGeo(), pedMat, pedSignals, 'crosswalk-ped-signals');
 
   const flexPosts = [];
   for (let i = 0; i < FLEX_POST_CELLS.length; i++) {
     const [x, z] = FLEX_POST_CELLS[i];
     if (x >= 240) continue;
     if (z > 40.2 && z < 47.8) continue;
-    if (leftoverLotOverlap(x, z, 0.3, 0.3, 0.15)) continue;
+    if (leftoverLotOverlap(x, z, 0.22, 0.22, 0.15)) continue;
     if (inKeepout(x, z, 0.6)) continue;
     const y = groundHeight(x, z);
-    if (!clear(x, z, 0.18, y, 1.05)) continue;
-    flexPosts.push({ x, y, z, scale: 1.05, rotY: hash01(i, 2611) * Math.PI * 2 });
-    addCyl(x, y, z, 0.12, 0.95);
+    if (!clear(x, z, 0.12, y, 0.85)) continue;
+    flexPosts.push({ x, y, z, rotY: hash01(i, 2611) * Math.PI * 2 });
+    addCyl(x, y, z, 0.08, 0.85);
   }
-  await scatterSafe(ctx, 'traffic_cone', flexPosts, 'crosswalk-flex-posts');
+  instanceAuthored(ctx, buildBollardFlexGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), flexPosts, 'crosswalk-flex-posts');
 
   setTag('world');
   return {

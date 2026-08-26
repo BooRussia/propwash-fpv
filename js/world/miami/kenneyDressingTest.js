@@ -104,9 +104,12 @@ export function runMiamiKenneyDressingTests() {
   ok('signed CROSS_X ped-signals / flex posts skip travel and keepouts, hash01 only',
     kenney.includes('PED_SIGNAL_CELLS') && kenney.includes('FLEX_POST_CELLS')
     && kenney.includes("'crosswalk-ped-signals'") && kenney.includes("'crosswalk-flex-posts'")
-    && kenney.includes("'traffic_light_horizontal'")
+    && kenney.includes('buildPedSignalGeo') && kenney.includes('buildBollardFlexGeo')
+    && !kenney.includes("'traffic_light_horizontal'")
     && kenney.includes('hash01(i, 2601)') && kenney.includes('hash01(i, 2611)')
     && kenney.includes('z > 40.2 && z < 47.8')
+    && kenney.includes('addOBB(x, y, z, 0.35, 0.7, 0.2')
+    && kenney.includes('addCyl(x, y, z, 0.08, 0.85)')
     && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
   ok('far row sits behind the 60-box LOD (z>=640)',
     kenney.includes('640 + hash01')
