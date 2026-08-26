@@ -213,6 +213,11 @@ export function runMiamiCrowdTests() {
     && crowd.includes('SKYLINE_WALK_ZS') && crowd.includes('onSkylineWalk')
     && crowd.includes('hash01(i + 4500') && crowd.includes('228.6')
     && !crowd.includes('addCollider'));
+  ok('crowd walks ocean/inland of x=-40/0/40 at z=210',
+    crowd.includes("kind: 'col210'") && crowd.includes('const nCol210 = 12')
+    && crowd.includes('COL210_WALK_ZS') && crowd.includes('onCol210Walk')
+    && crowd.includes('hash01(i + 4600') && crowd.includes('201.6')
+    && !crowd.includes('addCollider'));
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes("kind: 'arcade-sit'")
@@ -1381,6 +1386,50 @@ function FRONT_Z_OK() {
     && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
     && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after skyline walkers',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const COL210_WALK_ZS = [201.6, 218.4];
+  const COL210_WALK_RUNS = [
+    [-50, -30], [-10, 10], [30, 50],
+  ];
+  const col210Spots = [];
+  for (let i = 0; i < 12; i++) {
+    const run = COL210_WALK_RUNS[i % COL210_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 4600, 3) * (run[1] - run[0]);
+    const z = COL210_WALK_ZS[i % COL210_WALK_ZS.length]
+      + (hash01(i + 4600, 5) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    if (GAP_X.some((gx) => Math.abs(x - gx) <= XS_HALF)) continue;
+    col210Spots.push({ x, z });
+  }
+  ok('z=210 column walkers fill x=-40/0/40 sidewalks, miss leftoverLot / travel / GAP',
+    crowd.includes("kind: 'col210'") && crowd.includes('const nCol210 = 12')
+    && crowd.includes('COL210_WALK_ZS') && crowd.includes('COL210_WALK_RUNS')
+    && crowd.includes('onCol210Walk') && crowd.includes('hash01(i + 4600')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && COL210_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(-40, z, 0.6, 0.6, 0.15) === false
+      && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false
+      && leftoverLotOverlap(40, z, 0.6, 0.6, 0.15) === false)
+    && COL210_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
+    && col210Spots.length >= 8
+    && col210Spots.every((p) => p.x < 240 && p.x <= 50 && p.x >= -50
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF))
+    && col210Spots.some((p) => p.z < 210)
+    && col210Spots.some((p) => p.z > 210)
+    && col210Spots.some((p) => p.x < -30)
+    && col210Spots.some((p) => p.x > 30)
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
+    && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after z=210 column walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const porchSitSpots = [];

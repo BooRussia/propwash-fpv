@@ -1131,7 +1131,19 @@
     {
       "id": "npc-210-40",
       "title": "Walkers on sidewalks ocean/inland of x=-40/0/40 at z=210, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "COL210 walkers at 201.6/218.4 on [-50,-30]/[-10,10]/[30,50]; hash01(i+4600); leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-skyline-110",
+      "title": "Skyline pair at x=-110 z=237/259 if reservedOverlap is false",
+      "status": "pending",
+      "notes": "reservedOverlap was false; west of leftoverLot A / x=240; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
