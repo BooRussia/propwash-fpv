@@ -79,10 +79,12 @@ export function runMiamiInlandTests() {
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
   ok('signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 35
+    INLAND_MIDRISE_CELLS.length === 37
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -250 && z === 152)
@@ -95,7 +97,7 @@ export function runMiamiInlandTests() {
       && (x < -112 || x === 210)));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 35);
+  ok('geom count matches cells', plates.length === 37);
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < plates.length; i++) {

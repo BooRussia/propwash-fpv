@@ -906,10 +906,12 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 35
+    INLAND_MIDRISE_CELLS.length === 37
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 6
@@ -929,7 +931,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 35);
+  ok('signed inland mid-rises', inlandList.length === 37);
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < inlandList.length; i++) {
