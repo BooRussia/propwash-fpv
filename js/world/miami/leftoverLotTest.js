@@ -1147,7 +1147,7 @@ export function runMiamiLeftoverLotTests() {
       && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('extra court wells miss leftoverLot A–H',
-    COURT_WELL_CELLS.length === 23
+    COURT_WELL_CELLS.length === 25
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && x < 251
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
@@ -1157,6 +1157,13 @@ export function runMiamiLeftoverLotTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 160 && z === 237)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 237)
+    && leftoverLotOverlap(160, 237, 6.2, 6.2, 0.15) === false
+    && leftoverLotOverlap(210, 237, 6.2, 6.2, 0.15) === false
+    && leftoverLotOverlap(-370, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-690, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-60, 210, 4, 2, 0.15) === false
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && leftoverLotOverlap(210, 96, 6.2, 6.2, 0.15) === false

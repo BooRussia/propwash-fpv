@@ -1680,6 +1680,18 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "skyline-drop",
+      "title": "Skyline courtyard drop-wells at [160,237]/[210,237] plus roof AC whoops",
+      "status": "done",
+      "notes": "Fly −Y through east-skyline plates that were solid at ground; roof AC at [-370,96]/[-690,96]/[-60,210]; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

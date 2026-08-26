@@ -1149,6 +1149,9 @@ export const COURT_WELL_CELLS = Object.freeze([
   [40, 210],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
   [-690, 152], [-630, 152], [-570, 152],
+  // East-skyline drop-wells. Ground was solid (no arcade/AC). Fly −Y
+  // through the 32 m plate. leftoverLot A–H unmoved.
+  [160, 237], [210, 237],
 ]);
 
 export function isCourtWellCell(x, z) {
@@ -1328,6 +1331,7 @@ export const ROOF_AC_CELLS = Object.freeze([
   [-540, 152], [-190, 152], [210, 152], [90, 210],
   [-600, 96], [-540, 96], [-190, 96], [210, 96], [-660, 96], [190, 152],
   [-600, 196],
+  [-370, 96], [-690, 96], [-60, 210],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([
   [-80, 259], [100, 259],

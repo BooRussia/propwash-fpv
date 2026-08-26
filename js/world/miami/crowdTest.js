@@ -1062,7 +1062,7 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 23
+    COURT_WELL_CELLS.length === 25
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
@@ -1080,10 +1080,12 @@ function FRONT_Z_OK() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 160 && z === 237)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 237)
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
     && !isCourtWellCell(210, 96)
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128)
+      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128 || z === 237)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false

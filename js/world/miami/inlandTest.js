@@ -446,9 +446,9 @@ export function runMiamiInlandTests() {
   }
 
   ok('nine courtyard drop-wells, fly −Y, west of leftoverLot',
-    COURT_WELL_CELLS.length === 23 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+    COURT_WELL_CELLS.length === 25 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128)
+      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128 || z === 237)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
@@ -470,6 +470,8 @@ export function runMiamiInlandTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -690 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -630 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -570 && z === 152)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 160 && z === 237)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 237)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2
@@ -735,13 +737,13 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 20 && z === 223));
 
   ok('signed rooftop AC gaps + billboard rings including east z=96 plate',
-    ROOF_AC_CELLS.length === 15 && ROOF_RING_CELLS.length === 37
+    ROOF_AC_CELLS.length === 18 && ROOF_RING_CELLS.length === 37
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
     && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && !isCourtWellCell(x, z)
       && leftoverLotOverlap(x, z, 4, 2, 0.15) === false)
-    && ROOF_AC_CELLS.filter(([, z]) => z === 96).length === 5
+    && ROOF_AC_CELLS.filter(([, z]) => z === 96).length === 7
     && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && (z === 259 || z === 210)
       && !isCourtWellCell(x, z)
@@ -781,6 +783,9 @@ export function runMiamiInlandTests() {
     && ROOF_AC_CELLS.some(([x, z]) => x === 210 && z === 96)
     && ROOF_AC_CELLS.some(([x, z]) => x === 190 && z === 152)
     && ROOF_AC_CELLS.some(([x, z]) => x === -600 && z === 196)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -370 && z === 96)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -690 && z === 96)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -60 && z === 210)
     && !ROOF_AC_CELLS.some(([x, z]) => x === -390 && z === 96)
     && !ROOF_AC_CELLS.some(([x, z]) => x === -250 && z === 96)
     && ROOF_AC_CELLS.every(([x, z]) =>
