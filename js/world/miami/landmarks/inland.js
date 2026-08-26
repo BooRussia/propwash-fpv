@@ -91,7 +91,7 @@ export function buildInland(ctx) {
     })), 0.0, 2.45);
     wallMat.color.lerp(new THREE.Color(0xffffff), 0.1);
 
-    const court = isCourtWellCell(g.x, g.z);
+    const court = isCourtWellCell(g.x, g.z) && !isInlandArcadeCell(g.x, g.z);
     if (court) {
       const sideW = (g.w - COURT_WELL_W) / 2;
       const frontD = (g.d - COURT_WELL_D) / 2;

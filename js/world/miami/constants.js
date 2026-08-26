@@ -914,13 +914,15 @@ export function inlandMidrises() {
 // Courtyard drop-wells: open air through the plate. Fly −Y. Jambs are the
 // four wall masses, never a box in the well. Extra pair on remaining z=152/210
 // plates that miss roof-AC whoops; extra pair on z=96 plates that miss
-// inland arcades. leftoverLot A–H unmoved.
+// inland arcades. Skip [210,96]: arcade already occupies that plate
+// (do not punch a drop-well through the ±Z bay). leftoverLot A–H unmoved.
 export const COURT_WELL_W = 6.2;
 export const COURT_WELL_D = 6.2;
 export const COURT_WELL_CELLS = Object.freeze([
   [-250, 152], [90, 152], [-430, 210], [160, 210], [-600, 210],
   [-390, 152], [210, 210],
   [-390, 96], [-250, 96],
+  // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 
 export function isCourtWellCell(x, z) {

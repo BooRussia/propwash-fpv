@@ -1154,6 +1154,16 @@ export function runMiamiLeftoverLotTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
+    && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && leftoverLotOverlap(210, 96, 6.2, 6.2, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('east z=96 court well skipped — arcade occupies the plate',
+    INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && leftoverLotOverlap(210, 96, 18, 14, 0.15) === false
+    && 210 < 240 && 210 < 251
+    && !FLY_VOIDS.some((v) => String(v.id).startsWith('court-well-') && v.x === 210 && v.z === 96)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('extra roof rings miss leftoverLot A–H',
     leftoverLotOverlap(-600, 259, 0.8, 2.4, 0.15) === false

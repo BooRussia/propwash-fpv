@@ -954,6 +954,8 @@ function FRONT_Z_OK() {
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
+    && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && !isCourtWellCell(210, 96)
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && (z === 96 || z === 152 || z === 210)
       && isCourtWellCell(x, z)
@@ -963,7 +965,12 @@ function FRONT_Z_OK() {
       && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z)
       && !INLAND_ARCADE_CELLS.some(([ax, az]) => ax === x && az === z))
     && inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
+    && inland.includes('isInlandArcadeCell')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
+  ok('east z=96 plate skips court well because arcade occupies',
+    isInlandArcadeCell(210, 96) && !isCourtWellCell(210, 96)
+    && leftoverLotOverlap(210, 96, 18, 14, 0.15) === false
+    && 210 < 240);
   ok('leftoverLot A–H still signed after extra court wells',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));

@@ -802,7 +802,15 @@
     {
       "id": "court-east96",
       "title": "Skip court well on x=210 z=96 if the arcade already occupies the plate; otherwise add a drop-well",
-      "status": "pending"
+      "status": "done",
+      "notes": "skipped: arcade occupies [210,96]; no drop-well; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-hotel-porch",

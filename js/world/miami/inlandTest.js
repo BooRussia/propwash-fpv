@@ -224,9 +224,20 @@ export function runMiamiInlandTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
-    && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2);
+    && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2
+    && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && !isCourtWellCell(210, 96));
+  ok('east z=96 plate skips court well because arcade occupies',
+    isInlandArcadeCell(210, 96)
+    && !isCourtWellCell(210, 96)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && leftoverLotOverlap(210, 96, 18, 14, 0.15) === false
+    && 210 < 240 && 210 < 251
+    && !FLY_VOIDS.some((f) => String(f.id).startsWith('court-well-') && f.x === 210 && f.z === 96)
+    && FLY_VOIDS.some((f) => String(f.id).startsWith('inland-arcade-') && f.x === 210 && f.z === 96));
   ok('inland.js hollows court wells, no layout rng',
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
+    && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96 ground-floor arcades, fly ±Z, jambs only',
     INLAND_ARCADE_CELLS.length === 12
