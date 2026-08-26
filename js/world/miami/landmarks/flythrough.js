@@ -9,6 +9,7 @@ import {
   PARK_PERGOLA_HH_X, PARK_PERGOLA_HH_Z,
   GARAGE_X, GARAGE_FRONT_Z, GARAGE_W, GARAGE_D, GARAGE_WALL_H,
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
+  PROMENADE_ARCH_XS, GATE_Z,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
   installFlyColliders,
 } from '../constants.js';
@@ -100,6 +101,13 @@ export function buildFlythrough(ctx) {
     tryPlace(ctx, parkHHGeom.x, parkHHGeom.z);
   }
   installFlyColliders(addCyl, addCollider, 'boardwalk-gate');
+
+  setTag('promenade-arch');
+  for (let i = 0; i < PROMENADE_ARCH_XS.length; i++) {
+    const arch = boardwalkGateGeom(PROMENADE_ARCH_XS[i], GATE_Z);
+    buildBoardwalkGate(ctx, arch);
+  }
+  installFlyColliders(addCyl, addCollider, 'promenade-arch');
 
   setTag('garage');
   buildGarageMouth(ctx);

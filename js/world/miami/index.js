@@ -34,6 +34,9 @@ import { buildFerris } from './landmarks/ferris.js';
 import { buildSign } from './landmarks/sign.js';
 import { buildMarina } from './landmarks/marina.js';
 import { buildArtDeco } from './landmarks/artdeco.js';
+import { buildClevelander } from './landmarks/clevelander.js';
+import { buildCasa } from './landmarks/casa.js';
+import { buildCrowd } from './crowd.js';
 import { buildLighthouse } from './landmarks/lighthouse.js';
 import { buildConvention } from './landmarks/convention.js';
 import { buildLummus } from './landmarks/lummus.js';
@@ -215,6 +218,8 @@ export async function buildMiami(scene, env) {
   const { boats } = buildMarina(ctx);
   buildHelipads(ctx, sky);
   buildArtDeco(ctx);
+  buildClevelander(ctx);
+  buildCasa(ctx);
   const lighthouse = buildLighthouse(ctx);
   buildConvention(ctx);
   buildLummus(ctx);
@@ -269,6 +274,9 @@ export async function buildMiami(scene, env) {
   // ---------------- leftover-dirt blades (tryPlace, after every reserve) ----------
   const blades = await buildBlades(ctx);
 
+  // ---------------- Ocean Drive crowd (visual only; after keepouts exist) ----------
+  const crowd = buildCrowd(ctx);
+
   // ---------------- spawn / gates / retrieval ----------------
   const { spawnPos, gates, retrievalPoints } = buildPoints(ctx, sky.towerData);
 
@@ -300,6 +308,7 @@ export async function buildMiami(scene, env) {
       time += dt;
       applyDayNight();
       street.fleet?.update?.(dt);
+      crowd?.update?.(dt);
       wheel.rotation.z += dt * 0.1;
       // keep cabins upright
       for (const child of wheel.children) {

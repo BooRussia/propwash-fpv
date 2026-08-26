@@ -35,6 +35,27 @@ export const CINEMA_X = 166;
 export const CINEMA_FRONT_Z = 57.6;   // same facade plane as the art-deco row
 export const CINEMA_W = 46, CINEMA_D = 30;
 
+// ---- Clevelander-style open-air hotel (gap east of deco row) ----
+export const CLEVELANDER_X = 60;
+export const CLEVELANDER_FRONT_Z = 57.6;
+export const CLEVELANDER_W = 22;
+export const CLEVELANDER_D = 22;
+export const CLEVELANDER_SOFFIT = 3.6;
+
+// ---- Casa Casuarina / Versace mansion (1116 Ocean Drive analogue) ----
+export const CASA_X = 90;
+export const CASA_FRONT_Z = 57.6;
+export const CASA_W = 28;
+export const CASA_D = 26;
+export const CASA_LOGGIA_D = 3.4;
+export const CASA_LOGGIA_H = 3.4;
+
+// ---- Cardozo-style streamline hotel filling the remaining facade gap ----
+export const CARDOZO_X = 115;
+export const CARDOZO_FRONT_Z = 57.6;
+export const CARDOZO_W = 18;
+export const CARDOZO_D = 24;
+
 // ---- marina + yacht club ----
 export const MARINA_X = 300;
 export const CLUB_X = 313, CLUB_Z = 12;   // between the outer two fingers
@@ -107,6 +128,9 @@ export const GATE_HALF_Z = 1.16;     // clear Z = 2.00 m (whoop sash)
 export const GATE_HALF_X = 1.15;     // short bay along the walk
 export const GATE_BEAM_H = 0.22;
 export const GATE_BEAM_W = 0.24;
+// Extra boardwalk whoops. Not park pergolas. Not GATE_X=92.
+// Keep off GAP_X columns (esp. 243) and leftoverLot A–H (x>=251).
+export const PROMENADE_ARCH_XS = Object.freeze([-80, -20, 40, 160, 220]);
 // Parking-garage mouth facing Ocean Drive: 5" through-aisle (fly along ±Z).
 export const GARAGE_X = 200;
 export const GARAGE_FRONT_Z = 56.20;
@@ -2938,6 +2962,12 @@ export function stripY(z) {
 // planting pass filters its instanced spots against the same boxes.
 export const RESERVED = [
   { x0: -100, x1: 45, z0: 55.6, z1: 100, tag: 'artdeco' },
+  { x0: CLEVELANDER_X - CLEVELANDER_W / 2 - 1.2, x1: CLEVELANDER_X + CLEVELANDER_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'clevelander' },
+  { x0: CASA_X - CASA_W / 2 - 1.4, x1: CASA_X + CASA_W / 2 + 1.4,
+    z0: 55.6, z1: 90, tag: 'casa' },
+  { x0: CARDOZO_X - CARDOZO_W / 2 - 1.2, x1: CARDOZO_X + CARDOZO_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'cardozo' },
   { x0: -112, x1: 16, z0: 104, z1: 166, tag: 'convention' },
   { x0: 126, x1: 208, z0: 55.6, z1: 100, tag: 'cinema' },
   { x0: 190, x1: 210, z0: 54.4, z1: 72.4, tag: 'garage' },
@@ -3914,6 +3944,20 @@ export const KEEPOUT = [
   { x0: PARK_PERGOLA_HH_X - GATE_HALF_X - 0.8, x1: PARK_PERGOLA_HH_X + GATE_HALF_X + 0.8,
     z0: PARK_PERGOLA_HH_Z - GATE_HALF_Z - 0.8, z1: PARK_PERGOLA_HH_Z + GATE_HALF_Z + 0.8,
     tag: 'boardwalk-gate' },
+  { x0: CASA_X - CASA_W / 2 + 0.8, x1: CASA_X + CASA_W / 2 - 0.8,
+    z0: CASA_FRONT_Z - CASA_LOGGIA_D - 0.2, z1: CASA_FRONT_Z + 0.2, tag: 'casa' },
+  { x0: CLEVELANDER_X - CLEVELANDER_W / 2 + 1.0, x1: CLEVELANDER_X + CLEVELANDER_W / 2 - 1.0,
+    z0: CLEVELANDER_FRONT_Z - 3.4, z1: CLEVELANDER_FRONT_Z + 0.3, tag: 'clevelander' },
+  { x0: -80 - GATE_HALF_X - 0.8, x1: -80 + GATE_HALF_X + 0.8,
+    z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
+  { x0: -20 - GATE_HALF_X - 0.8, x1: -20 + GATE_HALF_X + 0.8,
+    z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
+  { x0: 40 - GATE_HALF_X - 0.8, x1: 40 + GATE_HALF_X + 0.8,
+    z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
+  { x0: 160 - GATE_HALF_X - 0.8, x1: 160 + GATE_HALF_X + 0.8,
+    z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
+  { x0: 220 - GATE_HALF_X - 0.8, x1: 220 + GATE_HALF_X + 0.8,
+    z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4114,6 +4158,30 @@ export const FLY_VOIDS = [
   boardwalkGateVoid(boardwalkGateGeom(PARK_PERGOLA_FF_X, PARK_PERGOLA_FF_Z), 'park-pergola-ff'),
   boardwalkGateVoid(boardwalkGateGeom(PARK_PERGOLA_GG_X, PARK_PERGOLA_GG_Z), 'park-pergola-gg'),
   boardwalkGateVoid(boardwalkGateGeom(PARK_PERGOLA_HH_X, PARK_PERGOLA_HH_Z), 'park-pergola-hh'),
+  boardwalkGateVoid(boardwalkGateGeom(-80, GATE_Z), 'promenade-arch-0'),
+  boardwalkGateVoid(boardwalkGateGeom(-20, GATE_Z), 'promenade-arch-1'),
+  boardwalkGateVoid(boardwalkGateGeom(40, GATE_Z), 'promenade-arch-2'),
+  boardwalkGateVoid(boardwalkGateGeom(160, GATE_Z), 'promenade-arch-3'),
+  boardwalkGateVoid(boardwalkGateGeom(220, GATE_Z), 'promenade-arch-4'),
+  {
+    id: 'casa-loggia', kind: 'kit',
+    x: CASA_X, z: CASA_FRONT_Z - CASA_LOGGIA_D * 0.5,
+    y: CITY_Y + CASA_LOGGIA_H * 0.48,
+    x0: CASA_X - CASA_W / 2 + 1.4, x1: CASA_X + CASA_W / 2 - 1.4,
+    z0: CASA_FRONT_Z - CASA_LOGGIA_D + 0.18, z1: CASA_FRONT_Z - 0.18,
+    y0: CITY_Y + 0.08, y1: CITY_Y + CASA_LOGGIA_H - 0.06,
+    openW: CASA_W - 2.8, openH: CASA_LOGGIA_H,
+  },
+  {
+    id: 'clevelander-arcade', kind: 'kit',
+    x: CLEVELANDER_X, z: CLEVELANDER_FRONT_Z - 1.7,
+    y: CITY_Y + CLEVELANDER_SOFFIT * 0.48,
+    x0: CLEVELANDER_X - CLEVELANDER_W / 2 + 1.2,
+    x1: CLEVELANDER_X + CLEVELANDER_W / 2 - 1.2,
+    z0: CLEVELANDER_FRONT_Z - 3.15, z1: CLEVELANDER_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + CLEVELANDER_SOFFIT - 0.06,
+    openW: CLEVELANDER_W - 2.4, openH: CLEVELANDER_SOFFIT,
+  },
   {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
@@ -4156,6 +4224,70 @@ export function flyColliderShapes() {
     type: 'aabb', tag: 'garage',
     x: GARAGE_X, z: gz, sx: GARAGE_W + 0.3, sz: GARAGE_D + 0.3,
     y0: CITY_Y + GARAGE_SOFFIT, sy: GARAGE_ROOF_H,
+  });
+
+  // Extra boardwalk whoops — same kit, own tag so GATE_X post counts stay 4.
+  for (let i = 0; i < PROMENADE_ARCH_XS.length; i++) {
+    const g = boardwalkGateGeom(PROMENADE_ARCH_XS[i], GATE_Z);
+    for (const dx of [-g.halfX, g.halfX]) {
+      for (const dz of [-g.halfZ, g.halfZ]) {
+        shapes.push({
+          type: 'cyl', tag: 'promenade-arch',
+          x: g.x + dx, z: g.z + dz, r: g.postR,
+          y0: g.y0, h: g.postH,
+        });
+      }
+    }
+    const beamY = g.y0 + g.postH;
+    for (const dz of [-g.halfZ, g.halfZ]) {
+      shapes.push({
+        type: 'aabb', tag: 'promenade-arch',
+        x: g.x, z: g.z + dz, sx: g.spanX + g.beamW, sz: g.beamW,
+        y0: beamY, sy: g.beamH,
+      });
+    }
+    for (const dx of [-g.halfX, g.halfX]) {
+      shapes.push({
+        type: 'aabb', tag: 'promenade-arch',
+        x: g.x + dx, z: g.z, sx: g.beamW, sz: g.spanZ + g.beamW,
+        y0: beamY, sy: g.beamH,
+      });
+    }
+    shapes.push({
+      type: 'aabb', tag: 'promenade-arch',
+      x: g.x, z: g.z, sx: g.spanX + 1.1, sz: g.spanZ + 1.0,
+      y0: beamY + g.beamH, sy: 0.12,
+    });
+  }
+
+  // Casa loggia columns sit off-centre so the bay middle stays empty.
+  const casaZ = CASA_FRONT_Z - CASA_LOGGIA_D * 0.5;
+  for (const s of [-0.38, -0.14, 0.14, 0.38]) {
+    shapes.push({
+      type: 'cyl', tag: 'casa',
+      x: CASA_X + s * CASA_W, z: casaZ, r: 0.22,
+      y0: CITY_Y, h: CASA_LOGGIA_H,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'casa',
+    x: CASA_X, z: casaZ, sx: CASA_W - 0.4, sz: CASA_LOGGIA_D + 0.3,
+    y0: CITY_Y + CASA_LOGGIA_H, sy: 0.28,
+  });
+
+  // Clevelander arcade jambs — centre bay empty, fly ±X under the soffit.
+  const cleveZ = CLEVELANDER_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'clevelander',
+      x: CLEVELANDER_X + s * (CLEVELANDER_W / 2 - 0.7), z: cleveZ, r: 0.2,
+      y0: CITY_Y, h: CLEVELANDER_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'clevelander',
+    x: CLEVELANDER_X, z: cleveZ, sx: CLEVELANDER_W - 0.6, sz: 3.2,
+    y0: CITY_Y + CLEVELANDER_SOFFIT, sy: 0.26,
   });
   return shapes;
 }

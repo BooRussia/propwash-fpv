@@ -1,0 +1,102 @@
+{
+  "name": "ocean-drive-fpv",
+  "version": 1,
+  "crs": "miami-xz-meters",
+  "selfApprove": true,
+  "mergeTarget": "main",
+  "doNotAskUser": true,
+  "invariants": [
+    "no ped.js or traffic.js (NPCs live in js/world/miami/crowd.js)",
+    "no rng/rng2/rng3/rng4 draws in new modules — hash01 only",
+    "no ShaderMaterial in bayWater.js; MeshPhysicalMaterial only",
+    "vehiclesTest forbids ped.js / traffic.js",
+    "skyline backdrop stays a 60-box contract",
+    "Pages deploys from origin/main — merge to main, do not open PRs",
+    "travel lanes TRAVEL_Z0=40.2 TRAVEL_Z1=47.8 stay empty of solids and NPC colliders",
+    "NPCs have no colliders — visual only",
+    "do not restack leftoverLot A–H cells; new RESERVED must sit west of x=240",
+    "do not consume layout rng streams"
+  ],
+  "goal": "Fully fleshed FPV map of Ocean Drive with NPCs (walk, bike, skate, beach, swim), fly-through obstacles, real landmarks placed on the 57.6 facade plane, then expand inland. Continuous build/test/merge loop.",
+  "phases": [
+    {
+      "id": "plan-bake",
+      "title": "2D Ocean Drive site plan is source of truth",
+      "status": "done",
+      "notes": "assets/catalog/miami-ocean-drive-plan.json baked via sitePlan.js"
+    },
+    {
+      "id": "crowd",
+      "title": "NPCs: walk, bike, skate, beach, swim",
+      "status": "done",
+      "files": ["js/world/miami/crowd.js"]
+    },
+    {
+      "id": "casa",
+      "title": "Casa Casuarina / Versace mansion at x=90 FRONT_Z=57.6 with loggia fly-under",
+      "status": "done",
+      "files": ["js/world/miami/landmarks/casa.js"]
+    },
+    {
+      "id": "clevelander",
+      "title": "Clevelander-style open-air hotel at x=60 plus Cardozo-style deco at x=115",
+      "status": "done",
+      "files": ["js/world/miami/landmarks/clevelander.js"]
+    },
+    {
+      "id": "arches",
+      "title": "Extra promenade fly-through arches on the boardwalk",
+      "status": "done",
+      "files": ["js/world/miami/landmarks/flythrough.js", "js/world/miami/constants.js"]
+    },
+    {
+      "id": "more-deco",
+      "title": "Fill remaining Ocean Drive facade gaps with named deco hotels",
+      "status": "pending"
+    },
+    {
+      "id": "obstacles",
+      "title": "More FPV whoops: sidewalk arcades, alley pipes, park rings, pier extra bays",
+      "status": "pending"
+    },
+    {
+      "id": "npc-density",
+      "title": "Thicker crowd, parked bikes at racks, volleyball players, lifeguard sitters",
+      "status": "pending"
+    },
+    {
+      "id": "inland-5th",
+      "title": "Expand inland along GAP_X=57 (5th-street analogue) with storefronts and fly-unders",
+      "status": "pending"
+    },
+    {
+      "id": "inland-espa",
+      "title": "Expand east past cinema toward marina / leftover city without sliding leftoverLot A–H",
+      "status": "pending"
+    },
+    {
+      "id": "collision-audit",
+      "title": "Headless collision/keepout audit: no NPC/stamp in travel lanes, fly voids stay open",
+      "status": "pending"
+    },
+    {
+      "id": "city-skyline",
+      "title": "Inland city dressing (rooftop kits, alleys, more six-sided mid-rises) without burning rng",
+      "status": "pending"
+    }
+  ],
+  "landmarks": {
+    "artdecoHotels": { "x": [-75, -43, -9, 24], "frontZ": 57.6, "status": "done" },
+    "clevelander": { "x": 60, "frontZ": 57.6, "status": "done" },
+    "casaCasuarina": { "x": 90, "frontZ": 57.6, "status": "done" },
+    "cardozo": { "x": 115, "frontZ": 57.6, "status": "done" },
+    "cinema": { "x": 166, "frontZ": 57.6, "status": "done" }
+  },
+  "loop": {
+    "workflow": "miami-ocean-drive-loop",
+    "pick": "first phase with status pending or in_progress",
+    "onPass": "commit + push origin/main, mark phase done",
+    "onFail": "fix in the same turn, do not ask the user",
+    "never": ["ped.js", "traffic.js", "ShaderMaterial in bayWater.js", "PR instead of main"]
+  }
+}
