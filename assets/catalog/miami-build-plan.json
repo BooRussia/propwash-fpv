@@ -1749,6 +1749,18 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fire-escape-tail2",
+      "title": "Alley fire-escape whoops on x=-455/-40 flanks at z=248, jambs only, fly +X",
+      "status": "done",
+      "notes": "four frames at plateX±9 for -455/-40; miss helipad W / GAP_X=57; skip collide cells; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

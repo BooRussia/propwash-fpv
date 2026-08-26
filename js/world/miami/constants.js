@@ -1483,6 +1483,10 @@ export const FIRE_ESCAPE_CELLS = Object.freeze([
   // Appended so existing fire-escape draws stay put. Fly +X.
   [-169, 248], [-151, 248],
   [-119, 248], [-101, 248],
+  // Extra flanks on x=-455/-40. Miss helipad W (z1=128) and GAP_X=57.
+  // 7 m alley to -430; 22 m to 0/-80. Skip collide cells. Fly +X.
+  [-464, 248], [-446, 248],
+  [-49, 248], [-31, 248],
 ]);
 
 /** One fire-escape landing frame. Fly +X. Opening is empty air. */
