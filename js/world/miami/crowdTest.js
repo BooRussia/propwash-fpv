@@ -684,8 +684,8 @@ function FRONT_Z_OK() {
     }
   }
 
-  ok('fire escapes are twenty-eight signed flank cells at z=248 west of 240',
-    FIRE_ESCAPE_CELLS.length === 28
+  ok('fire escapes are thirty-two signed flank cells at z=248 west of 240',
+    FIRE_ESCAPE_CELLS.length === 32
     && FIRE_ESCAPE_CELLS.every(([x, z]) => x < 240 && z === FIRE_ESCAPE_Z)
     && FIRE_ESCAPE_Z === 248 && FIRE_ESCAPE_POST_H >= 2.0
     && FIRE_ESCAPE_HALF_Z * 2 - 0.16 >= 1.15
