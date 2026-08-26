@@ -927,10 +927,11 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
+  // [130,210]/[190,210] fill z=210 east holes (reservedOverlap false, west of leftoverLot A / x=240).
   [-720, 152], [-660, 152], [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152],
   [-190, 152], [-160, 152], [90, 152], [130, 152], [160, 152], [190, 152], [210, 152],
   [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210],
-  [-190, 210], [-160, 210], [-80, 210], [90, 210], [160, 210], [210, 210],
+  [-190, 210], [-160, 210], [-80, 210], [90, 210], [130, 210], [160, 210], [190, 210], [210, 210],
   // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
   // [210,96] east of cinema reserved (x1=208), west of leftoverLot A / x=240.

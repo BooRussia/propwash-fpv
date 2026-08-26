@@ -935,7 +935,7 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 75
+    INLAND_MIDRISE_CELLS.length === 77
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -948,6 +948,9 @@ function FRONT_Z_OK() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 130 && z === 210)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 190 && z === 210)
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 15
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 8
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
@@ -973,7 +976,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 75);
+  ok('signed inland mid-rises', inlandList.length === 77);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     inlandList.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && inlandList.some((g) => g.x === -720 && g.z === 237)
