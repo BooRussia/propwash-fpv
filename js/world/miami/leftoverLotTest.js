@@ -1171,15 +1171,16 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(210, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('inland z=210/152/96 arcades miss leftoverLot A–H',
-    INLAND_ARCADE_CELLS.length === 11
+    INLAND_ARCADE_CELLS.length === 12
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 3
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && (z === 210 || z === 152 || z === 96)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 152)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=210 arcade sitters miss leftoverLot A–H',
     leftoverLotOverlap(-540, 210, 4.4, 14, 0.15) === false
@@ -1191,6 +1192,7 @@ export function runMiamiLeftoverLotTests() {
     leftoverLotOverlap(-600, 96, 4.4, 14, 0.15) === false
     && leftoverLotOverlap(-540, 96, 4.4, 14, 0.15) === false
     && leftoverLotOverlap(-190, 96, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(210, 96, 4.4, 14, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=181 alley pipes miss leftoverLot A–H',
     leftoverLotOverlap(-600, 181, 2.4, 2.6, 0.15) === false

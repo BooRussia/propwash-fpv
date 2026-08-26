@@ -229,11 +229,11 @@ export function runMiamiInlandTests() {
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 11
+    INLAND_ARCADE_CELLS.length === 12
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 3
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && (z === 210 || z === 152 || z === 96)
       && isInlandArcadeCell(x, z)
       && !isCourtWellCell(x, z)
@@ -243,6 +243,7 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 160 && z === 152)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -250 && z === 96)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_SOFFIT')

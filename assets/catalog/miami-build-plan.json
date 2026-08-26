@@ -755,7 +755,15 @@
     {
       "id": "arcade-east96",
       "title": "Ground-floor fly-through on the east z=96 plate at x=210, jambs only, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "INLAND_ARCADE_CELLS +[210,96]; jambs+soffit, fly ±Z; miss court wells; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "roof-east96",

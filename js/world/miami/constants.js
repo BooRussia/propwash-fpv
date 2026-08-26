@@ -983,14 +983,15 @@ export function courtWellColliderShapesAt(shapes, g) {
 
 // Ground-floor fly-through arcades on z=210, z=152, and z=96 mid-rises.
 // Jambs + soffit only, never a box in the bay. Fly ±Z. Miss court wells.
-// z=96 arcades skip [-390,96]/[-250,96] court wells. West of x=240.
+// z=96 arcades skip [-390,96]/[-250,96] court wells. [210,96] is the
+// east-of-cinema plate, west of leftoverLot A / x=240.
 // leftoverLot A–H unmoved. hash01 never at const-eval.
 export const INLAND_ARCADE_SOFFIT = 3.40;
 export const INLAND_ARCADE_OPEN_W = 4.40;
 export const INLAND_ARCADE_CELLS = Object.freeze([
   [-540, 210], [-250, 210], [-80, 210], [90, 210],
   [-600, 152], [-430, 152], [-190, 152], [160, 152],
-  [-600, 96], [-540, 96], [-190, 96],
+  [-600, 96], [-540, 96], [-190, 96], [210, 96],
 ]);
 
 export function isInlandArcadeCell(x, z) {
