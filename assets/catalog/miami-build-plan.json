@@ -158,7 +158,12 @@
     {
       "id": "rooftop-whoops",
       "title": "Signed rooftop AC gaps and billboard rings as extra FPV whoops, hash01, no rng burn",
-      "status": "pending"
+      "status": "done",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js"
+      ]
     }
   ],
   "landmarks": {

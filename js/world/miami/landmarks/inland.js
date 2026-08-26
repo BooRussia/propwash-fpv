@@ -4,9 +4,12 @@ import {
   inlandMidrises,
   leftoverLotOverlap,
   streetOverlap,
+  ROOF_AC_CELLS, ROOF_RING_CELLS,
+  roofAcGapGeom, roofRingGeom, installFlyColliders,
 } from '../constants.js';
 import { hash01 } from '../rng.js';
-import { buildDecoMidriseGeos, buildRoofAcUnitGeo } from '../geo.js';
+import { buildDecoMidriseGeos, buildRoofAcUnitGeo, cBox, cCyl, cTorus } from '../geo.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { decoFacadeTextures, roofTexture, setAoUVs } from '../textures.js';
 import {
   buildRooftopKitGeo,
@@ -39,7 +42,7 @@ const KIT_COL = [
  * pallet envelopes — never a box in an alley-pipe bay.
  */
 export function buildInland(ctx) {
-  const { root, track, addCollider, setTag, regDN } = ctx;
+  const { root, track, addCollider, addCyl, setTag, regDN } = ctx;
   setTag('inland-midrise');
 
   const decoTex = decoFacadeTextures(4, 4);
@@ -99,6 +102,10 @@ export function buildInland(ctx) {
 
     addCollider(g.x, CITY_Y, g.z, g.w, g.h, g.d);
 
+    const isWhoop = ROOF_AC_CELLS.some(([x, z]) => x === g.x && z === g.z)
+      || ROOF_RING_CELLS.some(([x, z]) => x === g.x && z === g.z);
+    if (isWhoop) continue;
+
     const which = hash01((g.x * 19) | 0, (g.z * 23) | 0);
     const ki = which < 0.28 ? 0 : which < 0.52 ? 1 : which < 0.78 ? 2 : 3;
     const ox = (hash01((g.x) | 0, 41) - 0.5) * (g.w - 8);
@@ -141,6 +148,34 @@ export function buildInland(ctx) {
     im.instanceMatrix.needsUpdate = true;
     group.add(im);
   }
+
+  setTag('roof-whoop');
+  const whoopBits = [];
+  const GALV = 0x9ba3ab, SHROUD = 0x3c4249, PAINT = 0x2fe0ff;
+  for (let i = 0; i < ROOF_AC_CELLS.length; i++) {
+    const g = roofAcGapGeom(ROOF_AC_CELLS[i][0], ROOF_AC_CELLS[i][1], `roof-ac-${i}`);
+    for (const ux of [g.leftX, g.rightX]) {
+      whoopBits.push(cBox(g.unitW, g.unitH, g.unitD, GALV,
+        ux, g.y0 + g.unitH / 2, g.z));
+      whoopBits.push(cCyl(0.42, 0.42, 0.08, 10, SHROUD,
+        ux, g.y0 + g.unitH - 0.04, g.z));
+    }
+  }
+  for (let i = 0; i < ROOF_RING_CELLS.length; i++) {
+    const g = roofRingGeom(ROOF_RING_CELLS[i][0], ROOF_RING_CELLS[i][1], `roof-ring-${i}`);
+    whoopBits.push(cTorus(g.r, g.tube, 8, 20, PAINT, g.x, g.y, g.z, 0, Math.PI / 2, 0));
+  }
+  if (whoopBits.length) {
+    const geo = track(mergeGeometries(whoopBits));
+    whoopBits.forEach((g) => g.dispose());
+    const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.42, metalness: 0.4,
+    })));
+    mesh.castShadow = true;
+    mesh.name = 'roof-whoops';
+    group.add(mesh);
+  }
+  installFlyColliders(addCyl, addCollider, 'roof-whoop');
 
   setTag('inland-alley');
   const pallets = [];

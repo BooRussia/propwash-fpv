@@ -404,6 +404,86 @@ export function inlandMidrises() {
   return out;
 }
 
+// ---- rooftop whoops (signed AC gaps + billboard rings; hash01 never at const-eval) ----
+// Sit on inland mid-rise plates west of x=240. Fly +X through the gap / disc.
+// Collider is the unit / tube, never a filled sash. leftoverLot A–H unmoved.
+export const ROOF_WHOOP_Y = CITY_Y + INLAND_MIDRISE_H;
+export const ROOF_AC_CELLS = Object.freeze([[-250, 237], [100, 237]]);
+export const ROOF_RING_CELLS = Object.freeze([[-80, 259], [100, 259]]);
+export const ROOF_AC_CLEAR = 2.20;
+export const ROOF_AC_H = 2.40;
+export const ROOF_AC_W = 1.70;
+export const ROOF_AC_D = 1.36;
+export const ROOF_RING_R = 1.15;
+export const ROOF_RING_TUBE = 0.08;
+export const ROOF_RING_SEGS = 12;
+
+export function roofAcGapGeom(x, z, id) {
+  const y0 = ROOF_WHOOP_Y;
+  const gap = ROOF_AC_CLEAR;
+  const unitW = ROOF_AC_W;
+  return {
+    id, x, z, y0,
+    unitW, unitH: ROOF_AC_H, unitD: ROOF_AC_D,
+    leftX: x - (gap / 2 + unitW / 2),
+    rightX: x + (gap / 2 + unitW / 2),
+    openW: gap, openH: ROOF_AC_H,
+    x0: x - gap / 2, x1: x + gap / 2,
+    z0: z - ROOF_AC_D / 2 + 0.08, z1: z + ROOF_AC_D / 2 - 0.08,
+    fly: '+X', tag: 'roof-whoop',
+  };
+}
+
+export function roofRingGeom(x, z, id) {
+  const r = ROOF_RING_R;
+  const tube = ROOF_RING_TUBE;
+  const y = ROOF_WHOOP_Y + r;
+  return {
+    id, x, z, y0: ROOF_WHOOP_Y, y, r, tube,
+    segs: ROOF_RING_SEGS,
+    openW: 2 * (r - tube), openH: 2 * (r - tube),
+    x0: x - 0.40, x1: x + 0.40,
+    z0: z - r - tube, z1: z + r + tube,
+    fly: '+X', tag: 'roof-whoop',
+  };
+}
+
+export function roofAcGapVoid(g) {
+  return {
+    id: g.id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.openH * 0.48,
+    x0: g.x0 + 0.06, x1: g.x1 - 0.06,
+    z0: g.z0, z1: g.z1,
+    y0: g.y0 + 0.08, y1: g.y0 + g.openH - 0.06,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function roofRingVoid(g) {
+  const inner = g.r - g.tube;
+  return {
+    id: g.id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y,
+    x0: g.x - 0.40, x1: g.x + 0.40,
+    z0: g.z - inner + 0.10, z1: g.z + inner - 0.10,
+    y0: g.y - inner + 0.10, y1: g.y + inner - 0.10,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function roofWhoops() {
+  const out = [];
+  for (let i = 0; i < ROOF_AC_CELLS.length; i++) {
+    const [x, z] = ROOF_AC_CELLS[i];
+    out.push(roofAcGapGeom(x, z, `roof-ac-${i}`));
+  }
+  for (let i = 0; i < ROOF_RING_CELLS.length; i++) {
+    const [x, z] = ROOF_RING_CELLS[i];
+    out.push(roofRingGeom(x, z, `roof-ring-${i}`));
+  }
+  return out;
+}
+
 // ---- Lincoln Road analogue (z=120): E–W pedestrian mall + fly-under pergolas ----
 // Inland of Ocean Drive, parallel to the facade plane. West of leftoverLot A
 // (x>=251). New RESERVED west of x=240. Miss GAP_X, fifth/espa plates, house
@@ -5051,6 +5131,8 @@ export const FLY_VOIDS = [
   ...lincolnShops().flatMap((g) => [lincolnArcadeVoid(g), lincolnPassVoid(g)]),
   ...lincolnPergolas().map((g, i) => lincolnPergolaVoid(g, `lincoln-pergola-${i}`)),
   washingtonArcadeVoid(washingtonArcadeGeom(), 'washington-arcade'),
+  ...ROOF_AC_CELLS.map(([x, z], i) => roofAcGapVoid(roofAcGapGeom(x, z, `roof-ac-${i}`))),
+  ...ROOF_RING_CELLS.map(([x, z], i) => roofRingVoid(roofRingGeom(x, z, `roof-ring-${i}`))),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -5191,7 +5273,40 @@ export function flyColliderShapes() {
     lincolnPergolaColliderShapesAt(shapes, pergolas[i]);
   }
   washingtonArcadeColliderShapesAt(shapes, washingtonArcadeGeom());
+  const acs = ROOF_AC_CELLS;
+  for (let i = 0; i < acs.length; i++) {
+    roofAcGapColliderShapesAt(shapes, roofAcGapGeom(acs[i][0], acs[i][1], `roof-ac-${i}`));
+  }
+  const rings = ROOF_RING_CELLS;
+  for (let i = 0; i < rings.length; i++) {
+    roofRingColliderShapesAt(shapes, roofRingGeom(rings[i][0], rings[i][1], `roof-ring-${i}`));
+  }
   return shapes;
+}
+
+function roofAcGapColliderShapesAt(shapes, g) {
+  for (const ux of [g.leftX, g.rightX]) {
+    shapes.push({
+      type: 'aabb', tag: 'roof-whoop',
+      x: ux, z: g.z, sx: g.unitW, sz: g.unitD,
+      y0: g.y0, sy: g.unitH,
+    });
+  }
+}
+
+function roofRingColliderShapesAt(shapes, g) {
+  const n = g.segs;
+  const box = g.tube * 2 + 0.04;
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2;
+    const yy = g.y + g.r * Math.sin(a);
+    const zz = g.z + g.r * Math.cos(a);
+    shapes.push({
+      type: 'aabb', tag: 'roof-whoop',
+      x: g.x, z: zz, sx: box, sz: box,
+      y0: yy - box / 2, sy: box,
+    });
+  }
 }
 
 function washingtonArcadeColliderShapesAt(shapes, g) {

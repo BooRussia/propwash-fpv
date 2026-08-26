@@ -12,6 +12,8 @@ import {
   leftoverLotOverlap, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
+  ROOF_AC_CELLS, ROOF_RING_CELLS, ROOF_AC_CLEAR, ROOF_AC_H,
+  ROOF_RING_R, ROOF_RING_TUBE, flyColliderShapes,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +96,50 @@ export function runMiamiInlandTests() {
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('two signed rooftop AC gaps + two billboard rings',
+    ROOF_AC_CELLS.length === 2 && ROOF_RING_CELLS.length === 2
+    && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
+    && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
+    && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1));
+  ok('inland.js builds roof whoops with hash01 skip, no layout rng',
+    inland.includes('roof-whoop') && inland.includes('ROOF_AC_CELLS')
+    && inland.includes('cTorus') && !/\brng2?\s*\(/.test(inland));
+  const kit = flyColliderShapes();
+  function probe(x, y, z, r) {
+    for (let i = 0; i < kit.length; i++) {
+      const s = kit[i];
+      const y0 = s.y0;
+      const y1 = y0 + (s.h !== undefined ? s.h : s.sy);
+      if (y + r < y0 || y - r > y1) continue;
+      if (s.type === 'cyl') {
+        const dx = x - s.x, dz = z - s.z;
+        if (Math.sqrt(dx * dx + dz * dz) < s.r + r) return s;
+      } else {
+        const ex = Math.abs(x - s.x) - s.sx / 2;
+        const ez = Math.abs(z - s.z) - s.sz / 2;
+        if (ex <= 0 && ez <= 0) return s;
+      }
+    }
+    return null;
+  }
+  for (let i = 0; i < ROOF_AC_CELLS.length; i++) {
+    const [x, z] = ROOF_AC_CELLS[i];
+    const v = FLY_VOIDS.find((f) => f.id === `roof-ac-${i}`);
+    ok(`roof-ac-${i} listed + open`,
+      !!v && v.x === x && v.z === z && v.openH >= 2 && v.openW >= 2
+      && inKeepout(x, z) && !probe(v.x, v.y, v.z, 0.28)
+      && leftoverLotOverlap(x, z, 4, 2, 0.15) === false);
+  }
+  for (let i = 0; i < ROOF_RING_CELLS.length; i++) {
+    const [x, z] = ROOF_RING_CELLS[i];
+    const v = FLY_VOIDS.find((f) => f.id === `roof-ring-${i}`);
+    ok(`roof-ring-${i} listed + open disc`,
+      !!v && v.x === x && v.z === z && v.openH >= 2
+      && inKeepout(x, z) && !probe(v.x, v.y, v.z, 0.28)
+      && leftoverLotOverlap(x, z, 0.8, 2.4, 0.15) === false);
+  }
 
   if (fails.length) {
     console.error('[miami-inland] FAIL');
