@@ -10,6 +10,7 @@ import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
   leftoverLotOverlap, streetOverlap,
+  FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
   ROOF_AC_CELLS, ROOF_RING_CELLS, ROOF_AC_CLEAR, ROOF_AC_H,
@@ -91,6 +92,28 @@ export function runMiamiInlandTests() {
     ok(`pipe ${x}/${z} misses leftoverLot / street`,
       leftoverLotOverlap(x, z, 2.4, 2.6, 0.15) === false
       && streetOverlap(x, z, 0.4, 2.6) === false);
+  }
+
+  ok('eight fire-escape frames on mid-rise flanks at z=248',
+    FIRE_ESCAPE_CELLS.length === 8 && FIRE_ESCAPE_Z === 248
+    && FIRE_ESCAPE_POST_H >= 3.2
+    && FIRE_ESCAPE_HALF_Z * 2 - 0.16 >= 1.15
+    && FIRE_ESCAPE_CELLS.every(([x, z]) => x < 240 && z === 248 && x < 251));
+  const fly = readFileSync(join(here, 'landmarks/flythrough.js'), 'utf8');
+  ok('flythrough builds fire-escape jambs, no layout rng',
+    fly.includes('FIRE_ESCAPE_CELLS') && fly.includes('buildFireEscape')
+    && fly.includes("setTag('fire-escape')")
+    && !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly) && !/\brng4\s*\(/.test(fly));
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    const [x, z] = FIRE_ESCAPE_CELLS[i];
+    const v = FLY_VOIDS.find((f) => f.id === `fire-escape-${i}`);
+    ok(`fire-escape-${i} void + keepout west of 240`,
+      !!v && v.x === x && v.z === z && inKeepout(x, z) && inReserved(x, z)
+      && x < 240 && v.openH >= 2 && v.openW >= 1.15);
+    ok(`fire-escape-${i} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(x, z, 2.4, 2.6, 0.15) === false
+      && streetOverlap(x, z, 0.4, 2.6) === false
+      && z > TRAVEL_Z1);
   }
 
   ok('leftoverLot A–H unmoved',

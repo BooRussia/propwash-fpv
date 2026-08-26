@@ -11,9 +11,9 @@ import {
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
   PROMENADE_ARCH_XS, GATE_Z,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
-  ALLEY_PIPE_CELLS, PARK_RING_CELLS,
+  ALLEY_PIPE_CELLS, PARK_RING_CELLS, FIRE_ESCAPE_CELLS,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
-  sidewalkArcadeGeom, alleyPipeGeom, parkRingGeom,
+  sidewalkArcadeGeom, alleyPipeGeom, parkRingGeom, fireEscapeGeom,
   installFlyColliders,
 } from '../constants.js';
 import { tryPlace } from '../planting.js';
@@ -67,6 +67,7 @@ import { roofTexture } from '../textures.js';
  *   sidewalk-arcade  stucco soffit on the Ocean Drive slabs, fly +X
  *   alley-pipe       steel U inland, fly +X
  *   park-ring        torus in Lummus, fly +X
+ *   fire-escape      steel landing frames on inland mid-rise flanks at z=248, fly +X
  */
 export function buildFlythrough(ctx) {
   const { root, track, addCollider, addCyl, setTag } = ctx;
@@ -141,6 +142,12 @@ export function buildFlythrough(ctx) {
     buildParkRing(ctx, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
   }
   installFlyColliders(addCyl, addCollider, 'park-ring');
+
+  setTag('fire-escape');
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    buildFireEscape(ctx, fireEscapeGeom(FIRE_ESCAPE_CELLS[i][0], FIRE_ESCAPE_CELLS[i][1]));
+  }
+  installFlyColliders(addCyl, addCollider, 'fire-escape');
 
   setTag('world');
 }
@@ -329,6 +336,36 @@ function buildAlleyPipe(ctx, g) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.name = 'alley-pipe';
+  root.add(mesh);
+}
+
+function buildFireEscape(ctx, g) {
+  const { root, track } = ctx;
+  const GALV = 0x8a9298, GALV2 = 0x6d747c, RUST = 0x5c3a2e;
+  const bits = [];
+  const y0 = g.y0;
+  const topY = y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    bits.push(cCyl(g.postR, g.postR + 0.01, g.postH, 8, GALV,
+      g.x, y0 + g.postH / 2, g.z + dz));
+    bits.push(cBox(0.70, g.beamH, g.beamW, GALV2,
+      g.x, topY, g.z + dz));
+  }
+  bits.push(cBox(g.beamW, g.beamH, g.halfZ * 2 + g.postR * 2, GALV2,
+    g.x, topY, g.z));
+  const inlandZ = g.z + g.halfZ;
+  for (let k = 0; k < 5; k++) {
+    const ry = y0 + 0.45 + k * 0.55;
+    bits.push(cBox(0.36, 0.04, 0.04, RUST, g.x, ry, inlandZ));
+  }
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.46, metalness: 0.52,
+  })));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = 'fire-escape';
   root.add(mesh);
 }
 

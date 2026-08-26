@@ -569,6 +569,64 @@ export function roofWhoops() {
   return out;
 }
 
+// ---- alley fire-escape whoops (inland mid-rise flanks at z=248) ----
+// Steel landing frames on the east/west flanks of each z=237/259 pair.
+// Fly +X through the empty landing. Collider is stringer / lintel, never
+// a filled sash. Signed cells west of x=240. Miss leftoverLot A–H, GAP_X,
+// travel 40.2–47.8, alley-pipe bays at the pair x. hash01 never at const-eval.
+export const FIRE_ESCAPE_Z = 248;
+export const FIRE_ESCAPE_POST_R = 0.08;
+export const FIRE_ESCAPE_POST_H = 3.40;
+export const FIRE_ESCAPE_HALF_Z = 1.10;
+export const FIRE_ESCAPE_BEAM_W = 0.10;
+export const FIRE_ESCAPE_BEAM_H = 0.12;
+export const FIRE_ESCAPE_CELLS = Object.freeze([
+  [-439, 248], [-421, 248],
+  [-259, 248], [-241, 248],
+  [-89, 248], [-71, 248],
+  [91, 248], [109, 248],
+]);
+
+/** One fire-escape landing frame. Fly +X. Opening is empty air. */
+export function fireEscapeGeom(cx, cz = FIRE_ESCAPE_Z) {
+  const y0 = CITY_Y;
+  const halfZ = FIRE_ESCAPE_HALF_Z;
+  const postR = FIRE_ESCAPE_POST_R;
+  const postH = FIRE_ESCAPE_POST_H;
+  return {
+    x: cx, z: cz, y0,
+    halfZ, postR, postH,
+    beamW: FIRE_ESCAPE_BEAM_W, beamH: FIRE_ESCAPE_BEAM_H,
+    x0: cx - postR - 0.04, x1: cx + postR + 0.04,
+    z0: cz - halfZ, z1: cz + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'fire-escape',
+  };
+}
+
+export function fireEscapeVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - 0.45, x1: g.x + 0.45,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function fireEscapes() {
+  const out = [];
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    const [x, z] = FIRE_ESCAPE_CELLS[i];
+    out.push(fireEscapeGeom(x, z));
+  }
+  return out;
+}
+
 // ---- Lincoln Road analogue (z=120): E–W pedestrian mall + fly-under pergolas ----
 // Inland of Ocean Drive, parallel to the facade plane. West of leftoverLot A
 // (x>=251). New RESERVED west of x=240. Miss GAP_X, fifth/espa plates, house
@@ -3950,6 +4008,11 @@ export const RESERVED = [
     z0: z - ALLEY_PIPE_HALF_Z - 1.5, z1: z + ALLEY_PIPE_HALF_Z + 1.4,
     tag: 'alley-pipe',
   })),
+  ...FIRE_ESCAPE_CELLS.map(([x, z]) => ({
+    x0: x - 2.2, x1: x + 1.8,
+    z0: z - FIRE_ESCAPE_HALF_Z - 1.5, z1: z + FIRE_ESCAPE_HALF_Z + 1.4,
+    tag: 'fire-escape',
+  })),
   ...fifthShops().map((g) => ({
     x0: g.x0 - 2.2, x1: g.x1 + 1.8,
     z0: g.z0 - 1.5, z1: g.z1 + 1.4,
@@ -4909,6 +4972,11 @@ export const KEEPOUT = [
     z0: z - ALLEY_PIPE_HALF_Z - 0.8, z1: z + ALLEY_PIPE_HALF_Z + 0.8,
     tag: 'alley-pipe',
   })),
+  ...FIRE_ESCAPE_CELLS.map(([x, z]) => ({
+    x0: x - 1.2, x1: x + 1.2,
+    z0: z - FIRE_ESCAPE_HALF_Z - 0.8, z1: z + FIRE_ESCAPE_HALF_Z + 0.8,
+    tag: 'fire-escape',
+  })),
   ...PARK_RING_CELLS.map(([x, z]) => ({
     x0: x - PARK_RING_TUBE - 0.8, x1: x + PARK_RING_TUBE + 0.8,
     z0: z - PARK_RING_R - PARK_RING_TUBE - 0.8,
@@ -5229,6 +5297,8 @@ export const FLY_VOIDS = [
   washingtonArcadeVoid(washingtonArcadeGeom(), 'washington-arcade'),
   ...ROOF_AC_CELLS.map(([x, z], i) => roofAcGapVoid(roofAcGapGeom(x, z, `roof-ac-${i}`))),
   ...ROOF_RING_CELLS.map(([x, z], i) => roofRingVoid(roofRingGeom(x, z, `roof-ring-${i}`))),
+  ...FIRE_ESCAPE_CELLS.map(([x, z], i) => fireEscapeVoid(
+    fireEscapeGeom(x, z), `fire-escape-${i}`)),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -5380,6 +5450,9 @@ export function flyColliderShapes() {
   const rings = ROOF_RING_CELLS;
   for (let i = 0; i < rings.length; i++) {
     roofRingColliderShapesAt(shapes, roofRingGeom(rings[i][0], rings[i][1], `roof-ring-${i}`));
+  }
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    fireEscapeColliderShapesAt(shapes, fireEscapeGeom(FIRE_ESCAPE_CELLS[i][0], FIRE_ESCAPE_CELLS[i][1]));
   }
   return shapes;
 }
@@ -5599,6 +5672,21 @@ function alleyPipeColliderShapesAt(shapes, g) {
     type: 'aabb', tag: 'alley-pipe',
     x: g.x, z: g.z, sx: g.beamR * 2, sz: g.halfZ * 2 + g.postR * 2,
     y0: g.y0 + g.postH - g.beamR, sy: g.beamR * 2,
+  });
+}
+
+function fireEscapeColliderShapesAt(shapes, g) {
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'cyl', tag: 'fire-escape',
+      x: g.x, z: g.z + dz, r: g.postR,
+      y0: g.y0, h: g.postH + g.beamH,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'fire-escape',
+    x: g.x, z: g.z, sx: g.beamW, sz: g.halfZ * 2 + g.postR * 2,
+    y0: g.y0 + g.postH - g.beamH / 2, sy: g.beamH,
   });
 }
 

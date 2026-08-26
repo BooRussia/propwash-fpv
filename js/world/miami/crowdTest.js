@@ -18,6 +18,7 @@ import {
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
+  FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   PARK_RING_CELLS, PARK_RING_R, PARK_RING_TUBE, PIER_EXTRA_BAY_IS, PIER_X,
   PIER_PYLON_COUNT, pierBayRingGeom,
   SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_Z0, VBALL_Z1,
@@ -369,6 +370,45 @@ export function runMiamiCrowdTests() {
         && v.z > TRAVEL_Z1);
     }
   }
+
+  ok('fire escapes are eight signed flank cells at z=248 west of 240',
+    FIRE_ESCAPE_CELLS.length === 8
+    && FIRE_ESCAPE_CELLS.every(([x, z]) => x < 240 && z === FIRE_ESCAPE_Z)
+    && FIRE_ESCAPE_Z === 248 && FIRE_ESCAPE_POST_H >= 2.0
+    && FIRE_ESCAPE_HALF_Z * 2 - 0.16 >= 1.15
+    && FIRE_ESCAPE_Z > TRAVEL_Z1);
+  ok('fire-escape flanks sit on inland mid-rise x ± 9',
+    FIRE_ESCAPE_CELLS[0][0] === -430 - INLAND_MIDRISE_W / 2
+    && FIRE_ESCAPE_CELLS[1][0] === -430 + INLAND_MIDRISE_W / 2
+    && FIRE_ESCAPE_CELLS[6][0] === 100 - INLAND_MIDRISE_W / 2
+    && FIRE_ESCAPE_CELLS[7][0] === 100 + INLAND_MIDRISE_W / 2);
+  ok('flythrough builds fire escapes, jambs only, no layout rng',
+    fly.includes('FIRE_ESCAPE_CELLS') && fly.includes("setTag('fire-escape')")
+    && fly.includes('buildFireEscape') && fly.includes("installFlyColliders(addCyl, addCollider, 'fire-escape')")
+    && !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly) && !/\brng4\s*\(/.test(fly)
+    && !fly.includes('ShaderMaterial'));
+  for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `fire-escape-${i}`);
+    const [x, z] = FIRE_ESCAPE_CELLS[i];
+    ok(`fire-escape-${i} listed`, !!v && v.x === x && v.z === z);
+    if (v) {
+      ok(`fire-escape-${i} reserved keepout open`,
+        !!inReserved(v.x, v.z) && !!inKeepout(v.x, v.z)
+        && v.openW >= 1.15 && v.openH >= 2.0
+        && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+      ok(`fire-escape-${i} misses leftoverLot A–H / street / travel`,
+        leftoverLotOverlap(v.x, v.z, 2.4, 2.6, 0.15) === false
+        && streetOverlap(v.x, v.z, 0.4, 2.6) === false
+        && v.z > TRAVEL_Z1 && v.x < 240);
+    }
+  }
+  const fireHitsTravel = kit.filter((s) => {
+    const z0 = s.type === 'cyl' ? s.z - s.r : s.z - s.sz / 2;
+    const z1 = s.type === 'cyl' ? s.z + s.r : s.z + s.sz / 2;
+    return s.tag === 'fire-escape' && z0 < TRAVEL_Z1 && z1 > TRAVEL_Z0;
+  });
+  ok('no fire-escape collider in travel lanes 40.2–47.8',
+    fireHitsTravel.length === 0);
 
   ok('park rings are three Lummus whoops west of 240',
     PARK_RING_CELLS.length === 3
