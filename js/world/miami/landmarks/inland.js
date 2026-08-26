@@ -7,13 +7,15 @@ import {
   helipadOverlap,
   ROOF_AC_CELLS, ROOF_RING_CELLS,
   roofAcGapGeom, roofRingGeom, installFlyColliders,
+  isCourtWellCell, COURT_WELL_W, COURT_WELL_D,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
   ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DUMP_H,
   ALLEY_DOCK_W, ALLEY_DOCK_D, ALLEY_DOCK_H,
+  ALLEY_LAMP_CELLS, ALLEY_LAMP_H, ALLEY_LAMP_R, ALLEY_LAMP_ARM,
   alleySolidHitsWhoop,
 } from '../constants.js';
 import { hash01 } from '../rng.js';
-import { buildDecoMidriseGeos, buildRoofAcUnitGeo, cBox, cCyl, cTorus } from '../geo.js';
+import { buildDecoMidriseGeos, buildRoofAcUnitGeo, cBox, cCyl, cTorus, tubeBetween } from '../geo.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { decoFacadeTextures, roofTexture, setAoUVs } from '../textures.js';
 import {
@@ -79,8 +81,6 @@ export function buildInland(ctx) {
 
     const offU = hash01((g.x * 7) | 0, (g.z * 13) | 0);
     const offV = hash01((g.x * 11) | 0, (g.z * 17) | 0);
-    const kit = buildDecoMidriseGeos(g.w, g.h, g.d, DECO_TILE_U, DECO_TILE_V, offU, offV);
-    setAoUVs(kit.walls);
     const color = DECO_COLS[(hash01((g.x) | 0, (g.z) | 0) * DECO_COLS.length) | 0];
     const wallMat = regDN(track(new THREE.MeshStandardMaterial({
       color, roughness: 0.75,
@@ -90,26 +90,57 @@ export function buildInland(ctx) {
     })), 0.0, 2.45);
     wallMat.color.lerp(new THREE.Color(0xffffff), 0.1);
 
-    const walls = new THREE.Mesh(track(kit.walls), wallMat);
-    walls.position.set(g.x, CITY_Y + g.h / 2, g.z);
-    walls.castShadow = true;
-    group.add(walls);
-    const lid = new THREE.Mesh(track(kit.roof), tileRoofMat);
-    lid.position.set(g.x, CITY_Y + g.h / 2, g.z);
-    lid.castShadow = true;
-    lid.receiveShadow = true;
-    group.add(lid);
-    const sof = new THREE.Mesh(track(kit.soffit), soffitMat);
-    sof.position.set(g.x, CITY_Y + g.h / 2, g.z);
-    group.add(sof);
-    const cor = new THREE.Mesh(track(kit.cornice), corniceMat);
-    cor.position.set(g.x, CITY_Y + g.h / 2, g.z);
-    group.add(cor);
-
-    addCollider(g.x, CITY_Y, g.z, g.w, g.h, g.d);
+    const court = isCourtWellCell(g.x, g.z);
+    if (court) {
+      const sideW = (g.w - COURT_WELL_W) / 2;
+      const frontD = (g.d - COURT_WELL_D) / 2;
+      const yC = CITY_Y + g.h / 2;
+      const masses = [
+        { x: g.x - (COURT_WELL_W / 2 + sideW / 2), z: g.z, w: sideW, d: g.d },
+        { x: g.x + (COURT_WELL_W / 2 + sideW / 2), z: g.z, w: sideW, d: g.d },
+        { x: g.x, z: g.z - (COURT_WELL_D / 2 + frontD / 2), w: COURT_WELL_W, d: frontD },
+        { x: g.x, z: g.z + (COURT_WELL_D / 2 + frontD / 2), w: COURT_WELL_W, d: frontD },
+      ];
+      for (let m = 0; m < masses.length; m++) {
+        const s = masses[m];
+        const kit = buildDecoMidriseGeos(s.w, g.h, s.d, DECO_TILE_U, DECO_TILE_V, offU, offV);
+        setAoUVs(kit.walls);
+        const walls = new THREE.Mesh(track(kit.walls), wallMat);
+        walls.position.set(s.x, yC, s.z);
+        walls.castShadow = true;
+        group.add(walls);
+        const lid = new THREE.Mesh(track(kit.roof), tileRoofMat);
+        lid.position.set(s.x, yC, s.z);
+        lid.castShadow = true;
+        group.add(lid);
+        addCollider(s.x, CITY_Y, s.z, s.w, g.h, s.d);
+        kit.soffit.dispose();
+        kit.cornice.dispose();
+      }
+    } else {
+      const kit = buildDecoMidriseGeos(g.w, g.h, g.d, DECO_TILE_U, DECO_TILE_V, offU, offV);
+      setAoUVs(kit.walls);
+      const walls = new THREE.Mesh(track(kit.walls), wallMat);
+      walls.position.set(g.x, CITY_Y + g.h / 2, g.z);
+      walls.castShadow = true;
+      group.add(walls);
+      const lid = new THREE.Mesh(track(kit.roof), tileRoofMat);
+      lid.position.set(g.x, CITY_Y + g.h / 2, g.z);
+      lid.castShadow = true;
+      lid.receiveShadow = true;
+      group.add(lid);
+      const sof = new THREE.Mesh(track(kit.soffit), soffitMat);
+      sof.position.set(g.x, CITY_Y + g.h / 2, g.z);
+      group.add(sof);
+      const cor = new THREE.Mesh(track(kit.cornice), corniceMat);
+      cor.position.set(g.x, CITY_Y + g.h / 2, g.z);
+      group.add(cor);
+      addCollider(g.x, CITY_Y, g.z, g.w, g.h, g.d);
+    }
 
     const isWhoop = ROOF_AC_CELLS.some(([x, z]) => x === g.x && z === g.z)
-      || ROOF_RING_CELLS.some(([x, z]) => x === g.x && z === g.z);
+      || ROOF_RING_CELLS.some(([x, z]) => x === g.x && z === g.z)
+      || court;
     if (isWhoop) continue;
 
     const which = hash01((g.x * 19) | 0, (g.z * 23) | 0);
@@ -252,6 +283,57 @@ export function buildInland(ctx) {
     mesh.receiveShadow = true;
     mesh.name = 'inland-alley-dumpsters';
     group.add(mesh);
+  }
+
+  const lampSpots = [];
+  for (let i = 0; i < ALLEY_LAMP_CELLS.length; i++) {
+    const [x, z] = ALLEY_LAMP_CELLS[i];
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.4, 0.4, 0.15)) continue;
+    if (streetOverlap(x, z, 0.4, 0.4)) continue;
+    if (alleySolidHitsWhoop(x, z, 0.4, 0.4)) continue;
+    const yaw = (z < 248 ? 0 : Math.PI) + (hash01(i, 2303) - 0.5) * 0.08;
+    lampSpots.push({ x, y: CITY_Y, z, yaw });
+    addCyl(x, CITY_Y, z, ALLEY_LAMP_R, ALLEY_LAMP_H);
+  }
+  if (lampSpots.length) {
+    const poleGeos = [
+      new THREE.CylinderGeometry(0.055, 0.085, ALLEY_LAMP_H, 7).translate(0, ALLEY_LAMP_H / 2, 0),
+      tubeBetween(
+        new THREE.Vector3(0, ALLEY_LAMP_H - 0.08, 0),
+        new THREE.Vector3(0, ALLEY_LAMP_H + 0.42, 0.62), 0.045, 6),
+      tubeBetween(
+        new THREE.Vector3(0, ALLEY_LAMP_H + 0.42, 0.62),
+        new THREE.Vector3(0, ALLEY_LAMP_H + 0.52, ALLEY_LAMP_ARM), 0.04, 6),
+      new THREE.CylinderGeometry(0.11, 0.15, 0.14, 8)
+        .translate(0, ALLEY_LAMP_H + 0.44, ALLEY_LAMP_ARM - 0.06),
+    ];
+    const poleGeo = track(mergeGeometries(poleGeos));
+    poleGeos.forEach((g) => g.dispose());
+    const headGeo = track(new THREE.SphereGeometry(0.13, 8, 6));
+    headGeo.translate(0, ALLEY_LAMP_H + 0.32, ALLEY_LAMP_ARM - 0.06);
+    const poleMat = track(new THREE.MeshStandardMaterial({
+      color: 0x39424c, roughness: 0.6, metalness: 0.6,
+    }));
+    const headMat = regDN(track(new THREE.MeshStandardMaterial({
+      color: 0xfff2cc, emissive: 0xffd27a, emissiveIntensity: 2.2,
+    })), 0.15, 2.4);
+    const lp = new THREE.InstancedMesh(poleGeo, poleMat, lampSpots.length);
+    const lh = new THREE.InstancedMesh(headGeo, headMat, lampSpots.length);
+    lp.name = 'inland-alley-lamps';
+    lh.name = 'inland-alley-lamp-heads';
+    lp.castShadow = true;
+    for (let i = 0; i < lampSpots.length; i++) {
+      const sp = lampSpots[i];
+      m4.makeRotationY(sp.yaw);
+      m4.setPosition(sp.x, sp.y, sp.z);
+      lp.setMatrixAt(i, m4);
+      lh.setMatrixAt(i, m4);
+    }
+    lp.instanceMatrix.needsUpdate = true;
+    lh.instanceMatrix.needsUpdate = true;
+    group.add(lp);
+    group.add(lh);
   }
 
   root.add(group);

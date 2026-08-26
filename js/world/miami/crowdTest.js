@@ -43,7 +43,7 @@ import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS, ALLEY_DUMP_W, ALLEY_DUMP_D,
-  ALLEY_DOCK_W, ALLEY_DOCK_D, alleySolidHitsWhoop,
+  ALLEY_DOCK_W, ALLEY_DOCK_D, ALLEY_LAMP_CELLS, alleySolidHitsWhoop,
   LINCOLN_Z, LINCOLN_HALF, LINCOLN_S_FRONT_Z, LINCOLN_N_FRONT_Z,
   LINCOLN_S_CELLS, LINCOLN_N_CELLS, LINCOLN_PERGOLA_CELLS, LINCOLN_WALK_RUNS,
   LINCOLN_SOFFIT, LINCOLN_PASS_W, LINCOLN_PASS_H, LINCOLN_PERGOLA_POST_H,
@@ -456,8 +456,8 @@ function FRONT_Z_OK() {
     WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 251
     && inReserved(258, 84));
 
-  ok('sidewalk arcades are five signed x, west of 240',
-    SW_ARCADE_CITY_XS.length === 3 && SW_ARCADE_BEACH_XS.length === 2
+  ok('sidewalk arcades are signed x, west of 240',
+    SW_ARCADE_CITY_XS.length === 6 && SW_ARCADE_BEACH_XS.length === 2
     && [...SW_ARCADE_CITY_XS, ...SW_ARCADE_BEACH_XS].every((x) => x < 240)
     && !SW_ARCADE_CITY_XS.includes(GATE_X));
   ok('sidewalk arcade z sits on the slabs, not in travel lanes',
@@ -491,8 +491,8 @@ function FRONT_Z_OK() {
     }
   }
 
-  ok('alley pipes are eight signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 8
+  ok('alley pipes are signed cells west of 240',
+    ALLEY_PIPE_CELLS.length === 13
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1);
   ok('inland service-alley pipes sit at z=248',
@@ -764,10 +764,10 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 10
+    INLAND_MIDRISE_CELLS.length === 29
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
-    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length === 2
+    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && inland.includes('buildDecoMidriseGeos')
@@ -783,7 +783,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('ten signed inland mid-rises', inlandList.length === 10);
+  ok('signed inland mid-rises', inlandList.length === 29);
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < inlandList.length; i++) {
@@ -816,6 +816,15 @@ function FRONT_Z_OK() {
     && ALLEY_DOCK_CELLS.every(([x, z]) => x < 240
       && leftoverLotOverlap(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D, 0.15) === false
       && alleySolidHitsWhoop(x, z, ALLEY_DOCK_W, ALLEY_DOCK_D) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)));
+  ok('signed alley goosenecks miss pipe / fire-escape / leftoverLot / travel',
+    ALLEY_LAMP_CELLS.length === 10
+    && inland.includes('ALLEY_LAMP_CELLS') && inland.includes('inland-alley-lamps')
+    && inland.includes('regDN') && inland.includes('0xffd27a')
+    && !inland.includes('ShaderMaterial')
+    && ALLEY_LAMP_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && leftoverLotOverlap(x, z, 0.4, 0.4, 0.15) === false
+      && alleySolidHitsWhoop(x, z, 0.4, 0.4) === false
       && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)));
   ok('inland sidewalks miss travel lanes and leftoverLot A–H',
     crowd.includes('INLAND_WALK_Z0') && crowd.includes('92')

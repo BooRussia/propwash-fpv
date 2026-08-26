@@ -474,7 +474,14 @@
     {
       "id": "alley-lights",
       "title": "Gooseneck lamps over z=248 alleys, night emissive via regDN, miss pipe/fire-escape bays",
-      "status": "pending"
+      "status": "done",
+      "notes": "10 goosenecks on z=248 alleys (5 pairs × 2 walls); night head via regDN 0.15→2.4; miss pipe/fire-escape bays; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "foam-wake",
@@ -518,6 +525,7 @@
     "espanolaWay": { "x": 243, "frontX": 234.1, "status": "done", "note": "GAP_X=243 west face only, east of cinema, west of leftoverLot A" },
     "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" },
     "inlandMidrise": { "cells": [[-600, 237], [-600, 259], [-430, 237], [-430, 259], [-250, 237], [-250, 259], [-80, 237], [-80, 259], [100, 237], [100, 259]], "status": "done", "note": "six-sided deco plates + rooftop kits + z=248 alley pipes + fire-escape flanks; west pair at x=-600 misses helipad W; west of x=240; hash01" },
+    "alleyLights": { "z": 248, "cells": [[-607.2, 244.8], [-592.8, 251.2], [-437.2, 244.8], [-422.8, 251.2], [-257.2, 244.8], [-242.8, 251.2], [-87.2, 244.8], [-72.8, 251.2], [92.8, 244.8], [107.2, 251.2]], "status": "done", "note": "gooseneck lamps over z=248 inland alleys; night head via regDN 0.15→2.4; miss pipe/fire-escape bays; leftoverLot A–H unmoved" },
     "fireEscape": { "z": 248, "cells": [[-439, 248], [-421, 248], [-259, 248], [-241, 248], [-89, 248], [-71, 248], [91, 248], [109, 248]], "status": "done", "note": "alley fire-escape whoops on inland mid-rise flanks; jambs only; fly +X; leftoverLot A–H unmoved" },
     "lincolnWalk": { "z": 120, "cells": [[-250, 120], [96, 120], [136, 120], [190, 120]], "status": "done", "note": "E-W pedestrian mall + fly-under pergolas, west of leftoverLot A; leftoverLot A–H unmoved" },
     "washingtonAve": { "z": 180, "arcadeX": 96, "status": "done", "note": "second N-S street west of Ocean Drive; painted 14 m lanes + parked cars + one fly-under arcade at x=96; west of leftoverLot A; leftoverLot A–H unmoved" },

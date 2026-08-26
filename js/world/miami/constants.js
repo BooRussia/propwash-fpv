@@ -305,7 +305,7 @@ export const SW_ARCADE_BEAM_H = 0.24;
 export const SW_ARCADE_BEAM_W = 0.28;
 export const SW_ARCADE_CITY_Z = (SW_CITY_Z0 + SW_CITY_Z1) / 2;
 export const SW_ARCADE_BEACH_Z = (SW_BEACH_Z0 + SW_BEACH_Z1) / 2;
-export const SW_ARCADE_CITY_XS = Object.freeze([-210, 18, 178]);
+export const SW_ARCADE_CITY_XS = Object.freeze([-340, -210, -90, 18, 110, 178]);
 export const SW_ARCADE_BEACH_XS = Object.freeze([-60, 80]);
 // Alley pipe gantries: U of steel, fly +X. Inland leftover city, west of x=240.
 // Not leftoverLot A–H. Not a cross-street column. Collider is the pipe, not the bay.
@@ -324,6 +324,12 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-250, 248],
   [-80, 248],
   [100, 248],
+  // Service alleys between z=210 fill and the 237 skyline row. Fly +X.
+  [-600, 223],
+  [-430, 223],
+  [-250, 223],
+  [-80, 223],
+  [100, 223],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -824,6 +830,12 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-250, 237], [-250, 259],
   [-80, 237], [-80, 259],
   [100, 237], [100, 259],
+  // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
+  // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
+  [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152], [-190, 152],
+  [90, 152], [160, 152], [210, 152],
+  [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210], [-190, 210],
+  [-80, 210], [90, 210], [160, 210], [210, 210],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
@@ -846,12 +858,79 @@ export function inlandMidrises() {
   return out;
 }
 
+// Courtyard drop-wells: open air through the plate. Fly −Y. Jambs are the
+// four wall masses, never a box in the well. leftoverLot A–H unmoved.
+export const COURT_WELL_W = 6.2;
+export const COURT_WELL_D = 6.2;
+export const COURT_WELL_CELLS = Object.freeze([
+  [-250, 152], [90, 152], [-430, 210], [160, 210], [-600, 210],
+]);
+
+export function isCourtWellCell(x, z) {
+  for (let i = 0; i < COURT_WELL_CELLS.length; i++) {
+    if (COURT_WELL_CELLS[i][0] === x && COURT_WELL_CELLS[i][1] === z) return true;
+  }
+  return false;
+}
+
+export function courtWellGeom(x, z, id) {
+  const w = COURT_WELL_W, d = COURT_WELL_D, h = INLAND_MIDRISE_H;
+  const y0 = CITY_Y;
+  return {
+    id, x, z, w, d, h, y0,
+    x0: x - w / 2, x1: x + w / 2,
+    z0: z - d / 2, z1: z + d / 2,
+    y1: y0 + h,
+    openW: w - 0.4, openH: h,
+    fly: '-Y', tag: 'court-well',
+  };
+}
+
+export function courtWellVoid(g) {
+  return {
+    id: g.id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.h * 0.48,
+    x0: g.x0 + 0.12, x1: g.x1 - 0.12,
+    z0: g.z0 + 0.12, z1: g.z1 - 0.12,
+    y0: g.y0 + 0.08, y1: g.y1 + 0.2,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function courtWellColliderShapesAt(shapes, g) {
+  const plate = inlandMidriseGeom(g.x, g.z, g.id);
+  const sideW = (plate.w - g.w) / 2;
+  const frontD = (plate.d - g.d) / 2;
+  const y0 = CITY_Y, h = plate.h;
+  shapes.push({
+    type: 'aabb', tag: 'court-well',
+    x: g.x - (g.w / 2 + sideW / 2), z: g.z,
+    sx: sideW, sz: plate.d, y0, sy: h,
+  });
+  shapes.push({
+    type: 'aabb', tag: 'court-well',
+    x: g.x + (g.w / 2 + sideW / 2), z: g.z,
+    sx: sideW, sz: plate.d, y0, sy: h,
+  });
+  shapes.push({
+    type: 'aabb', tag: 'court-well',
+    x: g.x, z: g.z - (g.d / 2 + frontD / 2),
+    sx: g.w, sz: frontD, y0, sy: h,
+  });
+  shapes.push({
+    type: 'aabb', tag: 'court-well',
+    x: g.x, z: g.z + (g.d / 2 + frontD / 2),
+    sx: g.w, sz: frontD, y0, sy: h,
+  });
+}
+
 // ---- rooftop whoops (signed AC gaps + billboard rings; hash01 never at const-eval) ----
 // Sit on inland mid-rise plates west of x=240. Fly +X through the gap / disc.
 // Collider is the unit / tube, never a filled sash. leftoverLot A–H unmoved.
 export const ROOF_WHOOP_Y = CITY_Y + INLAND_MIDRISE_H;
 export const ROOF_AC_CELLS = Object.freeze([
   [-250, 237], [100, 237], [-430, 237], [-80, 237],
+  [-540, 152], [-190, 152], [210, 152], [90, 210],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([[-80, 259], [100, 259]]);
 export const ROOF_AC_CLEAR = 2.20;
@@ -1008,6 +1087,31 @@ export const ALLEY_DOCK_CELLS = Object.freeze([
   [-76.8, 251.2],
   [103.2, 251.2],
 ]);
+// Gooseneck poles against mid-rise alley faces. Arm hangs over the
+// 8 m service lane (not a street gooseneck). Night head via regDN.
+// West of x=240. Miss leftoverLot A–H, travel 40.2–47.8, alley-pipe
+// bays at pair x, fire-escape flanks at plateX±9, dumpsters/docks.
+// hash01 never at const-eval.
+export const ALLEY_LAMP_H = 4.20;
+export const ALLEY_LAMP_R = 0.10;
+export const ALLEY_LAMP_ARM = 1.28;
+export const ALLEY_LAMP_CELLS = Object.freeze([
+  [-607.2, 244.8], [-592.8, 251.2],
+  [-437.2, 244.8], [-422.8, 251.2],
+  [-257.2, 244.8], [-242.8, 251.2],
+  [-87.2, 244.8], [-72.8, 251.2],
+  [92.8, 244.8], [107.2, 251.2],
+]);
+
+/** Gooseneck over the z=248 service alley. Arm toward alley centre. */
+export function alleyLampGeom(x, z) {
+  return {
+    x, z,
+    yaw: z < 248 ? 0 : Math.PI,
+    h: ALLEY_LAMP_H, r: ALLEY_LAMP_R, arm: ALLEY_LAMP_ARM,
+    tag: 'inland-alley-lamp',
+  };
+}
 
 /** True when an alley solid would sit in a pipe or fire-escape bay. */
 export function alleySolidHitsWhoop(x, z, w, d) {
@@ -5442,6 +5546,11 @@ export const KEEPOUT = [
     z0: z - ALLEY_DOCK_D / 2 - 0.4, z1: z + ALLEY_DOCK_D / 2 + 0.4,
     tag: 'inland-alley',
   })),
+  ...ALLEY_LAMP_CELLS.map(([x, z]) => ({
+    x0: x - 0.4, x1: x + 0.4,
+    z0: z - 0.4, z1: z + 0.4,
+    tag: 'inland-alley',
+  })),
   ...PARK_RING_CELLS.map(([x, z]) => ({
     x0: x - PARK_RING_TUBE - 0.8, x1: x + PARK_RING_TUBE + 0.8,
     z0: z - PARK_RING_R - PARK_RING_TUBE - 0.8,
@@ -5806,6 +5915,7 @@ export const FLY_VOIDS = [
   ...ROOF_RING_CELLS.map(([x, z], i) => roofRingVoid(roofRingGeom(x, z, `roof-ring-${i}`))),
   ...FIRE_ESCAPE_CELLS.map(([x, z], i) => fireEscapeVoid(
     fireEscapeGeom(x, z), `fire-escape-${i}`)),
+  ...COURT_WELL_CELLS.map(([x, z], i) => courtWellVoid(courtWellGeom(x, z, `court-well-${i}`))),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -5990,6 +6100,10 @@ export function flyColliderShapes() {
   }
   for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
     fireEscapeColliderShapesAt(shapes, fireEscapeGeom(FIRE_ESCAPE_CELLS[i][0], FIRE_ESCAPE_CELLS[i][1]));
+  }
+  for (let i = 0; i < COURT_WELL_CELLS.length; i++) {
+    courtWellColliderShapesAt(shapes, courtWellGeom(
+      COURT_WELL_CELLS[i][0], COURT_WELL_CELLS[i][1], `court-well-${i}`));
   }
   return shapes;
 }

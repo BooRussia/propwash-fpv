@@ -9,11 +9,14 @@ import { fileURLToPath } from 'node:url';
 import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
+  COURT_WELL_CELLS, COURT_WELL_W, COURT_WELL_D, isCourtWellCell,
   leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
   ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DOCK_W, ALLEY_DOCK_D,
+  ALLEY_LAMP_CELLS, ALLEY_LAMP_H, ALLEY_LAMP_R, alleyLampGeom,
   alleySolidHitsWhoop,
+  CITY_Y,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
   ROOF_AC_CELLS, ROOF_RING_CELLS, ROOF_AC_CLEAR, ROOF_AC_H,
@@ -73,16 +76,18 @@ export function runMiamiInlandTests() {
   ok('far Kenney gained midrise_c behind the 60-box LOD',
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
-  ok('ten signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 10
+  ok('signed plates west of 240',
+    INLAND_MIDRISE_CELLS.length === 29
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
-    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length === 2
+    && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
-    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259));
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -250 && z === 152)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 210));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 10);
+  ok('geom count matches cells', plates.length === 29);
   ok('helipad W reserved still signed',
     inHelipadReserved(-430, 100) && helipadOverlap(-430, 101, 44, 54, 0.15));
   for (let i = 0; i < plates.length; i++) {
@@ -98,8 +103,10 @@ export function runMiamiInlandTests() {
   }
 
   ok('four inland alley pipes at z=248',
-    ALLEY_PIPE_CELLS.length === 8
-    && ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4);
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4);
+  ok('five alley pipes between z=210 fill and z=237 skyline',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 223).length === 5
+    && ALLEY_PIPE_CELLS.length === 13);
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 248)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout`, !!v && inKeepout(x, z) && x < 240);
@@ -159,12 +166,44 @@ export function runMiamiInlandTests() {
       && x < 240);
   }
 
+  ok('ten signed alley goosenecks at z=248',
+    ALLEY_LAMP_CELLS.length === 10 && ALLEY_LAMP_H >= 3.6 && ALLEY_LAMP_R <= 0.14
+    && ALLEY_LAMP_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 252)
+    && ALLEY_LAMP_CELLS.filter(([x]) => x < -500).length === 2);
+  ok('inland.js builds alley goosenecks, night head via regDN, no layout rng',
+    inland.includes('ALLEY_LAMP_CELLS') && inland.includes('inland-alley-lamps')
+    && inland.includes('alleySolidHitsWhoop') && inland.includes('0xffd27a')
+    && inland.includes('regDN') && inland.includes('2.4')
+    && !inland.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(inland) && !/\brng3\s*\(/.test(inland)
+    && !/\brng4\s*\(/.test(inland));
+  for (let i = 0; i < ALLEY_LAMP_CELLS.length; i++) {
+    const [x, z] = ALLEY_LAMP_CELLS[i];
+    const g = alleyLampGeom(x, z);
+    ok(`lamp ${x}/${z} misses leftoverLot / street / travel / whoops`,
+      leftoverLotOverlap(x, z, 0.4, 0.4, 0.15) === false
+      && streetOverlap(x, z, 0.4, 0.4) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && alleySolidHitsWhoop(x, z, 0.4, 0.4) === false
+      && x < 240 && g.arm > 0.8
+      && ((z < 248 && g.yaw === 0) || (z > 248 && g.yaw === Math.PI)));
+  }
+
+  ok('five courtyard drop-wells, fly −Y, west of leftoverLot',
+    COURT_WELL_CELLS.length === 5 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+    && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && isCourtWellCell(x, z)
+      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)));
+  ok('inland.js hollows court wells, no layout rng',
+    inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
+    && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
+
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
-  ok('four signed rooftop AC gaps + two billboard rings',
-    ROOF_AC_CELLS.length === 4 && ROOF_RING_CELLS.length === 2
+  ok('signed rooftop AC gaps + two billboard rings',
+    ROOF_AC_CELLS.length === 8 && ROOF_RING_CELLS.length === 2
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
     && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
@@ -209,6 +248,14 @@ export function runMiamiInlandTests() {
       !!v && v.x === x && v.z === z && v.openH >= 2
       && inKeepout(x, z) && !probe(v.x, v.y, v.z, 0.28)
       && leftoverLotOverlap(x, z, 0.8, 2.4, 0.15) === false);
+  }
+  for (let i = 0; i < COURT_WELL_CELLS.length; i++) {
+    const [x, z] = COURT_WELL_CELLS[i];
+    const v = FLY_VOIDS.find((f) => f.id === `court-well-${i}`);
+    ok(`court-well-${i} void + keepout, bay open`,
+      !!v && v.x === x && v.z === z && v.openW >= 5 && v.openH >= 20
+      && inKeepout(x, z) && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false
+      && !probe(x, CITY_Y + 16, z, 0.28));
   }
 
   if (fails.length) {
