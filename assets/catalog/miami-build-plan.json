@@ -645,7 +645,7 @@
     {
       "id": "fill-96",
       "title": "One more inland mid-rise row at z=96 west of convention and east of cinema reserved, leftoverLot unmoved",
-      "status": "in_progress",
+      "status": "done",
       "notes": "5 plates at z=96 on west-of-convention x-grid [-600,-540,-390,-250,-190]; skip [-430,96] helipad W; east of cinema reserved skipped (abando before x=240); leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
