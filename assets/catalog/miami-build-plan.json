@@ -297,7 +297,15 @@
     {
       "id": "gap-315",
       "title": "Inland storefronts on GAP_X=-315 with arcade fly-unders, west of leftoverLot A",
-      "status": "pending"
+      "status": "done",
+      "notes": "nine shops on GAP_X=-315 (4W+5E), arcade ±Z + pass ±X; skip Washington; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/gap315.js",
+        "js/world/miami/index.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/gap315Test.js"
+      ]
     },
     {
       "id": "npc-gap-315",
@@ -340,6 +348,7 @@
     "lincolnWalk": { "z": 120, "cells": [[-250, 120], [96, 120], [136, 120], [190, 120]], "status": "done", "note": "E-W pedestrian mall + fly-under pergolas, west of leftoverLot A; leftoverLot A–H unmoved" },
     "washingtonAve": { "z": 180, "arcadeX": 96, "status": "done", "note": "second N-S street west of Ocean Drive; painted 14 m lanes + parked cars + one fly-under arcade at x=96; west of leftoverLot A; leftoverLot A–H unmoved" },
     "eighthStreet": { "x": -129, "frontX": -137.9, "status": "done", "note": "GAP_X=-129 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nEighth=36" },
+    "gap315": { "x": -315, "frontX": -323.9, "status": "done", "note": "GAP_X=-315 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" },
     "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" }
   },
   "loop": {
