@@ -80,7 +80,7 @@ export function runMiamiInlandTests() {
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
   ok('signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 124
+    INLAND_MIDRISE_CELLS.length === 125
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -122,6 +122,7 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -410 && z === 152)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -370 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -370 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -370 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -350 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -280 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -350 && z === 96)
@@ -144,7 +145,7 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 90 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 190 && z === 210)
-    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 24
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 25
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 12
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -720 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 96)
@@ -169,7 +170,7 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -540 && z === 196));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 124);
+  ok('geom count matches cells', plates.length === 125);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     plates.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && plates.some((g) => g.x === -720 && g.z === 237)
@@ -356,9 +357,9 @@ export function runMiamiInlandTests() {
     && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96/128 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 65
+    INLAND_ARCADE_CELLS.length === 66
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 14
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 15
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 11
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 9
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 21
@@ -416,6 +417,7 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -410 && z === 210)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -410 && z === 152)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -370 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -370 && z === 210)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -350 && z === 210)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -280 && z === 210)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -350 && z === 96)
