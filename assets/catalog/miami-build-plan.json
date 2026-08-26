@@ -484,6 +484,18 @@
       ]
     },
     {
+      "id": "dense-fill",
+      "title": "Pack inland z=152/210 with six-sided mid-rises, courtyard drop-wells, extra Ocean Drive arcades",
+      "status": "done",
+      "notes": "29 mid-rise plates; 5 court wells fly −Y; 5 alley pipes at z=223; 6 city sidewalk arcades; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
+    },
+    {
       "id": "foam-wake",
       "title": "Stronger boat-wake foam stamps on the Biscayne plate, foamGain stays 0, MeshPhysical only",
       "status": "pending"
