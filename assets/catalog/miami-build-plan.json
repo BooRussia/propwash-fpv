@@ -689,6 +689,26 @@
       "id": "roof-96",
       "title": "AC-gap whoops on z=96 plates that miss court wells, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "fill-east96",
+      "title": "z=96 mid-rises east of cinema reserved (x 210) still west of leftoverLot A",
+      "status": "pending"
+    },
+    {
+      "id": "alley-181",
+      "title": "Alley-pipe whoops at z=181 between z=152 and Washington if they miss WASH reserved",
+      "status": "pending"
+    },
+    {
+      "id": "npc-sit-96",
+      "title": "Sitters under z=96 inland arcades, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "hotel-canopy",
+      "title": "Fly-under canopies on Winterhaven and Breakwater porches, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
