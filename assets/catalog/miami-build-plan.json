@@ -1455,8 +1455,14 @@
     {
       "id": "alley-248-west",
       "title": "Alley-pipe whoops at z=248 on x=-720/-600, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "missing skyline-pair alleys; fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-720,-600]@248 skyline-pair alleys; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

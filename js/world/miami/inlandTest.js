@@ -204,7 +204,7 @@ export function runMiamiInlandTests() {
   }
 
   ok('fifteen inland alley pipes at z=248',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 28);
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 30);
   ok('thirty alley pipes between z=210 fill and z=237 skyline',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 223).length === 30
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 223)
@@ -250,7 +250,9 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -690 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -630 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 248)
-    && ALLEY_PIPE_CELLS.length === 69);
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 248)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 248)
+    && ALLEY_PIPE_CELLS.length === 71);
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 181)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
