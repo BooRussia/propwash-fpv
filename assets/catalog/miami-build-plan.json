@@ -206,6 +206,26 @@
       "id": "marina-fill",
       "title": "More marina dock dressing and swimmers near the fingers, hash01, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "npc-eighth",
+      "title": "Visual crowd on 8th-street sidewalks, hash01, no colliders, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "night-neon",
+      "title": "Extra neon outlines on Ocean Drive hotels and cinema blade, dayNight only, no rng",
+      "status": "pending"
+    },
+    {
+      "id": "collins-west",
+      "title": "Two more deco hotels west of Colony on FRONT_Z=57.6, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "pier-rings",
+      "title": "Two more pier-bay rings seaward of the existing extra bays, pylon count stays 10",
+      "status": "pending"
     }
   ],
   "landmarks": {
