@@ -558,6 +558,151 @@ export function lincolnWalkRuns() {
   }));
 }
 
+// ---- Washington Ave analogue (z=180): second N-S street west of Ocean Drive ----
+// Parallel to Ocean Drive / the facade plane, inland of Lincoln (z=120) and
+// convention z1=166. Painted 14 m carriageway (park + travel + travel + park),
+// parked cars on the shoulders, one fly-under sidewalk arcade. West of
+// leftoverLot A (x>=251). New RESERVED west of x=240. Miss GAP_X columns,
+// fifth/espa plates, lincoln, inland midrises z=237, leftoverLot A–H, Ocean
+// Drive travel 40.2–47.8. hash01 never drawn at const-eval. Collider is
+// curb / car hull / arcade jamb, never a filled travel bay.
+export const WASH_Z = 180;
+export const WASH_VISUAL_W = 14;
+export const WASH_HALF = 7;
+export const WASH_Z0 = 173;
+export const WASH_Z1 = 187;
+export const WASH_TRAVEL_Z0 = 176.2;
+export const WASH_TRAVEL_Z1 = 183.8;
+export const WASH_PARK_OCEAN_Z = 174.45;
+export const WASH_PARK_INLAND_Z = 185.55;
+export const WASH_SW_OCEAN_Z0 = 169.95;
+export const WASH_SW_OCEAN_Z1 = 171.85;
+export const WASH_SW_INLAND_Z0 = 188.05;
+export const WASH_SW_INLAND_Z1 = 189.85;
+export const WASH_SW_OCEAN_Z = 170.9;
+export const WASH_SW_INLAND_Z = 188.95;
+export const WASH_CURB_OCEAN_Z0 = 172.64;
+export const WASH_CURB_OCEAN_Z1 = 173.02;
+export const WASH_CURB_INLAND_Z0 = 186.98;
+export const WASH_CURB_INLAND_Z1 = 187.36;
+export const WASH_X0 = -480;
+export const WASH_X1 = 228;
+export const WASH_RUN_XS = Object.freeze([
+  [-480, -321.5],
+  [-308.5, -135.5],
+  [-122.5, 50.5],
+  [63.5, 228],
+]);
+export const WASH_ARCADE_X = 96;
+export const WASH_ARCADE_Z = WASH_SW_OCEAN_Z;
+export const WASH_ARCADE_HALF_X = SW_ARCADE_HALF_X;
+export const WASH_ARCADE_HALF_Z = SW_ARCADE_HALF_Z;
+export const WASH_ARCADE_POST_R = SW_ARCADE_POST_R;
+export const WASH_ARCADE_POST_H = SW_ARCADE_POST_H;
+export const WASH_ARCADE_BEAM_H = SW_ARCADE_BEAM_H;
+export const WASH_ARCADE_BEAM_W = SW_ARCADE_BEAM_W;
+export const WASH_CAR_SX = 4.70;
+export const WASH_CAR_SY = 1.50;
+export const WASH_CAR_SZ = 1.90;
+export const WASH_CAR_CELLS = Object.freeze([
+  [-400, -1], [-360, 1], [-220, -1], [-180, 1],
+  [-80, -1], [-40, 1], [20, -1], [80, 1],
+  [120, -1], [160, 1], [200, -1], [210, 1],
+]);
+
+/** Washington carriageway runs. Signed cuts at GAP_X. Never remaps x/z. West of 240. */
+export function washingtonRuns() {
+  const out = [];
+  for (let i = 0; i < WASH_RUN_XS.length; i++) {
+    const x0 = WASH_RUN_XS[i][0], x1 = WASH_RUN_XS[i][1];
+    out.push({
+      id: `washington-run-${i}`,
+      x0, x1, x: (x0 + x1) / 2,
+      z: WASH_Z, z0: WASH_Z0, z1: WASH_Z1,
+      w: x1 - x0, d: WASH_VISUAL_W, tag: 'washington',
+    });
+  }
+  return out;
+}
+
+/** One parked hull on a Washington shoulder. side −1 ocean / +1 inland. */
+export function washingtonCarGeom(x, side, id) {
+  const z = side < 0 ? WASH_PARK_OCEAN_Z : WASH_PARK_INLAND_Z;
+  return {
+    id, x, z, side,
+    rotY: side < 0 ? 0 : Math.PI,
+    sx: WASH_CAR_SX, sy: WASH_CAR_SY, sz: WASH_CAR_SZ,
+    x0: x - WASH_CAR_SX / 2, x1: x + WASH_CAR_SX / 2,
+    z0: z - WASH_CAR_SZ / 2, z1: z + WASH_CAR_SZ / 2,
+    tag: 'washington',
+  };
+}
+
+export function washingtonCars() {
+  const out = [];
+  for (let i = 0; i < WASH_CAR_CELLS.length; i++) {
+    const [x, side] = WASH_CAR_CELLS[i];
+    out.push(washingtonCarGeom(x, side, `washington-car-${i}`));
+  }
+  return out;
+}
+
+/** One fly-under sidewalk arcade on the ocean walk. Fly +X. Opening is empty air. */
+export function washingtonArcadeGeom(cx = WASH_ARCADE_X, cz = WASH_ARCADE_Z) {
+  const y0 = CITY_Y + SW_H;
+  const halfX = WASH_ARCADE_HALF_X;
+  const halfZ = WASH_ARCADE_HALF_Z;
+  const postR = WASH_ARCADE_POST_R;
+  const postH = WASH_ARCADE_POST_H;
+  return {
+    x: cx, z: cz, y0,
+    halfX, halfZ, postR, postH,
+    beamH: WASH_ARCADE_BEAM_H, beamW: WASH_ARCADE_BEAM_W,
+    spanX: halfX * 2, spanZ: halfZ * 2,
+    x0: cx - halfX, x1: cx + halfX,
+    z0: cz - halfZ, z1: cz + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'washington',
+  };
+}
+
+export function washingtonArcadeVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - g.halfX + g.postR + 0.08,
+    x1: g.x + g.halfX - g.postR - 0.08,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+/** True when (x,z) sits on a Washington carriageway run. West of leftoverLot A. */
+export function onWashingtonRoad(x, z) {
+  if (x >= 240) return false;
+  if (z < WASH_Z0 || z > WASH_Z1) return false;
+  for (let i = 0; i < WASH_RUN_XS.length; i++) {
+    if (x >= WASH_RUN_XS[i][0] && x <= WASH_RUN_XS[i][1]) return true;
+  }
+  return false;
+}
+
+/** True when (x,z) sits on a Washington sidewalk run. West of leftoverLot A. */
+export function onWashingtonWalk(x, z) {
+  if (x >= 240) return false;
+  const onOcean = z >= WASH_SW_OCEAN_Z0 && z <= WASH_SW_OCEAN_Z1;
+  const onInland = z >= WASH_SW_INLAND_Z0 && z <= WASH_SW_INLAND_Z1;
+  if (!onOcean && !onInland) return false;
+  for (let i = 0; i < WASH_RUN_XS.length; i++) {
+    if (x >= WASH_RUN_XS[i][0] && x <= WASH_RUN_XS[i][1]) return true;
+  }
+  return false;
+}
+
 // ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
 // Vacant city parcel east of the cinema, west of GAP 243. Not a street
 // and not the boardwalk. Scatter still uses tryPlace — this reservation
@@ -3671,6 +3816,18 @@ export const RESERVED = [
     z0: g.z0 - 1.5, z1: g.z1 + 1.4,
     tag: 'lincoln',
   })),
+  ...washingtonRuns().map((g) => ({
+    x0: g.x0 - 2.2, x1: Math.min(g.x1 + 1.8, 240),
+    z0: WASH_SW_OCEAN_Z0 - 1.5, z1: WASH_SW_INLAND_Z1 + 1.4,
+    tag: 'washington',
+  })),
+  {
+    x0: WASH_ARCADE_X - WASH_ARCADE_HALF_X - 0.8,
+    x1: WASH_ARCADE_X + WASH_ARCADE_HALF_X + 0.8,
+    z0: WASH_ARCADE_Z - WASH_ARCADE_HALF_Z - 0.8,
+    z1: WASH_ARCADE_Z + WASH_ARCADE_HALF_Z + 0.8,
+    tag: 'washington',
+  },
 ];
 
 export function inReserved(x, z) {
@@ -3716,6 +3873,11 @@ export function streetOverlap(x, z, w, d, margin = 0.15) {
     const gx0 = GAP_X[i] - XS_HALF, gx1 = GAP_X[i] + XS_HALF;
     const ox = Math.min(x1, gx1) - Math.max(x0, gx0);
     if (ox > margin) return true;
+  }
+  const ozWash = Math.min(z1, WASH_Z1) - Math.max(z0, WASH_Z0);
+  if (ozWash > margin) {
+    const oxWash = Math.min(x1, Math.min(WASH_X1, 240)) - Math.max(x0, WASH_X0);
+    if (oxWash > margin) return true;
   }
   return false;
 }
@@ -4608,6 +4770,13 @@ export const KEEPOUT = [
     z0: g.z - g.halfZ - 0.8, z1: g.z + g.halfZ + 0.8,
     tag: 'lincoln',
   })),
+  {
+    x0: WASH_ARCADE_X - WASH_ARCADE_HALF_X - 0.8,
+    x1: WASH_ARCADE_X + WASH_ARCADE_HALF_X + 0.8,
+    z0: WASH_ARCADE_Z - WASH_ARCADE_HALF_Z - 0.8,
+    z1: WASH_ARCADE_Z + WASH_ARCADE_HALF_Z + 0.8,
+    tag: 'washington',
+  },
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4706,7 +4875,7 @@ export function onLincolnWalk(x, z) {
 export function onPavement(x, z) {
   return onRoadway(z) || onCurb(z) || onSidewalk(x, z)
       || onBoardwalk(x, z) || onCrossStreet(x, z) || onLummusWalk(x, z)
-      || onLincolnWalk(x, z);
+      || onLincolnWalk(x, z) || onWashingtonRoad(x, z) || onWashingtonWalk(x, z);
 }
 
 /**
@@ -4881,6 +5050,7 @@ export const FLY_VOIDS = [
   ...espaShops().flatMap((g) => [espaArcadeVoid(g), espaPassVoid(g)]),
   ...lincolnShops().flatMap((g) => [lincolnArcadeVoid(g), lincolnPassVoid(g)]),
   ...lincolnPergolas().map((g, i) => lincolnPergolaVoid(g, `lincoln-pergola-${i}`)),
+  washingtonArcadeVoid(washingtonArcadeGeom(), 'washington-arcade'),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -5020,7 +5190,41 @@ export function flyColliderShapes() {
   for (let i = 0; i < pergolas.length; i++) {
     lincolnPergolaColliderShapesAt(shapes, pergolas[i]);
   }
+  washingtonArcadeColliderShapesAt(shapes, washingtonArcadeGeom());
   return shapes;
+}
+
+function washingtonArcadeColliderShapesAt(shapes, g) {
+  const tag = g.tag || 'washington';
+  for (const dx of [-g.halfX, g.halfX]) {
+    for (const dz of [-g.halfZ, g.halfZ]) {
+      shapes.push({
+        type: 'cyl', tag,
+        x: g.x + dx, z: g.z + dz, r: g.postR,
+        y0: g.y0, h: g.postH,
+      });
+    }
+  }
+  const beamY = g.y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'aabb', tag,
+      x: g.x, z: g.z + dz, sx: g.spanX + g.beamW, sz: g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  for (const dx of [-g.halfX, g.halfX]) {
+    shapes.push({
+      type: 'aabb', tag,
+      x: g.x + dx, z: g.z, sx: g.beamW, sz: g.spanZ + g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag,
+    x: g.x, z: g.z, sx: g.spanX + 1.0, sz: g.spanZ + 0.8,
+    y0: beamY + g.beamH, sy: 0.12,
+  });
 }
 
 function lincolnShopColliderShapesAt(shapes, g) {

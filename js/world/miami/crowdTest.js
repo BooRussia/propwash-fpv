@@ -36,6 +36,9 @@ import {
   LINCOLN_S_CELLS, LINCOLN_N_CELLS, LINCOLN_PERGOLA_CELLS, LINCOLN_WALK_RUNS,
   LINCOLN_SOFFIT, LINCOLN_PASS_W, LINCOLN_PASS_H, LINCOLN_PERGOLA_POST_H,
   lincolnShops, lincolnPergolas, onLincolnWalk,
+  WASH_Z, WASH_HALF, WASH_X1, WASH_ARCADE_X, WASH_ARCADE_Z, WASH_ARCADE_POST_H,
+  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1, WASH_PARK_OCEAN_Z, WASH_PARK_INLAND_Z,
+  washingtonRuns, washingtonCars, washingtonArcadeGeom, onWashingtonRoad,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +97,7 @@ export function runMiamiCrowdTests() {
   const espaPath = join(here, 'landmarks/espa.js');
   const inlandPath = join(here, 'landmarks/inland.js');
   const lincolnPath = join(here, 'landmarks/lincoln.js');
+  const washingtonPath = join(here, 'landmarks/washington.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -106,6 +110,7 @@ export function runMiamiCrowdTests() {
   const espa = existsSync(espaPath) ? readFileSync(espaPath, 'utf8') : '';
   const inland = existsSync(inlandPath) ? readFileSync(inlandPath, 'utf8') : '';
   const lincoln = existsSync(lincolnPath) ? readFileSync(lincolnPath, 'utf8') : '';
+  const washington = existsSync(washingtonPath) ? readFileSync(washingtonPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -627,6 +632,49 @@ export function runMiamiCrowdTests() {
     && !onLincolnWalk(258, LINCOLN_Z)
     && leftoverLotOverlap(96, LINCOLN_Z, 2, 2, 0.15) === false);
   ok('leftoverLot A–H still signed after Lincoln mall',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('washington.js exists', existsSync(washingtonPath));
+  ok('index builds Washington Ave after Lincoln mall',
+    index.includes("from './landmarks/washington.js'")
+    && index.includes('buildWashington(ctx)')
+    && index.indexOf('buildWashington(ctx)') > index.indexOf('buildLincoln(ctx)')
+    && index.indexOf('buildWashington(ctx)') < index.indexOf('buildFlythrough(ctx)'));
+  ok('Washington Ave is z=180, west of leftoverLot A',
+    WASH_Z === 180 && WASH_HALF === 7 && WASH_X1 < 240
+    && WASH_ARCADE_X === 96 && WASH_ARCADE_X < 240
+    && WASH_TRAVEL_Z0 > TRAVEL_Z1);
+  ok('Washington arcade soffit is flyable',
+    WASH_ARCADE_POST_H >= 3.2 && WASH_ARCADE_Z === washingtonArcadeGeom().z);
+  ok('washington does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(washington) && !/\brng3\s*\(/.test(washington)
+    && !/\brng4\s*\(/.test(washington) && washington.includes('hash01')
+    && !washington.includes('ShaderMaterial')
+    && !washington.includes('ped.js') && !washington.includes('traffic.js')
+    && washington.includes('installFlyColliders'));
+  ok('crowd walks Washington sidewalks',
+    crowd.includes("kind: 'washington'") && crowd.includes('WASH_WALK_Z_OCEAN')
+    && crowd.includes('const nWashington = 16')
+    && !crowd.includes('addCollider'));
+
+  const washRuns = washingtonRuns();
+  ok('four signed Washington runs west of 240',
+    washRuns.length === 4 && washRuns.every((r) => r.x1 < 240 && r.z === WASH_Z)
+    && onWashingtonRoad(96, WASH_Z));
+  const washCars = washingtonCars();
+  ok('twelve signed Washington parked cars on shoulders',
+    washCars.length === 12
+    && washCars.every((c) => c.x1 < 240
+      && (c.z === WASH_PARK_OCEAN_Z || c.z === WASH_PARK_INLAND_Z)
+      && !(c.z > WASH_TRAVEL_Z0 && c.z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(c.x, c.z, c.sx, c.sz, 0.15) === false));
+  const washArcade = FLY_VOIDS.find((f) => f.id === 'washington-arcade');
+  ok('washington-arcade listed + open',
+    !!washArcade && washArcade.z === WASH_ARCADE_Z && washArcade.openH >= 2
+    && !!inKeepout(WASH_ARCADE_X, WASH_ARCADE_Z)
+    && !probeBlocked(kit, washArcade.x, washArcade.y, washArcade.z, 0.28));
+  ok('leftoverLot A–H still signed after Washington Ave',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

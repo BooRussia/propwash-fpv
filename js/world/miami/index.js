@@ -44,6 +44,7 @@ import { buildFifth } from './landmarks/fifth.js';
 import { buildEspa } from './landmarks/espa.js';
 import { buildInland } from './landmarks/inland.js';
 import { buildLincoln } from './landmarks/lincoln.js';
+import { buildWashington } from './landmarks/washington.js';
 import { buildLummus } from './landmarks/lummus.js';
 import { buildVolleyball } from './landmarks/volleyball.js';
 import { buildCinema } from './landmarks/cinema.js';
@@ -232,6 +233,7 @@ export async function buildMiami(scene, env) {
   buildEspa(ctx);
   buildInland(ctx);
   buildLincoln(ctx);
+  buildWashington(ctx);
   buildLummus(ctx);
   buildVolleyball(ctx);
   buildCinema(ctx);
