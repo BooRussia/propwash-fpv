@@ -445,7 +445,7 @@ export function runMiamiInlandTests() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('skyline pairs at x=-350/-280 miss GAP_X=-315',
-    [[-350, 237], [-350, 259], [-280, 237], [-280, 259]].every(([x, z]) =>
+    [[-350, 237], [-350, 259], [-280, 237], [-280, 259], [-350, 210], [-280, 210]].every(([x, z]) =>
       INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
       && streetOverlap(x, z, 18, 14) === false
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
@@ -454,6 +454,7 @@ export function runMiamiInlandTests() {
     && (-350 + INLAND_MIDRISE_W / 2) < (-315 - 6.5)
     && (-280 - INLAND_MIDRISE_W / 2) > (-315 + 6.5)
     && isInlandArcadeCell(-350, 237) && isInlandArcadeCell(-280, 237)
+    && isInlandArcadeCell(-350, 210) && isInlandArcadeCell(-280, 210)
     && !isInlandArcadeCell(-350, 259) && !isInlandArcadeCell(-280, 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -350 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -280 && z === 259)

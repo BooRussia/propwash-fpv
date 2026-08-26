@@ -949,6 +949,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
   // [130,210]/[190,210] fill z=210 east holes (reservedOverlap false, west of leftoverLot A / x=240).
+  // [-350,210]/[-280,210] continue city-skyline columns; miss GAP_X=-315 (plate x1=-341 / x0=-289).
   [-720, 152], [-660, 152], [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-350, 152], [-250, 152],
   [-220, 152], [-190, 152], [-160, 152], [90, 152], [110, 152], [130, 152], [160, 152], [190, 152], [210, 152],
   [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-350, 210], [-280, 210], [-250, 210],
