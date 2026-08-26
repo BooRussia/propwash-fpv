@@ -377,6 +377,26 @@
       "id": "skyline-west",
       "title": "Two more six-sided inland mid-rises west of x=-430 if they miss helipad W, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "npc-gap-501",
+      "title": "Visual crowd on GAP_X=-501 sidewalks if that street was built, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "lifeguard-fill",
+      "title": "Sitters at the lifeguard towers plus extra rings on the stands, hash01, no rng",
+      "status": "pending"
+    },
+    {
+      "id": "crosswalk-props",
+      "title": "Signed ped-signal extras and flex posts at CROSS_X, never in travel lanes 40.2–47.8",
+      "status": "pending"
+    },
+    {
+      "id": "night-windows",
+      "title": "Warm window emissives on inland mid-rises after dusk via regDN, no ShaderMaterial",
+      "status": "pending"
     }
   ],
   "landmarks": {
