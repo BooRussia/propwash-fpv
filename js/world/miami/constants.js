@@ -1349,6 +1349,9 @@ export const ROOF_RING_CELLS = Object.freeze([
   // Remaining z=210 arcade plates that miss court wells and roof-AC.
   // Fly +X. leftoverLot A–H unmoved.
   [-720, 210], [-690, 210], [-630, 210], [-570, 210], [-455, 210],
+  // Last z=210 arcade plates that miss court wells and roof-AC.
+  // Fly +X. leftoverLot A–H unmoved.
+  [-410, 210], [-370, 210], [-280, 210], [-220, 210],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;

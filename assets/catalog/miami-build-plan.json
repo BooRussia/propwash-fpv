@@ -1714,6 +1714,17 @@
         "js/world/miami/inlandTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "roof-rings-210-col",
+      "title": "Billboard rings on remaining z=210 west columns that miss court wells and AC gaps, leftoverLot unmoved",
+      "status": "done",
+      "notes": "rings at [-410,-370,-280,-220]@210; miss court wells and roof-AC; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
