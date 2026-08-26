@@ -562,7 +562,7 @@
     {
       "id": "court-more",
       "title": "Two more courtyard drop-wells on remaining z=152/210 plates, fly −Y, leftoverLot unmoved",
-      "status": "done",
+      "status": "in_progress",
       "notes": "wells at -390/152 and 210/210; miss roof-AC cells and leftoverLot A–H; fly −Y jambs only",
       "files": [
         "js/world/miami/constants.js",
@@ -574,7 +574,15 @@
     {
       "id": "arcade-inland",
       "title": "Ground-floor fly-through arcades on z=210 mid-rises, jambs only, hash01",
-      "status": "pending"
+      "status": "done",
+      "notes": "4 INLAND_ARCADE_CELLS on z=210 plates that miss court wells; jambs+soffit, fly ±Z; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-inland-2",

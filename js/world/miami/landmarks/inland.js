@@ -8,6 +8,7 @@ import {
   ROOF_AC_CELLS, ROOF_RING_CELLS,
   roofAcGapGeom, roofRingGeom, installFlyColliders,
   isCourtWellCell, COURT_WELL_W, COURT_WELL_D,
+  isInlandArcadeCell, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
   ALLEY_DUMP_W, ALLEY_DUMP_D, ALLEY_DUMP_H,
   ALLEY_DOCK_W, ALLEY_DOCK_D, ALLEY_DOCK_H,
@@ -114,6 +115,33 @@ export function buildInland(ctx) {
         lid.castShadow = true;
         group.add(lid);
         addCollider(s.x, CITY_Y, s.z, s.w, g.h, s.d);
+        kit.soffit.dispose();
+        kit.cornice.dispose();
+      }
+    } else if (isInlandArcadeCell(g.x, g.z)) {
+      const soffit = INLAND_ARCADE_SOFFIT;
+      const openW = INLAND_ARCADE_OPEN_W;
+      const jambW = (g.w - openW) / 2;
+      const uh = g.h - soffit;
+      const masses = [
+        { x: g.x - (openW / 2 + jambW / 2), z: g.z, w: jambW, d: g.d, h: soffit, y0: CITY_Y },
+        { x: g.x + (openW / 2 + jambW / 2), z: g.z, w: jambW, d: g.d, h: soffit, y0: CITY_Y },
+        { x: g.x, z: g.z, w: g.w, d: g.d, h: uh, y0: CITY_Y + soffit },
+      ];
+      for (let m = 0; m < masses.length; m++) {
+        const s = masses[m];
+        const kit = buildDecoMidriseGeos(s.w, s.h, s.d, DECO_TILE_U, DECO_TILE_V, offU, offV);
+        setAoUVs(kit.walls);
+        const yC = s.y0 + s.h / 2;
+        const walls = new THREE.Mesh(track(kit.walls), wallMat);
+        walls.position.set(s.x, yC, s.z);
+        walls.castShadow = true;
+        group.add(walls);
+        const lid = new THREE.Mesh(track(kit.roof), tileRoofMat);
+        lid.position.set(s.x, yC, s.z);
+        lid.castShadow = true;
+        group.add(lid);
+        addCollider(s.x, s.y0, s.z, s.w, s.h, s.d);
         kit.soffit.dispose();
         kit.cornice.dispose();
       }

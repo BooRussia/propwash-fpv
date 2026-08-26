@@ -10,6 +10,7 @@ import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
   COURT_WELL_CELLS, COURT_WELL_W, COURT_WELL_D, isCourtWellCell,
+  INLAND_ARCADE_CELLS, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W, isInlandArcadeCell, courtWellGeom,
   leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS,
@@ -192,12 +193,25 @@ export function runMiamiInlandTests() {
   ok('seven courtyard drop-wells, fly −Y, west of leftoverLot',
     COURT_WELL_CELLS.length === 7 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && (z === 152 || z === 210)
       && isCourtWellCell(x, z)
-      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z))
+      && courtWellGeom(x, z, 't').fly === '-Y'
+      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
+      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z))
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210));
   ok('inland.js hollows court wells, no layout rng',
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
+    && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
+  ok('four z=210 ground-floor arcades, fly ±Z, jambs only',
+    INLAND_ARCADE_CELLS.length === 4
+    && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
+    && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && z === 210
+      && isInlandArcadeCell(x, z)
+      && !isCourtWellCell(x, z)
+      && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
+      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z))
+    && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_SOFFIT')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
 
   ok('leftoverLot A–H unmoved',
@@ -257,7 +271,17 @@ export function runMiamiInlandTests() {
     ok(`court-well-${i} void + keepout, bay open`,
       !!v && v.x === x && v.z === z && v.openW >= 5 && v.openH >= 20
       && inKeepout(x, z) && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false
+      && courtWellGeom(x, z, v.id).fly === '-Y'
       && !probe(x, CITY_Y + 16, z, 0.28));
+  }
+  for (let i = 0; i < INLAND_ARCADE_CELLS.length; i++) {
+    const [x, z] = INLAND_ARCADE_CELLS[i];
+    const v = FLY_VOIDS.find((f) => f.id === `inland-arcade-${i}`);
+    ok(`inland-arcade-${i} void + keepout, bay open`,
+      !!v && v.x === x && v.z === z && v.openW >= 3.5 && v.openH >= 3
+      && inKeepout(x, z) && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false
+      && !probe(v.x, v.y, v.z, 0.28)
+      && !isCourtWellCell(x, z));
   }
 
   if (fails.length) {

@@ -891,7 +891,8 @@ export function inlandMidrises() {
 }
 
 // Courtyard drop-wells: open air through the plate. Fly −Y. Jambs are the
-// four wall masses, never a box in the well. leftoverLot A–H unmoved.
+// four wall masses, never a box in the well. Extra pair on remaining z=152/210
+// plates that miss roof-AC whoops. leftoverLot A–H unmoved.
 export const COURT_WELL_W = 6.2;
 export const COURT_WELL_D = 6.2;
 export const COURT_WELL_CELLS = Object.freeze([
@@ -954,6 +955,70 @@ export function courtWellColliderShapesAt(shapes, g) {
     type: 'aabb', tag: 'court-well',
     x: g.x, z: g.z + (g.d / 2 + frontD / 2),
     sx: g.w, sz: frontD, y0, sy: h,
+  });
+}
+
+// Ground-floor fly-through arcades on z=210 mid-rises. Jambs + soffit
+// only, never a box in the bay. Fly ±Z. Miss court wells. West of x=240.
+// leftoverLot A–H unmoved. hash01 never at const-eval.
+export const INLAND_ARCADE_SOFFIT = 3.40;
+export const INLAND_ARCADE_OPEN_W = 4.40;
+export const INLAND_ARCADE_CELLS = Object.freeze([
+  [-540, 210], [-250, 210], [-80, 210], [90, 210],
+]);
+
+export function isInlandArcadeCell(x, z) {
+  for (let i = 0; i < INLAND_ARCADE_CELLS.length; i++) {
+    if (INLAND_ARCADE_CELLS[i][0] === x && INLAND_ARCADE_CELLS[i][1] === z) return true;
+  }
+  return false;
+}
+
+export function inlandArcadeGeom(x, z, id) {
+  const plate = inlandMidriseGeom(x, z, id);
+  const soffit = INLAND_ARCADE_SOFFIT;
+  const openW = INLAND_ARCADE_OPEN_W;
+  const jambW = (plate.w - openW) / 2;
+  return {
+    id, x, z,
+    w: plate.w, d: plate.d, h: plate.h,
+    x0: x - openW / 2, x1: x + openW / 2,
+    z0: plate.z0, z1: plate.z1,
+    y0: CITY_Y, y1: CITY_Y + soffit,
+    soffit, openW, openH: soffit, jambW,
+    fly: '±Z', tag: 'inland-arcade',
+  };
+}
+
+export function inlandArcadeVoid(g) {
+  return {
+    id: g.id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.soffit * 0.48,
+    x0: g.x0 + 0.12, x1: g.x1 - 0.12,
+    z0: g.z0 + 0.08, z1: g.z1 - 0.08,
+    y0: g.y0 + 0.08, y1: g.y1 - 0.06,
+    openW: g.openW - 0.4, openH: g.openH,
+  };
+}
+
+export function inlandArcadeColliderShapesAt(shapes, g) {
+  const plate = inlandMidriseGeom(g.x, g.z, g.id);
+  const jambW = g.jambW;
+  const soffit = g.soffit;
+  shapes.push({
+    type: 'aabb', tag: 'inland-arcade',
+    x: g.x - (g.openW / 2 + jambW / 2), z: g.z,
+    sx: jambW, sz: plate.d, y0: CITY_Y, sy: soffit,
+  });
+  shapes.push({
+    type: 'aabb', tag: 'inland-arcade',
+    x: g.x + (g.openW / 2 + jambW / 2), z: g.z,
+    sx: jambW, sz: plate.d, y0: CITY_Y, sy: soffit,
+  });
+  shapes.push({
+    type: 'aabb', tag: 'inland-arcade',
+    x: g.x, z: g.z,
+    sx: plate.w, sz: plate.d, y0: CITY_Y + soffit, sy: plate.h - soffit,
   });
 }
 
@@ -5949,6 +6014,8 @@ export const FLY_VOIDS = [
   ...FIRE_ESCAPE_CELLS.map(([x, z], i) => fireEscapeVoid(
     fireEscapeGeom(x, z), `fire-escape-${i}`)),
   ...COURT_WELL_CELLS.map(([x, z], i) => courtWellVoid(courtWellGeom(x, z, `court-well-${i}`))),
+  ...INLAND_ARCADE_CELLS.map(([x, z], i) => inlandArcadeVoid(
+    inlandArcadeGeom(x, z, `inland-arcade-${i}`))),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -6137,6 +6204,10 @@ export function flyColliderShapes() {
   for (let i = 0; i < COURT_WELL_CELLS.length; i++) {
     courtWellColliderShapesAt(shapes, courtWellGeom(
       COURT_WELL_CELLS[i][0], COURT_WELL_CELLS[i][1], `court-well-${i}`));
+  }
+  for (let i = 0; i < INLAND_ARCADE_CELLS.length; i++) {
+    inlandArcadeColliderShapesAt(shapes, inlandArcadeGeom(
+      INLAND_ARCADE_CELLS[i][0], INLAND_ARCADE_CELLS[i][1], `inland-arcade-${i}`));
   }
   return shapes;
 }
