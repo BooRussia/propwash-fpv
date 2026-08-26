@@ -1407,8 +1407,14 @@
     {
       "id": "alley-223-mid",
       "title": "Alley-pipe whoops at z=223 on x=-390/-220/-190/-160, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "between z=210 and z=237; fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-390,-220,-190,-160]@223 between z=210 and z=237; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
