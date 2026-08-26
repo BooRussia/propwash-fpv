@@ -1339,6 +1339,9 @@ export const ROOF_AC_CELLS = Object.freeze([
   // Last z=152 arcade plates that miss court wells. Fly +X.
   // leftoverLot A–H unmoved.
   [-280, 152], [-370, 152], [-455, 152], [-410, 152], [160, 152], [110, 152],
+  // z=128 arcade plates that miss court wells. Fly +X.
+  // leftoverLot A–H unmoved.
+  [-660, 128], [-540, 128], [-390, 128], [210, 128], [-690, 128],
 ]);
 export const ROOF_RING_CELLS = Object.freeze([
   [-80, 259], [100, 259],
