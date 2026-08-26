@@ -253,6 +253,26 @@
       "id": "pier-rings",
       "title": "Two more pier-bay rings seaward of the existing extra bays, pylon count stays 10",
       "status": "pending"
+    },
+    {
+      "id": "npc-collins",
+      "title": "Visual sidewalk crowd in front of Avalon/Majestic/Colony, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "alley-dumpsters",
+      "title": "Signed dumpsters and loading docks on inland alleys at z=248, hash01, not in pipe/fire-escape bays",
+      "status": "pending"
+    },
+    {
+      "id": "lummus-fill",
+      "title": "More Lummus benches, drinkers, and walkers under the pergola, hash01, no rng",
+      "status": "pending"
+    },
+    {
+      "id": "gap-315",
+      "title": "Inland storefronts on GAP_X=-315 with arcade fly-unders, west of leftoverLot A",
+      "status": "pending"
     }
   ],
   "landmarks": {
