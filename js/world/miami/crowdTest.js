@@ -28,6 +28,8 @@ import {
   CITY_Y,
   FIFTH_X, FIFTH_W_CELLS, FIFTH_E_CELLS, FIFTH_W_FRONT_X, FIFTH_E_FRONT_X,
   FIFTH_SOFFIT, FIFTH_PASS_W, FIFTH_PASS_H, fifthShops,
+  ESPA_X, ESPA_W_CELLS, ESPA_W_FRONT_X, ESPA_SOFFIT, ESPA_PASS_W, ESPA_PASS_H,
+  ESPA_D, espaShops, CINEMA_X, CINEMA_W, MARINA_X,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -83,6 +85,7 @@ export function runMiamiCrowdTests() {
   const indexPath = join(here, 'index.js');
   const flyPath = join(here, 'landmarks/flythrough.js');
   const fifthPath = join(here, 'landmarks/fifth.js');
+  const espaPath = join(here, 'landmarks/espa.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -92,6 +95,7 @@ export function runMiamiCrowdTests() {
   const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
   const fly = existsSync(flyPath) ? readFileSync(flyPath, 'utf8') : '';
   const fifth = existsSync(fifthPath) ? readFileSync(fifthPath, 'utf8') : '';
+  const espa = existsSync(espaPath) ? readFileSync(espaPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -437,6 +441,59 @@ export function runMiamiCrowdTests() {
     }
   }
   ok('leftoverLot A–H still signed after 5th-street',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+
+  ok('espa.js exists', existsSync(espaPath));
+  ok('index builds Espanola storefronts after 5th-street',
+    index.includes("from './landmarks/espa.js'")
+    && index.includes('buildEspa(ctx)')
+    && index.indexOf('buildEspa(ctx)') > index.indexOf('buildFifth(ctx)'));
+  ok('Espanola is GAP_X=243 west face, west of x=240',
+    ESPA_X === 243 && ESPA_W_FRONT_X < ESPA_X
+    && ESPA_W_FRONT_X + ESPA_D === ESPA_X - 6.5 - 2.4 + ESPA_D
+    && ESPA_W_FRONT_X < 240);
+  ok('Espanola sits east of cinema toward marina',
+    ESPA_X > CINEMA_X && ESPA_X < MARINA_X
+    && ESPA_W_FRONT_X > CINEMA_X + 20);
+  ok('Espanola cells are signed inland of Ocean Drive',
+    ESPA_W_CELLS.length === 3
+    && ESPA_W_CELLS.every(([, len]) => len >= 8)
+    && ESPA_W_CELLS[0][0] === 114 && ESPA_W_CELLS[0][1] === 16);
+  ok('Espanola soffit and passage are flyable',
+    ESPA_SOFFIT >= 3.2 && ESPA_PASS_W >= 2.0 && ESPA_PASS_H >= 2.0);
+  ok('espa does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(espa) && !/\brng3\s*\(/.test(espa)
+    && !/\brng4\s*\(/.test(espa) && !espa.includes('ShaderMaterial')
+    && !espa.includes('ped.js') && !espa.includes('traffic.js')
+    && espa.includes('installFlyColliders'));
+
+  const espaList = espaShops();
+  ok('three signed Espanola west-face shops', espaList.length === 3);
+  for (let i = 0; i < espaList.length; i++) {
+    const g = espaList[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 1.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.x1 - g.x0, g.len, 0.15) === false
+      && streetOverlap(g.x, g.z, g.x1 - g.x0, g.len) === false
+      && g.z0 > TRAVEL_Z1);
+    const arcade = FLY_VOIDS.find((v) => v.id === `${g.id}-arcade`);
+    const pass = FLY_VOIDS.find((v) => v.id === `${g.id}-pass`);
+    ok(`${g.id}-arcade listed`, !!arcade && arcade.openH === ESPA_SOFFIT);
+    ok(`${g.id}-pass listed`, !!pass && pass.openW === ESPA_PASS_W);
+    if (arcade) {
+      const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      const high = probeBlocked(kit, arcade.x, CITY_Y + ESPA_SOFFIT - 0.45, arcade.z, 0.28);
+      ok(`${g.id}-arcade keepout + open`,
+        !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+      ok(`${g.id}-arcade high ±Z is open`, !high, high ? `${high.tag}` : '');
+    }
+    if (pass) {
+      const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);
+      ok(`${g.id}-pass keepout + open`,
+        !!inKeepout(pass.x, pass.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+  }
+  ok('leftoverLot A–H still signed after Espanola',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   let plan = null;

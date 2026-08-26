@@ -289,6 +289,79 @@ export function fifthPassVoid(g) {
   };
 }
 
+// ---- Espanola Way analogue (GAP_X=243): inland storefronts + fly-unders ----
+// East past cinema (x=166) toward marina (x=300) / leftover city.
+// West face only — east face would restack leftoverLot A (x0=251 z~84).
+// New RESERVED west of x=240. Miss winterhaven z1=76, abando z1≈90,
+// cinema x1=208, garage, house, warehouse, leftoverLot A–H, travel lanes.
+export const ESPA_X = 243;
+export const ESPA_SOFFIT = 3.40;
+export const ESPA_ARCADE_D = 3.20;
+export const ESPA_PASS_W = 2.20;
+export const ESPA_PASS_H = 3.20;
+export const ESPA_D = 12.0;
+export const ESPA_H = 8.40;
+export const ESPA_JAMB = 0.28;
+export const ESPA_W_FRONT_X = ESPA_X - XS_HALF - 2.4;
+export const ESPA_W_CELLS = Object.freeze([[114, 16], [136, 16], [158, 16]]);
+
+/** One Espanola shop. side 'W' faces +X. Never remaps x/z. No east face. */
+export function espaShopGeom(side, z, len, id) {
+  const frontX = ESPA_W_FRONT_X;
+  const inward = -1;
+  const xBack = frontX + inward * ESPA_D;
+  const xArcadeInner = frontX + inward * ESPA_ARCADE_D;
+  const x0 = Math.min(frontX, xBack);
+  const x1 = Math.max(frontX, xBack);
+  const x = (x0 + x1) / 2;
+  const arcadeX = (frontX + xArcadeInner) / 2;
+  const z0 = z - len / 2;
+  const z1 = z + len / 2;
+  const passZ0 = z - ESPA_PASS_W / 2;
+  const passZ1 = z + ESPA_PASS_W / 2;
+  const jamb = ESPA_JAMB;
+  return {
+    id, side, z, len, x, frontX, inward, xBack, xArcadeInner, x0, x1,
+    z0, z1, arcadeX, passZ0, passZ1,
+    openArcadeW: len - 2.4, openArcadeH: ESPA_SOFFIT,
+    openPassW: ESPA_PASS_W, openPassH: ESPA_PASS_H,
+    jamb, tag: 'espa',
+  };
+}
+
+export function espaShops() {
+  const shops = [];
+  for (let i = 0; i < ESPA_W_CELLS.length; i++) {
+    const [z, len] = ESPA_W_CELLS[i];
+    shops.push(espaShopGeom('W', z, len, `espa-w-${i}`));
+  }
+  return shops;
+}
+
+export function espaArcadeVoid(g) {
+  const xLo = Math.min(g.frontX, g.xArcadeInner);
+  const xHi = Math.max(g.frontX, g.xArcadeInner);
+  return {
+    id: `${g.id}-arcade`, kind: 'kit',
+    x: g.arcadeX, z: g.z, y: CITY_Y + ESPA_SOFFIT * 0.48,
+    x0: xLo + 0.12, x1: xHi - 0.12,
+    z0: g.z0 + 1.2, z1: g.z1 - 1.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + ESPA_SOFFIT - 0.06,
+    openW: g.openArcadeW, openH: g.openArcadeH,
+  };
+}
+
+export function espaPassVoid(g) {
+  return {
+    id: `${g.id}-pass`, kind: 'kit',
+    x: g.x, z: g.z, y: CITY_Y + ESPA_PASS_H * 0.48,
+    x0: g.x0 + 0.10, x1: g.x1 - 0.10,
+    z0: g.passZ0 + 0.06, z1: g.passZ1 - 0.06,
+    y0: CITY_Y + 0.08, y1: CITY_Y + ESPA_PASS_H - 0.06,
+    openW: g.openPassW, openH: g.openPassH,
+  };
+}
+
 // ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
 // Vacant city parcel east of the cinema, west of GAP 243. Not a street
 // and not the boardwalk. Scatter still uses tryPlace — this reservation
@@ -3376,6 +3449,11 @@ export const RESERVED = [
     z0: g.z0 - 1.5, z1: g.z1 + 1.4,
     tag: 'fifth',
   })),
+  ...espaShops().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: g.z0 - 1.5, z1: g.z1 + 1.4,
+    tag: 'espa',
+  })),
 ];
 
 export function inReserved(x, z) {
@@ -4293,6 +4371,11 @@ export const KEEPOUT = [
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
     tag: 'fifth',
   })),
+  ...espaShops().map((g) => ({
+    x0: g.x0 - 0.6, x1: g.x1 + 0.6,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'espa',
+  })),
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4551,6 +4634,7 @@ export const FLY_VOIDS = [
   ...PIER_EXTRA_BAY_IS.map((bayI) => pierBayRingVoid(
     pierBayRingGeom(bayI), `pier-bay-ring-${bayI}`)),
   ...fifthShops().flatMap((g) => [fifthArcadeVoid(g), fifthPassVoid(g)]),
+  ...espaShops().flatMap((g) => [espaArcadeVoid(g), espaPassVoid(g)]),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -4676,26 +4760,33 @@ export function flyColliderShapes() {
   }
   const fifth = fifthShops();
   for (let i = 0; i < fifth.length; i++) {
-    fifthColliderShapesAt(shapes, fifth[i]);
+    streetShopColliderShapesAt(shapes, fifth[i]);
+  }
+  const espa = espaShops();
+  for (let i = 0; i < espa.length; i++) {
+    streetShopColliderShapesAt(shapes, espa[i]);
   }
   return shapes;
 }
 
-function fifthColliderShapesAt(shapes, g) {
+function streetShopColliderShapesAt(shapes, g) {
   const jamb = g.jamb;
+  const soffit = g.openArcadeH;
+  const passH = g.openPassH;
+  const tag = g.tag;
   for (const dz of [g.z0 + 0.7, g.z1 - 0.7]) {
     shapes.push({
-      type: 'cyl', tag: 'fifth',
+      type: 'cyl', tag,
       x: g.arcadeX, z: dz, r: 0.20,
-      y0: CITY_Y, h: FIFTH_SOFFIT,
+      y0: CITY_Y, h: soffit,
     });
   }
   const ax0 = Math.min(g.frontX, g.xArcadeInner);
   const ax1 = Math.max(g.frontX, g.xArcadeInner);
   shapes.push({
-    type: 'aabb', tag: 'fifth',
+    type: 'aabb', tag,
     x: g.arcadeX, z: g.z, sx: ax1 - ax0 + 0.2, sz: g.len - 0.4,
-    y0: CITY_Y + FIFTH_SOFFIT, sy: 0.26,
+    y0: CITY_Y + soffit, sy: 0.26,
   });
   const massX0 = Math.min(g.xBack, g.xArcadeInner);
   const massX1 = Math.max(g.xBack, g.xArcadeInner);
@@ -4706,16 +4797,16 @@ function fifthColliderShapesAt(shapes, g) {
     const sz = side < 0 ? (g.passZ0 - g.z0) : (g.z1 - g.passZ1);
     if (sz < 0.4) continue;
     shapes.push({
-      type: 'aabb', tag: 'fifth',
+      type: 'aabb', tag,
       x: massX, z: zEdge, sx: massSx, sz: sz - 0.04,
-      y0: CITY_Y, sy: FIFTH_SOFFIT,
+      y0: CITY_Y, sy: soffit,
     });
   }
   // Lintel covers the rear mass only — never a beam across the arcade.
   shapes.push({
-    type: 'aabb', tag: 'fifth',
-    x: massX, z: g.z, sx: massSx, sz: FIFTH_PASS_W + jamb * 2,
-    y0: CITY_Y + FIFTH_PASS_H, sy: 0.24,
+    type: 'aabb', tag,
+    x: massX, z: g.z, sx: massSx, sz: g.openPassW + jamb * 2,
+    y0: CITY_Y + passH, sy: 0.24,
   });
 }
 
