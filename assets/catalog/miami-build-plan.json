@@ -285,7 +285,14 @@
     {
       "id": "lummus-fill",
       "title": "More Lummus benches, drinkers, and walkers under the pergola, hash01, no rng",
-      "status": "pending"
+      "status": "done",
+      "notes": "nLummus=24 + 4 sitters; 4 extra benches + 4 drinkers on kerb; hash01; leftoverLot unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/lummus.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "gap-315",

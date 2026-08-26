@@ -6,7 +6,8 @@ import {
   CITY_Y, BOARDWALK_TOP, BOARDWALK_Z, BOARDWALK_W,
   SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1,
   SHORE_Z, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF,
-  LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y,
+  LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y, LUMMUS_PATH_HALF,
+  LUMMUS_EXTRA_BENCH_CELLS,
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
   LINCOLN_WALK_RUNS,
   washingtonRuns, WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
@@ -137,9 +138,11 @@ export function buildCrowd(ctx) {
   const nMarinaSwim = 24;
   const nEighth = 36;
   const nCollins = 36;
+  const nLummus = 24;
+  const nLummusSit = LUMMUS_EXTRA_BENCH_CELLS.length;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington
-    + nMarinaSwim + nEighth + nCollins;
+    + nMarinaSwim + nEighth + nCollins + nLummus + nLummusSit;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -423,6 +426,36 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nLummus; i++) {
+    const x = LUMMUS_X0 + 2 + hash01(i + 2300, 3) * (LUMMUS_X1 - LUMMUS_X0 - 4);
+    const z = LUMMUS_Z + (hash01(i + 2300, 5) - 0.5) * 1.2;
+    const dir = hash01(i + 2300, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    actors.push({
+      kind: 'lummus', i: actors.length, extra: -1,
+      x, z, y: LUMMUS_Y, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 2300, 11) * 0.45,
+      phase: hash01(i + 2300, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2300, 17), skin: pick(SKIN, i + 2300, 19),
+    });
+  }
+
+  for (let i = 0; i < nLummusSit; i++) {
+    const [bx, side] = LUMMUS_EXTRA_BENCH_CELLS[i];
+    const z = LUMMUS_Z + side * (LUMMUS_PATH_HALF - 0.62);
+    if (npcOffLimits(bx, z)) continue;
+    if (leftoverLotOverlap(bx, z, 0.6, 0.6, 0.15)) continue;
+    actors.push({
+      kind: 'lummus-sit', i: actors.length, extra: -1,
+      x: bx, z, y: LUMMUS_Y, dir: 0,
+      yaw: side > 0 ? Math.PI : 0,
+      speed: 0, phase: hash01(i + 2311, 7) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2311, 11), skin: pick(SKIN, i + 2311, 13),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -468,7 +501,7 @@ function stepActors(state, dt) {
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
     if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard'
-        || a.kind === 'lincoln-sit') continue;
+        || a.kind === 'lincoln-sit' || a.kind === 'lummus-sit') continue;
     if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
     if (a.kind === 'inland') {
@@ -525,6 +558,16 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'lummus') {
+      a.x += a.dir * a.speed * dt;
+      if (a.x > LUMMUS_X1 - 2) { a.x = LUMMUS_X1 - 2; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < LUMMUS_X0 + 2) { a.x = LUMMUS_X0 + 2; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'marina-swim') {
       a.x += Math.cos(a.yaw) * a.speed * dt;
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -562,12 +605,13 @@ function stampAll(state) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
-      || a.kind === 'eighth' || a.kind === 'collins'
+      || a.kind === 'eighth' || a.kind === 'collins' || a.kind === 'lummus'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
-    const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit') ? 0.28
+    const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit'
+      || a.kind === 'lummus-sit') ? 0.28
       : (a.kind === 'swim' || a.kind === 'marina-swim') ? 0.12
         : a.kind === 'parked' ? 0.22 : 0.36;
     const bodyY = (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y : a.y + crouch + bob;
@@ -575,7 +619,8 @@ function stampAll(state) {
 
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
-    _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit') ? 0.72 : 1, 1);
+    _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit'
+      || a.kind === 'lummus-sit') ? 0.72 : 1, 1);
     _dummy.updateMatrix();
     bodyMesh.setMatrixAt(i, _dummy.matrix);
     _color.setHex(a.shirt);

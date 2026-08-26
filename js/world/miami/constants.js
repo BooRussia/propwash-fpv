@@ -22,6 +22,15 @@ export const LUMMUS_X0 = -122, LUMMUS_X1 = -28;
 export const LUMMUS_Z = 18.6;      // walk centre line (clear of the dune fence at 22.4)
 export const LUMMUS_HALF = 1.55;   // post rows sit at LUMMUS_Z +- this
 export const LUMMUS_Y = 1.46;      // level terrace top over the sand
+export const LUMMUS_PATH_HALF = 2.45;
+// Extra benches and drinkers under the pergola. Ocean of travel 40.2–47.8.
+// West of leftoverLot A. hash01 never at const-eval.
+export const LUMMUS_EXTRA_BENCH_CELLS = Object.freeze([
+  [-106, 1], [-90, -1], [-74, 1], [-44, -1],
+]);
+export const LUMMUS_DRINKER_CELLS = Object.freeze([
+  [-115, -1], [-85, 1], [-55, -1], [-35, 1],
+]);
 
 // ---- beach volleyball courts ----
 export const VBALL_X0 = 128, VBALL_X1 = 208;

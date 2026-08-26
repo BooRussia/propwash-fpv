@@ -24,6 +24,8 @@ import {
   PARK_RING_CELLS, PARK_RING_R, PARK_RING_TUBE, PIER_EXTRA_BAY_IS, PIER_X,
   PIER_PYLON_COUNT, pierBayRingGeom,
   SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_Z0, VBALL_Z1,
+  LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y, LUMMUS_PATH_HALF,
+  LUMMUS_EXTRA_BENCH_CELLS, LUMMUS_DRINKER_CELLS,
   FLY_VOIDS, flyColliderShapes, pierFlyShapes, inKeepout, inFlyVoid,
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
@@ -116,6 +118,7 @@ export function runMiamiCrowdTests() {
   const washingtonPath = join(here, 'landmarks/washington.js');
   const eighthPath = join(here, 'landmarks/eighth.js');
   const marinaPath = join(here, 'landmarks/marina.js');
+  const lummusPath = join(here, 'landmarks/lummus.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -133,6 +136,7 @@ export function runMiamiCrowdTests() {
   const washington = existsSync(washingtonPath) ? readFileSync(washingtonPath, 'utf8') : '';
   const eighth = existsSync(eighthPath) ? readFileSync(eighthPath, 'utf8') : '';
   const marina = existsSync(marinaPath) ? readFileSync(marinaPath, 'utf8') : '';
+  const lummus = existsSync(lummusPath) ? readFileSync(lummusPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -167,6 +171,26 @@ export function runMiamiCrowdTests() {
     crowd.includes("kind: 'marina-swim'") && crowd.includes('const nMarinaSwim = 24')
     && crowd.includes('MARINA_SWIM_X0') && crowd.includes('onMarinaDock')
     && !crowd.includes('addCollider'));
+  ok('crowd walks Lummus under the pergola',
+    crowd.includes("kind: 'lummus'") && crowd.includes('const nLummus = 24')
+    && crowd.includes("kind: 'lummus-sit'") && crowd.includes('LUMMUS_EXTRA_BENCH_CELLS')
+    && !crowd.includes('addCollider'));
+  ok('lummus extra benches and drinkers are signed, miss leftoverLot / travel',
+    LUMMUS_EXTRA_BENCH_CELLS.length === 4 && LUMMUS_DRINKER_CELLS.length === 4
+    && LUMMUS_X0 === -122 && LUMMUS_X1 === -28 && LUMMUS_Z === 18.6
+    && LUMMUS_Z < TRAVEL_Z0 && LUMMUS_Y === 1.46
+    && LUMMUS_EXTRA_BENCH_CELLS.every(([x]) => x > LUMMUS_X0 && x < LUMMUS_X1 && x < 240)
+    && LUMMUS_DRINKER_CELLS.every(([x]) => x > LUMMUS_X0 && x < LUMMUS_X1)
+    && LUMMUS_EXTRA_BENCH_CELLS.every(([x, s]) => {
+      const z = LUMMUS_Z + s * (LUMMUS_PATH_HALF - 0.62);
+      return leftoverLotOverlap(x, z, 1.9, 0.62, 0.15) === false
+        && !(z > TRAVEL_Z0 && z < TRAVEL_Z1);
+    })
+    && lummus.includes('LUMMUS_EXTRA_BENCH_CELLS') && lummus.includes('LUMMUS_DRINKER_CELLS')
+    && lummus.includes('hash01') && !/\brng2?\s*\(/.test(lummus)
+    && !/\brng3\s*\(/.test(lummus) && !/\brng4\s*\(/.test(lummus)
+    && !lummus.includes('ShaderMaterial')
+    && !lummus.includes('ped.js') && !lummus.includes('traffic.js'));
   ok('crowd has parked bikes, volleyball, lifeguard sitters',
     crowd.includes("kind: 'parked'") && crowd.includes("kind: 'vball'")
     && crowd.includes("kind: 'guard'") && crowd.includes('BIKE_RACK_XS')

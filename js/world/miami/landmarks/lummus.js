@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
-  LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_HALF, LUMMUS_Y, groundHeight,
+  LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_HALF, LUMMUS_Y, LUMMUS_PATH_HALF,
+  LUMMUS_EXTRA_BENCH_CELLS, LUMMUS_DRINKER_CELLS, leftoverLotOverlap,
+  groundHeight,
 } from '../constants.js';
+import { hash01 } from '../rng.js';
 import { cBox, cCyl, cTube } from '../geo.js';
 
 // ============================================================
@@ -22,7 +25,7 @@ const BAY = 5.875;            // post spacing along the walk
 const POST_R = 0.11;          // 0.22 m square timber -> 0.11 m half-width
 const POST_H = 3.05;          // path to beam soffit
 const BEAM_H = 0.26;
-const PATH_HALF = 2.45;
+const PATH_HALF = LUMMUS_PATH_HALF;
 
 const TIMBER = 0xb08654, TIMBER2 = 0x9a7346, PAVER = 0xd8c9ab, PAVER2 = 0xc3b294;
 const BOUG = [0xd6407f, 0xe2557a, 0xc9457f, 0xf0713f];
@@ -151,6 +154,38 @@ export function buildLummus(ctx) {
       timber.push(cCyl(0.055, 0.07, 0.9, 8, 0x4a4238, lx, LUMMUS_Y + 0.45, lz));
       lampSpots.push([lx, LUMMUS_Y + 0.94, lz]);
       addCyl(lx, LUMMUS_Y, lz, 0.09, 1.0);
+    }
+
+    // extra benches under the pergola. Signed cells. hash01 for slat tint only.
+    for (let i = 0; i < LUMMUS_EXTRA_BENCH_CELLS.length; i++) {
+      const [bx, side] = LUMMUS_EXTRA_BENCH_CELLS[i];
+      const bz = LUMMUS_Z + side * (PATH_HALF - 0.62);
+      if (leftoverLotOverlap(bx, bz, 1.9, 0.62, 0.15)) continue;
+      const yaw = side > 0 ? Math.PI : 0;
+      const B = [];
+      const tint = hash01(i, 2301) < 0.5 ? TIMBER : TIMBER2;
+      B.push(cBox(1.9, 0.08, 0.52, tint, 0, 0.45, 0));
+      B.push(cBox(1.9, 0.42, 0.08, tint, 0, 0.68, 0.24));
+      for (const lx of [-0.82, 0.82]) {
+        B.push(cBox(0.1, 0.46, 0.5, TIMBER2, lx, 0.22, 0));
+        B.push(cBox(0.1, 0.5, 0.1, TIMBER2, lx, 0.68, 0.24));
+      }
+      const g = mergeGeometries(B);
+      B.forEach((q) => q.dispose());
+      g.rotateY(yaw);
+      g.translate(bx, LUMMUS_Y, bz);
+      timber.push(g);
+      addOBB(bx, LUMMUS_Y, bz, 1.9, 0.9, 0.62, yaw);
+    }
+
+    // drinkers at the kerb, not in the colonnade fly corridor.
+    for (let i = 0; i < LUMMUS_DRINKER_CELLS.length; i++) {
+      const [dx, side] = LUMMUS_DRINKER_CELLS[i];
+      const dz = LUMMUS_Z + side * (PATH_HALF - 0.24);
+      if (leftoverLotOverlap(dx, dz, 0.5, 0.5, 0.15)) continue;
+      timber.push(cCyl(0.16, 0.18, 0.72, 8, 0x9aa3aa, dx, LUMMUS_Y + 0.36, dz));
+      timber.push(cCyl(0.28, 0.22, 0.08, 10, 0xc8c4b8, dx, LUMMUS_Y + 0.76, dz));
+      addCyl(dx, LUMMUS_Y, dz, 0.22, 0.86);
     }
   }
 
