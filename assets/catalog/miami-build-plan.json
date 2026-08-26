@@ -1112,8 +1112,26 @@
     {
       "id": "fill-skyline-80",
       "title": "Skyline pair at x=80 z=237/259 if reservedOverlap is false",
-      "status": "pending",
-      "notes": "reservedOverlap was false; west of leftoverLot A / x=240; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[80,237] arcade, [80,259] roof ring, [80,248] alley pipe; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-210-0",
+      "title": "z=210 mid-rise at x=0 continuing the skyline-0 column",
+      "status": "done",
+      "notes": "[0,210] arcade; leftoverLot A–H unmoved"
+    },
+    {
+      "id": "npc-210-40",
+      "title": "Walkers on sidewalks ocean/inland of x=-40/0/40 at z=210, hash01, no colliders",
+      "status": "pending"
     }
   ],
   "landmarks": {
