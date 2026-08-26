@@ -501,6 +501,11 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-370, 112],
   [-350, 112],
   [-280, 112],
+  // Extra z=112 pipes on remaining 96/128 columns. Skip [-220,112]:
+  // existing pipe at [-220,108]. Appended so existing hash01 alley-pipe
+  // draws stay put. Fly +X. leftoverLot A–H unmoved.
+  [-190, 112],
+  [210, 112],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
