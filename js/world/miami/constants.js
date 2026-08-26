@@ -261,6 +261,25 @@ export const PAVILION_POST_R = 0.20;
 export const PAVILION_POST_H = 3.35;
 export const PAVILION_POST_XS = [-4.4, 4.4];
 export const PAVILION_POST_ZS = [-3.8, 0, 3.8];
+// Signed pier-deck dressing. On the planks, ocean of travel 40.2–47.8.
+// Miss pavilion (PAVILION_Z=-138). West of leftoverLot A. hash01 never at const-eval.
+export const PIER_CLEAT_CELLS = Object.freeze([
+  [-155.4, -18], [-144.6, -18],
+  [-155.4, -48], [-144.6, -48],
+  [-155.4, -78], [-144.6, -78],
+  [-155.4, -108], [-144.6, -108],
+]);
+export const PIER_BENCH_CELLS = Object.freeze([
+  [-150, -28],
+  [-150, -64],
+  [-150, -96],
+]);
+export const PIER_RING_CELLS = Object.freeze([
+  [-155.35, -22],
+  [-144.65, -22],
+  [-155.35, -88],
+  [-144.65, -88],
+]);
 
 // ---- fly-through kit (reserved voids + mesh-tight jambs) ----
 // Boardwalk pergola gate: whoop sash across the promenade (fly along +X).

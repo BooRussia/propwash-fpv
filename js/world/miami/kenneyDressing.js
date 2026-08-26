@@ -4,6 +4,7 @@ import {
   BOARDWALK_TOP, leftoverLotOverlap, BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
   BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS,
   PED_SIGNAL_CELLS, FLEX_POST_CELLS,
+  PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS, PIER_DECK_TOP, PAVILION_Z,
 } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
@@ -938,6 +939,60 @@ export async function buildKenneyDressing(ctx) {
   instanceAuthored(ctx, buildBollardFlexGeo(), new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.72, metalness: 0.08,
   }), flexPosts, 'crosswalk-flex-posts');
+
+  // Signed pier-deck cleats, benches, and life rings. hash01 yaw only.
+  // Pier keepout is the plate itself — skip leftoverLot / travel, not inKeepout.
+  const pierCleats = [];
+  for (let i = 0; i < PIER_CLEAT_CELLS.length; i++) {
+    const [x, z] = PIER_CLEAT_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (Math.abs(z - PAVILION_Z) < 8) continue;
+    if (leftoverLotOverlap(x, z, 0.4, 0.3, 0.15)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < PIER_DECK_TOP - 0.05) continue;
+    if (blocked(x, z, 0.2, y, y + 0.16)) continue;
+    pierCleats.push({ x, y, z, rotY: Math.PI / 2 });
+    addOBB(x, y, z, 0.35, 0.16, 0.18, Math.PI / 2);
+  }
+  instanceAuthored(ctx, buildDockCleatGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), pierCleats, 'pier-cleats-signed');
+
+  const pierBenches = [];
+  for (let i = 0; i < PIER_BENCH_CELLS.length; i++) {
+    const [x, z] = PIER_BENCH_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (Math.abs(z - PAVILION_Z) < 8) continue;
+    if (leftoverLotOverlap(x, z, 1.8, 0.7, 0.15)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < PIER_DECK_TOP - 0.05) continue;
+    if (blocked(x, z, 1.0, y, y + 0.9)) continue;
+    pierBenches.push({
+      x, y, z, scale: 1.0,
+      rotY: (hash01(i, 2711) < 0.5 ? 0 : Math.PI) + (hash01(i, 2713) - 0.5) * 0.08,
+    });
+    addCollider(x, y, z, 1.78, 0.99, 0.66);
+  }
+  await scatterSafe(ctx, 'modular_street_seating', pierBenches, 'pier-benches-signed');
+
+  const pierRings = [];
+  for (let i = 0; i < PIER_RING_CELLS.length; i++) {
+    const [x, z] = PIER_RING_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (Math.abs(z - PAVILION_Z) < 8) continue;
+    if (leftoverLotOverlap(x, z, 0.5, 0.5, 0.15)) continue;
+    const y = deckTop(x, z);
+    if (!Number.isFinite(y) || y < PIER_DECK_TOP - 0.05) continue;
+    if (blocked(x, z, 0.22, y, y + 1.4)) continue;
+    pierRings.push({ x, y, z, rotY: x < PIER_X ? -Math.PI / 2 : Math.PI / 2 });
+    addCyl(x, y, z, 0.12, 1.4);
+  }
+  instanceAuthored(ctx, buildLifeRingGeo(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.72, metalness: 0.08,
+  }), pierRings, 'pier-rings-signed');
 
   setTag('world');
   return {

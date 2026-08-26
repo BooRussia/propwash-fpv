@@ -67,6 +67,8 @@ import {
   BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS, BOARDWALK_Z, BOARDWALK_TOP, BOARDWALK_D,
   BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   CROSS_X, PED_SIGNAL_CELLS, FLEX_POST_CELLS,
+  PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS,
+  PIER_DECK_Z, PIER_DECK_W, PIER_DECK_D, PIER_DECK_TOP, PAVILION_Z,
 } from './constants.js';
 import { hash01 } from './rng.js';
 
@@ -1620,6 +1622,35 @@ function FRONT_Z_OK() {
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15)
     && leftoverLotOverlap(251, 84, 0.6, 0.6, 0.15));
+
+  const onPierDeck = (x, z) => Math.abs(x - PIER_X) <= PIER_DECK_W / 2
+    && Math.abs(z - PIER_DECK_Z) <= PIER_DECK_D / 2;
+  ok('signed pier-deck cleats, benches, and rings sit on the planks',
+    PIER_CLEAT_CELLS.length === 8 && PIER_BENCH_CELLS.length === 3
+    && PIER_RING_CELLS.length === 4
+    && PIER_CLEAT_CELLS.every(([x, z]) => x < 240 && onPierDeck(x, z)
+      && leftoverLotOverlap(x, z, 0.4, 0.3, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && Math.abs(z - PAVILION_Z) >= 8
+      && z < TRAVEL_Z0)
+    && PIER_BENCH_CELLS.every(([x, z]) => x < 240 && onPierDeck(x, z)
+      && leftoverLotOverlap(x, z, 1.8, 0.7, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && Math.abs(z - PAVILION_Z) >= 8)
+    && PIER_RING_CELLS.every(([x, z]) => x < 240 && onPierDeck(x, z)
+      && leftoverLotOverlap(x, z, 0.5, 0.5, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && Math.abs(z - PAVILION_Z) >= 8)
+    && kenney.includes('PIER_CLEAT_CELLS') && kenney.includes('PIER_BENCH_CELLS')
+    && kenney.includes('PIER_RING_CELLS')
+    && kenney.includes("'pier-cleats-signed'") && kenney.includes("'pier-benches-signed'")
+    && kenney.includes("'pier-rings-signed'")
+    && kenney.includes('hash01(i, 2711)')
+    && !/\brng2?\s*\(/.test(kenney) && !kenney.includes('ShaderMaterial')
+    && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
+  ok('leftoverLot A–H still signed after pier dressing',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }
