@@ -1030,7 +1030,11 @@ export const ROOF_AC_CELLS = Object.freeze([
   [-250, 237], [100, 237], [-430, 237], [-80, 237],
   [-540, 152], [-190, 152], [210, 152], [90, 210],
 ]);
-export const ROOF_RING_CELLS = Object.freeze([[-80, 259], [100, 259]]);
+export const ROOF_RING_CELLS = Object.freeze([
+  [-80, 259], [100, 259],
+  [-600, 259], [-430, 259], [-250, 259],
+  [-540, 210], [-390, 210], [-250, 210], [-190, 210], [-80, 210],
+]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;
 export const ROOF_AC_W = 1.70;
