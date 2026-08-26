@@ -1095,6 +1095,25 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fill-skyline-0",
+      "title": "Skyline pair at x=0 z=237/259 if reservedOverlap is false",
+      "status": "done",
+      "notes": "[0,237] arcade, [0,259] roof ring, [0,248] alley pipe; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-skyline-80",
+      "title": "Skyline pair at x=80 z=237/259 if reservedOverlap is false",
+      "status": "pending",
+      "notes": "reservedOverlap was false; west of leftoverLot A / x=240; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
