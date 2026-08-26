@@ -17,7 +17,7 @@ import {
 } from './constants.js';
 import { clampCameraToFloor } from '../../camera/floor.js';
 import {
-  BAY_PLANE, FOAM_N, FOAM_PERSIST, RIP_CTRL, SHORE_WAVES,
+  BAY_PLANE, FOAM_N, FOAM_PERSIST, RIP_CTRL,
   encodeShoreFoam, foamTermAt, persistStep, shoreBandAt, stepPersistField,
 } from './bayWater.js';
 
@@ -320,27 +320,9 @@ export function runBayWaterTests() {
   ok('persist flats stay 0 after many steps', persistAtWorld(800, -2200) === 0);
   ok('persist encode keeps leftoverLot A dry', persistByteAt(258, 84) === 0);
 
-  // ---- world-space boat wakes on the plate (not the 19 m tile) ------------
+  // ---- baySim wake field stays on main (bayWater does not invent wakeAt) --
   const simWake = createBaySim();
-  // Marina finger water, seaward of the SHORE_Z crash band so the encode is wake-only.
   simWake.stampWake(313, -80, 0.85, 16);
-  const wakeBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
-  encodeShoreFoam(simWake, wakeBytes);
-  const wakeAtWorld = (x, z) => {
-    const u = (x - BAY_PLANE.x) / BAY_PLANE.w + 0.5;
-    const v = (BAY_PLANE.z - z) / BAY_PLANE.d + 0.5;
-    const i = Math.min(FOAM_N - 1, Math.max(0, Math.floor(u * FOAM_N)));
-    const j = Math.min(FOAM_N - 1, Math.max(0, Math.floor(v * FOAM_N)));
-    return wakeBytes[(j * FOAM_N + i) * 4];
-  };
-  ok('encoded boat wake is on the Biscayne plate', wakeAtWorld(313, -80) > 20);
-  ok('encoded boat wake is not a 19 m cascade tile',
-    wakeAtWorld(313 + 19 * 6, -80) === 0
-    && wakeAtWorld(313, -80 - 19 * 6) === 0);
-  ok('encoded leftoverLot A stays dry after a marina stamp',
-    wakeAtWorld(258, 84) === 0);
-  ok('encoded travel lane stays dry after a marina stamp',
-    wakeAtWorld(0, 44) === 0);
   ok('wakeAt is world-space, not the 19 m field',
     typeof simWake.wakeAt === 'function'
     && simWake.wakeN === 512
@@ -364,11 +346,20 @@ export function runBayWaterTests() {
     !index.includes("uniforms['time']") && !index.includes('waterColor'));
   ok('hero material is MeshPhysicalMaterial',
     bayWater.includes('MeshPhysicalMaterial') && !/\bShaderMaterial\b/.test(bayWater));
-  ok('coastal v7 has crest scatter, steepness foam, wet-sand fade',
-    bayWater.includes('pw-bay-coastal-v7') && bayWater.includes('uBayScatter')
-    && bayWater.includes('baySteepFoam') && bayWater.includes('ior: 1.333')
-    && bayWater.includes('uBayWetSand') && bayWater.includes('bayWetSand')
+  ok('#89 MeshPhysicalMaterial block restored',
+    bayWater.includes('0x163a3c') && !bayWater.includes('0x0e6b72')
+    && bayWater.includes('roughness: 0.16') && bayWater.includes('metalness: 0.04')
+    && bayWater.includes('specularIntensity: 0.55')
+    && bayWater.includes('envMapIntensity: 0.9')
+    && bayWater.includes('emissive: 0xf4f1ea')
+    && bayWater.includes('emissiveIntensity: 0.26')
+    && !bayWater.includes('clearcoat') && !bayWater.includes('DoubleSide')
     && !bayWater.includes('WaterSystem') && !bayWater.includes('threejswaterpro'));
+  ok('no onBeforeCompile / Gerstner / wet-sand restack',
+    !bayWater.includes('onBeforeCompile') && !bayWater.includes('applyCoastalOptics')
+    && !bayWater.includes('uBayDeep') && !bayWater.includes('uBayScatter')
+    && !bayWater.includes('SHORE_WAVES') && !/\bcellular\b/.test(bayWater)
+    && !bayWater.includes('13.7') && !bayWater.includes('bayGerstner'));
   ok('persist numbers appear in source',
     /crestStrength:\s*2\.5/.test(bayWater)
     && /windwardStrength:\s*1\.5/.test(bayWater)
@@ -385,19 +376,6 @@ export function runBayWaterTests() {
     && !/applyRepeat\(\s*foamMap/.test(bayWater));
   ok('leftoverLot I stays dropped',
     !/leftoverLot\s*I/.test(bayWater) && !/leftoverLot I/.test(bayWater));
-  ok('coastal optics inject via onBeforeCompile',
-    bayWater.includes('applyCoastalOptics') && bayWater.includes('onBeforeCompile')
-    && bayWater.includes('uBayTime'));
-  ok('Gerstner bands are not the 19 m cascade',
-    SHORE_WAVES.length === 4
-    && SHORE_WAVES.every((L) => L !== 19)
-    && SHORE_WAVES[0] === 13.7 && SHORE_WAVES[1] === 8.3
-    && SHORE_WAVES[2] === 37.1 && SHORE_WAVES[3] === 61.3);
-  ok('shader source names the incommensurate wavelengths',
-    bayWater.includes('13.7') && bayWater.includes('8.3')
-    && bayWater.includes('37.1') && bayWater.includes('61.3'));
-  ok('cellular foam is plate-space, not the cascade',
-    bayWater.includes('cellular') && bayWater.includes('3.2'));
   ok('foam encode floors leftover specks',
     bayWater.includes('0.05') && bayWater.includes('foam'));
   ok('Jacobian J<M paint is skipped',
@@ -420,16 +398,12 @@ export function runBayWaterTests() {
     && BAY_PRESET.foamGain === 0
     && !/foamGain\s*=\s*[1-9]/.test(bayWater)
     && !/foamGain\s*=\s*[1-9]/.test(baySimSrc));
-  ok('boat-wake stamps are stronger hull + Kelvin arms',
-    bayWater.includes('0.28 * Math.min(dt, 0.08) * 60')
-    && bayWater.includes('stampWake(px, pz, amt, 22)')
-    && bayWater.includes('amt * 0.62')
-    && bayWater.includes('amt * 0.42')
-    && !bayWater.includes('0.055 * Math.min(dt, 0.08) * 60, 1.8'));
-  ok('plate encode samples world-space wakeAt',
-    bayWater.includes('sim.wakeAt')
-    && baySimSrc.includes('splatWorldWake')
-    && baySimSrc.includes('wakeField'));
+  ok('boat-wake stamp is the #89 hull stamp',
+    bayWater.includes('0.055 * Math.min(dt, 0.08) * 60, 1.8')
+    && !bayWater.includes('0.28 * Math.min(dt, 0.08) * 60')
+    && !bayWater.includes('amt * 0.62'));
+  ok('encode does not invent wakeAt',
+    !bayWater.includes('wakeAt') && !/wakeN\s*:/.test(bayWater));
   ok('foamMap does not RepeatWrap the 19 m cascade',
     !/applyRepeat\(\s*foamMap/.test(bayWater)
     && /foamMap\.repeat\.set\(\s*1\s*,\s*1/.test(bayWater)
