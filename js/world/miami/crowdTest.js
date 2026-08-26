@@ -22,6 +22,8 @@ import {
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
   PARK_RING_CELLS, PARK_RING_R, PARK_RING_TUBE, PIER_EXTRA_BAY_IS, PIER_X,
+  LIFEGUARD_CELLS, LIFEGUARD_SAND_SIT_CELLS, LIFEGUARD_RING_CELLS,
+  LIFEGUARD_RING_R, LIFEGUARD_RING_TUBE, lifeguardRingGeom,
   PIER_PYLON_COUNT, pierBayRingGeom,
   SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_Z0, VBALL_Z1,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y, LUMMUS_PATH_HALF,
@@ -73,9 +75,7 @@ const world = join(here, '..');
 const TRAVEL_Z0 = 40.2;
 const TRAVEL_Z1 = 47.8;
 const BIKE_RACK_XS = [-240, -170, -40, 30, 150];
-const LIFEGUARD_SIT_CELLS = [
-  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
-];
+const LIFEGUARD_SIT_CELLS = LIFEGUARD_CELLS;
 const cityZ = (SW_CITY_Z0 + SW_CITY_Z1) * 0.5;
 const BIKE_RACK_TRAVEL = cityZ > TRAVEL_Z0 && cityZ < TRAVEL_Z1
   || LIFEGUARD_SIT_CELLS.some(([, z]) => z > TRAVEL_Z0 && z < TRAVEL_Z1)
@@ -226,6 +226,19 @@ export function runMiamiCrowdTests() {
   ok('racks miss leftoverLot A–H',
     BIKE_RACK_XS.every((x) => leftoverLotOverlap(x, cityZ, 2.4, 0.4, 0.15) === false)
     && LIFEGUARD_SIT_CELLS.every(([x, z]) => leftoverLotOverlap(x, z, 3.4, 3.0, 0.15) === false));
+  ok('sand sitters sit at the west-of-240 lifeguard stands, no colliders',
+    LIFEGUARD_SAND_SIT_CELLS.length === 10
+    && LIFEGUARD_SAND_SIT_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0
+      && leftoverLotOverlap(x, z, 0.6, 0.6, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && inKeepout(x, z) === false)
+    && crowd.includes("kind: 'guard-sand'")
+    && crowd.includes('LIFEGUARD_SAND_SIT_CELLS')
+    && crowd.includes('const nGuardSand = LIFEGUARD_SAND_SIT_CELLS.length')
+    && crowd.includes('hash01(i + 2800')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && LIFEGUARD_SIT_CELLS.length === 6
+    && LIFEGUARD_SIT_CELLS.every(([x, z], i) => x === LIFEGUARD_CELLS[i][0] && z === LIFEGUARD_CELLS[i][1]));
 
   ok('index builds crowd after blades',
     index.includes("import { buildCrowd }")
@@ -557,6 +570,44 @@ function FRONT_Z_OK() {
         && v.z < TRAVEL_Z0);
     }
   }
+
+  ok('lifeguard rings are five stand whoops west of 240',
+    LIFEGUARD_RING_CELLS.length === 5
+    && LIFEGUARD_RING_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0)
+    && LIFEGUARD_RING_R - LIFEGUARD_RING_TUBE >= 1.0
+    && LIFEGUARD_RING_CELLS.every(([x, z]) => leftoverLotOverlap(x, z, 0.4, 2.4, 0.15) === false)
+    && !LIFEGUARD_RING_CELLS.some(([x]) => x >= 240));
+  ok('flythrough builds lifeguard rings',
+    fly.includes('LIFEGUARD_RING_CELLS') && fly.includes("setTag('lifeguard-ring')")
+    && fly.includes('buildLifeguardRing') && fly.includes('lifeguardRingGeom')
+    && !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly)
+    && !/\brng4\s*\(/.test(fly) && !fly.includes('ShaderMaterial'));
+  for (let i = 0; i < LIFEGUARD_RING_CELLS.length; i++) {
+    const v = FLY_VOIDS.find((f) => f.id === `lifeguard-ring-${i}`);
+    const g = lifeguardRingGeom(LIFEGUARD_RING_CELLS[i][0], LIFEGUARD_RING_CELLS[i][1]);
+    ok(`lifeguard-ring-${i} listed`, !!v && v.x === LIFEGUARD_RING_CELLS[i][0]
+      && v.z === LIFEGUARD_RING_CELLS[i][1]);
+    if (v) {
+      ok(`lifeguard-ring-${i} keepout + open disc`,
+        !!inKeepout(v.x, v.z) && !probeBlocked(kit, v.x, v.y, v.z, 0.28)
+        && v.openW >= 2.0 && v.openH >= 2.0);
+      ok(`lifeguard-ring-${i} misses leftoverLot / travel / x>=240`,
+        leftoverLotOverlap(v.x, v.z, 0.4, 2.4, 0.15) === false
+        && v.z < TRAVEL_Z0 && v.x < 240
+        && !(v.z0 < TRAVEL_Z1 && v.z1 > TRAVEL_Z0)
+        && g.fly === '+X');
+    }
+  }
+  const lgRingHitsTravel = kit.filter((s) => {
+    const z0 = s.type === 'cyl' ? s.z - s.r : s.z - s.sz / 2;
+    const z1 = s.type === 'cyl' ? s.z + s.r : s.z + s.sz / 2;
+    return s.tag === 'lifeguard-ring' && z0 < TRAVEL_Z1 && z1 > TRAVEL_Z0;
+  });
+  ok('no lifeguard-ring collider in travel lanes 40.2–47.8',
+    lgRingHitsTravel.length === 0);
+  ok('leftoverLot A–H still signed after lifeguard fill',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   const pierKit = pierFlyShapes();
   ok('pier still has ten pylon stations', PIER_PYLON_COUNT === 10);

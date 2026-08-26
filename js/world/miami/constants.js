@@ -291,6 +291,36 @@ export const PARK_RING_CELLS = Object.freeze([
   [-75, 14.6],
   [-45, 14.6],
 ]);
+// Lifeguard stands on the sand (same six as beachProps). Deck sitters use
+// these cells. Extra sand sitters + whoop rings skip the x=420 stand
+// (east of x=240 / leftoverLot A). hash01 never at const-eval.
+export const LIFEGUARD_CELLS = Object.freeze([
+  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
+]);
+export const LIFEGUARD_DECK = 2.52;
+// Two sitters on the sand at each west-of-240 stand. Miss ring keepouts,
+// lummus, leftoverLot, travel 40.2–47.8. Not on the x=420 stand.
+export const LIFEGUARD_SAND_SIT_CELLS = Object.freeze([
+  [-523.0, 13.2], [-517.0, 13.4],
+  [-338.0, 11.7], [-332.0, 11.9],
+  [-98.0, 12.7], [-92.2, 11.2],
+  [42.0, 11.2], [48.0, 11.4],
+  [232.0, 13.7], [238.2, 12.4],
+]);
+// Extra whoop rings on the five west-of-240 stands. Fly +X. Tube is the
+// collider; disc stays empty. Offset from the hut AABB / ramp / drums.
+// Miss lummus, park rings, leftoverLot A–H, travel, x>=240.
+export const LIFEGUARD_RING_R = PARK_RING_R;
+export const LIFEGUARD_RING_TUBE = PARK_RING_TUBE;
+export const LIFEGUARD_RING_Y0 = PARK_RING_Y0;
+export const LIFEGUARD_RING_SEGS = PARK_RING_SEGS;
+export const LIFEGUARD_RING_CELLS = Object.freeze([
+  [-520, 16.2],
+  [-335, 14.8],
+  [-90.4, 12.0],
+  [45, 14.2],
+  [235, 16.6],
+]);
 // Extra pier undercroft bays (existing pylons) plus timber rings.
 // Bays 2 and 7 sit seaward of 1 and 6. Fly ±Z along the pier.
 // Not a slide of leftoverLot A–H. Pylon count stays 10.
@@ -3340,6 +3370,24 @@ export function parkRingGeom(cx, cz) {
   };
 }
 
+/** Lifeguard-stand whoop ring. Torus in YZ, fly +X. Disc is empty. */
+export function lifeguardRingGeom(cx, cz) {
+  const r = LIFEGUARD_RING_R;
+  const tube = LIFEGUARD_RING_TUBE;
+  const y0 = LIFEGUARD_RING_Y0;
+  const y = y0 + r;
+  return {
+    x: cx, z: cz, y0, y, r, tube,
+    segs: LIFEGUARD_RING_SEGS,
+    x0: cx - tube - 0.04, x1: cx + tube + 0.04,
+    z0: cz - r - tube, z1: cz + r + tube,
+    openW: 2 * (r - tube),
+    openH: 2 * (r - tube),
+    fly: '+X',
+    tag: 'lifeguard-ring',
+  };
+}
+
 /** Extra pier undercroft bay between pylons `bayI` and `bayI+1`. Fly ±Z. */
 export function pierUndercroftVoid(bayI, id) {
   const z = PIER_PYLON_Z0 - (bayI + 0.5) * PIER_PYLON_STEP;
@@ -3407,6 +3455,10 @@ export function parkRingVoid(g, id) {
     y0: g.y - inner + 0.10, y1: g.y + inner - 0.10,
     openW: g.openW, openH: g.openH,
   };
+}
+
+export function lifeguardRingVoid(g, id) {
+  return parkRingVoid(g, id);
 }
 
 export function pierBayRingVoid(g, id) {
@@ -5351,6 +5403,12 @@ export const KEEPOUT = [
     z1: z + PARK_RING_R + PARK_RING_TUBE + 0.8,
     tag: 'park-ring',
   })),
+  ...LIFEGUARD_RING_CELLS.map(([x, z]) => ({
+    x0: x - LIFEGUARD_RING_TUBE - 0.8, x1: x + LIFEGUARD_RING_TUBE + 0.8,
+    z0: z - LIFEGUARD_RING_R - LIFEGUARD_RING_TUBE - 0.8,
+    z1: z + LIFEGUARD_RING_R + LIFEGUARD_RING_TUBE + 0.8,
+    tag: 'lifeguard-ring',
+  })),
   ...fifthShops().map((g) => ({
     x0: g.x0 - 0.6, x1: g.x1 + 0.6,
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
@@ -5686,6 +5744,8 @@ export const FLY_VOIDS = [
     alleyPipeGeom(x, z), `alley-pipe-${i}`)),
   ...PARK_RING_CELLS.map(([x, z], i) => parkRingVoid(
     parkRingGeom(x, z), `park-ring-${i}`)),
+  ...LIFEGUARD_RING_CELLS.map(([x, z], i) => lifeguardRingVoid(
+    lifeguardRingGeom(x, z), `lifeguard-ring-${i}`)),
   ...PIER_EXTRA_BAY_IS.map((bayI) => pierUndercroftVoid(bayI, `pier-undercroft-${bayI}`)),
   ...PIER_EXTRA_BAY_IS.map((bayI) => pierBayRingVoid(
     pierBayRingGeom(bayI), `pier-bay-ring-${bayI}`)),
@@ -5838,6 +5898,13 @@ export function flyColliderShapes() {
   }
   for (let i = 0; i < PARK_RING_CELLS.length; i++) {
     parkRingColliderShapesAt(shapes, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
+  }
+  for (let i = 0; i < LIFEGUARD_RING_CELLS.length; i++) {
+    parkRingColliderShapesAt(
+      shapes,
+      lifeguardRingGeom(LIFEGUARD_RING_CELLS[i][0], LIFEGUARD_RING_CELLS[i][1]),
+      'lifeguard-ring',
+    );
   }
   const fifth = fifthShops();
   for (let i = 0; i < fifth.length; i++) {

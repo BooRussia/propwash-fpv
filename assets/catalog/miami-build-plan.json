@@ -415,7 +415,15 @@
     {
       "id": "lifeguard-fill",
       "title": "Sitters at the lifeguard towers plus extra rings on the stands, hash01, no rng",
-      "status": "pending"
+      "status": "done",
+      "notes": "nGuardSand=10 on sand at five west-of-240 stands; 5 whoop rings offset from those stands; skip x=420; hash01; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/landmarks/flythrough.js",
+        "js/world/miami/landmarks/beachProps.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "crosswalk-props",
@@ -471,7 +479,8 @@
     "gap315": { "x": -315, "frontX": -323.9, "status": "done", "note": "GAP_X=-315 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap315=36" },
     "gap429": { "x": 429, "frontX": 420.1, "status": "done", "note": "skipped: west front 420.1 east of leftoverLot A and x=240; no shops; leftoverLot A–H unmoved" },
     "gap501": { "x": -501, "frontX": -509.9, "status": "done", "note": "GAP_X=-501 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved; sidewalk crowd nGap501=36" },
-    "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" }
+    "marinaFill": { "x": 300, "fingers": [300, 326, 352], "status": "done", "note": "ocean-half piles/cleats + marina-swim NPCs; hash01; leftoverLot A–H unmoved; boat rng stream unmoved" },
+    "lifeguardFill": { "cells": [[-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0]], "rings": [[-520, 16.2], [-335, 14.8], [-90.4, 12.0], [45, 14.2], [235, 16.6]], "status": "done", "note": "sand sitters + whoop rings at west-of-240 stands; skip x=420; hash01; leftoverLot A–H unmoved" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

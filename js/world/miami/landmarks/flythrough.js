@@ -11,9 +11,10 @@ import {
   GARAGE_AISLE_W, GARAGE_SOFFIT, GARAGE_ROOF_H,
   PROMENADE_ARCH_XS, GATE_Z,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
-  ALLEY_PIPE_CELLS, PARK_RING_CELLS, FIRE_ESCAPE_CELLS,
+  ALLEY_PIPE_CELLS, PARK_RING_CELLS, FIRE_ESCAPE_CELLS, LIFEGUARD_RING_CELLS,
   boardwalkGateGeom, boardwalkGateRejected, onPavement,
   sidewalkArcadeGeom, alleyPipeGeom, parkRingGeom, fireEscapeGeom,
+  lifeguardRingGeom,
   installFlyColliders,
 } from '../constants.js';
 import { tryPlace } from '../planting.js';
@@ -68,6 +69,7 @@ import { roofTexture } from '../textures.js';
  *   alley-pipe       steel U inland, fly +X
  *   park-ring        torus in Lummus, fly +X
  *   fire-escape      steel landing frames on inland mid-rise flanks at z=248, fly +X
+ *   lifeguard-ring   torus on the west-of-240 lifeguard stands, fly +X
  */
 export function buildFlythrough(ctx) {
   const { root, track, addCollider, addCyl, setTag } = ctx;
@@ -142,6 +144,12 @@ export function buildFlythrough(ctx) {
     buildParkRing(ctx, parkRingGeom(PARK_RING_CELLS[i][0], PARK_RING_CELLS[i][1]));
   }
   installFlyColliders(addCyl, addCollider, 'park-ring');
+
+  setTag('lifeguard-ring');
+  for (let i = 0; i < LIFEGUARD_RING_CELLS.length; i++) {
+    buildLifeguardRing(ctx, lifeguardRingGeom(LIFEGUARD_RING_CELLS[i][0], LIFEGUARD_RING_CELLS[i][1]));
+  }
+  installFlyColliders(addCyl, addCollider, 'lifeguard-ring');
 
   setTag('fire-escape');
   for (let i = 0; i < FIRE_ESCAPE_CELLS.length; i++) {
@@ -383,5 +391,22 @@ function buildParkRing(ctx, g) {
   })));
   mesh.castShadow = true;
   mesh.name = 'park-ring';
+  root.add(mesh);
+}
+
+function buildLifeguardRing(ctx, g) {
+  const { root, track } = ctx;
+  const PAINT = 0xff5330, PAINT2 = 0xf5f1e4;
+  const bits = [
+    cTorus(g.r, g.tube, 8, 20, PAINT, g.x, g.y, g.z, 0, Math.PI / 2, 0),
+    cTorus(g.r, g.tube * 0.45, 6, 16, PAINT2, g.x, g.y, g.z, 0, Math.PI / 2, 0),
+  ];
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((x) => x.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.38, metalness: 0.42,
+  })));
+  mesh.castShadow = true;
+  mesh.name = 'lifeguard-ring';
   root.add(mesh);
 }

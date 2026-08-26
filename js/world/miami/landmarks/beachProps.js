@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { groundHeight, inKeepout } from '../constants.js';
+import { groundHeight, inKeepout, LIFEGUARD_CELLS } from '../constants.js';
 import { hash01 } from '../rng.js';
 import { colorFill, cBox, cCyl } from '../geo.js';
 import { buildLifeguardGeo } from './lifeguard.js';
@@ -11,9 +11,7 @@ import { buildParasolCanopy, buildParasolFrame } from './parasols.js';
 // between the pier, the amusement plaza, the pergola walk, the sign and the
 // volleyball courts. The rng draws are still taken so the layout stream that
 // follows (parasols, towels, towers, cars) is bit-identical.
-const LIFEGUARDS = [
-  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
-];
+const LIFEGUARDS = LIFEGUARD_CELLS;
 
 /** Aluminum lounger, facing -z. Origin at ground.
  *  Front: foot rail; back: reclined head; left/right: tube rails; top: webbing;
