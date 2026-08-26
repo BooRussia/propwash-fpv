@@ -1672,8 +1672,14 @@
     {
       "id": "fire-escape-tail",
       "title": "Alley fire-escape whoops on x=-570/130 flanks at z=248, jambs only, fly +X",
-      "status": "pending",
-      "notes": "four frames at plateX±9 for -570/130; miss 80/190 (collide with 100/210 flanks); fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "four frames at plateX±9 for -570/130; miss 80/190 (collide with 100/210 flanks); fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
