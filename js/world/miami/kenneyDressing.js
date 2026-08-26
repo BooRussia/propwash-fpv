@@ -330,6 +330,7 @@ export async function buildKenneyDressing(ctx) {
     { slug: 'kenney_skyscraper_d', n: 3, size: 40 },
     { slug: 'kenney_midrise_a', n: 4, size: 26 },
     { slug: 'kenney_midrise_e', n: 5, size: 28 },
+    { slug: 'kenney_midrise_c', n: 4, size: 24 },
   ];
   for (const spec of farSlugs) {
     const placements = [];

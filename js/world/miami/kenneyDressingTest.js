@@ -91,7 +91,8 @@ export function runMiamiKenneyDressingTests() {
   ok('far row sits behind the 60-box LOD (z>=640)',
     kenney.includes('640 + hash01')
     && kenney.includes('kenney_skyscraper_b')
-    && kenney.includes('kenney_midrise_a'));
+    && kenney.includes('kenney_midrise_a')
+    && kenney.includes('kenney_midrise_c'));
   ok('kenney trees + covered cars are hash-scattered',
     kenney.includes("'kenney_tree_large'")
     && kenney.includes("'covered_car'"));

@@ -43,7 +43,7 @@ function buildBalconyGeo() {
 /** AC pack + tank + pergola. Origin at roof deck.
  *  Six sides: front/back grille + access panel; left/right galvanized; top fan
  *  shroud; bottom rail sleepers. Tank: barrel staves all round, cone lid, pad. */
-function buildRooftopKitGeo() {
+export function buildRooftopKitGeo() {
   const galv = 0x9ba3ab, galv2 = 0x8d959d, shroud = 0x3c4249, tank = 0xcac3b2;
   const cone = 0xb4ac99, rail = 0x6d747c, timber = 0xb99a6f, slat = 0xcaa87a;
   const G = [];
@@ -72,7 +72,7 @@ function buildRooftopKitGeo() {
 
 /** Dish farm + extra AC. Origin at roof deck.
  *  Dish: front mesh, back LNB arm, pole sides, top rim, pad bottom. */
-function buildRooftopDishGeo() {
+export function buildRooftopDishGeo() {
   const galv = 0x9ba3ab, shroud = 0x3c4249, dish = 0xc5cdd4, pole = 0x6d747c;
   const G = [];
   G.push(cBox(1.45, 0.85, 1.1, galv, -1.8, 0.46, -0.9));
@@ -96,7 +96,7 @@ function buildRooftopDishGeo() {
 
 /** Twin tanks + vents + ladder. Origin at roof deck.
  *  Tanks: barrel sides, cone top, pad bottom; ladder rungs on +X. */
-function buildRooftopTankGeo() {
+export function buildRooftopTankGeo() {
   const tank = 0xcac3b2, cone = 0xb4ac99, steel = 0x6d747c, vent = 0x8d959d;
   const G = [];
   for (const [tx, tz] of [[-1.3, -0.6], [1.15, -0.85]]) {
@@ -118,7 +118,7 @@ function buildRooftopTankGeo() {
 
 /** Painted helipad H on a dark tarmac disc. Never a window atlas.
  *  Six sides: disc +Y is tarmac/marking; -Y soffit; rim is the cylinder wall. */
-function buildRooftopPadGeo() {
+export function buildRooftopPadGeo() {
   const tar = 0x2a2f36, paint = 0xffd166;
   const G = [
     cCyl(4.15, 4.15, 0.05, 24, tar, 0, 0.025, 0),

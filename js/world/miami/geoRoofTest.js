@@ -90,6 +90,13 @@ export function runMiamiGeoRoofTests() {
 
   ok('near deco towers use the midrise helper',
     near.includes('buildDecoMidriseGeos(tw, th, td, DECO_TILE_U, DECO_TILE_V, offU, offV)'));
+  const inland = readFileSync(join(here, 'landmarks/inland.js'), 'utf8');
+  ok('inland mid-rises use the six-sided deco helper + rooftop kits',
+    inland.includes('buildDecoMidriseGeos')
+    && inland.includes('buildRooftopKitGeo')
+    && inland.includes('hash01')
+    && !/\brng2?\s*\(/.test(inland) && !/\brng3\s*\(/.test(inland)
+    && !/\brng4\s*\(/.test(inland));
   ok('cyl towers are open-ended + facadeCylUV + stripCylinderCaps',
     near.includes('new THREE.CylinderGeometry(w / 2, w / 2, h, 18, 1, true)')
     && near.includes('facadeCylUV(geo, Math.PI * w, h')

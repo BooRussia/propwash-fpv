@@ -30,6 +30,8 @@ import {
   FIFTH_SOFFIT, FIFTH_PASS_W, FIFTH_PASS_H, fifthShops,
   ESPA_X, ESPA_W_CELLS, ESPA_W_FRONT_X, ESPA_SOFFIT, ESPA_PASS_W, ESPA_PASS_H,
   ESPA_D, espaShops, CINEMA_X, CINEMA_W, MARINA_X,
+  INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
+  inlandMidrises,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -86,6 +88,7 @@ export function runMiamiCrowdTests() {
   const flyPath = join(here, 'landmarks/flythrough.js');
   const fifthPath = join(here, 'landmarks/fifth.js');
   const espaPath = join(here, 'landmarks/espa.js');
+  const inlandPath = join(here, 'landmarks/inland.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -96,6 +99,7 @@ export function runMiamiCrowdTests() {
   const fly = existsSync(flyPath) ? readFileSync(flyPath, 'utf8') : '';
   const fifth = existsSync(fifthPath) ? readFileSync(fifthPath, 'utf8') : '';
   const espa = existsSync(espaPath) ? readFileSync(espaPath, 'utf8') : '';
+  const inland = existsSync(inlandPath) ? readFileSync(inlandPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -317,10 +321,13 @@ export function runMiamiCrowdTests() {
     }
   }
 
-  ok('alley pipes are four signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 4
+  ok('alley pipes are eight signed cells west of 240',
+    ALLEY_PIPE_CELLS.length === 8
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1);
+  ok('inland service-alley pipes sit at z=248',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 4
+    && ALLEY_PIPE_CELLS.slice(4).every(([x]) => x < 240));
   ok('flythrough builds alley pipes',
     fly.includes('ALLEY_PIPE_CELLS') && fly.includes("setTag('alley-pipe')")
     && fly.includes('buildAlleyPipe') && !/\brng2?\s*\(/.test(fly)
@@ -495,6 +502,45 @@ export function runMiamiCrowdTests() {
   }
   ok('leftoverLot A–H still signed after Espanola',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+
+  ok('inland.js exists', existsSync(inlandPath));
+  ok('index builds inland mid-rises after Espanola',
+    index.includes("from './landmarks/inland.js'")
+    && index.includes('buildInland(ctx)')
+    && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
+  ok('inland mid-rises are six-sided deco plates west of x=240',
+    INLAND_MIDRISE_CELLS.length === 8
+    && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
+    && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && inland.includes('buildDecoMidriseGeos')
+    && inland.includes('buildRooftopKitGeo'));
+  ok('inland does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(inland) && !/\brng3\s*\(/.test(inland)
+    && !/\brng4\s*\(/.test(inland) && inland.includes('hash01')
+    && !inland.includes('ShaderMaterial')
+    && !inland.includes('ped.js') && !inland.includes('traffic.js'));
+
+  const inlandList = inlandMidrises();
+  ok('eight signed inland mid-rises', inlandList.length === 8);
+  for (let i = 0; i < inlandList.length; i++) {
+    const g = inlandList[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 0.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.w, g.d, 0.15) === false
+      && streetOverlap(g.x, g.z, g.w, g.d) === false
+      && g.z0 > TRAVEL_Z1);
+    ok(`${g.id} keepout`, !!inKeepout(g.x, g.z));
+  }
+  const inlandPipes = ALLEY_PIPE_CELLS.filter(([, z]) => z === 248);
+  for (let i = 0; i < inlandPipes.length; i++) {
+    const [x, z] = inlandPipes[i];
+    const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && f.id.startsWith('alley-pipe-'));
+    ok(`inland alley-pipe ${x}/${z} listed + open`,
+      !!v && !!inKeepout(x, z) && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+  }
+  ok('leftoverLot A–H still signed after inland mid-rises',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }

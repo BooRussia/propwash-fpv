@@ -110,7 +110,18 @@
     {
       "id": "city-skyline",
       "title": "Inland city dressing (rooftop kits, alleys, more six-sided mid-rises) without burning rng",
-      "status": "pending"
+      "status": "done",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/index.js",
+        "js/world/miami/buildings.js",
+        "js/world/miami/kenneyDressing.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/geoRoofTest.js",
+        "js/world/miami/kenneyDressingTest.js",
+        "js/world/miami/inlandTest.js"
+      ]
     },
     {
       "id": "npc-inland",
@@ -145,7 +156,8 @@
     "cinema": { "x": 166, "frontZ": 57.6, "status": "done" },
     "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" },
     "espanolaWay": { "x": 243, "frontX": 234.1, "status": "done", "note": "GAP_X=243 west face only, east of cinema, west of leftoverLot A" },
-    "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" }
+    "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" },
+    "inlandMidrise": { "cells": [[-430, 237], [-430, 259], [-250, 237], [-250, 259], [-80, 237], [-80, 259], [100, 237], [100, 259]], "status": "done", "note": "six-sided deco plates + rooftop kits + z=248 alley pipes; west of x=240; hash01" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

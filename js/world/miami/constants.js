@@ -182,6 +182,12 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-80, 102],
   [78, 102],
   [155, 108],
+  // Inland service alleys between six-sided mid-rise pairs (z 237/259).
+  // Fly +X. West of x=240. Miss leftoverLot A–H, GAP_X, travel lanes.
+  [-430, 248],
+  [-250, 248],
+  [-80, 248],
+  [100, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -360,6 +366,42 @@ export function espaPassVoid(g) {
     y0: CITY_Y + 0.08, y1: CITY_Y + ESPA_PASS_H - 0.06,
     openW: g.openPassW, openH: g.openPassH,
   };
+}
+
+// ---- inland six-sided mid-rises (hash01; no layout rng) ----
+// Ocean of the 60-box backdrop (z 300), inland of the back tower row
+// (z~185). Paired on X so a 8 m E–W service alley sits at z=248 with
+// an alley-pipe whoop (fly +X). West of x=240. Miss GAP_X, leftoverLot
+// A–H, convention z1=166, helipad W z1=128, travel lanes 40.2–47.8.
+// New RESERVED west of x=240. Do not slide leftoverLot A–H.
+export const INLAND_MIDRISE_W = 18;
+export const INLAND_MIDRISE_D = 14;
+export const INLAND_MIDRISE_H = 32;
+export const INLAND_MIDRISE_CELLS = Object.freeze([
+  [-430, 237], [-430, 259],
+  [-250, 237], [-250, 259],
+  [-80, 237], [-80, 259],
+  [100, 237], [100, 259],
+]);
+
+/** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
+export function inlandMidriseGeom(x, z, id) {
+  const w = INLAND_MIDRISE_W, d = INLAND_MIDRISE_D, h = INLAND_MIDRISE_H;
+  return {
+    id, x, z, w, d, h,
+    x0: x - w / 2, x1: x + w / 2,
+    z0: z - d / 2, z1: z + d / 2,
+    tag: 'inland-midrise',
+  };
+}
+
+export function inlandMidrises() {
+  const out = [];
+  for (let i = 0; i < INLAND_MIDRISE_CELLS.length; i++) {
+    const [x, z] = INLAND_MIDRISE_CELLS[i];
+    out.push(inlandMidriseGeom(x, z, `inland-midrise-${i}`));
+  }
+  return out;
 }
 
 // ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
@@ -3454,6 +3496,11 @@ export const RESERVED = [
     z0: g.z0 - 1.5, z1: g.z1 + 1.4,
     tag: 'espa',
   })),
+  ...inlandMidrises().map((g) => ({
+    x0: g.x0 - 0.8, x1: g.x1 + 0.8,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'inland-midrise',
+  })),
 ];
 
 export function inReserved(x, z) {
@@ -4375,6 +4422,11 @@ export const KEEPOUT = [
     x0: g.x0 - 0.6, x1: g.x1 + 0.6,
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
     tag: 'espa',
+  })),
+  ...inlandMidrises().map((g) => ({
+    x0: g.x0 - 0.6, x1: g.x1 + 0.6,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'inland-midrise',
   })),
 ];
 
