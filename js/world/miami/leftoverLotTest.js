@@ -1147,7 +1147,7 @@ export function runMiamiLeftoverLotTests() {
       && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('extra court wells miss leftoverLot A–H',
-    COURT_WELL_CELLS.length === 18
+    COURT_WELL_CELLS.length === 19
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && x < 251
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
@@ -1189,8 +1189,8 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(210, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('inland z=210/152/96/128 arcades miss leftoverLot A–H',
-    INLAND_ARCADE_CELLS.length === 30
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 5
+    INLAND_ARCADE_CELLS.length === 31
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 6
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 9
@@ -1222,6 +1222,7 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 190 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && leftoverLotOverlap(-540, 237, 18, 14, 0.15) === false
     && leftoverLotOverlap(-390, 237, 18, 14, 0.15) === false
     && leftoverLotOverlap(-190, 237, 18, 14, 0.15) === false
@@ -1287,6 +1288,8 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 190 && z === 210)
     && leftoverLotOverlap(130, 210, 18, 14, 0.15) === false
     && leftoverLotOverlap(190, 210, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-720, 228.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(100, 228.6, 0.6, 0.6, 0.15) === false
     && 130 < 240 && 190 < 240 && 190 + 18 / 2 + 0.8 < 240
     && 190 < 251
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 15

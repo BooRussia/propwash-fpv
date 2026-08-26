@@ -244,7 +244,7 @@ export function runMiamiInlandTests() {
   }
 
   ok('nine courtyard drop-wells, fly −Y, west of leftoverLot',
-    COURT_WELL_CELLS.length === 18 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+    COURT_WELL_CELLS.length === 19 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128)
       && isCourtWellCell(x, z)
@@ -263,6 +263,7 @@ export function runMiamiInlandTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -600 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 190 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2
@@ -281,9 +282,9 @@ export function runMiamiInlandTests() {
     && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96/128 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 30
+    INLAND_ARCADE_CELLS.length === 31
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 5
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 6
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 9
@@ -319,6 +320,7 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 190 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -250 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -720 && z === 128)

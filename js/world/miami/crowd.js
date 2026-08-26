@@ -107,6 +107,18 @@ export const ROW196_WALK_ZS = Object.freeze([187.6, 204.4]);
 export const ROW196_WALK_RUNS = Object.freeze([
   [-730, -508],
 ]);
+// E-W sidewalk ocean of the z=237 skyline row. 1.4 m off the plate face
+// (z0=230 → 228.6). Walk +X. Skip GAP_X. West of leftoverLot A / x=240.
+// Miss travel 40.2–47.8 and Washington travel 176.2–183.8. Inland face
+// is the z=248 alley — leave it empty.
+export const SKYLINE_WALK_ZS = Object.freeze([228.6]);
+export const SKYLINE_WALK_RUNS = Object.freeze([
+  [-730, -508],
+  [-494, -322],
+  [-308, -136],
+  [-122, 50],
+  [64, 230],
+]);
 // Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
 export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS, BEACH_WALK_RUNS };
 export { BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1 };
@@ -204,6 +216,19 @@ function onRow196Walk(x, z) {
   return false;
 }
 
+function onSkylineWalk(x, z) {
+  let onZ = false;
+  for (let i = 0; i < SKYLINE_WALK_ZS.length; i++) {
+    if (Math.abs(z - SKYLINE_WALK_ZS[i]) <= 0.9) { onZ = true; break; }
+  }
+  if (!onZ) return false;
+  for (let i = 0; i < SKYLINE_WALK_RUNS.length; i++) {
+    const r = SKYLINE_WALK_RUNS[i];
+    if (x >= r[0] && x <= r[1]) return true;
+  }
+  return false;
+}
+
 function onMarinaDock(x, z) {
   if (z < MARINA_DOCK_Z0 || z > MARINA_DOCK_Z1) return false;
   for (let i = 0; i < MARINA_FINGER_XS.length; i++) {
@@ -270,12 +295,13 @@ export function buildCrowd(ctx) {
   const nGarageStand = GARAGE_STAND_CELLS.length;
   const nArcadeWestSit = 8;
   const nRow196 = 12;
+  const nSkyline = 24;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
     + nWestSwim + nReefSwim + nMidrise + nArcadeSit + nArcade96Sit + nRow96
-    + nEast96 + nHotelPorchSit + nGarageStand + nArcadeWestSit + nRow196;
+    + nEast96 + nHotelPorchSit + nGarageStand + nArcadeWestSit + nRow196 + nSkyline;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -850,6 +876,24 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nSkyline; i++) {
+    const runI = i % SKYLINE_WALK_RUNS.length;
+    const run = SKYLINE_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 4500, 3) * (run[1] - run[0]);
+    const z = SKYLINE_WALK_ZS[i % SKYLINE_WALK_ZS.length]
+      + (hash01(i + 4500, 5) - 0.5) * 0.8;
+    const dir = hash01(i + 4500, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || !onSkylineWalk(x, z) || onCross(x)) continue;
+    actors.push({
+      kind: 'skyline', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 4500, 11) * 0.45,
+      phase: hash01(i + 4500, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 4500, 17), skin: pick(SKIN, i + 4500, 19),
+    });
+  }
+
   for (let i = 0; i < nHotelPorchSit; i++) {
     const cell = HOTEL_PORCH_CELLS[i % HOTEL_PORCH_CELLS.length];
     if (!cell) continue;
@@ -1117,6 +1161,17 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'skyline') {
+      a.x += a.dir * a.speed * dt;
+      const run = SKYLINE_WALK_RUNS[a.run] || SKYLINE_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onSkylineWalk(a.x, a.z) || onCross(a.x)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'beach-walk') {
       a.x += a.dir * a.speed * dt;
       const run = BEACH_WALK_RUNS[a.run] || BEACH_WALK_RUNS[0];
@@ -1249,6 +1304,7 @@ function stampAll(state) {
       || a.kind === 'collins' || a.kind === 'lummus'
       || a.kind === 'chair-walk' || a.kind === 'beach-walk' || a.kind === 'midrise'
       || a.kind === 'row96' || a.kind === 'east96' || a.kind === 'row196'
+      || a.kind === 'skyline'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

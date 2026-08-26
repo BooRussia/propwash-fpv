@@ -208,6 +208,11 @@ export function runMiamiCrowdTests() {
     && crowd.includes('ROW196_WALK_ZS') && crowd.includes('onRow196Walk')
     && crowd.includes('hash01(i + 4400')
     && !crowd.includes('addCollider'));
+  ok('crowd walks ocean of the z=237 skyline row',
+    crowd.includes("kind: 'skyline'") && crowd.includes('const nSkyline = 24')
+    && crowd.includes('SKYLINE_WALK_ZS') && crowd.includes('onSkylineWalk')
+    && crowd.includes('hash01(i + 4500')
+    && !crowd.includes('addCollider'));
   ok('crowd sits under z=96 inland arcades',
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes("kind: 'arcade-sit'")
@@ -1005,7 +1010,7 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 18
+    COURT_WELL_CELLS.length === 19
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
@@ -1013,6 +1018,7 @@ function FRONT_Z_OK() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 196)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 190 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
@@ -1039,9 +1045,9 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96/128 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 30
+    INLAND_ARCADE_CELLS.length === 31
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 5
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 6
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 9
@@ -1075,6 +1081,7 @@ function FRONT_Z_OK() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 190 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 210)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_OPEN_W')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after inland arcades',
@@ -1133,7 +1140,7 @@ function FRONT_Z_OK() {
     crowd.includes("kind: 'arcade-sit'") && crowd.includes('const nArcadeSit = 16')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes('hash01(i + 3700')
     && !crowd.includes('addCollider') && !crowd.includes('addOBB')
-    && arcade210.length === 5
+    && arcade210.length === 6
     && arcade210.every(([x, z]) => x < 240 && z === 210
       && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false)
     && arcadeSitSpots.length >= 12
@@ -1302,6 +1309,44 @@ function FRONT_Z_OK() {
     && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
     && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after z=196 walkers',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const SKYLINE_WALK_ZS = [228.6];
+  const SKYLINE_WALK_RUNS = [
+    [-730, -508], [-494, -322], [-308, -136], [-122, 50], [64, 230],
+  ];
+  const skylineSpots = [];
+  for (let i = 0; i < 24; i++) {
+    const run = SKYLINE_WALK_RUNS[i % SKYLINE_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 4500, 3) * (run[1] - run[0]);
+    const z = SKYLINE_WALK_ZS[i % SKYLINE_WALK_ZS.length]
+      + (hash01(i + 4500, 5) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (GAP_X.some((gx) => Math.abs(x - gx) <= XS_HALF)) continue;
+    skylineSpots.push({ x, z });
+  }
+  ok('skyline sidewalk walkers fill ocean of z=237, miss leftoverLot / travel / GAP',
+    crowd.includes("kind: 'skyline'") && crowd.includes('const nSkyline = 24')
+    && crowd.includes('SKYLINE_WALK_ZS') && crowd.includes('SKYLINE_WALK_RUNS')
+    && crowd.includes('onSkylineWalk') && crowd.includes('hash01(i + 4500')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && SKYLINE_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false)
+    && SKYLINE_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
+    && skylineSpots.length >= 16
+    && skylineSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && GAP_X.every((gx) => Math.abs(p.x - gx) > XS_HALF))
+    && skylineSpots.every((p) => Math.abs(p.z - 228.6) <= 0.9)
+    && skylineSpots.some((p) => p.x < -500)
+    && skylineSpots.some((p) => p.x > 60)
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01')
+    && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after skyline walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const porchSitSpots = [];

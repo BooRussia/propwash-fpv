@@ -986,6 +986,7 @@ export const COURT_WELL_CELLS = Object.freeze([
   [-160, 210],
   [-720, 152],
   [-720, 128], [-600, 128], [-190, 128],
+  [190, 210],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 
@@ -1059,7 +1060,7 @@ export function courtWellColliderShapesAt(shapes, g) {
 export const INLAND_ARCADE_SOFFIT = 3.40;
 export const INLAND_ARCADE_OPEN_W = 4.40;
 export const INLAND_ARCADE_CELLS = Object.freeze([
-  [-540, 210], [-250, 210], [-80, 210], [90, 210],
+  [-540, 210], [-250, 210], [-80, 210], [90, 210], [130, 210],
   [-600, 152], [-430, 152], [-190, 152], [160, 152], [-660, 152],
   [-600, 96], [-540, 96], [-190, 96], [210, 96],
   [-660, 237], [-660, 259],

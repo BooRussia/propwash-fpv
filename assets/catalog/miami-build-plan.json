@@ -1031,6 +1031,24 @@
     {
       "id": "npc-skyline",
       "title": "Walkers on sidewalks ocean of the z=237 skyline row, hash01, no colliders",
+      "status": "done",
+      "notes": "nSkyline=24 at z=228.6; runs skip GAP_X; west of leftoverLot A / x=240; also arcade [130,210] + court [190,210]; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/constants.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-skyline-40",
+      "title": "Skyline pairs at x=-40 and x=40 z=237/259 if reservedOverlap is false",
+      "status": "pending"
+    },
+    {
+      "id": "fill-128-east",
+      "title": "z=128 plates at x=-160 and x=210 if they miss Lincoln/cinema reserved",
       "status": "pending"
     }
   ],
