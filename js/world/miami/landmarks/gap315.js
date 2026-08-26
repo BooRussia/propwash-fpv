@@ -132,6 +132,14 @@ function buildGap315Shop(stucco, dark, glass, pushNeon, addCollider, g, pal) {
     massX, CITY_Y + GAP315_PASS_H + 0.11, cz));
   pushNeon(neon, cBox(0.08, 0.08, len - 1.2, neon,
     face + g.inward * 0.15, CITY_Y + soffit - 0.08, cz));
+  // extra neon outline — shop soffit tubes under the arcade. Visual only.
+  const soffitNy = CITY_Y + soffit - 0.06;
+  pushNeon(neon, cBox(0.07, 0.07, len - 1.4, neon, arcadeX, soffitNy, cz));
+  pushNeon(neon, cBox(0.07, 0.07, len - 1.4, neon,
+    g.xArcadeInner - g.inward * 0.12, soffitNy, cz));
+  for (const dz of [g.z0 + 1.15, g.z1 - 1.15]) {
+    pushNeon(neon, cBox(ax1 - ax0 - 0.35, 0.07, 0.07, neon, arcadeX, soffitNy, dz));
+  }
 
   dark.push(cBox(ax1 - ax0, 0.05, len - 0.8, 0x8e887c,
     arcadeX, CITY_Y + 0.025, cz));

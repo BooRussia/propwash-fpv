@@ -521,7 +521,16 @@
     {
       "id": "storefront-neon",
       "title": "Night neon on Fifth / 8th / GAP -315 shop soffits via regDN, no ShaderMaterial",
-      "status": "pending"
+      "status": "done",
+      "notes": "extra arcade soffit tubes on Fifth / 8th / GAP -315 shops; regDN MeshStandardMaterial; no ShaderMaterial; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/landmarks/fifth.js",
+        "js/world/miami/landmarks/eighth.js",
+        "js/world/miami/landmarks/gap315.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/eighthTest.js",
+        "js/world/miami/gap315Test.js"
+      ]
     },
     {
       "id": "palm-row-fill",

@@ -188,6 +188,14 @@ export function runMiamiGap315Tests() {
     && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('CITY_Y unchanged', CITY_Y === 1.5);
+  ok('night neon on GAP_X=-315 shop soffits via regDN, no ShaderMaterial',
+    gap315.includes('extra neon outline') && gap315.includes('shop soffit tubes')
+    && gap315.includes('CITY_Y + soffit - 0.06') && gap315.includes('regDN')
+    && gap315.includes('MeshStandardMaterial') && !gap315.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(gap315) && !/\brng3\s*\(/.test(gap315)
+    && !/\brng4\s*\(/.test(gap315)
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15)
+    && TRAVEL_Z0 === 40.2 && TRAVEL_Z1 === 47.8);
 
   if (fails.length) {
     console.error('[miami-gap-315] FAIL');

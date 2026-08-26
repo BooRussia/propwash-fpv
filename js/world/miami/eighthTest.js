@@ -188,6 +188,14 @@ export function runMiamiEighthTests() {
     && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('CITY_Y unchanged', CITY_Y === 1.5);
+  ok('night neon on 8th-street shop soffits via regDN, no ShaderMaterial',
+    eighth.includes('extra neon outline') && eighth.includes('shop soffit tubes')
+    && eighth.includes('CITY_Y + soffit - 0.06') && eighth.includes('regDN')
+    && eighth.includes('MeshStandardMaterial') && !eighth.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(eighth) && !/\brng3\s*\(/.test(eighth)
+    && !/\brng4\s*\(/.test(eighth)
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15)
+    && TRAVEL_Z0 === 40.2 && TRAVEL_Z1 === 47.8);
 
   if (fails.length) {
     console.error('[miami-eighth] FAIL');

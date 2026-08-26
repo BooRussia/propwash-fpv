@@ -706,6 +706,20 @@ function FRONT_Z_OK() {
   }
   ok('leftoverLot A–H still signed after 5th-street',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('night neon on Fifth / 8th / GAP -315 shop soffits via regDN, no ShaderMaterial',
+    fifth.includes('extra neon outline') && fifth.includes('shop soffit tubes')
+    && fifth.includes('CITY_Y + soffit - 0.06') && fifth.includes('regDN')
+    && !fifth.includes('ShaderMaterial')
+    && eighth.includes('extra neon outline') && eighth.includes('shop soffit tubes')
+    && eighth.includes('CITY_Y + soffit - 0.06') && eighth.includes('regDN')
+    && !eighth.includes('ShaderMaterial')
+    && gap315.includes('extra neon outline') && gap315.includes('shop soffit tubes')
+    && gap315.includes('CITY_Y + soffit - 0.06') && gap315.includes('regDN')
+    && !gap315.includes('ShaderMaterial')
+    && !/\brng2?\s*\(/.test(fifth) && !/\brng3\s*\(/.test(fifth) && !/\brng4\s*\(/.test(fifth)
+    && !/\brng2?\s*\(/.test(eighth) && !/\brng3\s*\(/.test(eighth) && !/\brng4\s*\(/.test(eighth)
+    && !/\brng2?\s*\(/.test(gap315) && !/\brng3\s*\(/.test(gap315) && !/\brng4\s*\(/.test(gap315)
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   ok('espa.js exists', existsSync(espaPath));
   ok('index builds Espanola storefronts after 5th-street',
