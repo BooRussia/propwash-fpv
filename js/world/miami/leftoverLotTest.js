@@ -1157,6 +1157,11 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-540, 210, 0.8, 2.4, 0.15) === false
     && leftoverLotOverlap(-80, 210, 0.8, 2.4, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=96 roof AC gaps miss leftoverLot A–H',
+    leftoverLotOverlap(-600, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-540, 96, 4, 2, 0.15) === false
+    && leftoverLotOverlap(-190, 96, 4, 2, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('mid-rise sidewalks miss leftoverLot A–H',
     leftoverLotOverlap(-80, 143.6, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(90, 160.4, 0.6, 0.6, 0.15) === false

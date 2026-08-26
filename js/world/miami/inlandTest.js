@@ -235,11 +235,13 @@ export function runMiamiInlandTests() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
-  ok('signed rooftop AC gaps + billboard rings on remaining z=259/210 roofs',
-    ROOF_AC_CELLS.length === 8 && ROOF_RING_CELLS.length === 10
+  ok('signed rooftop AC gaps + billboard rings including z=96 plates',
+    ROOF_AC_CELLS.length === 11 && ROOF_RING_CELLS.length === 10
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
-    && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
+      && !isCourtWellCell(x, z))
+    && ROOF_AC_CELLS.filter(([, z]) => z === 96).length === 3
     && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && (z === 259 || z === 210)
       && !isCourtWellCell(x, z)
@@ -249,6 +251,10 @@ export function runMiamiInlandTests() {
     && ROOF_RING_CELLS.some(([x, z]) => x === -540 && z === 210)
     && ROOF_AC_CELLS.some(([x, z]) => x === -430 && z === 237)
     && ROOF_AC_CELLS.some(([x, z]) => x === -80 && z === 237)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -600 && z === 96)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -190 && z === 96)
+    && !ROOF_AC_CELLS.some(([x, z]) => x === -390 && z === 96)
+    && !ROOF_AC_CELLS.some(([x, z]) => x === -250 && z === 96)
     && ROOF_AC_CELLS.every(([x, z]) =>
       INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)));
   ok('inland.js builds roof whoops with hash01 skip, no layout rng',

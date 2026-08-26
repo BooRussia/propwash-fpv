@@ -694,7 +694,14 @@
     {
       "id": "roof-96",
       "title": "AC-gap whoops on z=96 plates that miss court wells, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "ROOF_AC_CELLS +3: [-600,96], [-540,96], [-190,96] on arcade plates; miss court wells -390/-250; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "fill-east96",
