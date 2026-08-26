@@ -1305,6 +1305,25 @@
       "title": "z=152 mid-rise at x=-410 continuing the skyline-410 column, miss helipad W",
       "status": "done",
       "notes": "[-410,152] arcade; miss helipad W (z1=128); leftoverLot A–H unmoved"
+    },
+    {
+      "id": "city-skyline",
+      "title": "Skyline pair at x=-370 z=237/259 in the gap between -390 and -350, miss GAP_X=-315, leftoverLot unmoved",
+      "status": "done",
+      "notes": "[-370,237] arcade + [-370,259] roof ring + alley pipe [-370,248]; miss GAP_X=-315 (plate x1=-361); leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-210-370",
+      "title": "z=210 mid-rise at x=-370 continuing the skyline-370 column",
+      "status": "pending",
+      "notes": "reservedOverlap was false; miss GAP_X=-315; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {

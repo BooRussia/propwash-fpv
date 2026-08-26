@@ -420,6 +420,9 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   // hash01 alley-pipe draws stay put. Fly +X.
   [-720, 181],
   [-660, 181],
+  // Gap between -390 and -350, miss GAP_X=-315. Appended so existing
+  // hash01 alley-pipe draws stay put. Fly +X.
+  [-370, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -961,6 +964,9 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // Gap between -430 and -390. Miss helipad W (x -452..-408, z1=128).
   // Plate x0=-419 / x1=-401 sits 2 m off [-430] x1=-421 and [-390] x0=-399.
   [-410, 237], [-410, 259],
+  // Gap between -390 and -350. Miss GAP_X=-315 (plate x1=-361 / shops west of -323.9).
+  // Plate x0=-379 / x1=-361 sits 2 m off [-390] x1=-381 and [-350] x0=-359.
+  [-370, 237], [-370, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
@@ -1132,6 +1138,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-410, 237],
   [-410, 210],
   [-410, 152],
+  [-370, 237],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1209,7 +1216,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-160, 259], [130, 259], [190, 259],
   [-40, 259], [40, 259], [-480, 259],
   [0, 259], [80, 259], [-110, 259], [-220, 259],
-  [-350, 259], [-280, 259], [-455, 259], [-410, 259],
+  [-350, 259], [-280, 259], [-455, 259], [-410, 259], [-370, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;
