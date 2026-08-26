@@ -396,6 +396,9 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-190, 248],
   [160, 248],
   [210, 248],
+  [-160, 248],
+  [130, 248],
+  [190, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -914,9 +917,12 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-390, 237], [-390, 259],
   [-250, 237], [-250, 259],
   [-190, 237], [-190, 259],
+  [-160, 237], [-160, 259],
   [-80, 237], [-80, 259],
   [100, 237], [100, 259],
+  [130, 237], [130, 259],
   [160, 237], [160, 259],
+  [190, 237], [190, 259],
   [210, 237], [210, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
@@ -1060,6 +1066,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-540, 237], [-390, 237], [-190, 237],
   [-660, 128], [-540, 128], [-390, 128],
   [-720, 96], [-720, 210], [-720, 237],
+  [-160, 237], [130, 237], [190, 237], [-600, 237],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1134,6 +1141,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-600, 259], [-430, 259], [-250, 259], [-720, 259],
   [-540, 210], [-390, 210], [-250, 210], [-190, 210], [-80, 210],
   [-540, 259], [-390, 259], [-190, 259], [160, 259], [210, 259],
+  [-160, 259], [130, 259], [190, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;
