@@ -12,6 +12,8 @@ import {
   CLEVELANDER_X, CLEVELANDER_FRONT_Z, CLEVELANDER_W, CLEVELANDER_SOFFIT,
   CARDOZO_X, CARDOZO_FRONT_Z, CARDOZO_W,
   COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
+  AVALON_X, AVALON_FRONT_Z, AVALON_W, AVALON_D, AVALON_SOFFIT,
+  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D,
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
@@ -266,6 +268,8 @@ export function runMiamiCrowdTests() {
     && cleve.includes('extra neon outline') && cleve.includes('regDN')
     && !/\brng2?\s*\(/.test(cleve)
     && deco.includes('extra neon outline') && deco.includes('Colony corner tubes')
+    && deco.includes('Avalon corner tubes')
+    && deco.includes('Majestic corner tubes')
     && deco.includes('Breakwater corner tubes')
     && deco.includes('Cavalier corner tubes')
     && deco.includes('Winterhaven corner tubes')
@@ -280,11 +284,14 @@ export function runMiamiCrowdTests() {
   ok('extra neon tubes sit on the 57.6 facade, not travel lanes',
     artdeco.includes('zF - 0.28') && FRONT_Z_OK()
     && leftoverLotOverlap(-75, 57.6, 2, 2, 0.15) === false
+    && leftoverLotOverlap(-152, 57.6, 2, 2, 0.15) === false
+    && leftoverLotOverlap(-178, 57.6, 2, 2, 0.15) === false
     && leftoverLotOverlap(166, 57.6, 2, 2, 0.15) === false);
 
 function FRONT_Z_OK() {
   return CASA_FRONT_Z === 57.6 && CLEVELANDER_FRONT_Z === 57.6
     && CARDOZO_FRONT_Z === 57.6 && COLONY_FRONT_Z === 57.6
+    && AVALON_FRONT_Z === 57.6 && MAJESTIC_FRONT_Z === 57.6
     && 57.6 > TRAVEL_Z1;
 }
   ok('constants still name leftoverLot A at 258',
@@ -296,6 +303,19 @@ function FRONT_Z_OK() {
     COLONY_X === -108 && COLONY_FRONT_Z === 57.6 && COLONY_W === 20
     && COLONY_D === 24 && COLONY_SOFFIT === 3.5
     && COLONY_X + COLONY_W / 2 < -88);
+  ok('Avalon sits west of Colony / GAP -129 on the facade plane',
+    AVALON_X === -152 && AVALON_FRONT_Z === 57.6 && AVALON_W === 18
+    && AVALON_D === 24 && AVALON_SOFFIT === 3.5
+    && AVALON_X + AVALON_W / 2 + 1.2 < -129 - XS_HALF
+    && AVALON_X + AVALON_W / 2 < COLONY_X - COLONY_W / 2
+    && AVALON_FRONT_Z - 3.4 > TRAVEL_Z1);
+  ok('Majestic sits west of Avalon, east of GAP -315, west of x=240',
+    MAJESTIC_X === -178 && MAJESTIC_FRONT_Z === 57.6
+    && MAJESTIC_W === 16 && MAJESTIC_D === 22
+    && MAJESTIC_X + MAJESTIC_W / 2 + 1.2 < AVALON_X - AVALON_W / 2 - 1.2
+    && MAJESTIC_X - MAJESTIC_W / 2 - 1.2 > -315 + XS_HALF
+    && MAJESTIC_X + MAJESTIC_W / 2 + 1.2 < 240
+    && MAJESTIC_FRONT_Z > TRAVEL_Z1);
   ok('Breakwater sits in the deco / Clevelander gap',
     BREAKWATER_X === 42 && BREAKWATER_FRONT_Z === 57.6
     && BREAKWATER_W === 12 && BREAKWATER_D === 22
@@ -314,19 +334,27 @@ function FRONT_Z_OK() {
     && WINTERHAVEN_FRONT_Z + WINTERHAVEN_D <= 76);
   ok('named deco hotels are reserved and miss leftoverLot A–H',
     reservedOverlap(COLONY_X, COLONY_FRONT_Z + 8, COLONY_W, COLONY_D, 0.15)
+    && reservedOverlap(AVALON_X, AVALON_FRONT_Z + 8, AVALON_W, AVALON_D, 0.15)
+    && reservedOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z + 8, MAJESTIC_W, MAJESTIC_D, 0.15)
     && reservedOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + 8, BREAKWATER_W, BREAKWATER_D, 0.15)
     && reservedOverlap(CAVALIER_X, CAVALIER_FRONT_Z + 8, CAVALIER_W, CAVALIER_D, 0.15)
     && reservedOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + 8, WINTERHAVEN_W, WINTERHAVEN_D, 0.15)
     && leftoverLotOverlap(COLONY_X, COLONY_FRONT_Z + 8, COLONY_W, COLONY_D, 0.15) === false
+    && leftoverLotOverlap(AVALON_X, AVALON_FRONT_Z + 8, AVALON_W, AVALON_D, 0.15) === false
+    && leftoverLotOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z + 8, MAJESTIC_W, MAJESTIC_D, 0.15) === false
     && leftoverLotOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + 8, BREAKWATER_W, BREAKWATER_D, 0.15) === false
     && leftoverLotOverlap(CAVALIER_X, CAVALIER_FRONT_Z + 8, CAVALIER_W, CAVALIER_D, 0.15) === false
     && leftoverLotOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + 8, WINTERHAVEN_W, WINTERHAVEN_D, 0.15) === false);
   ok('named deco hotels miss the carriageway and travel lanes',
     streetOverlap(COLONY_X, COLONY_FRONT_Z + COLONY_D / 2, COLONY_W, COLONY_D) === false
+    && streetOverlap(AVALON_X, AVALON_FRONT_Z + AVALON_D / 2, AVALON_W, AVALON_D) === false
+    && streetOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z + MAJESTIC_D / 2, MAJESTIC_W, MAJESTIC_D) === false
     && streetOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z + BREAKWATER_D / 2, BREAKWATER_W, BREAKWATER_D) === false
     && streetOverlap(CAVALIER_X, CAVALIER_FRONT_Z + CAVALIER_D / 2, CAVALIER_W, CAVALIER_D) === false
     && streetOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + WINTERHAVEN_D / 2, WINTERHAVEN_W, WINTERHAVEN_D) === false
     && COLONY_FRONT_Z - 3.4 > TRAVEL_Z1
+    && AVALON_FRONT_Z - 3.4 > TRAVEL_Z1
+    && MAJESTIC_FRONT_Z > TRAVEL_Z1
     && WINTERHAVEN_FRONT_Z > TRAVEL_Z1);
   ok('leftoverLot A–H were not slid',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
@@ -341,6 +369,21 @@ function FRONT_Z_OK() {
   if (colonyArcade) {
     const hit = probeBlocked(kit, colonyArcade.x, colonyArcade.y, colonyArcade.z, 0.28);
     ok('colony arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+  }
+  const avalonArcade = FLY_VOIDS.find((v) => v.id === 'avalon-arcade');
+  ok('avalon-arcade fly void exists',
+    !!avalonArcade && avalonArcade.openH === AVALON_SOFFIT && avalonArcade.openW >= 8);
+  ok('avalon-arcade keepout + inFlyVoid',
+    !!avalonArcade && !!inKeepout(avalonArcade.x, avalonArcade.z)
+    && !!inFlyVoid(avalonArcade.x, avalonArcade.z)
+    && avalonArcade.z > TRAVEL_Z1);
+  if (avalonArcade) {
+    const hit = probeBlocked(kit, avalonArcade.x, avalonArcade.y, avalonArcade.z, 0.28);
+    ok('avalon arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+    ok('avalon arcade misses leftoverLot / street / travel',
+      leftoverLotOverlap(avalonArcade.x, avalonArcade.z, 2.4, 2.0, 0.15) === false
+      && streetOverlap(avalonArcade.x, avalonArcade.z, 2.4, 1.8) === false
+      && avalonArcade.z > TRAVEL_Z1);
   }
   ok('decoHotels does not draw layout rng',
     !/\brng2?\s*\(/.test(deco) && !/\brng3\s*\(/.test(deco)

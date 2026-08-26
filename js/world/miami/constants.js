@@ -63,6 +63,22 @@ export const COLONY_W = 20;
 export const COLONY_D = 24;
 export const COLONY_SOFFIT = 3.5;
 
+// ---- Avalon analogue (700 Ocean Drive; west of Colony / GAP -129) ----
+// Porch arcade you can fly under (soffit AVALON_SOFFIT). East of GAP -315.
+// New RESERVED west of x=240. Miss travel lanes 40.2–47.8. leftoverLot A–H unmoved.
+export const AVALON_X = -152;
+export const AVALON_FRONT_Z = 57.6;
+export const AVALON_W = 18;
+export const AVALON_D = 24;
+export const AVALON_SOFFIT = 3.5;
+
+// ---- Majestic analogue (660 Ocean Drive; west of Avalon, east of GAP -315) ----
+// Shallow plate on FRONT_Z=57.6. New RESERVED west of x=240. leftoverLot A–H unmoved.
+export const MAJESTIC_X = -178;
+export const MAJESTIC_FRONT_Z = 57.6;
+export const MAJESTIC_W = 16;
+export const MAJESTIC_D = 22;
+
 // ---- Breakwater analogue (940 Ocean Drive; deco-row / Clevelander gap) ----
 export const BREAKWATER_X = 42;
 export const BREAKWATER_FRONT_Z = 57.6;
@@ -3916,6 +3932,10 @@ export const RESERVED = [
     z0: 55.6, z1: 86, tag: 'cardozo' },
   { x0: COLONY_X - COLONY_W / 2 - 1.2, x1: COLONY_X + COLONY_W / 2 + 1.2,
     z0: 55.6, z1: 86, tag: 'colony' },
+  { x0: AVALON_X - AVALON_W / 2 - 1.2, x1: AVALON_X + AVALON_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'avalon' },
+  { x0: MAJESTIC_X - MAJESTIC_W / 2 - 1.2, x1: MAJESTIC_X + MAJESTIC_W / 2 + 1.2,
+    z0: 55.6, z1: 86, tag: 'majestic' },
   { x0: BREAKWATER_X - BREAKWATER_W / 2 - 1.2, x1: BREAKWATER_X + BREAKWATER_W / 2 + 1.2,
     z0: 55.6, z1: 86, tag: 'breakwater' },
   { x0: CAVALIER_X - CAVALIER_W / 2 - 1.2, x1: CAVALIER_X + CAVALIER_W / 2 + 1.2,
@@ -4967,6 +4987,8 @@ export const KEEPOUT = [
     z0: CLEVELANDER_FRONT_Z - 3.4, z1: CLEVELANDER_FRONT_Z + 0.3, tag: 'clevelander' },
   { x0: COLONY_X - COLONY_W / 2 + 1.0, x1: COLONY_X + COLONY_W / 2 - 1.0,
     z0: COLONY_FRONT_Z - 3.4, z1: COLONY_FRONT_Z + 0.3, tag: 'colony' },
+  { x0: AVALON_X - AVALON_W / 2 + 1.0, x1: AVALON_X + AVALON_W / 2 - 1.0,
+    z0: AVALON_FRONT_Z - 3.4, z1: AVALON_FRONT_Z + 0.3, tag: 'avalon' },
   { x0: -80 - GATE_HALF_X - 0.8, x1: -80 + GATE_HALF_X + 0.8,
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
   { x0: -20 - GATE_HALF_X - 0.8, x1: -20 + GATE_HALF_X + 0.8,
@@ -5289,6 +5311,16 @@ export const FLY_VOIDS = [
     openW: COLONY_W - 2.4, openH: COLONY_SOFFIT,
   },
   {
+    id: 'avalon-arcade', kind: 'kit',
+    x: AVALON_X, z: AVALON_FRONT_Z - 1.7,
+    y: CITY_Y + AVALON_SOFFIT * 0.48,
+    x0: AVALON_X - AVALON_W / 2 + 1.2,
+    x1: AVALON_X + AVALON_W / 2 - 1.2,
+    z0: AVALON_FRONT_Z - 3.15, z1: AVALON_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + AVALON_SOFFIT - 0.06,
+    openW: AVALON_W - 2.4, openH: AVALON_SOFFIT,
+  },
+  {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
     y: CITY_Y + GARAGE_SOFFIT * 0.48,
@@ -5430,6 +5462,21 @@ export function flyColliderShapes() {
     type: 'aabb', tag: 'colony',
     x: COLONY_X, z: colonyZ, sx: COLONY_W - 0.6, sz: 3.2,
     y0: CITY_Y + COLONY_SOFFIT, sy: 0.26,
+  });
+
+  // Avalon arcade jambs — centre bay empty, fly ±X under the soffit.
+  const avalonZ = AVALON_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'avalon',
+      x: AVALON_X + s * (AVALON_W / 2 - 0.7), z: avalonZ, r: 0.2,
+      y0: CITY_Y, h: AVALON_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'avalon',
+    x: AVALON_X, z: avalonZ, sx: AVALON_W - 0.6, sz: 3.2,
+    y0: CITY_Y + AVALON_SOFFIT, sy: 0.26,
   });
 
   for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {

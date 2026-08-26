@@ -241,7 +241,13 @@
     {
       "id": "collins-west",
       "title": "Two more deco hotels west of Colony on FRONT_Z=57.6, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "Avalon x=-152 arcade + Majestic x=-178 plate on FRONT_Z=57.6 west of Colony/GAP -129; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/decoHotels.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "pier-rings",
@@ -255,6 +261,8 @@
     "casaCasuarina": { "x": 90, "frontZ": 57.6, "status": "done" },
     "cardozo": { "x": 115, "frontZ": 57.6, "status": "done" },
     "colony": { "x": -108, "frontZ": 57.6, "status": "done" },
+    "avalon": { "x": -152, "frontZ": 57.6, "status": "done", "note": "west of Colony / GAP -129; porch arcade; leftoverLot A–H unmoved" },
+    "majestic": { "x": -178, "frontZ": 57.6, "status": "done", "note": "west of Avalon, east of GAP -315; leftoverLot A–H unmoved" },
     "breakwater": { "x": 42, "frontZ": 57.6, "status": "done" },
     "cavalier": { "x": 134, "frontZ": 57.6, "status": "done" },
     "winterhaven": { "x": 222, "frontZ": 57.6, "status": "done" },
