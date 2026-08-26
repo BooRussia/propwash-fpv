@@ -16,8 +16,10 @@ import {
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X, CITY_Y, GAP_X, XS_HALF,
   MAJESTIC_X, MAJESTIC_W, WASH_Z0, WASH_Z1, WASH_X0, WASH_X1,
+  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
   INLAND_MIDRISE_CELLS, INLAND_MIDRISE_W, INLAND_MIDRISE_D,
 } from './constants.js';
+import { hash01 } from './rng.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const TRAVEL_Z0 = 40.2;
@@ -147,6 +149,40 @@ export function runMiamiGap315Tests() {
 
   ok('crowd has no colliders (NPCs stay visual-only)',
     !crowd.includes('addCollider') && !crowd.includes('addCyl'));
+  ok('crowd walks GAP_X=-315 sidewalks, no colliders',
+    crowd.includes("kind: 'gap315'") && crowd.includes('GAP315_WALK_XS')
+    && crowd.includes('const nGap315 = 36')
+    && crowd.includes('GAP315_WALK_Z_RUNS')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01'));
+
+  const GAP315_WALK_XS = [-322.7, -307.3];
+  const GAP315_WALK_Z_RUNS = [[92, 168], [190, 220]];
+  const gap315Spots = [];
+  for (let i = 0; i < 36; i++) {
+    const x = GAP315_WALK_XS[i % GAP315_WALK_XS.length];
+    const runI = ((i / GAP315_WALK_XS.length) | 0) % GAP315_WALK_Z_RUNS.length;
+    const run = GAP315_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2300, 3) * (run[1] - run[0]);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    gap315Spots.push({ x, z });
+  }
+  ok('gap315 walkers fill both sidewalks west of leftoverLot A',
+    gap315Spots.length >= 32
+    && gap315Spots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && !(p.z > WASH_Z0 && p.z < WASH_Z1)
+      && p.z > TRAVEL_Z1)
+    && gap315Spots.some((p) => Math.abs(p.x + 322.7) < 0.05)
+    && gap315Spots.some((p) => Math.abs(p.x + 307.3) < 0.05)
+    && Math.abs(GAP315_WALK_XS[0] - (GAP315_X - XS_HALF - 1.2)) < 1e-6
+    && Math.abs(GAP315_WALK_XS[1] - (GAP315_X + XS_HALF + 1.2)) < 1e-6);
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84
     && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398

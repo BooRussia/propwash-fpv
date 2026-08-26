@@ -1126,6 +1126,45 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
+  const GAP315_WALK_XS = [-322.7, -307.3];
+  const GAP315_WALK_Z_RUNS = [[92, 168], [190, 220]];
+  const gap315Spots = [];
+  for (let i = 0; i < 36; i++) {
+    const x = GAP315_WALK_XS[i % GAP315_WALK_XS.length];
+    const runI = ((i / GAP315_WALK_XS.length) | 0) % GAP315_WALK_Z_RUNS.length;
+    const run = GAP315_WALK_Z_RUNS[runI];
+    const z = run[0] + hash01(i + 2300, 3) * (run[1] - run[0]);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    gap315Spots.push({ x, z });
+  }
+  ok('gap315 walkers fill both sidewalks, miss travel / leftoverLot / x>=240',
+    gap315Spots.length >= 32
+    && gap315Spots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && p.z > TRAVEL_Z1)
+    && gap315Spots.some((p) => Math.abs(p.x - GAP315_WALK_XS[0]) < 0.05)
+    && gap315Spots.some((p) => Math.abs(p.x - GAP315_WALK_XS[1]) < 0.05)
+    && gap315Spots.some((p) => p.z >= 92 && p.z <= 168)
+    && gap315Spots.some((p) => p.z >= 190 && p.z <= 220));
+  ok('gap315 NPCs have no colliders and skip keepout so frontage fills',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'gap315'")
+    && crowd.includes('const nGap315 = 36')
+    && crowd.includes('GAP315_WALK_XS')
+    && crowd.includes('GAP315_WALK_Z_RUNS')
+    && crowd.includes('npcOffLimits')
+    && GAP315_WALK_XS.every((x) => x < 240 && Math.abs(x - GAP315_X) > XS_HALF)
+    && GAP315_WALK_XS.every((x) => leftoverLotOverlap(x, 114, 0.6, 0.6, 0.15) === false)
+    && GAP315_WALK_Z_RUNS.every((run) => run[0] > TRAVEL_Z1
+      && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0))
+    && Math.abs(GAP315_WALK_XS[0] - (GAP315_X - XS_HALF - 1.2)) < 1e-6
+    && Math.abs(GAP315_WALK_XS[1] - (GAP315_X + XS_HALF + 1.2)) < 1e-6);
+
   ok('marina.js exists', existsSync(marinaPath));
   ok('marina ocean dressing is hash01, leftoverLot unmoved',
     marina.includes('hash01') && marina.includes('buildMarinaOceanDressing')
