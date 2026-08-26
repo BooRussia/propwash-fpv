@@ -56,6 +56,7 @@ import {
   GAP315_SOFFIT, GAP315_PASS_W, GAP315_PASS_H, GAP315_D, gap315Shops,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
+  BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
 } from './constants.js';
 import { hash01 } from './rng.js';
 
@@ -1207,6 +1208,30 @@ function FRONT_Z_OK() {
       && !MARINA_FINGER_XS.some((fx) => Math.abs(p.x - fx) < 2.2
         && p.z >= MARINA_DOCK_Z0 && p.z <= MARINA_DOCK_Z1)));
   ok('leftoverLot A–H still signed after marina fill',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  const kenneyPath = join(here, 'kenneyDressing.js');
+  const kenney = existsSync(kenneyPath) ? readFileSync(kenneyPath, 'utf8') : '';
+  ok('signed beach chairs and umbrellas sit on the sand, skip keepouts',
+    BEACH_CHAIR_CELLS.length === 12 && BEACH_UMBRELLA_CELLS.length === 8
+    && BEACH_CHAIR_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0 && z > 4
+      && leftoverLotOverlap(x, z, 0.64, 0.63, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && inKeepout(x, z, 0.6) === false)
+    && BEACH_UMBRELLA_CELLS.every(([x, z]) => x < 240 && z < TRAVEL_Z0 && z > 4
+      && leftoverLotOverlap(x, z, 1.8, 1.8, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && inKeepout(x, z, 0.6) === false)
+    && kenney.includes('BEACH_CHAIR_CELLS') && kenney.includes('BEACH_UMBRELLA_CELLS')
+    && kenney.includes("'beach-chairs-signed'") && kenney.includes("'beach-umbrellas-signed'")
+    && kenney.includes('inKeepout(x, z, 0.6)') && kenney.includes('leftoverLotOverlap')
+    && kenney.includes('hash01(i, 2401)') && kenney.includes('z = 5.2 + hash01(i, 103) * 11')
+    && !/\brng2?\s*\(/.test(kenney) && !/\brng3\s*\(/.test(kenney)
+    && !/\brng4\s*\(/.test(kenney)
+    && !kenney.includes('ShaderMaterial')
+    && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
+  ok('leftoverLot A–H still signed after beach chairs',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

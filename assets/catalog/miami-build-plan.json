@@ -321,7 +321,14 @@
     {
       "id": "beach-chairs",
       "title": "More signed beach chairs and umbrellas on the sand, hash01, skip keepouts",
-      "status": "pending"
+      "status": "done",
+      "notes": "12 chairs + 8 umbrellas signed on sand; hash01 yaw; skip keepout/leftoverLot/travel; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/kenneyDressing.js",
+        "js/world/miami/kenneyDressingTest.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "rooftop-more",

@@ -88,6 +88,13 @@ export function runMiamiKenneyDressingTests() {
     && !/\brng2?\(/.test(kenney));
   ok('beach chairs sit ocean of the boardwalk kiss',
     kenney.includes('z = 5.2 + hash01(i, 103) * 11'));
+  ok('signed extra beach chairs / umbrellas skip keepouts, hash01 only',
+    kenney.includes('BEACH_CHAIR_CELLS') && kenney.includes('BEACH_UMBRELLA_CELLS')
+    && kenney.includes("'beach-chairs-signed'") && kenney.includes("'beach-umbrellas-signed'")
+    && kenney.includes('inKeepout(x, z, 0.6)') && kenney.includes('leftoverLotOverlap')
+    && kenney.includes('hash01(i, 2401)') && kenney.includes('hash01(i, 2411)')
+    && kenney.includes('z = 5.2 + hash01(i, 103) * 11')
+    && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
   ok('far row sits behind the 60-box LOD (z>=640)',
     kenney.includes('640 + hash01')
     && kenney.includes('kenney_skyscraper_b')

@@ -36,6 +36,22 @@ export const LUMMUS_DRINKER_CELLS = Object.freeze([
 export const VBALL_X0 = 128, VBALL_X1 = 208;
 export const VBALL_Z0 = 4.0, VBALL_Z1 = 20.0;
 
+// Extra signed beach chairs + umbrellas on the sand (ocean of the boardwalk).
+// Skip keepouts at place time. Ocean of travel 40.2–47.8. leftoverLot A–H unmoved.
+// hash01 never at const-eval.
+export const BEACH_CHAIR_CELLS = Object.freeze([
+  [-522.4, 7.5], [-517.6, 10.4],
+  [-382.2, 7.0], [-377.8, 9.8],
+  [-282.2, 6.2], [-277.8, 9.0],
+  [-92.2, 7.4], [-87.8, 10.2],
+  [-42.2, 6.0], [-37.8, 8.6],
+  [25.8, 6.0], [30.2, 8.8],
+]);
+export const BEACH_UMBRELLA_CELLS = Object.freeze([
+  [-520, 9.0], [-380, 8.4], [-280, 7.6], [-90, 8.8],
+  [-40, 7.2], [28, 7.4], [110, 6.8], [220, 8.0],
+]);
+
 // ---- MIAMI letter sign ----
 export const SIGN_X = 60, SIGN_Z = 14;
 

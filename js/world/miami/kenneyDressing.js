@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { CITY_Y, PIER_X, GAP_X, CROSS_X, MARINA_X, groundHeight, inKeepout, deckTop, BOARDWALK_TOP } from './constants.js';
+import {
+  CITY_Y, PIER_X, GAP_X, CROSS_X, MARINA_X, groundHeight, inKeepout, deckTop,
+  BOARDWALK_TOP, leftoverLotOverlap, BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS,
+} from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
 import { buildStairHandrailGeo } from './props/stairs-entry.js';
@@ -822,6 +825,36 @@ export async function buildKenneyDressing(ctx) {
     addCyl(x, y, z, 0.08, 7);
   }
   instanceAuthored(ctx, buildFlagpoleGeo(), vc(), flags, 'catalog-flagpole');
+
+  // Extra signed beach chairs + umbrellas on the sand. hash01 yaw only.
+  // Skip keepouts / leftoverLot / travel. Do not restack loops above.
+  const extraChairs = [];
+  for (let i = 0; i < BEACH_CHAIR_CELLS.length; i++) {
+    const [x, z] = BEACH_CHAIR_CELLS[i];
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 0.64, 0.63, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.2) continue;
+    if (!clear(x, z, 0.5, y, 0.95)) continue;
+    extraChairs.push({ x, y, z, scale: 1.0, rotY: (hash01(i, 2401) - 0.5) * 0.5 });
+    addCyl(x, y, z, 0.32, 0.85);
+  }
+  await scatterSafe(ctx, 'plastic_monobloc_chair_01', extraChairs, 'beach-chairs-signed');
+
+  const extraUmbrellas = [];
+  for (let i = 0; i < BEACH_UMBRELLA_CELLS.length; i++) {
+    const [x, z] = BEACH_UMBRELLA_CELLS[i];
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 1.8, 1.8, 0.15)) continue;
+    if (inKeepout(x, z, 0.6)) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.2) continue;
+    if (!clear(x, z, 0.9, y, 2.2)) continue;
+    extraUmbrellas.push({ x, y, z, scale: 1.05, rotY: hash01(i, 2411) * Math.PI * 2 });
+    addCyl(x, y, z, 0.08, 2.1);
+  }
+  await scatterSafe(ctx, 'parasol_a', extraUmbrellas, 'beach-umbrellas-signed');
 
   setTag('world');
   return {
