@@ -298,6 +298,26 @@
       "id": "gap-315",
       "title": "Inland storefronts on GAP_X=-315 with arcade fly-unders, west of leftoverLot A",
       "status": "pending"
+    },
+    {
+      "id": "npc-gap-315",
+      "title": "Visual crowd on GAP_X=-315 sidewalks, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "beach-chairs",
+      "title": "More signed beach chairs and umbrellas on the sand, hash01, skip keepouts",
+      "status": "pending"
+    },
+    {
+      "id": "rooftop-more",
+      "title": "AC-gap whoops on remaining inland plates at x=-430 and x=-80 z=237, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "gap-429",
+      "title": "West-face storefronts on GAP_X=429 if they stay west of leftoverLot A; otherwise skip east face",
+      "status": "pending"
     }
   ],
   "landmarks": {
