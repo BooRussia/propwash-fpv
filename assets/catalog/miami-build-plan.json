@@ -480,6 +480,26 @@
       "id": "foam-wake",
       "title": "Stronger boat-wake foam stamps on the Biscayne plate, foamGain stays 0, MeshPhysical only",
       "status": "pending"
+    },
+    {
+      "id": "npc-swim-2",
+      "title": "More ocean swimmers west of the pier and near the reef, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "storefront-neon",
+      "title": "Night neon on Fifth / 8th / GAP -315 shop soffits via regDN, no ShaderMaterial",
+      "status": "pending"
+    },
+    {
+      "id": "palm-row-fill",
+      "title": "Extra hash01 palms on remaining beach tree-lawn cells, tryPlace, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "hotel-flags",
+      "title": "Signed flags on Ocean Drive hotel crowns, hash01, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
