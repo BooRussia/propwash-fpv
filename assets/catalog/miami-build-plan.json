@@ -730,6 +730,26 @@
       "id": "hotel-canopy",
       "title": "Fly-under canopies on Winterhaven and Breakwater porches, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "arcade-east96",
+      "title": "Ground-floor fly-through on the east z=96 plate at x=210, jambs only, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "roof-east96",
+      "title": "AC-gap or ring whoop on the east z=96 plate, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "npc-east96",
+      "title": "Walkers on sidewalks ocean/inland of x=210 z=96, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "drop-garage",
+      "title": "Tighten garage-mouth fly-through lighting and soffit so the Ocean Drive drop reads clearly",
+      "status": "pending"
     }
   ],
   "landmarks": {
