@@ -404,6 +404,160 @@ export function inlandMidrises() {
   return out;
 }
 
+// ---- Lincoln Road analogue (z=120): E–W pedestrian mall + fly-under pergolas ----
+// Inland of Ocean Drive, parallel to the facade plane. West of leftoverLot A
+// (x>=251). New RESERVED west of x=240. Miss GAP_X, fifth/espa plates, house
+// (166/132), convention (−112..16 / 104..166), helipad W, alley pipes, cinema
+// z1=100, leftoverLot A–H, travel lanes 40.2–47.8. hash01 never drawn.
+// Shop arcade fly ±X along the front; mid-block pass fly ±Z; pergolas fly +X
+// down the mall. Collider is jamb / post / beam, never a filled sash.
+export const LINCOLN_Z = 120;
+export const LINCOLN_HALF = 5.0;
+export const LINCOLN_SOFFIT = 3.40;
+export const LINCOLN_ARCADE_D = 3.20;
+export const LINCOLN_PASS_W = 2.20;
+export const LINCOLN_PASS_H = 3.20;
+export const LINCOLN_D = 10.0;
+export const LINCOLN_H = 8.40;
+export const LINCOLN_JAMB = 0.28;
+export const LINCOLN_S_FRONT_Z = LINCOLN_Z - LINCOLN_HALF; // 115
+export const LINCOLN_N_FRONT_Z = LINCOLN_Z + LINCOLN_HALF; // 125
+export const LINCOLN_S_CELLS = Object.freeze([
+  [-250, 16], [96, 16], [136, 16], [190, 16],
+]);
+export const LINCOLN_N_CELLS = Object.freeze([
+  [-250, 16], [96, 16], [136, 16], [190, 16],
+]);
+export const LINCOLN_PERGOLA_CELLS = Object.freeze([
+  [-250, 120], [96, 120], [136, 120], [190, 120],
+]);
+export const LINCOLN_PERGOLA_HALF_X = 3.0;
+export const LINCOLN_PERGOLA_HALF_Z = 3.8;
+export const LINCOLN_PERGOLA_POST_R = 0.16;
+export const LINCOLN_PERGOLA_POST_H = 3.40;
+export const LINCOLN_PERGOLA_BEAM_H = 0.24;
+export const LINCOLN_PERGOLA_BEAM_W = 0.28;
+export const LINCOLN_WALK_RUNS = Object.freeze([
+  [-258, -242],
+  [88, 144],
+  [182, 198],
+]);
+
+/** One Lincoln mall shop. side 'S' faces +Z; 'N' faces −Z. Never remaps x/z. */
+export function lincolnShopGeom(side, x, len, id) {
+  const frontZ = side === 'S' ? LINCOLN_S_FRONT_Z : LINCOLN_N_FRONT_Z;
+  const inward = side === 'S' ? -1 : 1;
+  const zBack = frontZ + inward * LINCOLN_D;
+  const zArcadeInner = frontZ + inward * LINCOLN_ARCADE_D;
+  const z0 = Math.min(frontZ, zBack);
+  const z1 = Math.max(frontZ, zBack);
+  const z = (z0 + z1) / 2;
+  const arcadeZ = (frontZ + zArcadeInner) / 2;
+  const x0 = x - len / 2;
+  const x1 = x + len / 2;
+  const passX0 = x - LINCOLN_PASS_W / 2;
+  const passX1 = x + LINCOLN_PASS_W / 2;
+  return {
+    id, side, x, len, z, frontZ, inward, zBack, zArcadeInner, x0, x1,
+    z0, z1, arcadeZ, passX0, passX1,
+    openArcadeW: len - 2.4, openArcadeH: LINCOLN_SOFFIT,
+    openPassW: LINCOLN_PASS_W, openPassH: LINCOLN_PASS_H,
+    jamb: LINCOLN_JAMB, tag: 'lincoln',
+  };
+}
+
+export function lincolnShops() {
+  const shops = [];
+  for (let i = 0; i < LINCOLN_S_CELLS.length; i++) {
+    const [x, len] = LINCOLN_S_CELLS[i];
+    shops.push(lincolnShopGeom('S', x, len, `lincoln-s-${i}`));
+  }
+  for (let i = 0; i < LINCOLN_N_CELLS.length; i++) {
+    const [x, len] = LINCOLN_N_CELLS[i];
+    shops.push(lincolnShopGeom('N', x, len, `lincoln-n-${i}`));
+  }
+  return shops;
+}
+
+export function lincolnArcadeVoid(g) {
+  const zLo = Math.min(g.frontZ, g.zArcadeInner);
+  const zHi = Math.max(g.frontZ, g.zArcadeInner);
+  return {
+    id: `${g.id}-arcade`, kind: 'kit',
+    x: g.x, z: g.arcadeZ, y: CITY_Y + LINCOLN_SOFFIT * 0.48,
+    x0: g.x0 + 1.2, x1: g.x1 - 1.2,
+    z0: zLo + 0.12, z1: zHi - 0.12,
+    y0: CITY_Y + 0.08, y1: CITY_Y + LINCOLN_SOFFIT - 0.06,
+    openW: g.openArcadeW, openH: g.openArcadeH,
+  };
+}
+
+export function lincolnPassVoid(g) {
+  return {
+    id: `${g.id}-pass`, kind: 'kit',
+    x: g.x, z: g.z, y: CITY_Y + LINCOLN_PASS_H * 0.48,
+    x0: g.passX0 + 0.06, x1: g.passX1 - 0.06,
+    z0: g.z0 + 0.10, z1: g.z1 - 0.10,
+    y0: CITY_Y + 0.08, y1: CITY_Y + LINCOLN_PASS_H - 0.06,
+    openW: g.openPassW, openH: g.openPassH,
+  };
+}
+
+/** Mall-centre pergola. Fly +X. Opening is empty air. Never remaps x/z. */
+export function lincolnPergolaGeom(x, z = LINCOLN_Z) {
+  const halfX = LINCOLN_PERGOLA_HALF_X;
+  const halfZ = LINCOLN_PERGOLA_HALF_Z;
+  const postR = LINCOLN_PERGOLA_POST_R;
+  const postH = LINCOLN_PERGOLA_POST_H;
+  return {
+    x, z, y0: CITY_Y,
+    halfX, halfZ, postR, postH,
+    beamH: LINCOLN_PERGOLA_BEAM_H, beamW: LINCOLN_PERGOLA_BEAM_W,
+    spanX: halfX * 2, spanZ: halfZ * 2,
+    x0: x - halfX, x1: x + halfX,
+    z0: z - halfZ, z1: z + halfZ,
+    openW: halfZ * 2 - 2 * postR,
+    openH: postH,
+    fly: '+X',
+    tag: 'lincoln',
+  };
+}
+
+export function lincolnPergolas() {
+  const out = [];
+  for (let i = 0; i < LINCOLN_PERGOLA_CELLS.length; i++) {
+    const [x, z] = LINCOLN_PERGOLA_CELLS[i];
+    out.push(lincolnPergolaGeom(x, z));
+  }
+  return out;
+}
+
+export function lincolnPergolaVoid(g, id) {
+  return {
+    id, kind: 'kit',
+    x: g.x, z: g.z, y: g.y0 + g.postH * 0.48,
+    x0: g.x - g.halfX + g.postR + 0.08,
+    x1: g.x + g.halfX - g.postR - 0.08,
+    z0: g.z - g.halfZ + g.postR + 0.08,
+    z1: g.z + g.halfZ - g.postR - 0.08,
+    y0: g.y0 + 0.06, y1: g.y0 + g.postH - 0.04,
+    openW: g.openW, openH: g.openH,
+  };
+}
+
+export function lincolnWalkRuns() {
+  return LINCOLN_WALK_RUNS.map(([x0, x1], i) => ({
+    id: `lincoln-walk-${i}`,
+    x0, x1, x: (x0 + x1) / 2,
+    z: LINCOLN_Z,
+    z0: LINCOLN_Z - LINCOLN_HALF,
+    z1: LINCOLN_Z + LINCOLN_HALF,
+    w: x1 - x0,
+    d: LINCOLN_HALF * 2,
+    tag: 'lincoln',
+  }));
+}
+
 // ---- abando haunt kit (leftover lot; punched voids; jambs only) ----
 // Vacant city parcel east of the cinema, west of GAP 243. Not a street
 // and not the boardwalk. Scatter still uses tryPlace — this reservation
@@ -3501,6 +3655,22 @@ export const RESERVED = [
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
     tag: 'inland-midrise',
   })),
+  ...lincolnWalkRuns().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: LINCOLN_S_FRONT_Z - LINCOLN_D - 1.5,
+    z1: LINCOLN_N_FRONT_Z + LINCOLN_D + 1.4,
+    tag: 'lincoln',
+  })),
+  ...lincolnShops().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: g.z0 - 1.5, z1: g.z1 + 1.4,
+    tag: 'lincoln',
+  })),
+  ...lincolnPergolas().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: g.z0 - 1.5, z1: g.z1 + 1.4,
+    tag: 'lincoln',
+  })),
 ];
 
 export function inReserved(x, z) {
@@ -4428,6 +4598,16 @@ export const KEEPOUT = [
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
     tag: 'inland-midrise',
   })),
+  ...lincolnShops().map((g) => ({
+    x0: g.x0 - 0.6, x1: g.x1 + 0.6,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'lincoln',
+  })),
+  ...lincolnPergolas().map((g) => ({
+    x0: g.x - g.halfX - 0.8, x1: g.x + g.halfX + 0.8,
+    z0: g.z - g.halfZ - 0.8, z1: g.z + g.halfZ + 0.8,
+    tag: 'lincoln',
+  })),
 ];
 
 export function inKeepout(x, z, margin = 0) {
@@ -4512,9 +4692,21 @@ export function onLummusWalk(x, z) {
  * inKeepout is a separate test (plaza / pier / spawn / marina…).
  * Planting rows (36.5 / 51.5) stay off this list.
  */
+/** Lincoln Road analogue pavers (E–W mall at z=120). West of leftoverLot A. */
+export function onLincolnWalk(x, z) {
+  if (x >= 240) return false;
+  if (Math.abs(z - LINCOLN_Z) > LINCOLN_HALF + 0.4) return false;
+  for (let i = 0; i < LINCOLN_WALK_RUNS.length; i++) {
+    const a = LINCOLN_WALK_RUNS[i][0], b = LINCOLN_WALK_RUNS[i][1];
+    if (x >= a && x <= b) return true;
+  }
+  return false;
+}
+
 export function onPavement(x, z) {
   return onRoadway(z) || onCurb(z) || onSidewalk(x, z)
-      || onBoardwalk(x, z) || onCrossStreet(x, z) || onLummusWalk(x, z);
+      || onBoardwalk(x, z) || onCrossStreet(x, z) || onLummusWalk(x, z)
+      || onLincolnWalk(x, z);
 }
 
 /**
@@ -4687,6 +4879,8 @@ export const FLY_VOIDS = [
     pierBayRingGeom(bayI), `pier-bay-ring-${bayI}`)),
   ...fifthShops().flatMap((g) => [fifthArcadeVoid(g), fifthPassVoid(g)]),
   ...espaShops().flatMap((g) => [espaArcadeVoid(g), espaPassVoid(g)]),
+  ...lincolnShops().flatMap((g) => [lincolnArcadeVoid(g), lincolnPassVoid(g)]),
+  ...lincolnPergolas().map((g, i) => lincolnPergolaVoid(g, `lincoln-pergola-${i}`)),
 ];
 
 export function inFlyVoid(x, z, margin = 0) {
@@ -4818,7 +5012,87 @@ export function flyColliderShapes() {
   for (let i = 0; i < espa.length; i++) {
     streetShopColliderShapesAt(shapes, espa[i]);
   }
+  const lincoln = lincolnShops();
+  for (let i = 0; i < lincoln.length; i++) {
+    lincolnShopColliderShapesAt(shapes, lincoln[i]);
+  }
+  const pergolas = lincolnPergolas();
+  for (let i = 0; i < pergolas.length; i++) {
+    lincolnPergolaColliderShapesAt(shapes, pergolas[i]);
+  }
   return shapes;
+}
+
+function lincolnShopColliderShapesAt(shapes, g) {
+  const jamb = g.jamb;
+  const soffit = g.openArcadeH;
+  const passH = g.openPassH;
+  const tag = g.tag;
+  for (const dx of [g.x0 + 0.7, g.x1 - 0.7]) {
+    shapes.push({
+      type: 'cyl', tag,
+      x: dx, z: g.arcadeZ, r: 0.20,
+      y0: CITY_Y, h: soffit,
+    });
+  }
+  const zLo = Math.min(g.frontZ, g.zArcadeInner);
+  const zHi = Math.max(g.frontZ, g.zArcadeInner);
+  shapes.push({
+    type: 'aabb', tag,
+    x: g.x, z: g.arcadeZ, sx: g.len - 0.4, sz: zHi - zLo + 0.2,
+    y0: CITY_Y + soffit, sy: 0.26,
+  });
+  const massZ0 = Math.min(g.zBack, g.zArcadeInner);
+  const massZ1 = Math.max(g.zBack, g.zArcadeInner);
+  const massZ = (massZ0 + massZ1) / 2;
+  const massSz = massZ1 - massZ0;
+  for (const side of [-1, 1]) {
+    const xEdge = side < 0 ? (g.x0 + g.passX0) / 2 : (g.passX1 + g.x1) / 2;
+    const sx = side < 0 ? (g.passX0 - g.x0) : (g.x1 - g.passX1);
+    if (sx < 0.4) continue;
+    shapes.push({
+      type: 'aabb', tag,
+      x: xEdge, z: massZ, sx: sx - 0.04, sz: massSz,
+      y0: CITY_Y, sy: soffit,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag,
+    x: g.x, z: massZ, sx: g.openPassW + jamb * 2, sz: massSz,
+    y0: CITY_Y + passH, sy: 0.24,
+  });
+}
+
+function lincolnPergolaColliderShapesAt(shapes, g) {
+  for (const dx of [-g.halfX, g.halfX]) {
+    for (const dz of [-g.halfZ, g.halfZ]) {
+      shapes.push({
+        type: 'cyl', tag: 'lincoln',
+        x: g.x + dx, z: g.z + dz, r: g.postR,
+        y0: g.y0, h: g.postH,
+      });
+    }
+  }
+  const beamY = g.y0 + g.postH;
+  for (const dz of [-g.halfZ, g.halfZ]) {
+    shapes.push({
+      type: 'aabb', tag: 'lincoln',
+      x: g.x, z: g.z + dz, sx: g.spanX + g.beamW, sz: g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  for (const dx of [-g.halfX, g.halfX]) {
+    shapes.push({
+      type: 'aabb', tag: 'lincoln',
+      x: g.x + dx, z: g.z, sx: g.beamW, sz: g.spanZ + g.beamW,
+      y0: beamY, sy: g.beamH,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'lincoln',
+    x: g.x, z: g.z, sx: g.spanX + 1.1, sz: g.spanZ + 1.0,
+    y0: beamY + g.beamH, sy: 0.12,
+  });
 }
 
 function streetShopColliderShapesAt(shapes, g) {

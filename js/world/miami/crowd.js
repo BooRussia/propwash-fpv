@@ -8,6 +8,7 @@ import {
   SHORE_Z, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y,
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
+  LINCOLN_WALK_RUNS,
   groundHeight, inKeepout, leftoverLotOverlap,
 } from './constants.js';
 
@@ -33,6 +34,7 @@ export const FIFTH_WALK_XS = Object.freeze([48.9, 64.7]);
 export const ESPA_WALK_X = 235.3;
 export const INLAND_WALK_Z0 = 92;
 export const INLAND_WALK_Z1 = 168;
+export const LINCOLN_WALK_Z = 120;
 const VBALL_PITCH = 26;
 
 const SKIN = [0xf3d4b8, 0xd4a574, 0x8d5524, 0xc68642, 0xffdbac, 0x6b3f2a];
@@ -92,7 +94,8 @@ export function buildCrowd(ctx) {
   const nVball = 12;
   const nGuard = LIFEGUARD_SIT_CELLS.length;
   const nInland = 36;
-  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard + nInland;
+  const nLincoln = 20;
+  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard + nInland + nLincoln;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -274,6 +277,25 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nLincoln; i++) {
+    const runI = i % LINCOLN_WALK_RUNS.length;
+    const run = LINCOLN_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 1600, 3) * (run[1] - run[0]);
+    const z = LINCOLN_WALK_Z + (hash01(i + 1600, 5) - 0.5) * 2.2;
+    const dir = hash01(i + 1600, 7) < 0.5 ? 1 : -1;
+    if (inTravelLane(z) || inCarriageway(z) || inKeepout(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (x >= 240) continue;
+    actors.push({
+      kind: 'lincoln', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 1600, 11) * 0.45,
+      phase: hash01(i + 1600, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1600, 17), skin: pick(SKIN, i + 1600, 19),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -331,6 +353,18 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'lincoln') {
+      a.x += a.dir * a.speed * dt;
+      const run = LINCOLN_WALK_RUNS[a.run] || LINCOLN_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (inTravelLane(a.z) || inCarriageway(a.z)
+          || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15) || a.x >= 240) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'swim') {
       a.x = wrapX(a.x + Math.cos(a.yaw) * a.speed * dt);
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -352,7 +386,7 @@ function stampAll(state) {
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
     const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
-      || a.kind === 'inland' || (a.kind === 'beach' && a.speed))
+      || a.kind === 'inland' || a.kind === 'lincoln' || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;

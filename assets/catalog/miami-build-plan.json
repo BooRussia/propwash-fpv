@@ -132,7 +132,15 @@
     {
       "id": "lincoln-walk",
       "title": "Pedestrian mall analogue inland of Ocean Drive (z~120) with fly-under pergolas, west of leftoverLot A",
-      "status": "pending"
+      "status": "done",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/lincoln.js",
+        "js/world/miami/index.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/lincolnTest.js"
+      ]
     },
     {
       "id": "washington-ave",
@@ -158,7 +166,8 @@
     "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" },
     "espanolaWay": { "x": 243, "frontX": 234.1, "status": "done", "note": "GAP_X=243 west face only, east of cinema, west of leftoverLot A" },
     "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" },
-    "inlandMidrise": { "cells": [[-430, 237], [-430, 259], [-250, 237], [-250, 259], [-80, 237], [-80, 259], [100, 237], [100, 259]], "status": "done", "note": "six-sided deco plates + rooftop kits + z=248 alley pipes; west of x=240; hash01" }
+    "inlandMidrise": { "cells": [[-430, 237], [-430, 259], [-250, 237], [-250, 259], [-80, 237], [-80, 259], [100, 237], [100, 259]], "status": "done", "note": "six-sided deco plates + rooftop kits + z=248 alley pipes; west of x=240; hash01" },
+    "lincolnWalk": { "z": 120, "cells": [[-250, 120], [96, 120], [136, 120], [190, 120]], "status": "done", "note": "E-W pedestrian mall + fly-under pergolas, west of leftoverLot A; leftoverLot A–H unmoved" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

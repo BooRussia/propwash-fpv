@@ -32,6 +32,10 @@ import {
   ESPA_D, espaShops, CINEMA_X, CINEMA_W, MARINA_X,
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises,
+  LINCOLN_Z, LINCOLN_HALF, LINCOLN_S_FRONT_Z, LINCOLN_N_FRONT_Z,
+  LINCOLN_S_CELLS, LINCOLN_N_CELLS, LINCOLN_PERGOLA_CELLS, LINCOLN_WALK_RUNS,
+  LINCOLN_SOFFIT, LINCOLN_PASS_W, LINCOLN_PASS_H, LINCOLN_PERGOLA_POST_H,
+  lincolnShops, lincolnPergolas, onLincolnWalk,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,6 +93,7 @@ export function runMiamiCrowdTests() {
   const fifthPath = join(here, 'landmarks/fifth.js');
   const espaPath = join(here, 'landmarks/espa.js');
   const inlandPath = join(here, 'landmarks/inland.js');
+  const lincolnPath = join(here, 'landmarks/lincoln.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -100,6 +105,7 @@ export function runMiamiCrowdTests() {
   const fifth = existsSync(fifthPath) ? readFileSync(fifthPath, 'utf8') : '';
   const espa = existsSync(espaPath) ? readFileSync(espaPath, 'utf8') : '';
   const inland = existsSync(inlandPath) ? readFileSync(inlandPath, 'utf8') : '';
+  const lincoln = existsSync(lincolnPath) ? readFileSync(lincolnPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -552,6 +558,77 @@ export function runMiamiCrowdTests() {
     && leftoverLotOverlap(235.3, 92, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(48.9, 114, 0.6, 0.6, 0.15) === false
     && 92 > TRAVEL_Z1 && 235.3 < 240);
+
+  ok('lincoln.js exists', existsSync(lincolnPath));
+  ok('index builds Lincoln mall after inland mid-rises',
+    index.includes("from './landmarks/lincoln.js'")
+    && index.includes('buildLincoln(ctx)')
+    && index.indexOf('buildLincoln(ctx)') > index.indexOf('buildInland(ctx)'));
+  ok('Lincoln mall is z=120, west of leftoverLot A',
+    LINCOLN_Z === 120 && LINCOLN_HALF === 5
+    && LINCOLN_S_FRONT_Z === 115 && LINCOLN_N_FRONT_Z === 125
+    && LINCOLN_PERGOLA_CELLS.every(([x, z]) => x < 240 && z === 120)
+    && LINCOLN_WALK_RUNS.every(([x0, x1]) => x1 < 240));
+  ok('Lincoln soffit and passage are flyable',
+    LINCOLN_SOFFIT >= 3.2 && LINCOLN_PASS_W >= 2.0 && LINCOLN_PASS_H >= 2.0
+    && LINCOLN_PERGOLA_POST_H >= 2.0);
+  ok('lincoln does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(lincoln) && !/\brng3\s*\(/.test(lincoln)
+    && !/\brng4\s*\(/.test(lincoln) && !lincoln.includes('ShaderMaterial')
+    && !lincoln.includes('ped.js') && !lincoln.includes('traffic.js')
+    && lincoln.includes('installFlyColliders'));
+  ok('crowd walks the Lincoln mall',
+    crowd.includes("kind: 'lincoln'") && crowd.includes('LINCOLN_WALK_Z')
+    && crowd.includes('const nLincoln = 20')
+    && !crowd.includes('addCollider'));
+
+  const lincolnList = lincolnShops();
+  ok('eight signed Lincoln shops', lincolnList.length === 8
+    && LINCOLN_S_CELLS.length === 4 && LINCOLN_N_CELLS.length === 4);
+  for (let i = 0; i < lincolnList.length; i++) {
+    const g = lincolnList[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 1.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.x1 - g.x0, g.z1 - g.z0, 0.15) === false
+      && streetOverlap(g.x, g.z, g.x1 - g.x0, g.z1 - g.z0) === false
+      && g.z0 > TRAVEL_Z1 && g.x1 < 251);
+    const arcade = FLY_VOIDS.find((v) => v.id === `${g.id}-arcade`);
+    const pass = FLY_VOIDS.find((v) => v.id === `${g.id}-pass`);
+    ok(`${g.id}-arcade listed`, !!arcade && arcade.openH === LINCOLN_SOFFIT);
+    ok(`${g.id}-pass listed`, !!pass && pass.openW === LINCOLN_PASS_W);
+    if (arcade) {
+      const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      ok(`${g.id}-arcade keepout + open`,
+        !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+    if (pass) {
+      const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);
+      ok(`${g.id}-pass keepout + open`,
+        !!inKeepout(pass.x, pass.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+  }
+  const pergolaList = lincolnPergolas();
+  ok('four signed Lincoln pergolas', pergolaList.length === 4);
+  for (let i = 0; i < pergolaList.length; i++) {
+    const g = pergolaList[i];
+    const v = FLY_VOIDS.find((f) => f.id === `lincoln-pergola-${i}`);
+    ok(`lincoln-pergola-${i} listed + open`,
+      !!v && v.z === LINCOLN_Z && v.openH >= 2
+      && !!inKeepout(g.x, g.z)
+      && !probeBlocked(kit, v.x, v.y, v.z, 0.28));
+    ok(`lincoln-pergola-${i} misses leftoverLot / travel / street`,
+      leftoverLotOverlap(g.x, g.z, g.spanX, g.spanZ, 0.15) === false
+      && g.z0 > TRAVEL_Z1 && g.x1 < 240
+      && streetOverlap(g.x, g.z, g.spanX, g.spanZ) === false);
+  }
+  ok('Lincoln pavers are pavement west of leftoverLot A',
+    onLincolnWalk(96, LINCOLN_Z) && onLincolnWalk(-250, LINCOLN_Z)
+    && onLincolnWalk(190, LINCOLN_Z)
+    && !onLincolnWalk(258, LINCOLN_Z)
+    && leftoverLotOverlap(96, LINCOLN_Z, 2, 2, 0.15) === false);
+  ok('leftoverLot A–H still signed after Lincoln mall',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }
