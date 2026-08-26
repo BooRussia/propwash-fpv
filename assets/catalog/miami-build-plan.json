@@ -1703,6 +1703,17 @@
         "js/world/miami/inlandTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "roof-rings-210",
+      "title": "Billboard rings on remaining z=210 arcade plates that miss court wells and AC gaps, leftoverLot unmoved",
+      "status": "done",
+      "notes": "rings at [-720,-690,-630,-570,-455]@210; miss court wells and roof-AC; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

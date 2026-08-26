@@ -1192,6 +1192,11 @@ export function runMiamiLeftoverLotTests() {
     leftoverLotOverlap(-600, 259, 0.8, 2.4, 0.15) === false
     && leftoverLotOverlap(-540, 210, 0.8, 2.4, 0.15) === false
     && leftoverLotOverlap(-80, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-720, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-690, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-630, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-570, 210, 0.8, 2.4, 0.15) === false
+    && leftoverLotOverlap(-455, 210, 0.8, 2.4, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=96 roof AC gaps miss leftoverLot A–H',
     leftoverLotOverlap(-600, 96, 4, 2, 0.15) === false
