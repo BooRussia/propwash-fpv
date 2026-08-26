@@ -108,6 +108,11 @@ function buildClevelanderMass(stucco, dark, glass, neon, addCollider) {
     cx, CITY_Y + CLEVELANDER_SOFFIT + 0.12, arcadeZ));
   neon.push(cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + CLEVELANDER_SOFFIT - 0.06, arcadeZ - 1.55));
+  // extra neon outline — corner tubes on the ocean facade. Visual only.
+  for (const s of [-1, 1]) {
+    neon.push(cBox(0.08, bodyH - 0.6, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
 
   // eyebrows + windows
   for (let f = 0; f < 2; f++) {
@@ -174,6 +179,11 @@ function buildCardozoMass(stucco, dark, glass, neon, addCollider) {
   stucco.push(cBox(W + 0.3, 0.8, D + 0.3, BODY, cx, roofY + 0.4, zMass));
   neon.push(colorFill(new THREE.BoxGeometry(W + 0.1, 0.08, 0.08)
     .translate(cx, roofY + 0.86, FZ - 0.2), NEON));
+  // extra neon outline — Cardozo corner tubes. Visual only.
+  for (const s of [-1, 1]) {
+    neon.push(cBox(0.08, bodyH - 0.5, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
   stucco.push(cBox(W * 0.45, 1.6, 3.4, BODY, cx, roofY + 1.5, FZ + 1.8));
 
   // porch canopy you can still skim under (not a signed fly void)

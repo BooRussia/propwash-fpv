@@ -173,6 +173,13 @@ export function buildCinema(ctx) {
           .translate(BLADE_X + dx * (bw / 2 - 0.16), (y0 + BLADE_TOP) / 2, bz + s * (bd / 2 + 0.04)), 0x59e8ff));
       }
     }
+    // extra neon outline — blade top/bottom rails close the frame. Visual only.
+    for (const s of [-1, 1]) {
+      neonC.push(colorFill(new THREE.BoxGeometry(bw - 0.22, 0.1, 0.06)
+        .translate(BLADE_X, BLADE_TOP - 0.42, bz + s * (bd / 2 + 0.04)), 0x59e8ff));
+      neonC.push(colorFill(new THREE.BoxGeometry(bw - 0.22, 0.1, 0.06)
+        .translate(BLADE_X, y0 + 0.42, bz + s * (bd / 2 + 0.04)), 0x59e8ff));
+    }
     // crown finial
     stucco.push(cCyl(0.22, 0.22, 3.2, 8, STUCCO2, BLADE_X, BLADE_TOP + 1.6, bz));
     neonR.push(cCyl(0.34, 0.34, 0.34, 8, 0xff3a5c, BLADE_X, BLADE_TOP + 3.35, bz));

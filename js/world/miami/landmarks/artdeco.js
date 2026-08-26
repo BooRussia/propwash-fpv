@@ -70,6 +70,11 @@ export function buildArtDeco(ctx) {
     for (const s of [-1, 1]) {
       stucco.push(cBox(1.5, bodyH, 1.5, body, cx + s * (halfW - 0.53), CITY_Y + bodyH / 2, zF + 0.53, 0, Math.PI / 4, 0));
     }
+    // extra neon outline — corner tubes on the ocean facade. Visual only.
+    for (const s of [-1, 1]) {
+      pushNeon(neon, cBox(0.08, bodyH - 0.5, 0.08, neon,
+        cx + s * (halfW - 0.08), CITY_Y + bodyH / 2, zF - 0.28));
+    }
 
     // ---------------- floor banding + eyebrows ----------------
     // The eyebrow is THE South Beach detail: a thin cantilevered slab that

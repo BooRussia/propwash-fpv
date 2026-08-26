@@ -217,7 +217,7 @@
     {
       "id": "npc-eighth",
       "title": "Visual crowd on 8th-street sidewalks, hash01, no colliders, leftoverLot unmoved",
-      "status": "done",
+      "status": "in_progress",
       "notes": "nEighth=36 on both GAP_X=-129 sidewalks (-136.7 / -121.3); z-runs 92–168 and 190–220 skip Washington; skip keepout so shop frontage fills; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
       "files": [
         "js/world/miami/crowd.js",
@@ -228,7 +228,15 @@
     {
       "id": "night-neon",
       "title": "Extra neon outlines on Ocean Drive hotels and cinema blade, dayNight only, no rng",
-      "status": "pending"
+      "status": "done",
+      "notes": "corner tubes on artdeco/deco/clevelander/cardozo hotels; cinema blade top/bottom rails; regDN dayNight; no rng; leftoverLot unmoved",
+      "files": [
+        "js/world/miami/landmarks/artdeco.js",
+        "js/world/miami/landmarks/decoHotels.js",
+        "js/world/miami/landmarks/clevelander.js",
+        "js/world/miami/landmarks/cinema.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "collins-west",
@@ -250,7 +258,7 @@
     "breakwater": { "x": 42, "frontZ": 57.6, "status": "done" },
     "cavalier": { "x": 134, "frontZ": 57.6, "status": "done" },
     "winterhaven": { "x": 222, "frontZ": 57.6, "status": "done" },
-    "cinema": { "x": 166, "frontZ": 57.6, "status": "done" },
+    "cinema": { "x": 166, "frontZ": 57.6, "status": "done", "note": "blade extra neon outline rails, dayNight via regDN" },
     "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" },
     "espanolaWay": { "x": 243, "frontX": 234.1, "status": "done", "note": "GAP_X=243 west face only, east of cinema, west of leftoverLot A" },
     "espanola": { "x": 243, "frontZ": 48.1, "status": "done", "note": "GAP_X=243 west-face storefronts, fly ±Z arcade + ±X pass; leftoverLot A–H unmoved" },

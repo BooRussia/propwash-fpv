@@ -100,6 +100,8 @@ export function runMiamiCrowdTests() {
   const casaPath = join(here, 'landmarks/casa.js');
   const clevePath = join(here, 'landmarks/clevelander.js');
   const decoPath = join(here, 'landmarks/decoHotels.js');
+  const artdecoPath = join(here, 'landmarks/artdeco.js');
+  const cinemaPath = join(here, 'landmarks/cinema.js');
   const indexPath = join(here, 'index.js');
   const flyPath = join(here, 'landmarks/flythrough.js');
   const fifthPath = join(here, 'landmarks/fifth.js');
@@ -115,6 +117,8 @@ export function runMiamiCrowdTests() {
   const casa = existsSync(casaPath) ? readFileSync(casaPath, 'utf8') : '';
   const cleve = existsSync(clevePath) ? readFileSync(clevePath, 'utf8') : '';
   const deco = existsSync(decoPath) ? readFileSync(decoPath, 'utf8') : '';
+  const artdeco = existsSync(artdecoPath) ? readFileSync(artdecoPath, 'utf8') : '';
+  const cinema = existsSync(cinemaPath) ? readFileSync(cinemaPath, 'utf8') : '';
   const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';
   const fly = existsSync(flyPath) ? readFileSync(flyPath, 'utf8') : '';
   const fifth = existsSync(fifthPath) ? readFileSync(fifthPath, 'utf8') : '';
@@ -253,7 +257,36 @@ export function runMiamiCrowdTests() {
     && !/\brng2?\s*\(/.test(cleve) && !/\brng4\s*\(/.test(cleve));
   ok('no ShaderMaterial in new landmarks',
     !casa.includes('ShaderMaterial') && !cleve.includes('ShaderMaterial')
-    && !deco.includes('ShaderMaterial'));
+    && !deco.includes('ShaderMaterial')
+    && !artdeco.includes('ShaderMaterial') && !cinema.includes('ShaderMaterial'));
+  ok('extra neon outlines on Ocean Drive hotels, dayNight only, no rng',
+    artdeco.includes('extra neon outline') && artdeco.includes('regDN')
+    && !/\brng2?\s*\(/.test(artdeco) && !/\brng3\s*\(/.test(artdeco)
+    && !/\brng4\s*\(/.test(artdeco)
+    && cleve.includes('extra neon outline') && cleve.includes('regDN')
+    && !/\brng2?\s*\(/.test(cleve)
+    && deco.includes('extra neon outline') && deco.includes('Colony corner tubes')
+    && deco.includes('Breakwater corner tubes')
+    && deco.includes('Cavalier corner tubes')
+    && deco.includes('Winterhaven corner tubes')
+    && !/\brng2?\s*\(/.test(deco) && !/\brng3\s*\(/.test(deco)
+    && !/\brng4\s*\(/.test(deco));
+  ok('cinema blade extra neon outline, dayNight only, no rng',
+    cinema.includes('extra neon outline') && cinema.includes('blade top/bottom rails')
+    && cinema.includes('regDN') && cinema.includes('neonMat')
+    && !/\brng2?\s*\(/.test(cinema) && !/\brng3\s*\(/.test(cinema)
+    && !/\brng4\s*\(/.test(cinema)
+    && !cinema.includes('ShaderMaterial'));
+  ok('extra neon tubes sit on the 57.6 facade, not travel lanes',
+    artdeco.includes('zF - 0.28') && FRONT_Z_OK()
+    && leftoverLotOverlap(-75, 57.6, 2, 2, 0.15) === false
+    && leftoverLotOverlap(166, 57.6, 2, 2, 0.15) === false);
+
+function FRONT_Z_OK() {
+  return CASA_FRONT_Z === 57.6 && CLEVELANDER_FRONT_Z === 57.6
+    && CARDOZO_FRONT_Z === 57.6 && COLONY_FRONT_Z === 57.6
+    && 57.6 > TRAVEL_Z1;
+}
   ok('constants still name leftoverLot A at 258',
     constants.includes('LEFTOVER_LOT_X') && LEFTOVER_LOT_X === 258);
 

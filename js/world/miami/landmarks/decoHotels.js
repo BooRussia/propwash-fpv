@@ -128,6 +128,11 @@ function buildColony(stucco, dark, glass, pushNeon, addCollider) {
     cx, CITY_Y + COLONY_SOFFIT + 0.12, arcadeZ));
   pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + COLONY_SOFFIT - 0.06, arcadeZ - 1.55));
+  // extra neon outline — Colony corner tubes. Visual only.
+  for (const s of [-1, 1]) {
+    pushNeon(NEON, cBox(0.08, bodyH - 0.6, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
 
   for (let f = 0; f < floors; f++) {
     const fy = CITY_Y + COLONY_SOFFIT + 1.55 + f * FH;
@@ -189,6 +194,11 @@ function buildBreakwater(stucco, dark, glass, pushNeon, addCollider) {
   stucco.push(cBox(W + 0.28, 0.75, D + 0.28, BODY, cx, roofY + 0.38, zMass));
   dark.push(cBox(W * 0.72, 1.05, 0.14, NAME, cx, roofY + 1.05, FZ - 0.16));
   pushNeon(NEON, cBox(W * 0.62, 0.48, 0.09, NEON, cx, roofY + 1.05, FZ - 0.26));
+  // extra neon outline — Breakwater corner tubes. Visual only.
+  for (const s of [-1, 1]) {
+    pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
 
   // Red neon pylon — the Breakwater signature. Proud of the west corner,
   // inland of the city walk (z 52.05–53.85).
@@ -248,6 +258,11 @@ function buildCavalier(stucco, dark, glass, pushNeon, addCollider) {
     }
     pushNeon(NEON, cBox(W - 0.6, 0.07, 0.07, NEON, cx, winY + winH / 2 + 0.38, FZ - 0.58));
   }
+  // extra neon outline — Cavalier corner tubes. Visual only.
+  for (const s of [-1, 1]) {
+    pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
 
   const roofY = CITY_Y + bodyH;
   stucco.push(cBox(W + 0.3, 0.8, D + 0.3, BODY2, cx, roofY + 0.4, zMass));
@@ -291,6 +306,11 @@ function buildWinterhaven(stucco, dark, glass, pushNeon, addCollider) {
       dark.push(cBox(1.88, winH + 0.18, 0.08, REVEAL, cx + s * 3.6, winY, FZ + 0.04));
     }
     pushNeon(NEON, cBox(W - 0.5, 0.07, 0.07, NEON, cx, winY + winH / 2 + 0.36, FZ - 0.54));
+  }
+  // extra neon outline — Winterhaven corner tubes. Visual only.
+  for (const s of [-1, 1]) {
+    pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
+      cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
   }
 
   const roofY = CITY_Y + bodyH;
