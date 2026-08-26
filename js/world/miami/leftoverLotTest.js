@@ -1186,11 +1186,12 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(90, 210, 4.4, 14, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=96 inland mid-rise row misses leftoverLot A–H',
-    INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 5
+    INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 6
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x < 251
       && leftoverLotOverlap(x, 96, 18, 14, 0.15) === false)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -190 && z === 96)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('z=96 sidewalks miss leftoverLot A–H',
     leftoverLotOverlap(-600, 87.6, 0.6, 0.6, 0.15) === false
@@ -1199,6 +1200,8 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-250, 104.4, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(-190, 87.6, 0.6, 0.6, 0.15) === false
     && leftoverLotOverlap(-190, 104.4, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(210, 87.6, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(210, 104.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('Majestic/Cavalier porch arcades miss leftoverLot A–H',
     MAJESTIC_SOFFIT === 3.5 && CAVALIER_SOFFIT === 3.5
