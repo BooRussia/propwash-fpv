@@ -937,6 +937,36 @@ function FRONT_Z_OK() {
   ok('leftoverLot A–H still signed after mid-rise walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const arcade210 = INLAND_ARCADE_CELLS.filter(([, z]) => z === 210);
+  const arcadeSitSpots = [];
+  for (let i = 0; i < 16; i++) {
+    const cell = arcade210[i % arcade210.length];
+    const [cx, cz] = cell;
+    const x = cx + (hash01(i + 3700, 3) - 0.5) * (INLAND_ARCADE_OPEN_W - 1.2);
+    const z = cz + (hash01(i + 3700, 5) - 0.5) * 8.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    arcadeSitSpots.push({ x, z });
+  }
+  ok('arcade sitters sit under z=210 inland arcades, miss leftoverLot / travel',
+    crowd.includes("kind: 'arcade-sit'") && crowd.includes('const nArcadeSit = 16')
+    && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes('hash01(i + 3700')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && arcade210.length === 4
+    && arcade210.every(([x, z]) => x < 240 && z === 210
+      && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false)
+    && arcadeSitSpots.length >= 12
+    && arcadeSitSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z > TRAVEL_Z1)
+    && arcadeSitSpots.some((p) => p.x < -500)
+    && arcadeSitSpots.some((p) => p.x > 0)
+    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after arcade sitters',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',
     ALLEY_DUMPSTER_CELLS.length === 4 && ALLEY_DOCK_CELLS.length === 4
     && inland.includes('ALLEY_DUMPSTER_CELLS') && inland.includes('inland-alley-dumpsters')

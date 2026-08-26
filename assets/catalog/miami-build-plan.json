@@ -634,7 +634,13 @@
     {
       "id": "npc-arcade",
       "title": "Visual sitters under z=210 inland arcades, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nArcadeSit=16 under z=210 INLAND_ARCADE_CELLS; hash01; no colliders; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "fill-96",

@@ -22,6 +22,7 @@ import {
   LIFEGUARD_CELLS, LIFEGUARD_SAND_SIT_CELLS, LIFEGUARD_DECK,
   groundHeight, inKeepout, leftoverLotOverlap,
   onLincolnWalk, onWashingtonWalk, onCollinsWalk,
+  INLAND_ARCADE_CELLS, INLAND_ARCADE_OPEN_W,
 } from './constants.js';
 
 // ============================================================
@@ -195,11 +196,12 @@ export function buildCrowd(ctx) {
   const nBoardwalkBike = 16;
   const nBeachWalk = 24;
   const nMidrise = 40;
+  const nArcadeSit = 16;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
-    + nWestSwim + nReefSwim + nMidrise;
+    + nWestSwim + nReefSwim + nMidrise + nArcadeSit;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -668,6 +670,23 @@ export function buildCrowd(ctx) {
     });
   }
 
+  const arcade210 = INLAND_ARCADE_CELLS.filter(([, z]) => z === 210);
+  for (let i = 0; i < nArcadeSit; i++) {
+    const cell = arcade210[i % arcade210.length];
+    if (!cell) continue;
+    const [cx, cz] = cell;
+    const x = cx + (hash01(i + 3700, 3) - 0.5) * (INLAND_ARCADE_OPEN_W - 1.2);
+    const z = cz + (hash01(i + 3700, 5) - 0.5) * 8.0;
+    if (npcOffLimits(x, z)) continue;
+    actors.push({
+      kind: 'arcade-sit', i: actors.length, extra: -1,
+      x, z, y: CITY_Y + 0.06, dir: 0,
+      yaw: hash01(i + 3700, 7) < 0.5 ? 0 : Math.PI,
+      speed: 0, phase: hash01(i + 3700, 11) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3700, 13), skin: pick(SKIN, i + 3700, 17),
+    });
+  }
+
   for (let i = 0; i < nMidrise; i++) {
     const runI = i % MIDRISE_WALK_RUNS.length;
     const run = MIDRISE_WALK_RUNS[runI];
@@ -757,7 +776,7 @@ function stepActors(state, dt) {
     if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard'
         || a.kind === 'guard-sand'
         || a.kind === 'lincoln-sit' || a.kind === 'lummus-sit'
-        || a.kind === 'towel-sit') continue;
+        || a.kind === 'towel-sit' || a.kind === 'arcade-sit') continue;
     if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
     if (a.kind === 'inland') {
@@ -1006,7 +1025,8 @@ function stampAll(state) {
         : 0;
     const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'guard-sand'
       || a.kind === 'lincoln-sit'
-      || a.kind === 'lummus-sit' || a.kind === 'towel-sit') ? 0.28
+      || a.kind === 'lummus-sit' || a.kind === 'towel-sit'
+      || a.kind === 'arcade-sit') ? 0.28
       : (a.kind === 'swim' || a.kind === 'marina-swim'
         || a.kind === 'west-swim' || a.kind === 'reef-swim') ? 0.12
         : a.kind === 'parked' ? 0.22 : 0.36;
@@ -1019,7 +1039,8 @@ function stampAll(state) {
     _dummy.rotation.set(rx, a.yaw, 0);
     _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'guard-sand'
       || a.kind === 'lincoln-sit'
-      || a.kind === 'lummus-sit' || a.kind === 'towel-sit') ? 0.72 : 1, 1);
+      || a.kind === 'lummus-sit' || a.kind === 'towel-sit'
+      || a.kind === 'arcade-sit') ? 0.72 : 1, 1);
     _dummy.updateMatrix();
     bodyMesh.setMatrixAt(i, _dummy.matrix);
     _color.setHex(a.shirt);

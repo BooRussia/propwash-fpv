@@ -1169,6 +1169,12 @@ export function runMiamiLeftoverLotTests() {
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 152)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('z=210 arcade sitters miss leftoverLot A–H',
+    leftoverLotOverlap(-540, 210, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(-250, 210, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(-80, 210, 4.4, 14, 0.15) === false
+    && leftoverLotOverlap(90, 210, 4.4, 14, 0.15) === false
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('Majestic/Cavalier porch arcades miss leftoverLot A–H',
     MAJESTIC_SOFFIT === 3.5 && CAVALIER_SOFFIT === 3.5
     && leftoverLotOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z - 1.7, MAJESTIC_W, 3.4, 0.15) === false
