@@ -404,6 +404,7 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-480, 248],
   [0, 248],
   [80, 248],
+  [-110, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -934,6 +935,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-480, 237], [-480, 259],
   [0, 237], [0, 259],
   [80, 237], [80, 259],
+  [-110, 237], [-110, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
@@ -941,7 +943,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-720, 152], [-660, 152], [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152],
   [-190, 152], [-160, 152], [90, 152], [130, 152], [160, 152], [190, 152], [210, 152],
   [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210],
-  [-190, 210], [-160, 210], [-80, 210], [-40, 210], [0, 210], [40, 210], [90, 210], [130, 210], [160, 210], [190, 210], [210, 210],
+  [-190, 210], [-160, 210], [-80, 210], [-40, 210], [0, 210], [40, 210], [90, 210], [110, 210], [130, 210], [160, 210], [190, 210], [210, 210],
   // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
   // [210,96] east of cinema reserved (x1=208), west of leftoverLot A / x=240.
@@ -1089,6 +1091,8 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-40, 210], [-480, 237], [-160, 96],
   [0, 237], [80, 237],
   [0, 210],
+  [110, 210],
+  [-110, 237],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1165,7 +1169,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-540, 259], [-390, 259], [-190, 259], [160, 259], [210, 259],
   [-160, 259], [130, 259], [190, 259],
   [-40, 259], [40, 259], [-480, 259],
-  [0, 259], [80, 259],
+  [0, 259], [80, 259], [-110, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;
