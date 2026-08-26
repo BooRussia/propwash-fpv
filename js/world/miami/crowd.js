@@ -68,6 +68,18 @@ export const GAP501_WALK_Z_RUNS = Object.freeze([
   [92, 168],
   [190, 220],
 ]);
+// E-W sidewalks ocean/inland of the z=152 and z=210 mid-rise rows.
+// 1.4 m off the plate face so keepout (plate ±0.6) misses. Walk +X.
+// Skip GAP_X. West of leftoverLot A / x=240. Miss travel 40.2–47.8
+// and Washington travel 176.2–183.8.
+export const MIDRISE_WALK_ZS = Object.freeze([143.6, 160.4, 201.6, 218.4]);
+export const MIDRISE_WALK_RUNS = Object.freeze([
+  [-610, -508],
+  [-494, -322],
+  [-308, -136],
+  [-122, 50],
+  [64, 230],
+]);
 // Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
 export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS, BEACH_WALK_RUNS };
 export { BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1 };
@@ -110,6 +122,19 @@ function npcOffLimits(x, z) {
   if (inTravelLane(z) || inCarriageway(z) || inWashTravel(z)) return true;
   if (x >= 240) return true;
   return leftoverLotOverlap(x, z, 0.6, 0.6, 0.15);
+}
+
+function onMidriseWalk(x, z) {
+  let onZ = false;
+  for (let i = 0; i < MIDRISE_WALK_ZS.length; i++) {
+    if (Math.abs(z - MIDRISE_WALK_ZS[i]) <= 0.9) { onZ = true; break; }
+  }
+  if (!onZ) return false;
+  for (let i = 0; i < MIDRISE_WALK_RUNS.length; i++) {
+    const r = MIDRISE_WALK_RUNS[i];
+    if (x >= r[0] && x <= r[1]) return true;
+  }
+  return false;
 }
 
 function onMarinaDock(x, z) {
@@ -169,11 +194,12 @@ export function buildCrowd(ctx) {
   const nTowelSit = BEACH_CHAIR_CELLS.length;
   const nBoardwalkBike = 16;
   const nBeachWalk = 24;
+  const nMidrise = 40;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
     + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
-    + nWestSwim + nReefSwim;
+    + nWestSwim + nReefSwim + nMidrise;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -642,6 +668,24 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nMidrise; i++) {
+    const runI = i % MIDRISE_WALK_RUNS.length;
+    const run = MIDRISE_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 3600, 3) * (run[1] - run[0]);
+    const z = MIDRISE_WALK_ZS[i % MIDRISE_WALK_ZS.length]
+      + (hash01(i + 3600, 5) - 0.5) * 0.8;
+    const dir = hash01(i + 3600, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || !onMidriseWalk(x, z)) continue;
+    actors.push({
+      kind: 'midrise', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 1.05 + hash01(i + 3600, 11) * 0.45,
+      phase: hash01(i + 3600, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3600, 17), skin: pick(SKIN, i + 3600, 19),
+    });
+  }
+
   for (let i = 0; i < nBeachWalk; i++) {
     const runI = i % BEACH_WALK_RUNS.length;
     const run = BEACH_WALK_RUNS[runI];
@@ -814,6 +858,17 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'midrise') {
+      a.x += a.dir * a.speed * dt;
+      const run = MIDRISE_WALK_RUNS[a.run] || MIDRISE_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || !onMidriseWalk(a.x, a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'beach-walk') {
       a.x += a.dir * a.speed * dt;
       const run = BEACH_WALK_RUNS[a.run] || BEACH_WALK_RUNS[0];
@@ -944,7 +999,7 @@ function stampAll(state) {
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
       || a.kind === 'eighth' || a.kind === 'gap315' || a.kind === 'gap501'
       || a.kind === 'collins' || a.kind === 'lummus'
-      || a.kind === 'chair-walk' || a.kind === 'beach-walk'
+      || a.kind === 'chair-walk' || a.kind === 'beach-walk' || a.kind === 'midrise'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02

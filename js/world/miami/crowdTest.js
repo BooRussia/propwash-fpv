@@ -185,6 +185,11 @@ export function runMiamiCrowdTests() {
   ok('crowd skips travel lanes and carriageway',
     crowd.includes('TRAVEL_Z0') && crowd.includes('inTravelLane')
     && crowd.includes('inCarriageway') && crowd.includes('ROAD_Z0'));
+  ok('crowd walks between z=152/210 mid-rises',
+    crowd.includes("kind: 'midrise'") && crowd.includes('const nMidrise = 40')
+    && crowd.includes('MIDRISE_WALK_ZS') && crowd.includes('onMidriseWalk')
+    && crowd.includes('143.6') && crowd.includes('201.6')
+    && !crowd.includes('addCollider'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd people have torso + limbs, not a single box',
     crowd.includes('personTorsoGeo') && crowd.includes('personLimbGeo')
@@ -852,6 +857,43 @@ function FRONT_Z_OK() {
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_OPEN_W')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after inland arcades',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const MIDRISE_WALK_ZS = [143.6, 160.4, 201.6, 218.4];
+  const MIDRISE_WALK_RUNS = [
+    [-610, -508], [-494, -322], [-308, -136], [-122, 50], [64, 230],
+  ];
+  const midriseSpots = [];
+  for (let i = 0; i < 40; i++) {
+    const run = MIDRISE_WALK_RUNS[i % MIDRISE_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 3600, 3) * (run[1] - run[0]);
+    const z = MIDRISE_WALK_ZS[i % MIDRISE_WALK_ZS.length]
+      + (hash01(i + 3600, 5) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    midriseSpots.push({ x, z });
+  }
+  ok('mid-rise sidewalk walkers fill z=152/210 frontage, miss leftoverLot / travel',
+    crowd.includes("kind: 'midrise'") && crowd.includes('const nMidrise = 40')
+    && crowd.includes('MIDRISE_WALK_ZS') && crowd.includes('MIDRISE_WALK_RUNS')
+    && crowd.includes('hash01(i + 3600')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && MIDRISE_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false)
+    && MIDRISE_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
+    && midriseSpots.length >= 32
+    && midriseSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1))
+    && midriseSpots.some((p) => p.z < 152)
+    && midriseSpots.some((p) => p.z > 210)
+    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after mid-rise walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',
