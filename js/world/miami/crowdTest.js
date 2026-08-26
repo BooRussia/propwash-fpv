@@ -40,6 +40,8 @@ import {
   ESPA_D, espaShops, CINEMA_X, CINEMA_W, MARINA_X,
   MARINA_FINGER_XS, MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
   MARINA_OCEAN_PILE_CELLS, MARINA_OCEAN_CLEAT_CELLS, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
+  WEST_SWIM_X0, WEST_SWIM_X1, WEST_SWIM_Z0, WEST_SWIM_Z1,
+  REEF_SWIM_X, REEF_SWIM_Z, REEF_SWIM_HALF,
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises,
   ALLEY_DUMPSTER_CELLS, ALLEY_DOCK_CELLS, ALLEY_DUMP_W, ALLEY_DUMP_D,
@@ -1400,6 +1402,65 @@ function FRONT_Z_OK() {
       && !MARINA_FINGER_XS.some((fx) => Math.abs(p.x - fx) < 2.2
         && p.z >= MARINA_DOCK_Z0 && p.z <= MARINA_DOCK_Z1)));
   ok('leftoverLot A–H still signed after marina fill',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('crowd adds west-of-pier and reef swimmers, no colliders',
+    crowd.includes("kind: 'west-swim'") && crowd.includes('const nWestSwim = 20')
+    && crowd.includes("kind: 'reef-swim'") && crowd.includes('const nReefSwim = 12')
+    && crowd.includes('WEST_SWIM_X0') && crowd.includes('REEF_SWIM_X')
+    && crowd.includes('hash01(i + 3100') && crowd.includes('hash01(i + 3200')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01'));
+  ok('west-swim basin sits west of the pier, seaward of SHORE_Z',
+    WEST_SWIM_X1 < PIER_X - 6 && WEST_SWIM_X0 < WEST_SWIM_X1
+    && WEST_SWIM_Z1 < -32 && WEST_SWIM_Z0 < WEST_SWIM_Z1
+    && WEST_SWIM_X1 < 240
+    && leftoverLotOverlap((WEST_SWIM_X0 + WEST_SWIM_X1) / 2, (WEST_SWIM_Z0 + WEST_SWIM_Z1) / 2, 0.6, 0.6, 0.15) === false
+    && !(WEST_SWIM_Z0 > TRAVEL_Z0 && WEST_SWIM_Z1 < TRAVEL_Z1));
+  ok('reef-swim pocket sits east of the pier piles, in the water',
+    REEF_SWIM_X === PIER_X + 36 && REEF_SWIM_Z === -118
+    && REEF_SWIM_HALF >= 12 && REEF_SWIM_X < 240
+    && leftoverLotOverlap(REEF_SWIM_X, REEF_SWIM_Z, 0.6, 0.6, 0.15) === false
+    && REEF_SWIM_Z + REEF_SWIM_HALF < TRAVEL_Z0);
+
+  const westSwimSpots = [];
+  for (let i = 0; i < 20; i++) {
+    const x = WEST_SWIM_X0 + hash01(i + 3100, 3) * (WEST_SWIM_X1 - WEST_SWIM_X0);
+    const z = WEST_SWIM_Z0 + hash01(i + 3100, 5) * (WEST_SWIM_Z1 - WEST_SWIM_Z0);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > -32) continue;
+    if (x > PIER_X - 12) continue;
+    westSwimSpots.push({ x, z });
+  }
+  ok('west swimmers fill west of the pier, miss leftoverLot / travel',
+    westSwimSpots.length >= 16
+    && westSwimSpots.every((p) => p.x < 240 && p.x < PIER_X
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < -32));
+
+  const reefSwimSpots = [];
+  for (let i = 0; i < 12; i++) {
+    const x = REEF_SWIM_X + (hash01(i + 3200, 3) - 0.5) * REEF_SWIM_HALF * 2;
+    const z = REEF_SWIM_Z + (hash01(i + 3200, 5) - 0.5) * REEF_SWIM_HALF * 2;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > -32) continue;
+    reefSwimSpots.push({ x, z });
+  }
+  ok('reef swimmers fill the coral pocket, miss leftoverLot / travel',
+    reefSwimSpots.length >= 10
+    && reefSwimSpots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < -90
+      && Math.abs(p.x - REEF_SWIM_X) <= REEF_SWIM_HALF + 0.05
+      && Math.abs(p.z - REEF_SWIM_Z) <= REEF_SWIM_HALF + 0.05));
+  ok('leftoverLot A–H still signed after extra swimmers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

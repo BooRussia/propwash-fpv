@@ -510,7 +510,13 @@
     {
       "id": "npc-swim-2",
       "title": "More ocean swimmers west of the pier and near the reef, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nWestSwim=20 west of pier x -420..-168; nReefSwim=12 at -114/-118; hash01; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "storefront-neon",

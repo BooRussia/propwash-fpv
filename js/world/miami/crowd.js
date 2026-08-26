@@ -5,7 +5,9 @@ import { cBox, cCyl } from './geo.js';
 import {
   CITY_Y, BOARDWALK_TOP, BOARDWALK_Z, BOARDWALK_W,
   SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1,
-  SHORE_Z, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF,
+  SHORE_Z, ROAD_Z0, ROAD_Z1, GAP_X, XS_HALF, PIER_X,
+  WEST_SWIM_X0, WEST_SWIM_X1, WEST_SWIM_Z0, WEST_SWIM_Z1,
+  REEF_SWIM_X, REEF_SWIM_Z, REEF_SWIM_HALF,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y, LUMMUS_PATH_HALF,
   LUMMUS_EXTRA_BENCH_CELLS,
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
@@ -145,6 +147,8 @@ export function buildCrowd(ctx) {
   const nBoardwalkSkate = 16;
   const nBeach = 68;
   const nSwim = 36;
+  const nWestSwim = 20;
+  const nReefSwim = 12;
   const nSit = 28;
   const nParked = BIKE_RACK_XS.length * BIKE_RACK_N;
   const nVball = 12;
@@ -168,7 +172,8 @@ export function buildCrowd(ctx) {
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
-    + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk;
+    + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk
+    + nWestSwim + nReefSwim;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
@@ -304,6 +309,39 @@ export function buildCrowd(ctx) {
       speed: 0.55 + hash01(i + 800, 13) * 0.4,
       phase: hash01(i + 800, 17) * Math.PI * 2,
       shirt: pick(SHIRT, i + 800, 19), skin: pick(SKIN, i + 800, 23),
+    });
+  }
+
+  for (let i = 0; i < nWestSwim; i++) {
+    const x = WEST_SWIM_X0 + hash01(i + 3100, 3) * (WEST_SWIM_X1 - WEST_SWIM_X0);
+    const z = WEST_SWIM_Z0 + hash01(i + 3100, 5) * (WEST_SWIM_Z1 - WEST_SWIM_Z0);
+    if (npcOffLimits(x, z) || inTravelLane(z) || inCarriageway(z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > SHORE_Z - 2) continue;
+    if (x > PIER_X - 12) continue;
+    actors.push({
+      kind: 'west-swim', i: actors.length, extra: -1,
+      x, z, y: -0.45, dir: hash01(i + 3100, 7) < 0.5 ? 1 : -1,
+      yaw: hash01(i + 3100, 11) * Math.PI * 2,
+      speed: 0.55 + hash01(i + 3100, 13) * 0.4,
+      phase: hash01(i + 3100, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3100, 19), skin: pick(SKIN, i + 3100, 23),
+    });
+  }
+
+  for (let i = 0; i < nReefSwim; i++) {
+    const x = REEF_SWIM_X + (hash01(i + 3200, 3) - 0.5) * REEF_SWIM_HALF * 2;
+    const z = REEF_SWIM_Z + (hash01(i + 3200, 5) - 0.5) * REEF_SWIM_HALF * 2;
+    if (npcOffLimits(x, z) || inTravelLane(z) || inCarriageway(z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > SHORE_Z - 2) continue;
+    actors.push({
+      kind: 'reef-swim', i: actors.length, extra: -1,
+      x, z, y: -0.45, dir: hash01(i + 3200, 7) < 0.5 ? 1 : -1,
+      yaw: hash01(i + 3200, 11) * Math.PI * 2,
+      speed: 0.55 + hash01(i + 3200, 13) * 0.4,
+      phase: hash01(i + 3200, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3200, 19), skin: pick(SKIN, i + 3200, 23),
     });
   }
 
@@ -824,6 +862,45 @@ function stepActors(state, dt) {
       a.y = -0.45 + Math.sin(state.t * 2.2 + a.phase) * 0.12;
       continue;
     }
+    if (a.kind === 'west-swim') {
+      a.x += Math.cos(a.yaw) * a.speed * dt;
+      a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
+      if (a.x < WEST_SWIM_X0) { a.x = WEST_SWIM_X0; a.yaw = Math.PI - a.yaw; }
+      if (a.x > WEST_SWIM_X1) { a.x = WEST_SWIM_X1; a.yaw = Math.PI - a.yaw; }
+      if (a.z > WEST_SWIM_Z1) { a.z = WEST_SWIM_Z1; a.yaw += Math.PI; }
+      if (a.z < WEST_SWIM_Z0) { a.z = WEST_SWIM_Z0; a.yaw += Math.PI; }
+      if (a.z > SHORE_Z - 2) { a.z = SHORE_Z - 2; a.yaw += Math.PI; }
+      if (a.x > PIER_X - 12) { a.x = PIER_X - 12; a.yaw = Math.PI - a.yaw; }
+      if (npcOffLimits(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)
+          || inTravelLane(a.z) || inCarriageway(a.z)) {
+        a.yaw += Math.PI;
+      }
+      a.y = -0.45 + Math.sin(state.t * 2.2 + a.phase) * 0.12;
+      continue;
+    }
+    if (a.kind === 'reef-swim') {
+      a.x += Math.cos(a.yaw) * a.speed * dt;
+      a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
+      if (a.x < REEF_SWIM_X - REEF_SWIM_HALF) {
+        a.x = REEF_SWIM_X - REEF_SWIM_HALF; a.yaw = Math.PI - a.yaw;
+      }
+      if (a.x > REEF_SWIM_X + REEF_SWIM_HALF) {
+        a.x = REEF_SWIM_X + REEF_SWIM_HALF; a.yaw = Math.PI - a.yaw;
+      }
+      if (a.z < REEF_SWIM_Z - REEF_SWIM_HALF) {
+        a.z = REEF_SWIM_Z - REEF_SWIM_HALF; a.yaw += Math.PI;
+      }
+      if (a.z > REEF_SWIM_Z + REEF_SWIM_HALF) {
+        a.z = REEF_SWIM_Z + REEF_SWIM_HALF; a.yaw += Math.PI;
+      }
+      if (a.z > SHORE_Z - 2) { a.z = SHORE_Z - 2; a.yaw += Math.PI; }
+      if (npcOffLimits(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)
+          || inTravelLane(a.z) || inCarriageway(a.z)) {
+        a.yaw += Math.PI;
+      }
+      a.y = -0.45 + Math.sin(state.t * 2.2 + a.phase) * 0.12;
+      continue;
+    }
     a.x = wrapX(a.x + a.dir * a.speed * dt);
     a.x = skipGap(a.x, a.dir);
     if (a.kind === 'walk' || a.kind === 'beach') {
@@ -875,10 +952,13 @@ function stampAll(state) {
     const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'guard-sand'
       || a.kind === 'lincoln-sit'
       || a.kind === 'lummus-sit' || a.kind === 'towel-sit') ? 0.28
-      : (a.kind === 'swim' || a.kind === 'marina-swim') ? 0.12
+      : (a.kind === 'swim' || a.kind === 'marina-swim'
+        || a.kind === 'west-swim' || a.kind === 'reef-swim') ? 0.12
         : a.kind === 'parked' ? 0.22 : 0.36;
-    const bodyY = (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y : a.y + crouch + bob;
-    const rx = (a.kind === 'swim' || a.kind === 'marina-swim') ? Math.PI / 2 : 0;
+    const inWater = a.kind === 'swim' || a.kind === 'marina-swim'
+      || a.kind === 'west-swim' || a.kind === 'reef-swim';
+    const bodyY = inWater ? a.y : a.y + crouch + bob;
+    const rx = inWater ? Math.PI / 2 : 0;
 
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
@@ -894,7 +974,7 @@ function stampAll(state) {
     _color.setHex(a.skin);
     if (limbMesh.setColorAt) limbMesh.setColorAt(i, _color);
 
-    _dummy.position.set(a.x, (a.kind === 'swim' || a.kind === 'marina-swim') ? a.y + 0.35 : bodyY + 0.36, a.z);
+    _dummy.position.set(a.x, inWater ? a.y + 0.35 : bodyY + 0.36, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
     _dummy.scale.set(1, 1, 1);
     _dummy.updateMatrix();

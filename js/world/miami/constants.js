@@ -1,5 +1,14 @@
 // Shared Miami terrain constants + height profile (mesh + physics).
 export const SHORE_Z = -30;      // sand dips under water here
+// Extra ocean swimmers. West of the pier piles / near the reef pocket.
+// Ocean of travel 40.2–47.8. leftoverLot A–H unmoved. hash01 never at const-eval.
+export const WEST_SWIM_X0 = -420;
+export const WEST_SWIM_X1 = -168;
+export const WEST_SWIM_Z0 = -68;
+export const WEST_SWIM_Z1 = -36;
+export const REEF_SWIM_X = -114;
+export const REEF_SWIM_Z = -118;
+export const REEF_SWIM_HALF = 16;
 export const CITY_Z = 30;        // city plateau starts
 export const CITY_Y = 1.5;
 
