@@ -215,13 +215,16 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -370 && z === 223)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -350 && z === 223)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -280 && z === 223));
-  ok('four alley pipes at z=181 west of Washington reserved',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 4
+  ok('seven alley pipes at z=181 west of Washington reserved',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 7
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < WASH_X0 && x < 240)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 181)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -540 && z === 181)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 181)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -660 && z === 181)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -690 && z === 181)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -630 && z === 181)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 181)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 0 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 80 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -220 && z === 248)
@@ -233,7 +236,7 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -690 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -630 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 248)
-    && ALLEY_PIPE_CELLS.length === 52);
+    && ALLEY_PIPE_CELLS.length === 55);
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 181)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
