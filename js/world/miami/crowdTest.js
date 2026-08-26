@@ -647,13 +647,13 @@ function FRONT_Z_OK() {
   }
 
   ok('alley pipes are signed cells west of 240',
-    ALLEY_PIPE_CELLS.length === 26
+    ALLEY_PIPE_CELLS.length === 27
     && ALLEY_PIPE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && ALLEY_PIPE_POST_H >= 2.0 && ALLEY_PIPE_HALF_Z >= 1.1
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).length === 2
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 181).every(([x]) => x < -480));
   ok('inland service-alley pipes sit at z=248',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 15
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 16
     && ALLEY_PIPE_CELLS.slice(4).every(([x]) => x < 240));
   ok('flythrough builds alley pipes',
     fly.includes('ALLEY_PIPE_CELLS') && fly.includes("setTag('alley-pipe')")
@@ -940,7 +940,7 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 82
+    INLAND_MIDRISE_CELLS.length === 87
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -957,8 +957,8 @@ function FRONT_Z_OK() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 190 && z === 210)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -40 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 40 && z === 259)
-    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 15
-    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 8
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 17
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).length === 9
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 96)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 210 && z === 96)
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 96).every(([x]) => x < 240 && x !== -430
@@ -983,7 +983,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 82);
+  ok('signed inland mid-rises', inlandList.length === 87);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     inlandList.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && inlandList.some((g) => g.x === -720 && g.z === 237)
@@ -1012,7 +1012,7 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 19
+    COURT_WELL_CELLS.length === 20
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
@@ -1021,6 +1021,7 @@ function FRONT_Z_OK() {
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 196)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === 190 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 40 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
@@ -1047,12 +1048,12 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96/128 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 34
+    INLAND_ARCADE_CELLS.length === 37
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 6
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 7
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 5
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 11
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 6
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 12
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 128).length === 4
@@ -1087,6 +1088,9 @@ function FRONT_Z_OK() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 128)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 130 && z === 210)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -40 && z === 210)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -480 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -160 && z === 96)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_OPEN_W')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after inland arcades',
@@ -1145,7 +1149,7 @@ function FRONT_Z_OK() {
     crowd.includes("kind: 'arcade-sit'") && crowd.includes('const nArcadeSit = 16')
     && crowd.includes('INLAND_ARCADE_CELLS') && crowd.includes('hash01(i + 3700')
     && !crowd.includes('addCollider') && !crowd.includes('addOBB')
-    && arcade210.length === 6
+    && arcade210.length === 7
     && arcade210.every(([x, z]) => x < 240 && z === 210
       && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false)
     && arcadeSitSpots.length >= 12
@@ -1175,7 +1179,7 @@ function FRONT_Z_OK() {
     crowd.includes('const nArcade96Sit = 12') && crowd.includes('hash01(i + 3900')
     && crowd.includes("kind: 'arcade-sit'")
     && !crowd.includes('addCollider') && !crowd.includes('addOBB')
-    && arcade96.length === 5
+    && arcade96.length === 6
     && arcade96.every(([x, z]) => x < 240 && z === 96
       && leftoverLotOverlap(x, z, 4.4, 14, 0.15) === false)
     && arcade96SitSpots.length >= 9

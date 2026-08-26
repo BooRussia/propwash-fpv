@@ -401,6 +401,7 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [190, 248],
   [-40, 248],
   [40, 248],
+  [-480, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -928,6 +929,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [210, 237], [210, 259],
   [-40, 237], [-40, 259],
   [40, 237], [40, 259],
+  [-480, 237], [-480, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
@@ -935,13 +937,14 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-720, 152], [-660, 152], [-600, 152], [-540, 152], [-430, 152], [-390, 152], [-250, 152],
   [-190, 152], [-160, 152], [90, 152], [130, 152], [160, 152], [190, 152], [210, 152],
   [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-430, 210], [-390, 210], [-250, 210],
-  [-190, 210], [-160, 210], [-80, 210], [90, 210], [130, 210], [160, 210], [190, 210], [210, 210],
+  [-190, 210], [-160, 210], [-80, 210], [-40, 210], [40, 210], [90, 210], [130, 210], [160, 210], [190, 210], [210, 210],
   // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
   // [210,96] east of cinema reserved (x1=208), west of leftoverLot A / x=240.
   // [-660,96] continues the west skyline column. Miss GAP_X, travel 40.2–47.8.
   // leftoverLot A–H unmoved.
   [-720, 96], [-660, 96], [-600, 96], [-540, 96], [-390, 96], [-250, 96], [-190, 96],
+  [-160, 96],
   [210, 96],
   // z=128 row: inland of z=96, ocean of z=152. West of Lincoln mall
   // (walk runs −258..−242 / 88..144 / 182..198) and convention
@@ -992,6 +995,7 @@ export const COURT_WELL_CELLS = Object.freeze([
   [-720, 152],
   [-720, 128], [-600, 128], [-190, 128],
   [190, 210],
+  [40, 210],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 
@@ -1076,6 +1080,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-160, 237], [130, 237], [190, 237], [-600, 237],
   [-40, 237], [40, 237],
   [210, 128],
+  [-40, 210], [-480, 237], [-160, 96],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1151,7 +1156,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-540, 210], [-390, 210], [-250, 210], [-190, 210], [-80, 210],
   [-540, 259], [-390, 259], [-190, 259], [160, 259], [210, 259],
   [-160, 259], [130, 259], [190, 259],
-  [-40, 259], [40, 259],
+  [-40, 259], [40, 259], [-480, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;

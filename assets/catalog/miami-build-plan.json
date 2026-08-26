@@ -1044,7 +1044,7 @@
     {
       "id": "fill-skyline-40",
       "title": "Skyline pairs at x=-40 and x=40 z=237/259 if reservedOverlap is false",
-      "status": "in_progress",
+      "status": "done",
       "notes": "[-40,40]@237 arcade, @259 roof rings, z=248 alley pipes; reservedOverlap false; leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
@@ -1065,6 +1065,29 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fill-210-40",
+      "title": "z=210 mid-rises at x=-40 and x=40 continuing the skyline-40 column",
+      "status": "done",
+      "notes": "[-40,210] arcade, [40,210] court well; leftoverLot A–H unmoved"
+    },
+    {
+      "id": "fill-skyline-480",
+      "title": "Skyline pair at x=-480 z=237/259 west of WASH_X0 if reservedOverlap is false",
+      "status": "done",
+      "notes": "[-480,237] arcade, [-480,259] roof ring, [-480,248] alley pipe; leftoverLot A–H unmoved"
+    },
+    {
+      "id": "fill-96-160",
+      "title": "z=96 plate at x=-160 if reservedOverlap is false, west of convention",
+      "status": "done",
+      "notes": "[-160,96] arcade; skip 90/100 at z=96 (Casa/cinema tight); leftoverLot A–H unmoved"
+    },
+    {
+      "id": "fill-96-casa",
+      "title": "Skip z=96 at x=90/100 if they graze Casa or cinema reserved; otherwise add",
+      "status": "pending"
     }
   ],
   "landmarks": {
