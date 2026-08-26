@@ -27,8 +27,9 @@ export const BAY_PRESET = Object.freeze({
   seed: 0xB15CA7E,
   // 19 m Biscayne plate never Tessendorf-folds (min J ~0.23–0.37, never
   // J<0). Flats-off is a mask, not a lower M — #37's 0.30 was a silent
-  // bay. Fold injection is off this file (foamGain 0). Wake stamp may
-  // stay. Do not hunt M. Do not invent spray. TMA / n / cascade locked.
+  // bay. Fold injection is off this file (foamGain 0). Boat-wake stamps
+  // live on the plate overlay, not this gain. Do not hunt M. Do not
+  // invent spray. TMA / n / cascade locked.
   jThresh: 0.46,
   foamGain: 0,
   foamDecay: 0.94,

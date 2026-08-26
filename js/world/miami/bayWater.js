@@ -248,7 +248,7 @@ function encodeHeight(sim, heightBytes) {
   }
 }
 
-/** Plate-UV foam: depth-break + one rip. Not the 19 m cascade. */
+/** Plate-UV foam: depth-break + one rip + world-space boat wakes. Not the 19 m cascade. */
 export function encodeShoreFoam(sim, foamBytes, opts = {}) {
   const n = opts.n || FOAM_N;
   const poly = opts.ripPoly || getRipPoly();
@@ -256,6 +256,9 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
     : (sim && typeof sim.time === 'number' ? sim.time : 0);
   const sampleH = sim && typeof sim.sampleHeight === 'function'
     ? (x, z) => sim.sampleHeight(x, z)
+    : () => 0;
+  const sampleWake = sim && typeof sim.wakeAt === 'function'
+    ? (x, z) => sim.wakeAt(x, z)
     : () => 0;
   let p = 0;
   for (let j = 0; j < n; j++) {
@@ -282,6 +285,9 @@ export function encodeShoreFoam(sim, foamBytes, opts = {}) {
             if (raw > 1) raw = 1;
           }
         }
+        // Hull / Kelvin stamps sit in world metres on this plate (foamGain 0).
+        const wake = sampleWake(x, z);
+        if (wake > 0) raw = raw + wake > 1 ? 1 : raw + wake;
       }
       // Floor kills the salt-and-pepper leftovers; honest breaks stay.
       const f = (raw <= 0.05 ? 0 : (raw - 0.05) / 0.95) * 255;
@@ -477,7 +483,10 @@ float baySteepFoam(vec3 n) {
  */
 export function buildBayWater(ctx, opts = {}) {
   const { root, track } = ctx;
-  const sim = createBaySim(opts);
+  const sim = createBaySim({
+    ...opts,
+    wakeN: FOAM_N, wakeW: BAY_W, wakeD: BAY_D, wakeX: BAY_X, wakeZ: BAY_Z,
+  });
   const n = sim.n;
   const L = sim.L;
 
@@ -582,8 +591,16 @@ export function buildBayWater(ctx, opts = {}) {
       for (let i = 0; i < boats.length; i++) {
         const b = boats[i];
         if (!b || !b.position) continue;
-        // Hull stamp only — do not move the reserved-corridor placer.
-        sim.stampWake(b.position.x, b.position.z, 0.055 * Math.min(dt, 0.08) * 60, 1.8);
+        // Stronger hull wash + short Kelvin arms. foamGain stays 0.
+        // Plate encode (world metres) — do not retarget the reserved corridor.
+        const amt = 0.28 * Math.min(dt, 0.08) * 60;
+        const px = b.position.x, pz = b.position.z;
+        sim.stampWake(px, pz, amt, 22);
+        const yaw = b.rotation.y || 0;
+        const hx = Math.cos(yaw), hz = -Math.sin(yaw);
+        sim.stampWake(px - hx * 8, pz - hz * 8, amt * 0.62, 16);
+        sim.stampWake(px - hx * 16 + hz * 6.5, pz - hz * 16 - hx * 6.5, amt * 0.42, 14);
+        sim.stampWake(px - hx * 16 - hz * 6.5, pz - hz * 16 + hx * 6.5, amt * 0.42, 14);
       }
     }
     if (stepped) {

@@ -498,7 +498,14 @@
     {
       "id": "foam-wake",
       "title": "Stronger boat-wake foam stamps on the Biscayne plate, foamGain stays 0, MeshPhysical only",
-      "status": "pending"
+      "status": "done",
+      "notes": "world-space plate overlay + hull/Kelvin stamps 0.28/22; foamGain 0; MeshPhysical only; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/baySim.js",
+        "js/world/miami/bayWater.js",
+        "js/world/miami/spectrum.js",
+        "js/world/miami/bayWaterTest.js"
+      ]
     },
     {
       "id": "npc-swim-2",

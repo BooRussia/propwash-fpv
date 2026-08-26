@@ -137,6 +137,15 @@ export function createBaySim(opts = {}) {
   let foam = foamA;
   let foamBack = foamB;
 
+  // World-space wake overlay for the Biscayne plate (not the 19 m cascade).
+  // Matches bayWater BAY_PLANE / FOAM_N so encodeShoreFoam can sample it.
+  const wakeN = opts.wakeN ?? 512;
+  const wakeW = opts.wakeW ?? 5000;
+  const wakeD = opts.wakeD ?? 3600;
+  const wakeOX = opts.wakeX ?? 0;
+  const wakeOZ = opts.wakeZ ?? -1700;
+  const wakeField = new Float32Array(wakeN * wakeN);
+
   const rng = mulberry32(opts.seed ?? BAY_PRESET.seed);
   const dk = (Math.PI * 2) / L;
   const kMin = dk * 0.5;
@@ -252,6 +261,11 @@ export function createBaySim(opts = {}) {
     }
     foam = dst;
     foamBack = src;
+    // Plate wakes decay with the same clock; no 19 m blur (that would tile).
+    for (let i = 0, nW = wakeField.length; i < nW; i++) {
+      const wv = wakeField[i] * decay;
+      wakeField[i] = wv < 1e-4 ? 0 : wv;
+    }
   };
 
   const step = (dt) => {
@@ -268,7 +282,62 @@ export function createBaySim(opts = {}) {
     return time;
   };
 
-  /** Stamp wake foam in the tiled 19 m field (world metres). */
+  /** World-space splat onto the plate wake field. Inland z>0 stays dry. */
+  const splatWorldWake = (x, z, amount, radiusM) => {
+    if (z > 0) return;
+    const r = Math.max(0.4, radiusM);
+    const u = (x - wakeOX) / wakeW + 0.5;
+    const v = (wakeOZ - z) / wakeD + 0.5;
+    const cx = u * wakeN;
+    const cz = v * wakeN;
+    const rU = (r / wakeW) * wakeN;
+    const rV = (r / wakeD) * wakeN;
+    const invR2 = 1 / (r * r);
+    const i0 = Math.max(0, Math.floor(cx - rU - 1));
+    const i1 = Math.min(wakeN - 1, Math.ceil(cx + rU + 1));
+    const j0 = Math.max(0, Math.floor(cz - rV - 1));
+    const j1 = Math.min(wakeN - 1, Math.ceil(cz + rV + 1));
+    for (let j = j0; j <= j1; j++) {
+      const wz = wakeOZ - ((j + 0.5) / wakeN - 0.5) * wakeD;
+      for (let i = i0; i <= i1; i++) {
+        const wx = wakeOX + ((i + 0.5) / wakeN - 0.5) * wakeW;
+        const d2 = (wx - x) * (wx - x) + (wz - z) * (wz - z);
+        if (d2 > r * r) continue;
+        const w = Math.exp(-d2 * invR2 * 2.2);
+        const idx = j * wakeN + i;
+        const nv = wakeField[idx] + amount * w;
+        wakeField[idx] = nv > 1 ? 1 : nv;
+      }
+    }
+  };
+
+  /** Bilinear sample of the plate wake field. Inland z>0 is dry. */
+  const wakeAt = (x, z) => {
+    if (z > 0) return 0;
+    const u = (x - wakeOX) / wakeW + 0.5;
+    const vv = (wakeOZ - z) / wakeD + 0.5;
+    if (u < 0 || u > 1 || vv < 0 || vv > 1) return 0;
+    const px = u * wakeN - 0.5;
+    const pz = vv * wakeN - 0.5;
+    let i0 = Math.floor(px);
+    let j0 = Math.floor(pz);
+    const fu = px - i0;
+    const fv = pz - j0;
+    if (i0 < 0) i0 = 0;
+    else if (i0 > wakeN - 2) i0 = wakeN - 2;
+    if (j0 < 0) j0 = 0;
+    else if (j0 > wakeN - 2) j0 = wakeN - 2;
+    const i1 = i0 + 1;
+    const j1 = j0 + 1;
+    const a = wakeField[j0 * wakeN + i0];
+    const b = wakeField[j0 * wakeN + i1];
+    const c = wakeField[j1 * wakeN + i0];
+    const d = wakeField[j1 * wakeN + i1];
+    return a * (1 - fu) * (1 - fv) + b * fu * (1 - fv)
+      + c * (1 - fu) * fv + d * fu * fv;
+  };
+
+  /** Stamp wake foam: tiled 19 m field (tests) + world-space plate overlay. */
   const stampWake = (x, z, amount, radiusM = 1.6) => {
     if (!(amount > 0)) return;
     const r = Math.max(0.4, radiusM);
@@ -289,6 +358,7 @@ export function createBaySim(opts = {}) {
         foam[idx] = v > 1 ? 1 : v;
       }
     }
+    splatWorldWake(x, z, amount, r);
   };
 
   const sampleHeight = (x, z) => {
@@ -317,6 +387,7 @@ export function createBaySim(opts = {}) {
     scale: BAY_PRESET.scale,
     height, dx, dz, slopeX, slopeZ, jacobian,
     get foam() { return foam; },
+    wakeN, wakeField, wakeAt,
     step, stampWake, sampleHeight, significantHeight,
     get time() { return time; },
   };

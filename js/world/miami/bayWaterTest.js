@@ -249,6 +249,40 @@ export function runBayWaterTests() {
   ok('encoded deep flats stay 0', foamAtWorld(800, -2200) === 0);
   ok('foam map is plate-scale, not 256² cascade', FOAM_N === 512);
 
+  // ---- world-space boat wakes on the plate (not the 19 m tile) ------------
+  const simWake = createBaySim();
+  // Marina finger water, seaward of the SHORE_Z crash band so the encode is wake-only.
+  simWake.stampWake(313, -80, 0.85, 16);
+  const wakeBytes = new Uint8Array(FOAM_N * FOAM_N * 4);
+  encodeShoreFoam(simWake, wakeBytes);
+  const wakeAtWorld = (x, z) => {
+    const u = (x - BAY_PLANE.x) / BAY_PLANE.w + 0.5;
+    const v = (BAY_PLANE.z - z) / BAY_PLANE.d + 0.5;
+    const i = Math.min(FOAM_N - 1, Math.max(0, Math.floor(u * FOAM_N)));
+    const j = Math.min(FOAM_N - 1, Math.max(0, Math.floor(v * FOAM_N)));
+    return wakeBytes[(j * FOAM_N + i) * 4];
+  };
+  ok('encoded boat wake is on the Biscayne plate', wakeAtWorld(313, -80) > 20);
+  ok('encoded boat wake is not a 19 m cascade tile',
+    wakeAtWorld(313 + 19 * 6, -80) === 0
+    && wakeAtWorld(313, -80 - 19 * 6) === 0);
+  ok('encoded leftoverLot A stays dry after a marina stamp',
+    wakeAtWorld(258, 84) === 0);
+  ok('encoded travel lane stays dry after a marina stamp',
+    wakeAtWorld(0, 44) === 0);
+  ok('wakeAt is world-space, not the 19 m field',
+    typeof simWake.wakeAt === 'function'
+    && simWake.wakeN === 512
+    && simWake.wakeAt(313, -80) > 0.2
+    && simWake.wakeAt(313 + 19, -80) < simWake.wakeAt(313, -80) * 0.5
+    && simWake.wakeAt(258, 84) === 0);
+  ok('inland stamp does not paint leftoverLot / travel',
+    (() => {
+      simWake.stampWake(258, 84, 0.9, 16);
+      simWake.stampWake(0, 44, 0.9, 16);
+      return simWake.wakeAt(258, 84) === 0 && simWake.wakeAt(0, 44) === 0;
+    })());
+
   // ---- source locks: Water.js gone, no second ocean ----------------------
   const terrain = readFileSync(join(here, 'terrain.js'), 'utf8');
   const bayWater = readFileSync(join(here, 'bayWater.js'), 'utf8');
@@ -296,7 +330,18 @@ export function runBayWaterTests() {
   ok('fold foamGain stays 0 — not turned back on',
     /foamGain:\s*0/.test(readFileSync(join(here, 'spectrum.js'), 'utf8'))
     && BAY_PRESET.foamGain === 0
-    && !/foamGain\s*=\s*[1-9]/.test(bayWater));
+    && !/foamGain\s*=\s*[1-9]/.test(bayWater)
+    && !/foamGain\s*=\s*[1-9]/.test(baySimSrc));
+  ok('boat-wake stamps are stronger hull + Kelvin arms',
+    bayWater.includes('0.28 * Math.min(dt, 0.08) * 60')
+    && bayWater.includes('stampWake(px, pz, amt, 22)')
+    && bayWater.includes('amt * 0.62')
+    && bayWater.includes('amt * 0.42')
+    && !bayWater.includes('0.055 * Math.min(dt, 0.08) * 60, 1.8'));
+  ok('plate encode samples world-space wakeAt',
+    bayWater.includes('sim.wakeAt')
+    && baySimSrc.includes('splatWorldWake')
+    && baySimSrc.includes('wakeField'));
   ok('foamMap does not RepeatWrap the 19 m cascade',
     !/applyRepeat\(\s*foamMap/.test(bayWater)
     && /foamMap\.repeat\.set\(\s*1\s*,\s*1/.test(bayWater)
