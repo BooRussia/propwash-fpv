@@ -1322,6 +1322,10 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-60, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-20, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(20, 223, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-729, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-711, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-549, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-531, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-600, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 140, 2.4, 2.6, 0.15) === false

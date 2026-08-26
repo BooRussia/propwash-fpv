@@ -1431,6 +1431,10 @@ export const FIRE_ESCAPE_CELLS = Object.freeze([
   [-259, 248], [-241, 248],
   [-89, 248], [-71, 248],
   [91, 248], [109, 248],
+  // Extra flanks on west skyline pairs -720/-540. Appended so existing
+  // fire-escape draws stay put. Fly +X. leftoverLot A–H unmoved.
+  [-729, 248], [-711, 248],
+  [-549, 248], [-531, 248],
 ]);
 
 /** One fire-escape landing frame. Fly +X. Opening is empty air. */
