@@ -39,6 +39,8 @@ import {
   WASH_Z, WASH_HALF, WASH_X1, WASH_ARCADE_X, WASH_ARCADE_Z, WASH_ARCADE_POST_H,
   WASH_TRAVEL_Z0, WASH_TRAVEL_Z1, WASH_PARK_OCEAN_Z, WASH_PARK_INLAND_Z,
   washingtonRuns, washingtonCars, washingtonArcadeGeom, onWashingtonRoad,
+  EIGHTH_X, EIGHTH_W_CELLS, EIGHTH_E_CELLS, EIGHTH_W_FRONT_X, EIGHTH_E_FRONT_X,
+  EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
 } from './constants.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -98,6 +100,7 @@ export function runMiamiCrowdTests() {
   const inlandPath = join(here, 'landmarks/inland.js');
   const lincolnPath = join(here, 'landmarks/lincoln.js');
   const washingtonPath = join(here, 'landmarks/washington.js');
+  const eighthPath = join(here, 'landmarks/eighth.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
 
   const crowd = existsSync(crowdPath) ? readFileSync(crowdPath, 'utf8') : '';
@@ -111,6 +114,7 @@ export function runMiamiCrowdTests() {
   const inland = existsSync(inlandPath) ? readFileSync(inlandPath, 'utf8') : '';
   const lincoln = existsSync(lincolnPath) ? readFileSync(lincolnPath, 'utf8') : '';
   const washington = existsSync(washingtonPath) ? readFileSync(washingtonPath, 'utf8') : '';
+  const eighth = existsSync(eighthPath) ? readFileSync(eighthPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
 
   ok('crowd.js exists', existsSync(crowdPath));
@@ -675,6 +679,57 @@ export function runMiamiCrowdTests() {
     && !!inKeepout(WASH_ARCADE_X, WASH_ARCADE_Z)
     && !probeBlocked(kit, washArcade.x, washArcade.y, washArcade.z, 0.28));
   ok('leftoverLot A–H still signed after Washington Ave',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('eighth.js exists', existsSync(eighthPath));
+  ok('index builds 8th-street storefronts after Washington Ave',
+    index.includes("from './landmarks/eighth.js'")
+    && index.includes('buildEighth(ctx)')
+    && index.indexOf('buildEighth(ctx)') > index.indexOf('buildWashington(ctx)')
+    && index.indexOf('buildEighth(ctx)') < index.indexOf('buildFlythrough(ctx)'));
+  ok('8th-street is GAP_X=-129, west of x=240',
+    EIGHTH_X === -129 && EIGHTH_W_FRONT_X < EIGHTH_X && EIGHTH_E_FRONT_X > EIGHTH_X
+    && EIGHTH_E_FRONT_X + EIGHTH_D < 240);
+  ok('8th-street cells are signed inland of Ocean Drive',
+    EIGHTH_W_CELLS.length === 4 && EIGHTH_E_CELLS.length === 2
+    && EIGHTH_W_CELLS.every(([, len]) => len >= 8)
+    && EIGHTH_E_CELLS[0][0] === 95 && EIGHTH_E_CELLS[0][1] === 8);
+  ok('8th-street soffit and passage are flyable',
+    EIGHTH_SOFFIT >= 3.2 && EIGHTH_PASS_W >= 2.0 && EIGHTH_PASS_H >= 2.0);
+  ok('eighth does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(eighth) && !/\brng3\s*\(/.test(eighth)
+    && !/\brng4\s*\(/.test(eighth) && !eighth.includes('ShaderMaterial')
+    && !eighth.includes('ped.js') && !eighth.includes('traffic.js')
+    && eighth.includes('installFlyColliders'));
+
+  const eighthList = eighthShops();
+  ok('six signed 8th-street shops', eighthList.length === 6);
+  for (let i = 0; i < eighthList.length; i++) {
+    const g = eighthList[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 1.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.x1 - g.x0, g.len, 0.15) === false
+      && streetOverlap(g.x, g.z, g.x1 - g.x0, g.len) === false
+      && g.z0 > TRAVEL_Z1);
+    const arcade = FLY_VOIDS.find((v) => v.id === `${g.id}-arcade`);
+    const pass = FLY_VOIDS.find((v) => v.id === `${g.id}-pass`);
+    ok(`${g.id}-arcade listed`, !!arcade && arcade.openH === EIGHTH_SOFFIT);
+    ok(`${g.id}-pass listed`, !!pass && pass.openW === EIGHTH_PASS_W);
+    if (arcade) {
+      const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      const high = probeBlocked(kit, arcade.x, CITY_Y + EIGHTH_SOFFIT - 0.45, arcade.z, 0.28);
+      ok(`${g.id}-arcade keepout + open`,
+        !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+      ok(`${g.id}-arcade high ±Z is open`, !high, high ? `${high.tag}` : '');
+    }
+    if (pass) {
+      const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);
+      ok(`${g.id}-pass keepout + open`,
+        !!inKeepout(pass.x, pass.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+  }
+  ok('leftoverLot A–H still signed after 8th-street',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
