@@ -81,7 +81,8 @@ export function runMiamiGap501Tests() {
     && GAP501_E_FRONT_X === GAP501_X + XS_HALF + 2.4
     && GAP501_W_FRONT_X < GAP501_X && GAP501_E_FRONT_X > GAP501_X
     && GAP501_E_FRONT_X + GAP501_D < 240
-    && GAP501_W_FRONT_X < 240);
+    && GAP501_W_FRONT_X < 240
+    && GAP501_E_FRONT_X + GAP501_D < 251);
   ok('shop cells are signed inland of Ocean Drive',
     GAP501_W_CELLS.length === 4 && GAP501_E_CELLS.length === 5
     && GAP501_W_CELLS.every(([, len]) => len >= 8)
@@ -104,9 +105,9 @@ export function runMiamiGap501Tests() {
       && g.z0 > TRAVEL_Z1
       && !(g.z0 < TRAVEL_Z1 && g.z1 > TRAVEL_Z0)
       && g.x1 < 251);
-    ok(`${g.id} misses helipad W / Washington carriageway / mid-rises`,
+    ok(`${g.id} misses helipadW / Washington carriageway / mid-rises`,
       reservedOverlap(-430, 101, 44, 54, 0.15) === true
-      && !(g.z0 < 128 && g.z1 > 74 && g.x1 > -452 && g.x0 < -408)
+      && g.x1 < -452
       && !(g.z1 > WASH_Z0 && g.z0 < WASH_Z1
         && g.x1 > WASH_X0 && g.x0 < Math.min(WASH_X1, 240))
       && INLAND_MIDRISE_CELLS.every(([mx, mz]) => {
