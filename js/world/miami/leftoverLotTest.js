@@ -83,6 +83,9 @@ import {
   leftoverLotPlantSpots, inLeftoverLotGate, leftoverLotOverlap,
   inLeftoverLotReserved,
   HOTEL_FLAG_CELLS, COURT_WELL_CELLS, INLAND_ARCADE_CELLS,
+  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_SOFFIT,
+  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_SOFFIT,
+  FLY_VOIDS,
 } from './constants.js';
 import { tryPlace } from './planting.js';
 
@@ -1165,6 +1168,15 @@ export function runMiamiLeftoverLotTests() {
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240 && (z === 210 || z === 152)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 152)
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('Majestic/Cavalier porch arcades miss leftoverLot A–H',
+    MAJESTIC_SOFFIT === 3.5 && CAVALIER_SOFFIT === 3.5
+    && leftoverLotOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z - 1.7, MAJESTIC_W, 3.4, 0.15) === false
+    && leftoverLotOverlap(CAVALIER_X, CAVALIER_FRONT_Z - 1.7, CAVALIER_W, 3.4, 0.15) === false
+    && MAJESTIC_X + MAJESTIC_W / 2 + 1.2 < 240
+    && CAVALIER_X + CAVALIER_W / 2 + 1.2 < 240
+    && FLY_VOIDS.some((v) => v.id === 'majestic-arcade')
+    && FLY_VOIDS.some((v) => v.id === 'cavalier-arcade')
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------

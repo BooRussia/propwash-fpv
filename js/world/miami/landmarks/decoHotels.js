@@ -4,9 +4,9 @@ import {
   CITY_Y,
   COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
   AVALON_X, AVALON_FRONT_Z, AVALON_W, AVALON_D, AVALON_SOFFIT,
-  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D,
+  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D, MAJESTIC_SOFFIT,
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
-  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D,
+  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
   installFlyColliders,
 } from '../constants.js';
@@ -19,9 +19,9 @@ import { stuccoTexture } from '../textures.js';
 // Colony (x=-108): yellow porch arcade you can fly under
 //   (soffit COLONY_SOFFIT). Colliders are jambs + lid (tag 'colony').
 // Avalon (x=-152): salmon porch arcade west of Colony / GAP -129.
-// Majestic (x=-178): cream/green plate west of Avalon, east of GAP -315.
+// Majestic (x=-178): cream/green porch arcade west of Avalon, east of GAP -315.
 // Breakwater (x=42): white mass + red neon pylon in the deco/Clevelander gap.
-// Cavalier (x=134): peach streamline in the Cardozo/cinema gap.
+// Cavalier (x=134): peach porch arcade in the Cardozo/cinema gap.
 // Winterhaven (x=222): teal-trim plate east of the garage, reserved z1=76
 //   so it cannot kiss abando or leftoverLot A–H.
 //
@@ -61,12 +61,14 @@ export function buildDecoHotels(ctx) {
 
   setTag('majestic');
   buildMajestic(stucco, dark, glass, pushNeon, addCollider);
+  installFlyColliders(addCyl, addCollider, 'majestic');
 
   setTag('breakwater');
   buildBreakwater(stucco, dark, glass, pushNeon, addCollider);
 
   setTag('cavalier');
   buildCavalier(stucco, dark, glass, pushNeon, addCollider);
+  installFlyColliders(addCyl, addCollider, 'cavalier');
 
   setTag('winterhaven');
   buildWinterhaven(stucco, dark, glass, pushNeon, addCollider);
@@ -233,59 +235,54 @@ function buildMajestic(stucco, dark, glass, pushNeon, addCollider) {
   const W = MAJESTIC_W;
   const D = MAJESTIC_D;
   const BODY = 0xf6f2e9, BODY2 = 0xe8e2d4, TRIM = 0x2f8f6a, NEON = 0x3dff9a, NAME = 0x145a40;
-  const floors = 4;
-  const bodyH = GH + (floors - 1) * FH;
+  const floors = 3;
+  const bodyH = MAJESTIC_SOFFIT + floors * FH;
   const zMass = FZ + D / 2;
-  const CW = W * 0.38;
+  const arcadeZ = FZ - 1.7;
 
-  stucco.push(cBox(W, bodyH, D, BODY, cx, CITY_Y + bodyH / 2, zMass));
-  stucco.push(cBox(CW, bodyH, 0.5, BODY2, cx, CITY_Y + bodyH / 2, FZ - 0.2));
+  stucco.push(cBox(W, bodyH - MAJESTIC_SOFFIT, D, BODY,
+    cx, CITY_Y + MAJESTIC_SOFFIT + (bodyH - MAJESTIC_SOFFIT) / 2, zMass));
+  stucco.push(cBox(W, MAJESTIC_SOFFIT, D - 4.2, BODY2,
+    cx, CITY_Y + MAJESTIC_SOFFIT / 2, FZ + 2.1 + (D - 4.2) / 2));
+
   for (const s of [-1, 1]) {
-    stucco.push(cBox(1.2, bodyH, 1.2, BODY,
-      cx + s * (W / 2 - 0.45), CITY_Y + bodyH / 2, FZ + 0.45, 0, Math.PI / 4, 0));
+    stucco.push(cCyl(0.2, 0.22, MAJESTIC_SOFFIT, 10, TRIM,
+      cx + s * (W / 2 - 0.7), CITY_Y + MAJESTIC_SOFFIT / 2, arcadeZ));
   }
-
-  for (let f = 0; f < floors; f++) {
-    const fy = CITY_Y + (f === 0 ? 0 : GH + (f - 1) * FH);
-    const fh = f === 0 ? GH : FH;
-    const winY = fy + fh * 0.56;
-    const winH = f === 0 ? 2.25 : 1.55;
-    if (f > 0) {
-      stucco.push(cBox(W + 0.16, 0.14, D + 0.16, TRIM, cx, fy, zMass));
-    }
-    stucco.push(cBox(W + 0.2, 0.16, 0.62, TRIM, cx, winY + winH / 2 + 0.3, FZ - 0.28));
-    for (const s of [-1, 1]) {
-      glass.push(new THREE.BoxGeometry(1.9, winH, 0.1)
-        .translate(cx + s * 4.15, winY, FZ - 0.05));
-      dark.push(cBox(2.1, winH + 0.2, 0.08, REVEAL, cx + s * 4.15, winY, FZ + 0.04));
-    }
-    if (f > 0) {
-      glass.push(new THREE.BoxGeometry(CW * 0.55, winH + 0.35, 0.1)
-        .translate(cx, winY, FZ - 0.52));
-    }
-    pushNeon(NEON, cBox(W - 0.6, 0.07, 0.07, NEON, cx, winY + winH / 2 + 0.38, FZ - 0.58));
-  }
+  stucco.push(cBox(W - 0.4, 0.24, 3.4, TRIM,
+    cx, CITY_Y + MAJESTIC_SOFFIT + 0.12, arcadeZ));
+  pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
+    cx, CITY_Y + MAJESTIC_SOFFIT - 0.06, arcadeZ - 1.55));
   // extra neon outline — Majestic corner tubes. Visual only.
   for (const s of [-1, 1]) {
-    pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
+    pushNeon(NEON, cBox(0.08, bodyH - 0.6, 0.08, NEON,
       cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
   }
 
-  const roofY = CITY_Y + bodyH;
-  stucco.push(cBox(W + 0.3, 0.8, D + 0.3, BODY2, cx, roofY + 0.4, zMass));
-  stucco.push(cBox(CW + 1.6, 1.5, 3.2, BODY, cx, roofY + 1.45, FZ + 1.5));
-  dark.push(cBox(CW + 1.0, 1.1, 0.14, NAME, cx, roofY + 1.7, FZ - 0.2));
-  pushNeon(NEON, cBox(CW + 0.5, 0.5, 0.09, NEON, cx, roofY + 1.7, FZ - 0.3));
-
-  stucco.push(cBox(CW + 2.2, 0.2, 1.8, TRIM, cx, CITY_Y + 3.2, FZ - 1.0));
-  for (const s of [-1, 1]) {
-    dark.push(cCyl(0.09, 0.1, 3.1, 8, METAL,
-      cx + s * 3.4, CITY_Y + 1.55, FZ - 1.55));
+  for (let f = 0; f < floors; f++) {
+    const fy = CITY_Y + MAJESTIC_SOFFIT + 1.55 + f * FH;
+    stucco.push(cBox(W + 0.28, 0.16, 0.68, TRIM, cx, fy + 1.05, FZ - 0.3));
+    for (const s of [-1, 0, 1]) {
+      glass.push(new THREE.BoxGeometry(1.8, 1.65, 0.1)
+        .translate(cx + s * 4.15, fy, FZ - 0.04));
+      dark.push(cBox(2.0, 1.85, 0.08, REVEAL, cx + s * 4.15, fy, FZ + 0.04));
+    }
+    pushNeon(NEON, cBox(W - 0.8, 0.07, 0.07, NEON, cx, fy + 1.12, FZ - 0.62));
   }
-  dark.push(cBox(CW + 3.0, 0.05, 2.4, TERRAZZO, cx, CITY_Y + 0.025, FZ - 1.2));
 
-  addCollider(cx, CITY_Y, zMass, W + 0.5, bodyH + 2.2, D + 0.5);
-  addCollider(cx, CITY_Y + 3.1, FZ - 1.0, CW + 2.2, 0.3, 1.9);
+  const roofY = CITY_Y + bodyH;
+  stucco.push(cBox(W + 0.4, 0.8, D + 0.4, BODY2, cx, roofY + 0.4, zMass));
+  dark.push(cBox(W * 0.55, 1.15, 0.16, NAME, cx, roofY + 1.15, FZ - 0.18));
+  pushNeon(NEON, cBox(W * 0.48, 0.5, 0.1, NEON, cx, roofY + 1.15, FZ - 0.28));
+
+  dark.push(cBox(W * 0.7, 0.05, 2.8, TERRAZZO, cx, CITY_Y + 0.025, arcadeZ));
+
+  addCollider(cx, CITY_Y + MAJESTIC_SOFFIT, zMass,
+    W + 0.5, bodyH - MAJESTIC_SOFFIT + 1.2, D + 0.5);
+  addCollider(cx, CITY_Y, FZ + 2.1 + (D - 4.2) / 2,
+    W + 0.4, MAJESTIC_SOFFIT, D - 4.0);
+  addCollider(cx, CITY_Y + MAJESTIC_SOFFIT, arcadeZ,
+    W - 0.4, 0.3, 3.4);
 }
 
 function buildBreakwater(stucco, dark, glass, pushNeon, addCollider) {
@@ -354,59 +351,54 @@ function buildCavalier(stucco, dark, glass, pushNeon, addCollider) {
   const W = CAVALIER_W;
   const D = CAVALIER_D;
   const BODY = 0xf4c4a8, BODY2 = 0xe8b090, TRIM = 0xf6f2e9, NEON = 0xff8a5b, NAME = 0x8c3a28;
-  const floors = 4;
-  const bodyH = GH + (floors - 1) * FH;
+  const floors = 3;
+  const bodyH = CAVALIER_SOFFIT + floors * FH;
   const zMass = FZ + D / 2;
-  const CW = W * 0.36;
+  const arcadeZ = FZ - 1.7;
 
-  stucco.push(cBox(W, bodyH, D, BODY, cx, CITY_Y + bodyH / 2, zMass));
-  stucco.push(cBox(CW, bodyH, 0.55, BODY2, cx, CITY_Y + bodyH / 2, FZ - 0.22));
+  stucco.push(cBox(W, bodyH - CAVALIER_SOFFIT, D, BODY,
+    cx, CITY_Y + CAVALIER_SOFFIT + (bodyH - CAVALIER_SOFFIT) / 2, zMass));
+  stucco.push(cBox(W, CAVALIER_SOFFIT, D - 4.2, BODY2,
+    cx, CITY_Y + CAVALIER_SOFFIT / 2, FZ + 2.1 + (D - 4.2) / 2));
+
   for (const s of [-1, 1]) {
-    stucco.push(cBox(1.2, bodyH, 1.2, BODY,
-      cx + s * (W / 2 - 0.45), CITY_Y + bodyH / 2, FZ + 0.45, 0, Math.PI / 4, 0));
+    stucco.push(cCyl(0.2, 0.22, CAVALIER_SOFFIT, 10, TRIM,
+      cx + s * (W / 2 - 0.7), CITY_Y + CAVALIER_SOFFIT / 2, arcadeZ));
   }
-
-  for (let f = 0; f < floors; f++) {
-    const fy = CITY_Y + (f === 0 ? 0 : GH + (f - 1) * FH);
-    const fh = f === 0 ? GH : FH;
-    const winY = fy + fh * 0.56;
-    const winH = f === 0 ? 2.25 : 1.55;
-    if (f > 0) {
-      stucco.push(cBox(W + 0.16, 0.14, D + 0.16, TRIM, cx, fy, zMass));
-    }
-    stucco.push(cBox(W + 0.2, 0.16, 0.62, TRIM, cx, winY + winH / 2 + 0.3, FZ - 0.28));
-    for (const s of [-1, 1]) {
-      glass.push(new THREE.BoxGeometry(1.9, winH, 0.1)
-        .translate(cx + s * 4.15, winY, FZ - 0.05));
-      dark.push(cBox(2.1, winH + 0.2, 0.08, REVEAL, cx + s * 4.15, winY, FZ + 0.04));
-    }
-    if (f > 0) {
-      glass.push(new THREE.BoxGeometry(CW * 0.55, winH + 0.35, 0.1)
-        .translate(cx, winY, FZ - 0.52));
-    }
-    pushNeon(NEON, cBox(W - 0.6, 0.07, 0.07, NEON, cx, winY + winH / 2 + 0.38, FZ - 0.58));
-  }
+  stucco.push(cBox(W - 0.4, 0.24, 3.4, TRIM,
+    cx, CITY_Y + CAVALIER_SOFFIT + 0.12, arcadeZ));
+  pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
+    cx, CITY_Y + CAVALIER_SOFFIT - 0.06, arcadeZ - 1.55));
   // extra neon outline — Cavalier corner tubes. Visual only.
   for (const s of [-1, 1]) {
-    pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
+    pushNeon(NEON, cBox(0.08, bodyH - 0.6, 0.08, NEON,
       cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
   }
 
-  const roofY = CITY_Y + bodyH;
-  stucco.push(cBox(W + 0.3, 0.8, D + 0.3, BODY2, cx, roofY + 0.4, zMass));
-  stucco.push(cBox(CW + 1.6, 1.5, 3.2, BODY, cx, roofY + 1.45, FZ + 1.5));
-  dark.push(cBox(CW + 1.0, 1.1, 0.14, NAME, cx, roofY + 1.7, FZ - 0.2));
-  pushNeon(NEON, cBox(CW + 0.5, 0.5, 0.09, NEON, cx, roofY + 1.7, FZ - 0.3));
-
-  stucco.push(cBox(CW + 2.2, 0.2, 1.8, TRIM, cx, CITY_Y + 3.2, FZ - 1.0));
-  for (const s of [-1, 1]) {
-    dark.push(cCyl(0.09, 0.1, 3.1, 8, METAL,
-      cx + s * 3.4, CITY_Y + 1.55, FZ - 1.55));
+  for (let f = 0; f < floors; f++) {
+    const fy = CITY_Y + CAVALIER_SOFFIT + 1.55 + f * FH;
+    stucco.push(cBox(W + 0.28, 0.16, 0.68, TRIM, cx, fy + 1.05, FZ - 0.3));
+    for (const s of [-1, 0, 1]) {
+      glass.push(new THREE.BoxGeometry(1.8, 1.65, 0.1)
+        .translate(cx + s * 4.15, fy, FZ - 0.04));
+      dark.push(cBox(2.0, 1.85, 0.08, REVEAL, cx + s * 4.15, fy, FZ + 0.04));
+    }
+    pushNeon(NEON, cBox(W - 0.8, 0.07, 0.07, NEON, cx, fy + 1.12, FZ - 0.62));
   }
-  dark.push(cBox(CW + 3.0, 0.05, 2.4, TERRAZZO, cx, CITY_Y + 0.025, FZ - 1.2));
 
-  addCollider(cx, CITY_Y, zMass, W + 0.5, bodyH + 2.2, D + 0.5);
-  addCollider(cx, CITY_Y + 3.1, FZ - 1.0, CW + 2.2, 0.3, 1.9);
+  const roofY = CITY_Y + bodyH;
+  stucco.push(cBox(W + 0.4, 0.8, D + 0.4, BODY2, cx, roofY + 0.4, zMass));
+  dark.push(cBox(W * 0.55, 1.15, 0.16, NAME, cx, roofY + 1.15, FZ - 0.18));
+  pushNeon(NEON, cBox(W * 0.48, 0.5, 0.1, NEON, cx, roofY + 1.15, FZ - 0.28));
+
+  dark.push(cBox(W * 0.7, 0.05, 2.8, TERRAZZO, cx, CITY_Y + 0.025, arcadeZ));
+
+  addCollider(cx, CITY_Y + CAVALIER_SOFFIT, zMass,
+    W + 0.5, bodyH - CAVALIER_SOFFIT + 1.2, D + 0.5);
+  addCollider(cx, CITY_Y, FZ + 2.1 + (D - 4.2) / 2,
+    W + 0.4, CAVALIER_SOFFIT, D - 4.0);
+  addCollider(cx, CITY_Y + CAVALIER_SOFFIT, arcadeZ,
+    W - 0.4, 0.3, 3.4);
 }
 
 function buildWinterhaven(stucco, dark, glass, pushNeon, addCollider) {

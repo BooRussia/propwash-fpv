@@ -153,11 +153,13 @@ export const AVALON_D = 24;
 export const AVALON_SOFFIT = 3.5;
 
 // ---- Majestic analogue (660 Ocean Drive; west of Avalon, east of GAP -315) ----
-// Shallow plate on FRONT_Z=57.6. New RESERVED west of x=240. leftoverLot A–H unmoved.
+// Porch arcade you can fly under (soffit MAJESTIC_SOFFIT). New RESERVED west of x=240.
+// Miss travel lanes 40.2–47.8. leftoverLot A–H unmoved.
 export const MAJESTIC_X = -178;
 export const MAJESTIC_FRONT_Z = 57.6;
 export const MAJESTIC_W = 16;
 export const MAJESTIC_D = 22;
+export const MAJESTIC_SOFFIT = 3.5;
 
 // ---- Breakwater analogue (940 Ocean Drive; deco-row / Clevelander gap) ----
 export const BREAKWATER_X = 42;
@@ -166,10 +168,13 @@ export const BREAKWATER_W = 12;
 export const BREAKWATER_D = 22;
 
 // ---- Cavalier analogue (1320 Ocean Drive; Cardozo / cinema gap) ----
+// Porch arcade you can fly under (soffit CAVALIER_SOFFIT). West of leftoverLot A.
+// Miss travel lanes 40.2–47.8. leftoverLot A–H unmoved.
 export const CAVALIER_X = 134;
 export const CAVALIER_FRONT_Z = 57.6;
 export const CAVALIER_W = 16;
 export const CAVALIER_D = 24;
+export const CAVALIER_SOFFIT = 3.5;
 
 // ---- Winterhaven analogue (1400 Ocean Drive; garage / GAP 243) ----
 // Shallow plate: mass z1 = 75.6, reserved z1 = 76, west of x=240.
@@ -183,14 +188,14 @@ export const WINTERHAVEN_D = 18;
 // parapet / crown deck. West of leftoverLot A. Inland of travel 40.2–47.8.
 // hash01 never at const-eval. Art-deco xs already fly a crown pole — skip.
 export const HOTEL_FLAG_CELLS = Object.freeze([
-  [-178, 59.1, 17.3],
+  [-178, 58.8, 15.4],
   [-152, 58.8, 15.4],
   [-108, 58.8, 15.4],
   [42, 58.8, 15.9],
   [60, 58.8, 13.7],
   [90, 62.8, 13.0],
   [115, 59.4, 17.4],
-  [134, 59.1, 17.3],
+  [134, 58.8, 15.4],
   [222, 58.8, 12.6],
 ]);
 
@@ -5607,6 +5612,10 @@ export const KEEPOUT = [
     z0: COLONY_FRONT_Z - 3.4, z1: COLONY_FRONT_Z + 0.3, tag: 'colony' },
   { x0: AVALON_X - AVALON_W / 2 + 1.0, x1: AVALON_X + AVALON_W / 2 - 1.0,
     z0: AVALON_FRONT_Z - 3.4, z1: AVALON_FRONT_Z + 0.3, tag: 'avalon' },
+  { x0: MAJESTIC_X - MAJESTIC_W / 2 + 1.0, x1: MAJESTIC_X + MAJESTIC_W / 2 - 1.0,
+    z0: MAJESTIC_FRONT_Z - 3.4, z1: MAJESTIC_FRONT_Z + 0.3, tag: 'majestic' },
+  { x0: CAVALIER_X - CAVALIER_W / 2 + 1.0, x1: CAVALIER_X + CAVALIER_W / 2 - 1.0,
+    z0: CAVALIER_FRONT_Z - 3.4, z1: CAVALIER_FRONT_Z + 0.3, tag: 'cavalier' },
   { x0: -80 - GATE_HALF_X - 0.8, x1: -80 + GATE_HALF_X + 0.8,
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
   { x0: -20 - GATE_HALF_X - 0.8, x1: -20 + GATE_HALF_X + 0.8,
@@ -5982,6 +5991,26 @@ export const FLY_VOIDS = [
     openW: AVALON_W - 2.4, openH: AVALON_SOFFIT,
   },
   {
+    id: 'majestic-arcade', kind: 'kit',
+    x: MAJESTIC_X, z: MAJESTIC_FRONT_Z - 1.7,
+    y: CITY_Y + MAJESTIC_SOFFIT * 0.48,
+    x0: MAJESTIC_X - MAJESTIC_W / 2 + 1.2,
+    x1: MAJESTIC_X + MAJESTIC_W / 2 - 1.2,
+    z0: MAJESTIC_FRONT_Z - 3.15, z1: MAJESTIC_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + MAJESTIC_SOFFIT - 0.06,
+    openW: MAJESTIC_W - 2.4, openH: MAJESTIC_SOFFIT,
+  },
+  {
+    id: 'cavalier-arcade', kind: 'kit',
+    x: CAVALIER_X, z: CAVALIER_FRONT_Z - 1.7,
+    y: CITY_Y + CAVALIER_SOFFIT * 0.48,
+    x0: CAVALIER_X - CAVALIER_W / 2 + 1.2,
+    x1: CAVALIER_X + CAVALIER_W / 2 - 1.2,
+    z0: CAVALIER_FRONT_Z - 3.15, z1: CAVALIER_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + CAVALIER_SOFFIT - 0.06,
+    openW: CAVALIER_W - 2.4, openH: CAVALIER_SOFFIT,
+  },
+  {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
     y: CITY_Y + GARAGE_SOFFIT * 0.48,
@@ -6145,6 +6174,36 @@ export function flyColliderShapes() {
     type: 'aabb', tag: 'avalon',
     x: AVALON_X, z: avalonZ, sx: AVALON_W - 0.6, sz: 3.2,
     y0: CITY_Y + AVALON_SOFFIT, sy: 0.26,
+  });
+
+  // Majestic arcade jambs — centre bay empty, fly ±X under the soffit.
+  const majesticZ = MAJESTIC_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'majestic',
+      x: MAJESTIC_X + s * (MAJESTIC_W / 2 - 0.7), z: majesticZ, r: 0.2,
+      y0: CITY_Y, h: MAJESTIC_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'majestic',
+    x: MAJESTIC_X, z: majesticZ, sx: MAJESTIC_W - 0.6, sz: 3.2,
+    y0: CITY_Y + MAJESTIC_SOFFIT, sy: 0.26,
+  });
+
+  // Cavalier arcade jambs — centre bay empty, fly ±X under the soffit.
+  const cavalierZ = CAVALIER_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'cavalier',
+      x: CAVALIER_X + s * (CAVALIER_W / 2 - 0.7), z: cavalierZ, r: 0.2,
+      y0: CITY_Y, h: CAVALIER_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'cavalier',
+    x: CAVALIER_X, z: cavalierZ, sx: CAVALIER_W - 0.6, sz: 3.2,
+    y0: CITY_Y + CAVALIER_SOFFIT, sy: 0.26,
   });
 
   for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {

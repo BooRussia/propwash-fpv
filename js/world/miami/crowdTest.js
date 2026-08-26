@@ -13,9 +13,9 @@ import {
   CARDOZO_X, CARDOZO_FRONT_Z, CARDOZO_W,
   COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
   AVALON_X, AVALON_FRONT_Z, AVALON_W, AVALON_D, AVALON_SOFFIT,
-  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D,
+  MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D, MAJESTIC_SOFFIT,
   BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
-  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D,
+  CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
   WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
@@ -383,11 +383,11 @@ function FRONT_Z_OK() {
     && AVALON_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Majestic sits west of Avalon, east of GAP -315, west of x=240',
     MAJESTIC_X === -178 && MAJESTIC_FRONT_Z === 57.6
-    && MAJESTIC_W === 16 && MAJESTIC_D === 22
+    && MAJESTIC_W === 16 && MAJESTIC_D === 22 && MAJESTIC_SOFFIT === 3.5
     && MAJESTIC_X + MAJESTIC_W / 2 + 1.2 < AVALON_X - AVALON_W / 2 - 1.2
     && MAJESTIC_X - MAJESTIC_W / 2 - 1.2 > -315 + XS_HALF
     && MAJESTIC_X + MAJESTIC_W / 2 + 1.2 < 240
-    && MAJESTIC_FRONT_Z > TRAVEL_Z1);
+    && MAJESTIC_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Breakwater sits in the deco / Clevelander gap',
     BREAKWATER_X === 42 && BREAKWATER_FRONT_Z === 57.6
     && BREAKWATER_W === 12 && BREAKWATER_D === 22
@@ -395,9 +395,10 @@ function FRONT_Z_OK() {
     && BREAKWATER_X + BREAKWATER_W / 2 <= 49);
   ok('Cavalier sits in the Cardozo / cinema gap',
     CAVALIER_X === 134 && CAVALIER_FRONT_Z === 57.6
-    && CAVALIER_W === 16 && CAVALIER_D === 24
+    && CAVALIER_W === 16 && CAVALIER_D === 24 && CAVALIER_SOFFIT === 3.5
     && CAVALIER_X - CAVALIER_W / 2 >= 124
-    && CAVALIER_X + CAVALIER_W / 2 <= 143);
+    && CAVALIER_X + CAVALIER_W / 2 <= 143
+    && CAVALIER_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Winterhaven sits east of the garage, west of GAP 243 and x=240',
     WINTERHAVEN_X === 222 && WINTERHAVEN_FRONT_Z === 57.6
     && WINTERHAVEN_W === 16 && WINTERHAVEN_D === 18
@@ -426,7 +427,8 @@ function FRONT_Z_OK() {
     && streetOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z + WINTERHAVEN_D / 2, WINTERHAVEN_W, WINTERHAVEN_D) === false
     && COLONY_FRONT_Z - 3.4 > TRAVEL_Z1
     && AVALON_FRONT_Z - 3.4 > TRAVEL_Z1
-    && MAJESTIC_FRONT_Z > TRAVEL_Z1
+    && MAJESTIC_FRONT_Z - 3.4 > TRAVEL_Z1
+    && CAVALIER_FRONT_Z - 3.4 > TRAVEL_Z1
     && WINTERHAVEN_FRONT_Z > TRAVEL_Z1);
   ok('leftoverLot A–H were not slid',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
@@ -457,6 +459,42 @@ function FRONT_Z_OK() {
       && streetOverlap(avalonArcade.x, avalonArcade.z, 2.4, 1.8) === false
       && avalonArcade.z > TRAVEL_Z1);
   }
+  const majesticArcade = FLY_VOIDS.find((v) => v.id === 'majestic-arcade');
+  ok('majestic-arcade fly void exists',
+    !!majesticArcade && majesticArcade.openH === MAJESTIC_SOFFIT && majesticArcade.openW >= 8);
+  ok('majestic-arcade keepout + inFlyVoid',
+    !!majesticArcade && !!inKeepout(majesticArcade.x, majesticArcade.z)
+    && !!inFlyVoid(majesticArcade.x, majesticArcade.z)
+    && majesticArcade.z > TRAVEL_Z1);
+  if (majesticArcade) {
+    const hit = probeBlocked(kit, majesticArcade.x, majesticArcade.y, majesticArcade.z, 0.28);
+    ok('majestic arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+    ok('majestic arcade misses leftoverLot / street / travel',
+      leftoverLotOverlap(majesticArcade.x, majesticArcade.z, 2.4, 2.0, 0.15) === false
+      && streetOverlap(majesticArcade.x, majesticArcade.z, 2.4, 1.8) === false
+      && majesticArcade.z > TRAVEL_Z1);
+  }
+  const cavalierArcade = FLY_VOIDS.find((v) => v.id === 'cavalier-arcade');
+  ok('cavalier-arcade fly void exists',
+    !!cavalierArcade && cavalierArcade.openH === CAVALIER_SOFFIT && cavalierArcade.openW >= 8);
+  ok('cavalier-arcade keepout + inFlyVoid',
+    !!cavalierArcade && !!inKeepout(cavalierArcade.x, cavalierArcade.z)
+    && !!inFlyVoid(cavalierArcade.x, cavalierArcade.z)
+    && cavalierArcade.z > TRAVEL_Z1);
+  if (cavalierArcade) {
+    const hit = probeBlocked(kit, cavalierArcade.x, cavalierArcade.y, cavalierArcade.z, 0.28);
+    ok('cavalier arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+    ok('cavalier arcade misses leftoverLot / street / travel',
+      leftoverLotOverlap(cavalierArcade.x, cavalierArcade.z, 2.4, 2.0, 0.15) === false
+      && streetOverlap(cavalierArcade.x, cavalierArcade.z, 2.4, 1.8) === false
+      && cavalierArcade.z > TRAVEL_Z1
+      && cavalierArcade.x + CAVALIER_W / 2 + 1.2 < 240);
+  }
+  ok('decoHotels installs Majestic/Cavalier fly colliders, no filled sash',
+    deco.includes("installFlyColliders(addCyl, addCollider, 'majestic')")
+    && deco.includes("installFlyColliders(addCyl, addCollider, 'cavalier')")
+    && deco.includes('MAJESTIC_SOFFIT') && deco.includes('CAVALIER_SOFFIT')
+    && deco.includes('arcadeZ'));
   ok('decoHotels does not draw layout rng',
     !/\brng2?\s*\(/.test(deco) && !/\brng3\s*\(/.test(deco)
     && !/\brng4\s*\(/.test(deco));

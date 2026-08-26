@@ -622,7 +622,14 @@
     {
       "id": "hotel-pilotis",
       "title": "Fly-under columns at two more Ocean Drive hotel porches, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "Majestic x=-178 and Cavalier x=134 porch arcades (soffit 3.5), fly ±X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/decoHotels.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-arcade",
@@ -642,9 +649,9 @@
     "cardozo": { "x": 115, "frontZ": 57.6, "status": "done" },
     "colony": { "x": -108, "frontZ": 57.6, "status": "done" },
     "avalon": { "x": -152, "frontZ": 57.6, "status": "done", "note": "west of Colony / GAP -129; porch arcade; leftoverLot A–H unmoved" },
-    "majestic": { "x": -178, "frontZ": 57.6, "status": "done", "note": "west of Avalon, east of GAP -315; leftoverLot A–H unmoved" },
+    "majestic": { "x": -178, "frontZ": 57.6, "status": "done", "note": "porch arcade soffit 3.5 west of Avalon, east of GAP -315; leftoverLot A–H unmoved" },
     "breakwater": { "x": 42, "frontZ": 57.6, "status": "done" },
-    "cavalier": { "x": 134, "frontZ": 57.6, "status": "done" },
+    "cavalier": { "x": 134, "frontZ": 57.6, "status": "done", "note": "porch arcade soffit 3.5, fly ±X; leftoverLot A–H unmoved" },
     "winterhaven": { "x": 222, "frontZ": 57.6, "status": "done" },
     "cinema": { "x": 166, "frontZ": 57.6, "status": "done", "note": "blade extra neon outline rails, dayNight via regDN" },
     "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" },
