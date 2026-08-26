@@ -64,7 +64,8 @@
     {
       "id": "obstacles",
       "title": "More FPV whoops: sidewalk arcades, alley pipes, park rings, pier extra bays",
-      "status": "in_progress",
+      "status": "done",
+      "notes": "a8be6b0 — sidewalk arcades, alley pipes, Lummus rings, extra pier bays",
       "files": [
         "js/world/miami/constants.js",
         "js/world/miami/landmarks/flythrough.js",
