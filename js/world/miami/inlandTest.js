@@ -80,7 +80,7 @@ export function runMiamiInlandTests() {
     kenney.includes('kenney_midrise_c') && kenney.includes('640 + hash01'));
 
   ok('signed plates west of 240',
-    INLAND_MIDRISE_CELLS.length === 149
+    INLAND_MIDRISE_CELLS.length === 155
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H >= 28
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1 && z < 300)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -151,6 +151,12 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 80 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -40 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 40 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -60 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -60 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -20 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -20 && z === 259)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 20 && z === 237)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === 20 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 237)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -600 && z === 259)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -250 && z === 152)
@@ -182,7 +188,7 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -540 && z === 196));
 
   const plates = inlandMidrises();
-  ok('geom count matches cells', plates.length === 149);
+  ok('geom count matches cells', plates.length === 155);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     plates.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && plates.some((g) => g.x === -720 && g.z === 237)
@@ -204,7 +210,7 @@ export function runMiamiInlandTests() {
   }
 
   ok('fifteen inland alley pipes at z=248',
-    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 30);
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 248).length === 33);
   ok('thirty alley pipes between z=210 fill and z=237 skyline',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 223).length === 30
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 223)
@@ -252,7 +258,10 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 248)
-    && ALLEY_PIPE_CELLS.length === 98);
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -60 && z === 248)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -20 && z === 248)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === 20 && z === 248)
+    && ALLEY_PIPE_CELLS.length === 101);
   ok('fourteen alley pipes at z=140 between z=128 fill and z=152 fill',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).length === 14
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).every(([x]) => x < 240)
@@ -270,7 +279,7 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -220 && z === 140)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -190 && z === 140)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 210 && z === 140)
-    && ALLEY_PIPE_CELLS.length === 98);
+    && ALLEY_PIPE_CELLS.length === 101);
   ok('thirteen alley pipes at z=112 between z=96 fill and z=128 fill',
     ALLEY_PIPE_CELLS.filter(([, z]) => z === 112).length === 13
     && ALLEY_PIPE_CELLS.filter(([, z]) => z === 112).every(([x]) => x < 240)
@@ -456,12 +465,12 @@ export function runMiamiInlandTests() {
     && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96/128 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 84
+    INLAND_ARCADE_CELLS.length === 87
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 18
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 12
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 13
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 24
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 27
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 128).length === 11
@@ -519,6 +528,9 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -690 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -630 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -570 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -60 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -20 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === 20 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -690 && z === 210)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -630 && z === 196)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -570 && z === 96)
@@ -656,9 +668,26 @@ export function runMiamiInlandTests() {
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -370 && z === 128)
     && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -370 && z === 152)
     && !INLAND_MIDRISE_CELLS.some(([x]) => x === -315));
+  ok('skyline pairs at x=-60/-20/20 miss leftoverLot A–H',
+    [[-60, 237], [-60, 259], [-20, 237], [-20, 259], [20, 237], [20, 259]].every(([x, z]) =>
+      INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
+      && streetOverlap(x, z, 18, 14) === false
+      && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
+      && helipadOverlap(x, z, 18, 14, 0.15) === false
+      && x < 240 && x < 251)
+    && (-60 + INLAND_MIDRISE_W / 2) < (-40 - INLAND_MIDRISE_W / 2)
+    && (-60 - INLAND_MIDRISE_W / 2) > (-80 + INLAND_MIDRISE_W / 2)
+    && isInlandArcadeCell(-60, 237) && isInlandArcadeCell(-20, 237) && isInlandArcadeCell(20, 237)
+    && !isInlandArcadeCell(-60, 259) && !isInlandArcadeCell(-20, 259) && !isInlandArcadeCell(20, 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -60 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -20 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === 20 && z === 259)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -60 && z === 248)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -20 && z === 248)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === 20 && z === 248));
 
   ok('signed rooftop AC gaps + billboard rings including east z=96 plate',
-    ROOF_AC_CELLS.length === 15 && ROOF_RING_CELLS.length === 34
+    ROOF_AC_CELLS.length === 15 && ROOF_RING_CELLS.length === 37
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
     && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
@@ -692,6 +721,9 @@ export function runMiamiInlandTests() {
     && ROOF_RING_CELLS.some(([x, z]) => x === 80 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -40 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === 40 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -60 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -20 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === 20 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -540 && z === 210)
     && ROOF_AC_CELLS.some(([x, z]) => x === -430 && z === 237)
     && ROOF_AC_CELLS.some(([x, z]) => x === -80 && z === 237)

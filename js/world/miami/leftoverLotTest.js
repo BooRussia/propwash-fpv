@@ -1197,11 +1197,11 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(50, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('inland z=210/152/96/128 arcades miss leftoverLot A–H',
-    INLAND_ARCADE_CELLS.length === 84
+    INLAND_ARCADE_CELLS.length === 87
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 18
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 12
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 13
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 24
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 27
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 128).length === 11
@@ -1307,6 +1307,15 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(-570, 237, 18, 14, 0.15) === false
     && leftoverLotOverlap(-570, 259, 18, 14, 0.15) === false
     && leftoverLotOverlap(-570, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-60, 237, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-60, 259, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-60, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-20, 237, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-20, 259, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-20, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(20, 237, 18, 14, 0.15) === false
+    && leftoverLotOverlap(20, 259, 18, 14, 0.15) === false
+    && leftoverLotOverlap(20, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-600, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 140, 2.4, 2.6, 0.15) === false

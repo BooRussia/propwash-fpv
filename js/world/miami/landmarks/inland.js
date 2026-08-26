@@ -258,6 +258,7 @@ export function buildInland(ctx) {
     [-410, 248],
     [-370, 248],
     [-690, 248], [-630, 248], [-570, 248],
+    [-60, 248], [-20, 248], [20, 248],
   ];
   for (let i = 0; i < alleys.length; i++) {
     const [cx, cz] = alleys[i];
