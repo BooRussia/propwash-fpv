@@ -20,6 +20,7 @@ import {
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
   PARK_RING_CELLS, PARK_RING_R, PARK_RING_TUBE, PIER_EXTRA_BAY_IS, PIER_X,
   PIER_PYLON_COUNT, pierBayRingGeom,
+  SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_Z0, VBALL_Z1,
   FLY_VOIDS, flyColliderShapes, pierFlyShapes, inKeepout, inFlyVoid,
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
@@ -32,6 +33,14 @@ const world = join(here, '..');
 
 const TRAVEL_Z0 = 40.2;
 const TRAVEL_Z1 = 47.8;
+const BIKE_RACK_XS = [-240, -170, -40, 30, 150];
+const LIFEGUARD_SIT_CELLS = [
+  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
+];
+const cityZ = (SW_CITY_Z0 + SW_CITY_Z1) * 0.5;
+const BIKE_RACK_TRAVEL = cityZ > TRAVEL_Z0 && cityZ < TRAVEL_Z1
+  || LIFEGUARD_SIT_CELLS.some(([, z]) => z > TRAVEL_Z0 && z < TRAVEL_Z1)
+  || VBALL_Z1 > TRAVEL_Z0;
 
 const fails = [];
 let passedCount = 0;
@@ -104,6 +113,23 @@ export function runMiamiCrowdTests() {
     crowd.includes('TRAVEL_Z0') && crowd.includes('inTravelLane')
     && crowd.includes('inCarriageway') && crowd.includes('ROAD_Z0'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
+  ok('crowd is thicker',
+    crowd.includes('const nWalk = 110') && crowd.includes('const nBike = 32')
+    && crowd.includes('const nBeach = 52') && crowd.includes('const nSwim = 28'));
+  ok('crowd has parked bikes, volleyball, lifeguard sitters',
+    crowd.includes("kind: 'parked'") && crowd.includes("kind: 'vball'")
+    && crowd.includes("kind: 'guard'") && crowd.includes('BIKE_RACK_XS')
+    && crowd.includes('LIFEGUARD_SIT_CELLS') && crowd.includes('buildBikeRacks'));
+  ok('parked bikes sit on the city walk, not travel lanes',
+    crowd.includes('BIKE_RACK_XS') && !BIKE_RACK_TRAVEL
+    && cityZ > TRAVEL_Z1 && VBALL_Z1 < TRAVEL_Z0
+    && VBALL_X0 > 0);
+  ok('racks and sitters have no colliders',
+    !crowd.includes('addCollider') && !crowd.includes('addCyl')
+    && crowd.includes('bike-racks'));
+  ok('racks miss leftoverLot A–H',
+    BIKE_RACK_XS.every((x) => leftoverLotOverlap(x, cityZ, 2.4, 0.4, 0.15) === false)
+    && LIFEGUARD_SIT_CELLS.every(([x, z]) => leftoverLotOverlap(x, z, 3.4, 3.0, 0.15) === false));
 
   ok('index builds crowd after blades',
     index.includes("import { buildCrowd }")
@@ -346,6 +372,11 @@ export function runMiamiCrowdTests() {
         && !probeBlocked(kit.concat(pierKit), ring.x, ring.y, ring.z, 0.28));
     }
   }
+  const pierSrc = existsSync(join(here, 'landmarks/pier.js'))
+    ? readFileSync(join(here, 'landmarks/pier.js'), 'utf8') : '';
+  ok('pier.js builds extra bay rings',
+    pierSrc.includes('buildPierBayRings') && pierSrc.includes('PIER_EXTRA_BAY_IS')
+    && !/\brng[2-4]?\s*\(/.test(pierSrc) && !pierSrc.includes('ShaderMaterial'));
   ok('obstacles do not draw layout rng or ShaderMaterial',
     !/\brng2?\s*\(/.test(fly) && !/\brng3\s*\(/.test(fly)
     && !/\brng4\s*\(/.test(fly) && !fly.includes('ShaderMaterial')

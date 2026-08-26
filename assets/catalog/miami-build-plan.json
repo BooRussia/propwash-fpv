@@ -64,7 +64,7 @@
     {
       "id": "obstacles",
       "title": "More FPV whoops: sidewalk arcades, alley pipes, park rings, pier extra bays",
-      "status": "done",
+      "status": "in_progress",
       "files": [
         "js/world/miami/constants.js",
         "js/world/miami/landmarks/flythrough.js",
@@ -75,7 +75,8 @@
     {
       "id": "npc-density",
       "title": "Thicker crowd, parked bikes at racks, volleyball players, lifeguard sitters",
-      "status": "pending"
+      "status": "done",
+      "files": ["js/world/miami/crowd.js", "js/world/miami/crowdTest.js"]
     },
     {
       "id": "inland-5th",

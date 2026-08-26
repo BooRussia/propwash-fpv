@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hash01 } from './rng.js';
+import { cBox, cCyl } from './geo.js';
 import {
   CITY_Y, BOARDWALK_TOP, BOARDWALK_Z, BOARDWALK_W,
   SW_BEACH_Z0, SW_BEACH_Z1, SW_CITY_Z0, SW_CITY_Z1,
@@ -21,6 +23,13 @@ export const TRAVEL_Z0 = 40.2;
 export const TRAVEL_Z1 = 47.8;
 export const CROWD_X0 = -360;
 export const CROWD_X1 = 400;
+export const BIKE_RACK_XS = Object.freeze([-240, -170, -40, 30, 150]);
+export const BIKE_RACK_N = 3;
+export const LIFEGUARD_SIT_CELLS = Object.freeze([
+  [-520, 12.5], [-335, 11.0], [-95, 12.0], [45, 10.5], [235, 13.0], [420, 12.0],
+]);
+export const LIFEGUARD_DECK = 2.52;
+const VBALL_PITCH = 26;
 
 const SKIN = [0xf3d4b8, 0xd4a574, 0x8d5524, 0xc68642, 0xffdbac, 0x6b3f2a];
 const SHIRT = [0x2a6f9b, 0xe85d4c, 0xf4f1ea, 0x2fe0ff, 0xff3d8b, 0x1d6f7a, 0xf6b01f, 0x2d5a3d];
@@ -69,17 +78,20 @@ export function buildCrowd(ctx) {
   const { root, track } = ctx;
   const actors = [];
 
-  const nWalk = 72;
-  const nBike = 20;
-  const nSkate = 16;
-  const nBeach = 36;
-  const nSwim = 18;
-  const nSit = 14;
-  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit;
+  const nWalk = 110;
+  const nBike = 32;
+  const nSkate = 24;
+  const nBeach = 52;
+  const nSwim = 28;
+  const nSit = 22;
+  const nParked = BIKE_RACK_XS.length * BIKE_RACK_N;
+  const nVball = 12;
+  const nGuard = LIFEGUARD_SIT_CELLS.length;
+  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
-  const extraMesh = makeInstanced(track, new THREE.BoxGeometry(0.9, 0.08, 0.28), nBike + nSkate);
+  const extraMesh = makeInstanced(track, new THREE.BoxGeometry(0.9, 0.08, 0.28), nBike + nSkate + nParked);
 
   let extraI = 0;
 
@@ -195,6 +207,52 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nParked; i++) {
+    const rack = BIKE_RACK_XS[(i / BIKE_RACK_N) | 0];
+    const slot = i % BIKE_RACK_N;
+    const x = rack + (slot - 1) * 0.7;
+    const z = cityZ;
+    if (inTravelLane(z) || inCarriageway(z) || inKeepout(x, z)) continue;
+    actors.push({
+      kind: 'parked', i: actors.length, extra: extraI++,
+      x, z, y: CITY_Y + 0.06, dir: 0,
+      yaw: slot === 1 ? Math.PI : 0,
+      speed: 0, phase: hash01(i + 1100, 3) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1100, 5), skin: pick(SKIN, i + 1100, 7),
+    });
+  }
+
+  for (let i = 0; i < nVball; i++) {
+    const court = i % 3;
+    const cx = VBALL_X0 + 13 + court * VBALL_PITCH;
+    const cz = VBALL_Z0 + 8 + (court % 2 ? 1.6 : 0);
+    const side = i < 6 ? -1 : 1;
+    const x = cx + side * (3.2 + hash01(i + 1200, 3) * 2.4);
+    const z = cz + (hash01(i + 1200, 5) - 0.5) * 5.2;
+    if (inTravelLane(z) || inCarriageway(z)) continue;
+    actors.push({
+      kind: 'vball', i: actors.length, extra: -1,
+      x, z, y: groundHeight(x, z), dir: 0,
+      yaw: side > 0 ? Math.PI : 0,
+      speed: 0, phase: hash01(i + 1200, 7) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1200, 11), skin: pick(SKIN, i + 1200, 13),
+    });
+  }
+
+  for (let i = 0; i < nGuard; i++) {
+    const [gx, gz] = LIFEGUARD_SIT_CELLS[i];
+    const z = gz - 0.55;
+    if (inTravelLane(z) || inCarriageway(z)) continue;
+    actors.push({
+      kind: 'guard', i: actors.length, extra: -1,
+      x: gx, z, y: groundHeight(gx, gz) + LIFEGUARD_DECK, dir: 0,
+      yaw: 0, speed: 0, phase: hash01(i + 1300, 3) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1300, 5), skin: pick(SKIN, i + 1300, 7),
+    });
+  }
+
+  buildBikeRacks(root, track, cityZ);
+
   // Re-index after skips so instance slots stay dense.
   const used = actors.length;
   bodyMesh.count = used;
@@ -237,7 +295,8 @@ function stepActors(state, dt) {
   const { actors } = state;
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
-    if (a.kind === 'sit') continue;
+    if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard') continue;
+    if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
     if (a.kind === 'swim') {
       a.x = wrapX(a.x + Math.cos(a.yaw) * a.speed * dt);
@@ -259,17 +318,19 @@ function stampAll(state) {
   const { bodyMesh, headMesh, extraMesh, actors, t } = state;
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
-    const bob = (a.kind === 'walk' || a.kind === 'skate' || (a.kind === 'beach' && a.speed))
-      ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : 7) + a.phase)) * 0.06
+    const bob = (a.kind === 'walk' || a.kind === 'skate' || a.kind === 'vball'
+      || (a.kind === 'beach' && a.speed))
+      ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
-    const crouch = a.kind === 'sit' ? 0.28 : a.kind === 'swim' ? 0.12 : 0.36;
+    const crouch = (a.kind === 'sit' || a.kind === 'guard') ? 0.28
+      : a.kind === 'swim' ? 0.12 : a.kind === 'parked' ? 0.22 : 0.36;
     const bodyY = a.kind === 'swim' ? a.y : a.y + crouch + bob;
     const rx = a.kind === 'swim' ? Math.PI / 2 : 0;
 
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
-    _dummy.scale.set(1, a.kind === 'sit' ? 0.72 : 1, 1);
+    _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard') ? 0.72 : 1, 1);
     _dummy.updateMatrix();
     bodyMesh.setMatrixAt(i, _dummy.matrix);
     _color.setHex(a.shirt);
@@ -287,10 +348,10 @@ function stampAll(state) {
       const ez = a.kind === 'bike' ? 0.55 : 0.22;
       _dummy.position.set(a.x, a.y + 0.12, a.z);
       _dummy.rotation.set(0, a.yaw, 0);
-      _dummy.scale.set(a.kind === 'bike' ? 1.1 : 0.7, 1, a.kind === 'bike' ? 0.45 : 1.1);
+      _dummy.scale.set(a.kind === 'skate' ? 0.7 : 1.1, 1, a.kind === 'skate' ? 1.1 : 0.45);
       _dummy.updateMatrix();
       extraMesh.setMatrixAt(a.extra, _dummy.matrix);
-      _color.setHex(a.kind === 'bike' ? 0x1a1c22 : pick(SHORT, a.i, 3));
+      _color.setHex(a.kind === 'skate' ? pick(SHORT, a.i, 3) : 0x1a1c22);
       if (extraMesh.setColorAt) extraMesh.setColorAt(a.extra, _color);
       void ez;
     }
@@ -301,6 +362,29 @@ function stampAll(state) {
   if (bodyMesh.instanceColor) bodyMesh.instanceColor.needsUpdate = true;
   if (headMesh.instanceColor) headMesh.instanceColor.needsUpdate = true;
   if (extraMesh.instanceColor) extraMesh.instanceColor.needsUpdate = true;
+}
+
+function buildBikeRacks(root, track, cityZ) {
+  const IRON = 0x4a5158;
+  const bits = [];
+  for (let i = 0; i < BIKE_RACK_XS.length; i++) {
+    const x = BIKE_RACK_XS[i];
+    const z = cityZ;
+    if (inTravelLane(z) || inCarriageway(z)) continue;
+    const y = CITY_Y + 0.06;
+    bits.push(cCyl(0.03, 0.03, 0.85, 6, IRON, x - 1.1, y + 0.42, z));
+    bits.push(cCyl(0.03, 0.03, 0.85, 6, IRON, x + 1.1, y + 0.42, z));
+    bits.push(cBox(2.3, 0.05, 0.05, IRON, x, y + 0.38, z));
+    bits.push(cBox(2.3, 0.05, 0.05, IRON, x, y + 0.62, z));
+  }
+  if (!bits.length) return;
+  const geo = track(mergeGeometries(bits));
+  bits.forEach((g) => g.dispose());
+  const mesh = new THREE.Mesh(geo, track(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.45, metalness: 0.5,
+  })));
+  mesh.name = 'bike-racks';
+  root.add(mesh);
 }
 
 /** True when a crowd actor would be illegal (travel lane / carriageway). */
