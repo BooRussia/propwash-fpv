@@ -189,11 +189,13 @@ export function runMiamiInlandTests() {
       && ((z < 248 && g.yaw === 0) || (z > 248 && g.yaw === Math.PI)));
   }
 
-  ok('five courtyard drop-wells, fly −Y, west of leftoverLot',
-    COURT_WELL_CELLS.length === 5 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+  ok('seven courtyard drop-wells, fly −Y, west of leftoverLot',
+    COURT_WELL_CELLS.length === 7 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && isCourtWellCell(x, z)
-      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)));
+      && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z))
+    && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210));
   ok('inland.js hollows court wells, no layout rng',
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));

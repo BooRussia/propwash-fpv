@@ -896,6 +896,7 @@ export const COURT_WELL_W = 6.2;
 export const COURT_WELL_D = 6.2;
 export const COURT_WELL_CELLS = Object.freeze([
   [-250, 152], [90, 152], [-430, 210], [160, 210], [-600, 210],
+  [-390, 152], [210, 210],
 ]);
 
 export function isCourtWellCell(x, z) {

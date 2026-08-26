@@ -82,7 +82,7 @@ import {
   leftoverLotGeom, leftoverLotVoids, leftoverLotColliderShapes,
   leftoverLotPlantSpots, inLeftoverLotGate, leftoverLotOverlap,
   inLeftoverLotReserved,
-  HOTEL_FLAG_CELLS,
+  HOTEL_FLAG_CELLS, COURT_WELL_CELLS,
 } from './constants.js';
 import { tryPlace } from './planting.js';
 
@@ -1139,6 +1139,13 @@ export function runMiamiLeftoverLotTests() {
     HOTEL_FLAG_CELLS.length === 9
     && HOTEL_FLAG_CELLS.every(([x, z]) => x < 240
       && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false)
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('extra court wells miss leftoverLot A–H',
+    COURT_WELL_CELLS.length === 7
+    && COURT_WELL_CELLS.every(([x, z]) => x < 240
+      && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------
