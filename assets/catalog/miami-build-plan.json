@@ -646,6 +646,26 @@
       "id": "fill-96",
       "title": "One more inland mid-rise row at z=96 west of convention and east of cinema reserved, leftoverLot unmoved",
       "status": "pending"
+    },
+    {
+      "id": "arcade-96",
+      "title": "Ground-floor fly-throughs on the z=96 row, jambs only, fly ±Z, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "court-96",
+      "title": "Two courtyard drop-wells on the z=96 row, fly −Y, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "npc-96",
+      "title": "Walkers on sidewalks ocean/inland of the z=96 row, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "roof-96",
+      "title": "AC-gap whoops on z=96 plates that miss court wells, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
