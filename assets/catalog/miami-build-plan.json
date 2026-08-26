@@ -1503,8 +1503,14 @@
     {
       "id": "alley-140-east",
       "title": "Alley-pipe whoops at z=140 on x=-220/-190/210, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "[-220,-190,210]@140 remaining 128/152 columns; fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-220,-190,210]@140 remaining 128/152 columns; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
