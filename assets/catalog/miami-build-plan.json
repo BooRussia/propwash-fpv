@@ -1624,8 +1624,14 @@
     {
       "id": "fire-escape-east",
       "title": "Alley fire-escape whoops on x=160/210 flanks at z=248, jambs only, fly +X",
-      "status": "pending",
-      "notes": "four frames at plateX±9 for 160/210; west of leftoverLot A / x=240; fly +X; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "four frames at plateX±9 for 160/210; west of leftoverLot A / x=240; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
