@@ -1455,6 +1455,10 @@ export const FIRE_ESCAPE_CELLS = Object.freeze([
   // fire-escape draws stay put. Fly +X. leftoverLot A–H unmoved.
   [-9, 248], [9, 248],
   [31, 248], [49, 248],
+  // Extra flanks on x=-630/-220. Appended so existing fire-escape
+  // draws stay put. Fly +X. leftoverLot A–H unmoved.
+  [-639, 248], [-621, 248],
+  [-229, 248], [-211, 248],
 ]);
 
 /** One fire-escape landing frame. Fly +X. Opening is empty air. */
