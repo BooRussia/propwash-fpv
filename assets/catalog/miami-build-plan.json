@@ -658,7 +658,15 @@
     {
       "id": "arcade-96",
       "title": "Ground-floor fly-throughs on the z=96 row, jambs only, fly ±Z, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "3 INLAND_ARCADE_CELLS on z=96 plates [-600,-540,-190]; leave [-390,96]/[-250,96] for court-96; jambs+soffit, fly ±Z; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "court-96",
