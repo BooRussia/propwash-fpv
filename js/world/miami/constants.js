@@ -5269,13 +5269,34 @@ export function deckTop(x, z) {
   return top;
 }
 
+/** Underside of the boardwalk or pier deck, or +Infinity if over neither. */
+export function deckBottom(x, z) {
+  let bot = Infinity;
+  if (Math.abs(x) <= BOARDWALK_W / 2 && Math.abs(z - BOARDWALK_Z) <= BOARDWALK_D / 2) {
+    bot = BOARDWALK_TOP - BOARDWALK_H;
+  }
+  if (Math.abs(x - PIER_X) <= PIER_DECK_W / 2 && Math.abs(z - PIER_DECK_Z) <= PIER_DECK_D / 2) {
+    const b = PIER_DECK_TOP - PIER_DECK_H;
+    if (b < bot) bot = b;
+  }
+  return bot;
+}
+
 /**
- * Surface the FPV camera must stay above: terrain / water plane, or the
- * boardwalk / pier deck top when the probe is over those colliders.
+ * Surface the FPV camera must stay above: terrain / seabed, or the
+ * boardwalk / pier deck top when the probe is on or above that slab.
+ * Optional `y`: if the probe is already under the deck, do not lift
+ * through the planks (pier undercroft / dive). Two-arg calls still
+ * return the deck, matching the old 2D query.
  */
-export function cameraFloor(x, z) {
+export function cameraFloor(x, z, y) {
   const g = groundHeight(x, z);
   const d = deckTop(x, z);
+  if (!Number.isFinite(d)) return g;
+  if (y != null && Number.isFinite(y)) {
+    const b = deckBottom(x, z);
+    if (Number.isFinite(b) && y < b - 0.04) return g;
+  }
   return d > g ? d : g;
 }
 
@@ -5295,7 +5316,7 @@ export function baseProfile(z) {
 export function groundHeight(x, z) {
   let g = baseProfile(z);
   if (z < CITY_Z - 2 && z > SHORE_Z - 30) g += sandNoise(x, z) * Math.max(0, 1 - Math.abs(z - 0) / 60);
-  return g < 0.02 && z < 8 ? 0 : g;                       // water surface counts as ground
+  return g;
 }
 
 // mesh displacement — same formula the physics-adjacent vertex loop always used

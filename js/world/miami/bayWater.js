@@ -316,10 +316,11 @@ function applyRepeat(tex, w, d, L) {
  * World-space Gerstner + Fresnel + foam albedo. Not a second material.
  */
 function applyCoastalOptics(mat) {
-  mat.customProgramCacheKey = () => 'pw-bay-coastal-v4';
+  mat.customProgramCacheKey = () => 'pw-bay-coastal-v5';
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uBayTime = { value: 0 };
     shader.uniforms.uShoreZ = { value: SHORE_Z };
+    shader.uniforms.uCamUnder = { value: 0 };
     shader.uniforms.uBayDeep = { value: new THREE.Color(0x0a3a40).convertSRGBToLinear() };
     shader.uniforms.uBayShallow = { value: new THREE.Color(0x1f7a78).convertSRGBToLinear() };
     shader.uniforms.uBayFoam = { value: new THREE.Color(0xf3f1ea).convertSRGBToLinear() };
@@ -342,6 +343,7 @@ vBayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
 varying vec3 vBayWorld;
 uniform float uBayTime;
 uniform float uShoreZ;
+uniform float uCamUnder;
 uniform vec3 uBayDeep;
 uniform vec3 uBayShallow;
 uniform vec3 uBayFoam;
@@ -413,6 +415,10 @@ float bayCrestFoam(vec3 wp, float t) {
   float crestFoam = bayCrestFoam(vBayWorld, uBayTime) * br;
   float foamMix = saturate(pow(bayFoam, 1.22) * 0.72 + crestFoam * 0.26);
   diffuseColor.rgb = mix(waterCol, uBayFoam, foamMix);
+  if (uCamUnder > 0.5) {
+    vec3 underCol = mix(uBayShallow, uBayDeep, 0.42);
+    diffuseColor.rgb = mix(underCol, uBayFoam, foamMix * 0.22);
+  }
 }`,
     );
 
@@ -505,6 +511,7 @@ export function buildBayWater(ctx, opts = {}) {
     polygonOffsetFactor: 2,
     polygonOffsetUnits: 2,
     fog: true,
+    side: THREE.DoubleSide,
   }));
   applyCoastalOptics(mat);
 
@@ -518,10 +525,8 @@ export function buildBayWater(ctx, opts = {}) {
   mesh.userData.pwNoReflect = true;   // no planar reflector / SSR
   root.add(mesh);
 
-  // Sit/splash plane is groundHeight's water clamp (y = 0), a surface, not a
-  // bag AABB. A 5 km box here would sit under the city and fill fly-unders
-  // (MacArthur 20 m / Venetian west 3.7 m / Broad ~4.9 m). Collider ⊆ visual:
-  // the craft sits on the waterline plane, which is inside this mesh.
+  // No bag AABB on the bay — a 5 km box would sit under the city and fill
+  // fly-unders. The craft dives; seabedHeight / groundHeight is the floor.
 
   const colorDay = new THREE.Color(BAY_COLOR);
   const colorNight = new THREE.Color(0x061114);
@@ -571,7 +576,13 @@ export function buildBayWater(ctx, opts = {}) {
       foamMap.needsUpdate = true;
     }
     const sh = mat.userData.shader;
-    if (sh) sh.uniforms.uBayTime.value = sim.time;
+    if (sh) {
+      sh.uniforms.uBayTime.value = sim.time;
+      const cam = extras.camera;
+      if (cam && cam.position) {
+        sh.uniforms.uCamUnder.value = cam.position.y < 0 ? 1 : 0;
+      }
+    }
   };
 
   return {

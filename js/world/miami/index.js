@@ -23,6 +23,7 @@ import { groundHeight, cameraFloor } from './constants.js';
 import { mulberry32 } from './rng.js';
 import { createColliderBag } from './colliders.js';
 import { buildGround, buildOcean } from './terrain.js';
+import { buildUnderwater } from './underwater.js';
 import { buildPier } from './landmarks/pier.js';
 import { buildRoad } from './road.js';
 import { planPalms, materializePalms } from './palms.js';
@@ -157,6 +158,9 @@ export async function buildMiami(scene, env) {
   // ---------------- boardwalk + pier ----------------
   buildPier(ctx);
 
+  // ---------------- seabed / reef / splash (hash, after pier piles) ----------------
+  const underwater = await buildUnderwater(ctx);
+
   // ---------------- Ocean Drive: road, curbs, crosswalks, cross streets ----------------
   await buildRoad(ctx);
 
@@ -252,6 +256,7 @@ export async function buildMiami(scene, env) {
     spawn: { position: spawnPos, yawRad: Math.PI / 2 },
     getGroundHeight: groundHeight,
     getCameraFloor: cameraFloor,
+    fluid: { level: 0, drag: 3.4, sink: 2.6 },
     colliders,
     gates,
     retrievalPoints,
@@ -274,7 +279,22 @@ export async function buildMiami(scene, env) {
         water.update(dt, {
           boats,
           timeOfDay: settings.environment.timeOfDay,
+          camera: extras.camera,
         });
+      }
+      if (underwater && typeof underwater.update === 'function') {
+        underwater.update(dt, {
+          time,
+          craft: extras.craft && extras.craft.x != null ? extras.craft : null,
+          stampWake: water && water.sim
+            ? (x, z, a, r) => water.sim.stampWake(x, z, a, r) : null,
+        });
+      }
+      const cam = extras.camera;
+      if (cam && cam.position && cam.position.y < 0 && env && env._fog) {
+        env._fog.color.setHex(0x0c4a52);
+        env._fog.near = 1.2;
+        env._fog.far = 26;
       }
       lighthouse.update(dt);
       if (palms) palms.update(dt);

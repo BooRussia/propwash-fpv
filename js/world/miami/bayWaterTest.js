@@ -156,23 +156,26 @@ export function runBayWaterTests() {
     cameraFloor(0, BOARDWALK_Z) === BOARDWALK_TOP);
   ok('cameraFloor over pier is still the deck',
     cameraFloor(PIER_X, PIER_DECK_Z) === PIER_DECK_TOP);
-  const punched = { x: 0, y: 0.02, z: BOARDWALK_Z };
+  const punched = { x: 0, y: BOARDWALK_TOP - 0.1, z: BOARDWALK_Z };
   clampCameraToFloor(punched, cameraFloor, 0.06);
   ok('crash-cam still dies on the deck', punched.y >= BOARDWALK_TOP + 0.06);
   const overWater = { x: 0, y: -2, z: -40 };
   clampCameraToFloor(overWater, cameraFloor, 0.06);
-  ok('crash-cam stays on the water sit-plane',
+  ok('crash-cam stays above the seabed',
     overWater.y >= groundHeight(0, -40) + 0.06);
   ok('deck wins over the water plane',
     deckTop(0, BOARDWALK_Z) > 0 && cameraFloor(0, BOARDWALK_Z) > 1);
+  ok('pier undercroft does not snap to the deck',
+    cameraFloor(PIER_X, PIER_DECK_Z, 0.4) === groundHeight(PIER_X, PIER_DECK_Z));
 
   const all = flyColliderShapes().concat(pierFlyShapes());
   for (const v of FLY_VOIDS) {
     const hit = probeBlocked(all, v.x, v.y, v.z, 0.28);
     ok(`${v.id} still open (no water AABB)`, !hit);
   }
-  ok('sit-plane is a surface, not a 20 m slab',
-    groundHeight(0, -40) < 0.05 && SHORE_Z === -30);
+  ok('seabed is a surface, not a 20 m slab',
+    groundHeight(0, -40) < 0.05 && SHORE_Z === -30
+    && groundHeight(0, -40) < -0.2);
 
   // ---- extra TERM: depth-break + one Catmull-Rom rip ---------------------
   ok('rip has four signed-frame ctrl points', RIP_CTRL.length === 4);

@@ -14,7 +14,7 @@ import {
   onPavement, onRoadway, onBoardwalk, onCrossStreet, onLummusWalk,
   onSidewalk, onCurb, onPlantingRow, sidewalkInterrupted, sidewalkRuns,
   inKeepout, inFlyVoid, FLY_VOIDS, flyColliderShapes, pierFlyShapes,
-  groundHeight, deckTop, cameraFloor,
+  groundHeight, deckTop, deckBottom, cameraFloor,
 } from './constants.js';
 import { minCameraY, clampCameraToFloor, CAM_FLOOR_SLACK } from '../../camera/floor.js';
 
@@ -78,25 +78,31 @@ export function runMiamiRejectsTests() {
   ok('cameraFloor over pier is deck', cameraFloor(PIER_X, PIER_DECK_Z) === PIER_DECK_TOP);
   ok('cameraFloor over sand is ground',
     Math.abs(cameraFloor(0, 8) - groundHeight(0, 8)) < 1e-9);
+  ok('undercroft does not lift to the pier deck',
+    cameraFloor(PIER_X, PIER_DECK_Z, 0.4) < PIER_DECK_TOP - 1
+    && cameraFloor(PIER_X, PIER_DECK_Z, 0.4) === groundHeight(PIER_X, PIER_DECK_Z)
+    && deckBottom(PIER_X, PIER_DECK_Z) === PIER_DECK_TOP - 0.6);
   ok('pavilion sits on the pier deck',
     Math.abs(PAVILION_Z - (CITY_Z - 168)) < 1e-9
     && deckTop(PIER_X, PAVILION_Z) === PIER_DECK_TOP);
 
   const near = 0.06;
-  const floor = (x, z) => cameraFloor(x, z);
+  const floor = (x, z, y) => cameraFloor(x, z, y);
   ok('minCameraY clears near plane on deck',
-    minCameraY(0, BOARDWALK_Z, floor, near) >= BOARDWALK_TOP + near + CAM_FLOOR_SLACK - 1e-9);
-  ok('minCameraY clears near plane on pier',
-    minCameraY(PIER_X, PIER_DECK_Z, floor, near) >= PIER_DECK_TOP + near);
-  const punched = { x: 0, y: 0.02, z: BOARDWALK_Z };
+    minCameraY(0, BOARDWALK_Z, floor, near, 4) >= BOARDWALK_TOP + near + CAM_FLOOR_SLACK - 1e-9);
+  ok('minCameraY clears near plane on pier from above',
+    minCameraY(PIER_X, PIER_DECK_Z, floor, near, 5) >= PIER_DECK_TOP + near);
+  const punched = { x: 0, y: BOARDWALK_TOP - 0.1, z: BOARDWALK_Z };
   clampCameraToFloor(punched, floor, near);
-  ok('crash cam cannot punch the boardwalk', punched.y >= BOARDWALK_TOP + near);
+  ok('crash cam cannot punch the boardwalk from above', punched.y >= BOARDWALK_TOP + near);
   const throughPier = { x: PIER_X, y: 0.4, z: PIER_DECK_Z };
   clampCameraToFloor(throughPier, floor, near);
-  ok('crash cam cannot punch the pier deck', throughPier.y >= PIER_DECK_TOP + near);
+  ok('fly-under keeps the camera below the pier deck',
+    throughPier.y < PIER_DECK_TOP - 1 && throughPier.y >= groundHeight(PIER_X, PIER_DECK_Z));
   const overWater = { x: 0, y: -2, z: -40 };
   clampCameraToFloor(overWater, floor, near);
-  ok('crash cam stays above the water plane', overWater.y >= groundHeight(0, -40) + near);
+  ok('crash cam stays above the seabed', overWater.y >= groundHeight(0, -40) + near);
+  ok('bay floor is the seabed, not y=0', groundHeight(0, -40) < -0.2);
   ok('missing floor is a no-op', (() => {
     const p = { x: 0, y: -4, z: 0 };
     clampCameraToFloor(p, null, near);

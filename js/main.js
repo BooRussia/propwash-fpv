@@ -278,6 +278,7 @@ function stepPhysics(dt) {
       colliders: mapHandle ? mapHandle.colliders : null,
       wind: windVec,
       armed,
+      fluid: mapHandle && mapHandle.fluid ? mapHandle.fluid : null,
     });
     accum -= PHYS_DT;
   }

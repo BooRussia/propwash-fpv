@@ -500,6 +500,15 @@ export class Quad {
     this.velocity.x += this._fW.x * invM * dt;
     this.velocity.y += (this._fW.y * invM - GRAVITY) * dt;
     this.velocity.z += this._fW.z * invM * dt;
+    const fluid = env && env.fluid;
+    if (fluid && Number.isFinite(fluid.level) && this.position.y < fluid.level) {
+      const size = Math.max(0.12, spec.sizeM);
+      const sub = Math.min(1, (fluid.level - this.position.y) / size);
+      const drag = (Number.isFinite(fluid.drag) ? fluid.drag : 3.2) * sub;
+      this.velocity.multiplyScalar(Math.exp(-drag * dt));
+      const sink = Number.isFinite(fluid.sink) ? fluid.sink : 2.4;
+      if (sub > 0.35) this.velocity.y -= sink * sub * dt;
+    }
     const vl = this.velocity.length();
     if (vl > MAX_SPEED) this.velocity.multiplyScalar(MAX_SPEED / vl);
 
