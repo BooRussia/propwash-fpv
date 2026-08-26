@@ -61,6 +61,20 @@ export const BEACH_CHAIR_WALK_RUNS = Object.freeze([
   [-48.2, -31.8],
   [19.8, 36.2],
 ]);
+// Extra beach-walk patrols on the sand (ocean of the boardwalk). Walk +X.
+// Miss vball courts (x 128–208). West of leftoverLot A (x>=251) and x=240.
+// Ocean of travel 40.2–47.8. hash01 never at const-eval.
+export const BEACH_WALK_RUNS = Object.freeze([
+  [-540, -400],
+  [-360, -250],
+  [-170, -110],
+  [-20, 110],
+  [212, 232],
+]);
+// Extra boardwalk bike patrol on the deck. West of leftoverLot A and x=240.
+// Ocean of travel 40.2–47.8. hash01 never at const-eval.
+export const BOARDWALK_BIKE_X0 = -350;
+export const BOARDWALK_BIKE_X1 = 230;
 // Extra signed benches + bollard lamps on the boardwalk deck. West of leftoverLot A.
 // Ocean of travel 40.2–47.8. Skip GAP_X / pier / keepout at place time. hash01 never at const-eval.
 export const BOARDWALK_BENCH_CELLS = Object.freeze([

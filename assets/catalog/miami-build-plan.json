@@ -451,7 +451,13 @@
     {
       "id": "npc-density-2",
       "title": "More boardwalk bikes and beach walkers, hash01, no colliders, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "nBoardwalkBike=16 on deck x -350..230; nBeachWalk=24 on BEACH_WALK_RUNS; hash01; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js"
+      ]
     },
     {
       "id": "pier-dressing",

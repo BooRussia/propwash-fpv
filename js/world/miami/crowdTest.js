@@ -25,7 +25,7 @@ import {
   LIFEGUARD_CELLS, LIFEGUARD_SAND_SIT_CELLS, LIFEGUARD_RING_CELLS,
   LIFEGUARD_RING_R, LIFEGUARD_RING_TUBE, lifeguardRingGeom,
   PIER_PYLON_COUNT, pierBayRingGeom,
-  SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_Z0, VBALL_Z1,
+  SW_CITY_Z0, SW_CITY_Z1, VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
   LUMMUS_X0, LUMMUS_X1, LUMMUS_Z, LUMMUS_Y, LUMMUS_PATH_HALF,
   LUMMUS_EXTRA_BENCH_CELLS, LUMMUS_DRINKER_CELLS,
   FLY_VOIDS, flyColliderShapes, pierFlyShapes, inKeepout, inFlyVoid,
@@ -63,8 +63,9 @@ import {
   gap429Shops, GAP_X,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
   XS_HALF,
-  BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS, BEACH_CHAIR_WALK_RUNS,
-  BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS, BOARDWALK_Z, BOARDWALK_TOP,
+  BEACH_CHAIR_CELLS, BEACH_UMBRELLA_CELLS, BEACH_CHAIR_WALK_RUNS, BEACH_WALK_RUNS,
+  BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS, BOARDWALK_Z, BOARDWALK_TOP, BOARDWALK_D,
+  BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   CROSS_X, PED_SIGNAL_CELLS, FLEX_POST_CELLS,
 } from './constants.js';
 import { hash01 } from './rng.js';
@@ -1537,6 +1538,88 @@ function FRONT_Z_OK() {
     && crowd.includes('npcOffLimits')
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  ok('crowd adds boardwalk bikes, no colliders',
+    crowd.includes('const nBoardwalkBike = 16')
+    && crowd.includes("kind: 'bike'")
+    && crowd.includes('BOARDWALK_BIKE_X0') && crowd.includes('BOARDWALK_BIKE_X1')
+    && crowd.includes('hash01(i + 2900')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && !/\brng3\s*\(/.test(crowd)
+    && !/\brng4\s*\(/.test(crowd) && crowd.includes('hash01'));
+  ok('boardwalk bike patrol sits on the deck, west of leftoverLot A',
+    BOARDWALK_BIKE_X0 === -350 && BOARDWALK_BIKE_X1 === 230
+    && BOARDWALK_BIKE_X1 < 240 && BOARDWALK_BIKE_X0 < BOARDWALK_BIKE_X1
+    && leftoverLotOverlap((BOARDWALK_BIKE_X0 + BOARDWALK_BIKE_X1) / 2, BOARDWALK_Z, 0.6, 0.6, 0.15) === false
+    && leftoverLotOverlap(BOARDWALK_BIKE_X1, BOARDWALK_Z, 0.6, 0.6, 0.15) === false
+    && !(BOARDWALK_Z > TRAVEL_Z0 && BOARDWALK_Z < TRAVEL_Z1)
+    && Math.abs(BOARDWALK_Z - 27) < 1e-6
+    && BOARDWALK_D === 8);
+
+  const boardwalkBikeSpots = [];
+  for (let i = 0; i < 16; i++) {
+    const x = BOARDWALK_BIKE_X0 + hash01(i + 2900, 5) * (BOARDWALK_BIKE_X1 - BOARDWALK_BIKE_X0);
+    const z = BOARDWALK_Z + (hash01(i + 2900, 7) < 0.5 ? -1.6 : 1.6);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > 37.5 && z < 50.5) continue;
+    if (inKeepout(x, z)) continue;
+    boardwalkBikeSpots.push({ x, z });
+  }
+  ok('boardwalk bikes fill the deck, miss leftoverLot / travel / x>=240',
+    boardwalkBikeSpots.length >= 12
+    && boardwalkBikeSpots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && Math.abs(p.z - BOARDWALK_Z) <= BOARDWALK_D / 2
+      && inKeepout(p.x, p.z) === false)
+    && boardwalkBikeSpots.some((p) => p.x < -200)
+    && boardwalkBikeSpots.some((p) => p.x > 100));
+
+  ok('crowd adds beach walkers, no colliders',
+    crowd.includes("kind: 'beach-walk'") && crowd.includes('const nBeachWalk = 24')
+    && crowd.includes('BEACH_WALK_RUNS')
+    && crowd.includes('hash01(i + 3000')
+    && crowd.includes('npcOffLimits')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && !/\brng2?\s*\(/.test(crowd) && crowd.includes('hash01'));
+  ok('beach-walk runs sit on the sand, miss leftoverLot / travel / vball / x>=240',
+    BEACH_WALK_RUNS.length === 5
+    && BEACH_WALK_RUNS.every(([x0, x1]) => x1 < 240 && x0 < x1 && x1 < 251
+      && leftoverLotOverlap((x0 + x1) / 2, 10.5, 0.6, 0.6, 0.15) === false
+      && !(x0 < VBALL_X1 && x1 > VBALL_X0)));
+
+  const beachWalkSpots = [];
+  for (let i = 0; i < 24; i++) {
+    const run = BEACH_WALK_RUNS[i % BEACH_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 3000, 3) * (run[1] - run[0]);
+    const z = 10.5 + (hash01(i + 3000, 5) - 0.5) * 8.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (inKeepout(x, z)) continue;
+    if (z < -28.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    beachWalkSpots.push({ x, z });
+  }
+  ok('beach walkers fill the sand, miss leftoverLot / travel / x>=240',
+    beachWalkSpots.length >= 16
+    && beachWalkSpots.every((p) => p.x < 240 && p.x < 251
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && p.z < TRAVEL_Z0 && p.z > 4
+      && inKeepout(p.x, p.z) === false)
+    && beachWalkSpots.some((p) => p.x < -400)
+    && beachWalkSpots.some((p) => p.x > 200));
+  ok('density-2 NPCs have no colliders and leftoverLot A–H unmoved',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes("kind: 'beach-walk'") && crowd.includes('const nBoardwalkBike = 16')
+    && crowd.includes('npcOffLimits')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15)
+    && leftoverLotOverlap(251, 84, 0.6, 0.6, 0.15));
 
   let plan = null;
   try { plan = JSON.parse(readFileSync(planPath, 'utf8')); } catch (e) { plan = null; }

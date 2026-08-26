@@ -15,7 +15,8 @@ import {
   COLLINS_WALK_Z, COLLINS_WALK_RUNS,
   MARINA_FINGER_XS, MARINA_DOCK_HALF_X, MARINA_DOCK_Z0, MARINA_DOCK_Z1,
   MARINA_SWIM_X0, MARINA_SWIM_X1, MARINA_SWIM_Z0, MARINA_SWIM_Z1,
-  BEACH_CHAIR_CELLS, BEACH_CHAIR_WALK_RUNS,
+  BEACH_CHAIR_CELLS, BEACH_CHAIR_WALK_RUNS, BEACH_WALK_RUNS,
+  BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   LIFEGUARD_CELLS, LIFEGUARD_SAND_SIT_CELLS, LIFEGUARD_DECK,
   groundHeight, inKeepout, leftoverLotOverlap,
   onLincolnWalk, onWashingtonWalk, onCollinsWalk,
@@ -66,7 +67,8 @@ export const GAP501_WALK_Z_RUNS = Object.freeze([
   [190, 220],
 ]);
 // Patrol the signed beach chair pairs. Walk +X on the sand. Ocean of travel.
-export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS };
+export { BEACH_CHAIR_WALK_RUNS, BEACH_CHAIR_CELLS, BEACH_WALK_RUNS };
+export { BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1 };
 // City slab in front of Majestic / Avalon / Colony. Walk +X. Skip GAP_X=-129.
 export { COLLINS_WALK_Z, COLLINS_WALK_RUNS };
 const WASH_WALK_RUNS = washingtonRuns();
@@ -161,15 +163,18 @@ export function buildCrowd(ctx) {
   const nLummusSit = LUMMUS_EXTRA_BENCH_CELLS.length;
   const nChairWalk = 24;
   const nTowelSit = BEACH_CHAIR_CELLS.length;
+  const nBoardwalkBike = 16;
+  const nBeachWalk = 24;
   const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
     + nVball + nGuard + nGuardSand + nInland + nLincoln + nLincolnSit + nWashington
     + nMarinaSwim + nEighth + nGap315 + nGap501 + nCollins + nLummus + nLummusSit
-    + nChairWalk + nTowelSit + nBoardwalkSkate;
+    + nChairWalk + nTowelSit + nBoardwalkSkate + nBoardwalkBike + nBeachWalk;
 
   const bodyMesh = makeInstanced(track, personTorsoGeo(), total);
   const limbMesh = makeInstanced(track, personLimbGeo(), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.12, 10, 8), total);
-  const extraMesh = makeInstanced(track, extraPropGeo(), nBike + nSkate + nParked + nBoardwalkSkate);
+  const extraMesh = makeInstanced(track, extraPropGeo(),
+    nBike + nSkate + nParked + nBoardwalkSkate + nBoardwalkBike);
 
   let extraI = 0;
 
@@ -253,6 +258,22 @@ export function buildCrowd(ctx) {
       speed: 3.4 + hash01(i + 2600, 13) * 1.3,
       phase: hash01(i + 2600, 17) * Math.PI * 2,
       shirt: pick(SHIRT, i + 2600, 19), skin: pick(SKIN, i + 2600, 23),
+    });
+  }
+
+  for (let i = 0; i < nBoardwalkBike; i++) {
+    const dir = hash01(i + 2900, 3) < 0.5 ? 1 : -1;
+    const x = BOARDWALK_BIKE_X0 + hash01(i + 2900, 5) * (BOARDWALK_BIKE_X1 - BOARDWALK_BIKE_X0);
+    const z = BOARDWALK_Z + (hash01(i + 2900, 7) < 0.5 ? -1.6 : 1.6);
+    if (npcOffLimits(x, z) || inTravelLane(z) || inCarriageway(z)) continue;
+    if (inKeepout(x, z)) continue;
+    actors.push({
+      kind: 'bike', i: actors.length, extra: extraI++,
+      x, z, y: BOARDWALK_TOP, dir, yaw: dir > 0 ? 0 : Math.PI,
+      speed: 4.2 + hash01(i + 2900, 11) * 1.6,
+      phase: hash01(i + 2900, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 2900, 17), skin: pick(SKIN, i + 2900, 19),
+      run: [BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1],
     });
   }
 
@@ -583,6 +604,28 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nBeachWalk; i++) {
+    const runI = i % BEACH_WALK_RUNS.length;
+    const run = BEACH_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 3000, 3) * (run[1] - run[0]);
+    const z = 10.5 + (hash01(i + 3000, 5) - 0.5) * 8.0;
+    const dir = hash01(i + 3000, 7) < 0.5 ? 1 : -1;
+    if (npcOffLimits(x, z) || inKeepout(x, z)) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z < SHORE_Z + 1.5) continue;
+    if (x >= VBALL_X0 && x <= VBALL_X1 && z >= VBALL_Z0 && z <= VBALL_Z1) continue;
+    const y = groundHeight(x, z);
+    if (y < 0.12) continue;
+    actors.push({
+      kind: 'beach-walk', i: actors.length, extra: -1, run: runI,
+      x, z, y, dir,
+      yaw: dir > 0 ? 0 : Math.PI,
+      speed: 0.85 + hash01(i + 3000, 11) * 0.45,
+      phase: hash01(i + 3000, 13) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 3000, 17), skin: pick(SKIN, i + 3000, 19),
+    });
+  }
+
   buildBikeRacks(root, track, cityZ);
 
   // Re-index after skips so instance slots stay dense.
@@ -733,6 +776,31 @@ function stepActors(state, dt) {
       }
       continue;
     }
+    if (a.kind === 'beach-walk') {
+      a.x += a.dir * a.speed * dt;
+      const run = BEACH_WALK_RUNS[a.run] || BEACH_WALK_RUNS[0];
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15)
+          || inKeepout(a.x, a.z)
+          || (a.x >= VBALL_X0 && a.x <= VBALL_X1 && a.z >= VBALL_Z0 && a.z <= VBALL_Z1)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
+    if (a.kind === 'bike' && a.run) {
+      a.x += a.dir * a.speed * dt;
+      a.x = skipGap(a.x, a.dir);
+      const run = a.run;
+      if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
+      if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
+      if (npcOffLimits(a.x, a.z) || inTravelLane(a.z) || inCarriageway(a.z)) {
+        a.dir *= -1;
+        a.yaw = a.dir > 0 ? 0 : Math.PI;
+      }
+      continue;
+    }
     if (a.kind === 'marina-swim') {
       a.x += Math.cos(a.yaw) * a.speed * dt;
       a.z += Math.sin(a.yaw) * a.speed * dt * 0.35;
@@ -799,7 +867,7 @@ function stampAll(state) {
       || a.kind === 'inland' || a.kind === 'lincoln' || a.kind === 'washington'
       || a.kind === 'eighth' || a.kind === 'gap315' || a.kind === 'gap501'
       || a.kind === 'collins' || a.kind === 'lummus'
-      || a.kind === 'chair-walk'
+      || a.kind === 'chair-walk' || a.kind === 'beach-walk'
       || (a.kind === 'beach' && a.speed))
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
