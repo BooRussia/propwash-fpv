@@ -684,7 +684,7 @@
       "id": "npc-96",
       "title": "Walkers on sidewalks ocean/inland of the z=96 row, hash01, no colliders",
       "status": "done",
-      "notes": "nRow96=24 on E-W sidewalks 87.6/104.4 ocean/inland of z=96 plates; west-of-convention x-runs; hash01; no colliders; leftoverLot A–H unmoved",
+      "notes": "nRow96=24 on E-W sidewalks 87.6/104.4 ocean/inland of z=96 plates; skip GAP_X + helipad W; hash01; no colliders; leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/crowd.js",
         "js/world/miami/crowdTest.js",

@@ -194,6 +194,7 @@ export function runMiamiCrowdTests() {
     crowd.includes("kind: 'row96'") && crowd.includes('const nRow96 = 24')
     && crowd.includes('ROW96_WALK_ZS') && crowd.includes('onRow96Walk')
     && crowd.includes('87.6') && crowd.includes('104.4')
+    && crowd.includes('hash01(i + 3800')
     && !crowd.includes('addCollider'));
   ok('crowd has no ShaderMaterial', !crowd.includes('ShaderMaterial'));
   ok('crowd people have torso + limbs, not a single box',
@@ -950,43 +951,6 @@ function FRONT_Z_OK() {
   ok('leftoverLot A–H still signed after mid-rise walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
-  const ROW96_WALK_ZS = [87.6, 104.4];
-  const ROW96_WALK_RUNS = [
-    [-610, -508], [-494, -322], [-308, -136],
-  ];
-  const row96Spots = [];
-  for (let i = 0; i < 24; i++) {
-    const run = ROW96_WALK_RUNS[i % ROW96_WALK_RUNS.length];
-    const x = run[0] + hash01(i + 3800, 3) * (run[1] - run[0]);
-    const z = ROW96_WALK_ZS[i % ROW96_WALK_ZS.length]
-      + (hash01(i + 3800, 5) - 0.5) * 0.8;
-    if (x >= 240) continue;
-    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
-    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
-    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
-    row96Spots.push({ x, z });
-  }
-  ok('z=96 sidewalk walkers fill ocean/inland frontage, miss leftoverLot / travel',
-    crowd.includes("kind: 'row96'") && crowd.includes('const nRow96 = 24')
-    && crowd.includes('ROW96_WALK_ZS') && crowd.includes('ROW96_WALK_RUNS')
-    && crowd.includes('hash01(i + 3800')
-    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
-    && ROW96_WALK_ZS.every((z) => z > TRAVEL_Z1
-      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
-      && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false)
-    && ROW96_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240 && x1 < -112
-      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF))
-    && row96Spots.length >= 18
-    && row96Spots.every((p) => p.x < 240 && p.x < -112
-      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
-      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
-      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1))
-    && row96Spots.some((p) => p.z < 96)
-    && row96Spots.some((p) => p.z > 96)
-    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
-  ok('leftoverLot A–H still signed after z=96 walkers',
-    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
-    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   const arcade210 = INLAND_ARCADE_CELLS.filter(([, z]) => z === 210);
   const arcadeSitSpots = [];
   for (let i = 0; i < 16; i++) {
@@ -1015,6 +979,49 @@ function FRONT_Z_OK() {
     && arcadeSitSpots.some((p) => p.x > 0)
     && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after arcade sitters',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+  const ROW96_WALK_ZS = [87.6, 104.4];
+  const ROW96_WALK_RUNS = [
+    [-610, -508], [-494, -458], [-402, -322], [-308, -136],
+  ];
+  const row96Spots = [];
+  for (let i = 0; i < 24; i++) {
+    const run = ROW96_WALK_RUNS[i % ROW96_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 3800, 3) * (run[1] - run[0]);
+    const z = ROW96_WALK_ZS[i % ROW96_WALK_ZS.length]
+      + (hash01(i + 3800, 5) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    if (inHelipadReserved(x, z)) continue;
+    row96Spots.push({ x, z });
+  }
+  ok('z=96 sidewalk walkers fill ocean/inland frontage, miss leftoverLot / travel / helipad W',
+    crowd.includes("kind: 'row96'") && crowd.includes('const nRow96 = 24')
+    && crowd.includes('ROW96_WALK_ZS') && crowd.includes('ROW96_WALK_RUNS')
+    && crowd.includes('onRow96Walk') && crowd.includes('hash01(i + 3800')
+    && crowd.includes('inHelipadReserved')
+    && !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && ROW96_WALK_ZS.every((z) => z > TRAVEL_Z1
+      && !(z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1)
+      && leftoverLotOverlap(0, z, 0.6, 0.6, 0.15) === false)
+    && ROW96_WALK_RUNS.every(([x0, x1]) => x0 < x1 && x1 < 240
+      && GAP_X.every((gx) => x1 < gx - XS_HALF || x0 > gx + XS_HALF)
+      && (x1 < -452 || x0 > -408))
+    && row96Spots.length >= 20
+    && row96Spots.every((p) => p.x < 240
+      && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1)
+      && inHelipadReserved(p.x, p.z) === false)
+    && row96Spots.some((p) => p.z < 96)
+    && row96Spots.some((p) => p.z > 96)
+    && row96Spots.some((p) => p.x < -540)
+    && row96Spots.some((p) => p.x > -250)
+    && !/\brng2?\s*\(/.test(crowd) && !crowd.includes('ShaderMaterial'));
+  ok('leftoverLot A–H still signed after z=96 walkers',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('signed alley dumpsters and docks miss pipe / fire-escape / leftoverLot',
