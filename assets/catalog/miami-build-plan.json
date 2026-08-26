@@ -888,11 +888,6 @@
       ]
     },
     {
-      "id": "neon-porch",
-      "title": "Night neon under Majestic/Cavalier/Breakwater/Winterhaven porch soffits via regDN",
-      "status": "pending"
-    },
-    {
       "id": "fill-west720",
       "title": "West skyline/inland pair at x=-720 if it stays on the 1500 m city plate (x>-750)",
       "status": "pending"
@@ -915,6 +910,11 @@
     {
       "id": "court-new",
       "title": "Courtyard drop-wells on remaining new z=152/210 plates that miss arcades, fly −Y",
+      "status": "pending"
+    },
+    {
+      "id": "neon-porch",
+      "title": "Night neon under Majestic/Cavalier/Breakwater/Winterhaven porch soffits via regDN",
       "status": "pending"
     }
   ],
