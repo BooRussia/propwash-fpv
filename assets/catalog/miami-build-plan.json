@@ -366,7 +366,7 @@
     {
       "id": "gap-501",
       "title": "Inland storefronts on GAP_X=-501 with arcade fly-unders if west of leftoverLot A",
-      "status": "in_progress",
+      "status": "done",
       "notes": "nine shops on GAP_X=-501 (4W+5E), arcade ±Z + pass ±X; skip Washington; miss helipad W; leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
