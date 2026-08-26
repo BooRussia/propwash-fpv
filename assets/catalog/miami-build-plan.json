@@ -671,7 +671,14 @@
     {
       "id": "court-96",
       "title": "Two courtyard drop-wells on the z=96 row, fly −Y, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "wells at -390/96 and -250/96; miss inland arcades, roof-AC, leftoverLot A–H; fly −Y jambs only",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-96",

@@ -871,17 +871,20 @@ function FRONT_Z_OK() {
   ok('leftoverLot A–H still signed after inland mid-rises',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
-  ok('two extra courtyard drop-wells on remaining z=152/210 plates',
-    COURT_WELL_CELLS.length === 7
+  ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
+    COURT_WELL_CELLS.length === 9
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 152 || z === 210)
+      && (z === 96 || z === 152 || z === 210)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
-      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z))
+      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z)
+      && !INLAND_ARCADE_CELLS.some(([ax, az]) => ax === x && az === z))
     && inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after extra court wells',

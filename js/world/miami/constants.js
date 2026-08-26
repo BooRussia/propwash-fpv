@@ -902,12 +902,14 @@ export function inlandMidrises() {
 
 // Courtyard drop-wells: open air through the plate. Fly −Y. Jambs are the
 // four wall masses, never a box in the well. Extra pair on remaining z=152/210
-// plates that miss roof-AC whoops. leftoverLot A–H unmoved.
+// plates that miss roof-AC whoops; extra pair on z=96 plates that miss
+// inland arcades. leftoverLot A–H unmoved.
 export const COURT_WELL_W = 6.2;
 export const COURT_WELL_D = 6.2;
 export const COURT_WELL_CELLS = Object.freeze([
   [-250, 152], [90, 152], [-430, 210], [160, 210], [-600, 210],
   [-390, 152], [210, 210],
+  [-390, 96], [-250, 96],
 ]);
 
 export function isCourtWellCell(x, z) {
@@ -970,7 +972,7 @@ export function courtWellColliderShapesAt(shapes, g) {
 
 // Ground-floor fly-through arcades on z=210, z=152, and z=96 mid-rises.
 // Jambs + soffit only, never a box in the bay. Fly ±Z. Miss court wells.
-// z=96 leaves [-390,96]/[-250,96] for court-96. West of x=240.
+// z=96 arcades skip [-390,96]/[-250,96] court wells. West of x=240.
 // leftoverLot A–H unmoved. hash01 never at const-eval.
 export const INLAND_ARCADE_SOFFIT = 3.40;
 export const INLAND_ARCADE_OPEN_W = 4.40;

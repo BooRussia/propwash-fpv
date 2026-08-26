@@ -1144,11 +1144,13 @@ export function runMiamiLeftoverLotTests() {
       && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('extra court wells miss leftoverLot A–H',
-    COURT_WELL_CELLS.length === 7
+    COURT_WELL_CELLS.length === 9
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && x < 251
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('extra roof rings miss leftoverLot A–H',
     leftoverLotOverlap(-600, 259, 0.8, 2.4, 0.15) === false

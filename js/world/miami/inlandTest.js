@@ -194,16 +194,20 @@ export function runMiamiInlandTests() {
       && ((z < 248 && g.yaw === 0) || (z > 248 && g.yaw === Math.PI)));
   }
 
-  ok('seven courtyard drop-wells, fly −Y, west of leftoverLot',
-    COURT_WELL_CELLS.length === 7 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+  ok('nine courtyard drop-wells, fly −Y, west of leftoverLot',
+    COURT_WELL_CELLS.length === 9 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 152 || z === 210)
+      && (z === 96 || z === 152 || z === 210)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
-      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z))
+      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z)
+      && !INLAND_ARCADE_CELLS.some(([ax, az]) => ax === x && az === z))
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
-    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210));
+    && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
+    && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2);
   ok('inland.js hollows court wells, no layout rng',
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
