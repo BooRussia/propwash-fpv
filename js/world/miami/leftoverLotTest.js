@@ -1197,8 +1197,8 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(50, 218.4, 0.6, 0.6, 0.15) === false
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
   ok('inland z=210/152/96/128 arcades miss leftoverLot A–H',
-    INLAND_ARCADE_CELLS.length === 87
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 18
+    INLAND_ARCADE_CELLS.length === 90
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 21
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 12
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 13
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 27
@@ -1316,6 +1316,12 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(20, 237, 18, 14, 0.15) === false
     && leftoverLotOverlap(20, 259, 18, 14, 0.15) === false
     && leftoverLotOverlap(20, 248, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-60, 210, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-20, 210, 18, 14, 0.15) === false
+    && leftoverLotOverlap(20, 210, 18, 14, 0.15) === false
+    && leftoverLotOverlap(-60, 223, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(-20, 223, 2.4, 2.6, 0.15) === false
+    && leftoverLotOverlap(20, 223, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-600, 248, 2.4, 2.6, 0.15) === false
     && leftoverLotOverlap(-720, 140, 2.4, 2.6, 0.15) === false
@@ -1496,7 +1502,7 @@ export function runMiamiLeftoverLotTests() {
     && leftoverLotOverlap(100, 228.6, 0.6, 0.6, 0.15) === false
     && 130 < 240 && 190 < 240 && 190 + 18 / 2 + 0.8 < 240
     && 190 < 251
-    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 28
+    && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).length === 31
     && INLAND_MIDRISE_CELLS.filter(([, z]) => z === 210).every(([x]) => x < 240 && x < 251
       && leftoverLotOverlap(x, 210, 18, 14, 0.15) === false)
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);

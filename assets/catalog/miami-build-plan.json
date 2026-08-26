@@ -1576,8 +1576,14 @@
     {
       "id": "fill-210-mid",
       "title": "z=210 mid-rises at x=-60/-20/20 continuing the mid-interstitial columns, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "[-60,-20,20]@210 arcades + z=223 pipes; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-60,-20,20]@210 arcades + z=223 pipes; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {

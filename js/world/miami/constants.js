@@ -511,6 +511,11 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-60, 248],
   [-20, 248],
   [20, 248],
+  // Extra z=223 pipes on mid-interstitial columns. Appended so existing
+  // hash01 alley-pipe draws stay put. Fly +X. leftoverLot A–H unmoved.
+  [-60, 223],
+  [-20, 223],
+  [20, 223],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -1101,6 +1106,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-60, 237], [-60, 259],
   [-20, 237], [-20, 259],
   [20, 237], [20, 259],
+  [-60, 210], [-20, 210], [20, 210],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
@@ -1253,6 +1259,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-690, 128], [-630, 128], [-570, 128],
   [-690, 96], [-630, 96], [-570, 96],
   [-60, 237], [-20, 237], [20, 237],
+  [-60, 210], [-20, 210], [20, 210],
 ]);
 
 export function isInlandArcadeCell(x, z) {
