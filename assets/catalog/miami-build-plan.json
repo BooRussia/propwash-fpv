@@ -826,6 +826,26 @@
       "id": "pier-whoop-light",
       "title": "Night emissive on pier-bay rings so undercroft whoops read after dusk, regDN, no ShaderMaterial",
       "status": "pending"
+    },
+    {
+      "id": "arcade-west600",
+      "title": "Ground-floor fly-throughs on any new x=-660 plates, jambs only, leftoverLot unmoved",
+      "status": "pending"
+    },
+    {
+      "id": "npc-garage",
+      "title": "Visual standers at the garage mouth sidewalk, hash01, no colliders, miss travel lanes",
+      "status": "pending"
+    },
+    {
+      "id": "fill-148",
+      "title": "If z=152 row still has holes west of leftoverLot, add mid-rises at z=148 only where reservedOverlap is false",
+      "status": "pending"
+    },
+    {
+      "id": "neon-porch",
+      "title": "Night neon under Majestic/Cavalier/Breakwater/Winterhaven porch soffits via regDN",
+      "status": "pending"
     }
   ],
   "landmarks": {
