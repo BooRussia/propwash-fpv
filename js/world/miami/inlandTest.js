@@ -339,15 +339,19 @@ export function runMiamiInlandTests() {
       && streetOverlap(x, z, 0.4, 2.6) === false);
   }
 
-  ok('twelve fire-escape frames on mid-rise flanks at z=248',
-    FIRE_ESCAPE_CELLS.length === 12 && FIRE_ESCAPE_Z === 248
+  ok('sixteen fire-escape frames on mid-rise flanks at z=248',
+    FIRE_ESCAPE_CELLS.length === 16 && FIRE_ESCAPE_Z === 248
     && FIRE_ESCAPE_POST_H >= 3.2
     && FIRE_ESCAPE_HALF_Z * 2 - 0.16 >= 1.15
     && FIRE_ESCAPE_CELLS.every(([x, z]) => x < 240 && z === 248 && x < 251)
     && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -729 && z === 248)
     && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -711 && z === 248)
     && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -549 && z === 248)
-    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -531 && z === 248));
+    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -531 && z === 248)
+    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -399 && z === 248)
+    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -381 && z === 248)
+    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -199 && z === 248)
+    && FIRE_ESCAPE_CELLS.some(([x, z]) => x === -181 && z === 248));
   const fly = readFileSync(join(here, 'landmarks/flythrough.js'), 'utf8');
   ok('flythrough builds fire-escape jambs, no layout rng',
     fly.includes('FIRE_ESCAPE_CELLS') && fly.includes('buildFireEscape')
