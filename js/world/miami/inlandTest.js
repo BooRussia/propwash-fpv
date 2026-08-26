@@ -749,13 +749,14 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === 20 && z === 223));
 
   ok('signed rooftop AC gaps + billboard rings including east z=96 plate',
-    ROOF_AC_CELLS.length === 23 && ROOF_RING_CELLS.length === 51
+    ROOF_AC_CELLS.length === 28 && ROOF_RING_CELLS.length === 51
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
     && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && !isCourtWellCell(x, z)
       && leftoverLotOverlap(x, z, 4, 2, 0.15) === false)
     && ROOF_AC_CELLS.filter(([, z]) => z === 96).length === 10
+    && ROOF_AC_CELLS.filter(([, z]) => z === 152).length === 9
     && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
       && (z === 259 || z === 210)
       && !isCourtWellCell(x, z)
@@ -803,6 +804,16 @@ export function runMiamiInlandTests() {
     && ROOF_AC_CELLS.some(([x, z]) => x === -630 && z === 96)
     && ROOF_AC_CELLS.some(([x, z]) => x === -20 && z === 210)
     && ROOF_AC_CELLS.some(([x, z]) => x === 20 && z === 210)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -600 && z === 152)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -660 && z === 152)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -430 && z === 152)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -350 && z === 152)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -220 && z === 152)
+    && [[-600, 152], [-660, 152], [-430, 152], [-350, 152], [-220, 152]].every(([x, z]) =>
+      isInlandArcadeCell(x, z)
+      && !isCourtWellCell(x, z)
+      && leftoverLotOverlap(x, z, 4, 2, 0.15) === false
+      && x < 240 && x < 251)
     && ROOF_RING_CELLS.some(([x, z]) => x === 0 && z === 210)
     && ROOF_RING_CELLS.some(([x, z]) => x === -40 && z === 210)
     && ROOF_RING_CELLS.some(([x, z]) => x === 130 && z === 210)

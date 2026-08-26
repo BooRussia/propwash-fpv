@@ -1761,6 +1761,17 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "roof-ac-152",
+      "title": "AC-gap whoops on remaining z=152 arcade plates that miss court wells, leftoverLot unmoved",
+      "status": "done",
+      "notes": "ROOF_AC_CELLS +5: [-600,-660,-430,-350,-220]@152 on arcade plates; miss court wells; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
