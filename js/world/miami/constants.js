@@ -162,10 +162,13 @@ export const MAJESTIC_D = 22;
 export const MAJESTIC_SOFFIT = 3.5;
 
 // ---- Breakwater analogue (940 Ocean Drive; deco-row / Clevelander gap) ----
+// Porch arcade you can fly under (soffit BREAKWATER_SOFFIT). West of leftoverLot A.
+// Miss travel lanes 40.2–47.8. leftoverLot A–H unmoved.
 export const BREAKWATER_X = 42;
 export const BREAKWATER_FRONT_Z = 57.6;
 export const BREAKWATER_W = 12;
 export const BREAKWATER_D = 22;
+export const BREAKWATER_SOFFIT = 3.5;
 
 // ---- Cavalier analogue (1320 Ocean Drive; Cardozo / cinema gap) ----
 // Porch arcade you can fly under (soffit CAVALIER_SOFFIT). West of leftoverLot A.
@@ -178,11 +181,14 @@ export const CAVALIER_SOFFIT = 3.5;
 
 // ---- Winterhaven analogue (1400 Ocean Drive; garage / GAP 243) ----
 // Shallow plate: mass z1 = 75.6, reserved z1 = 76, west of x=240.
-// Misses abando reserved z0 ≈ 77.8. Do not slide leftoverLot A–H.
+// Porch arcade you can fly under (soffit WINTERHAVEN_SOFFIT). Fly ±X.
+// Misses abando reserved z0 ≈ 77.8. Miss travel 40.2–47.8.
+// Do not slide leftoverLot A–H.
 export const WINTERHAVEN_X = 222;
 export const WINTERHAVEN_FRONT_Z = 57.6;
 export const WINTERHAVEN_W = 16;
 export const WINTERHAVEN_D = 18;
+export const WINTERHAVEN_SOFFIT = 3.5;
 
 // Signed flags on Ocean Drive hotel crowns. [x, z, y] with y on the
 // parapet / crown deck. West of leftoverLot A. Inland of travel 40.2–47.8.
@@ -191,12 +197,12 @@ export const HOTEL_FLAG_CELLS = Object.freeze([
   [-178, 58.8, 15.4],
   [-152, 58.8, 15.4],
   [-108, 58.8, 15.4],
-  [42, 58.8, 15.9],
+  [42, 58.8, 15.4],
   [60, 58.8, 13.7],
   [90, 62.8, 13.0],
   [115, 59.4, 17.4],
   [134, 58.8, 15.4],
-  [222, 58.8, 12.6],
+  [222, 58.8, 12.2],
 ]);
 
 // ---- marina + yacht club ----
@@ -5632,6 +5638,10 @@ export const KEEPOUT = [
     z0: MAJESTIC_FRONT_Z - 3.4, z1: MAJESTIC_FRONT_Z + 0.3, tag: 'majestic' },
   { x0: CAVALIER_X - CAVALIER_W / 2 + 1.0, x1: CAVALIER_X + CAVALIER_W / 2 - 1.0,
     z0: CAVALIER_FRONT_Z - 3.4, z1: CAVALIER_FRONT_Z + 0.3, tag: 'cavalier' },
+  { x0: BREAKWATER_X - BREAKWATER_W / 2 + 1.0, x1: BREAKWATER_X + BREAKWATER_W / 2 - 1.0,
+    z0: BREAKWATER_FRONT_Z - 3.4, z1: BREAKWATER_FRONT_Z + 0.3, tag: 'breakwater' },
+  { x0: WINTERHAVEN_X - WINTERHAVEN_W / 2 + 1.0, x1: WINTERHAVEN_X + WINTERHAVEN_W / 2 - 1.0,
+    z0: WINTERHAVEN_FRONT_Z - 3.4, z1: WINTERHAVEN_FRONT_Z + 0.3, tag: 'winterhaven' },
   { x0: -80 - GATE_HALF_X - 0.8, x1: -80 + GATE_HALF_X + 0.8,
     z0: GATE_Z - GATE_HALF_Z - 0.8, z1: GATE_Z + GATE_HALF_Z + 0.8, tag: 'promenade-arch' },
   { x0: -20 - GATE_HALF_X - 0.8, x1: -20 + GATE_HALF_X + 0.8,
@@ -6027,6 +6037,26 @@ export const FLY_VOIDS = [
     openW: CAVALIER_W - 2.4, openH: CAVALIER_SOFFIT,
   },
   {
+    id: 'breakwater-arcade', kind: 'kit',
+    x: BREAKWATER_X, z: BREAKWATER_FRONT_Z - 1.7,
+    y: CITY_Y + BREAKWATER_SOFFIT * 0.48,
+    x0: BREAKWATER_X - BREAKWATER_W / 2 + 1.2,
+    x1: BREAKWATER_X + BREAKWATER_W / 2 - 1.2,
+    z0: BREAKWATER_FRONT_Z - 3.15, z1: BREAKWATER_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + BREAKWATER_SOFFIT - 0.06,
+    openW: BREAKWATER_W - 2.4, openH: BREAKWATER_SOFFIT,
+  },
+  {
+    id: 'winterhaven-arcade', kind: 'kit',
+    x: WINTERHAVEN_X, z: WINTERHAVEN_FRONT_Z - 1.7,
+    y: CITY_Y + WINTERHAVEN_SOFFIT * 0.48,
+    x0: WINTERHAVEN_X - WINTERHAVEN_W / 2 + 1.2,
+    x1: WINTERHAVEN_X + WINTERHAVEN_W / 2 - 1.2,
+    z0: WINTERHAVEN_FRONT_Z - 3.15, z1: WINTERHAVEN_FRONT_Z - 0.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + WINTERHAVEN_SOFFIT - 0.06,
+    openW: WINTERHAVEN_W - 2.4, openH: WINTERHAVEN_SOFFIT,
+  },
+  {
     id: 'garage-mouth', kind: 'kit',
     x: GARAGE_X, z: GARAGE_FRONT_Z + GARAGE_D * 0.5,
     y: CITY_Y + GARAGE_SOFFIT * 0.48,
@@ -6220,6 +6250,36 @@ export function flyColliderShapes() {
     type: 'aabb', tag: 'cavalier',
     x: CAVALIER_X, z: cavalierZ, sx: CAVALIER_W - 0.6, sz: 3.2,
     y0: CITY_Y + CAVALIER_SOFFIT, sy: 0.26,
+  });
+
+  // Breakwater arcade jambs — centre bay empty, fly ±X under the soffit.
+  const breakwaterZ = BREAKWATER_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'breakwater',
+      x: BREAKWATER_X + s * (BREAKWATER_W / 2 - 0.7), z: breakwaterZ, r: 0.2,
+      y0: CITY_Y, h: BREAKWATER_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'breakwater',
+    x: BREAKWATER_X, z: breakwaterZ, sx: BREAKWATER_W - 0.6, sz: 3.2,
+    y0: CITY_Y + BREAKWATER_SOFFIT, sy: 0.26,
+  });
+
+  // Winterhaven arcade jambs — centre bay empty, fly ±X under the soffit.
+  const winterhavenZ = WINTERHAVEN_FRONT_Z - 1.7;
+  for (const s of [-1, 1]) {
+    shapes.push({
+      type: 'cyl', tag: 'winterhaven',
+      x: WINTERHAVEN_X + s * (WINTERHAVEN_W / 2 - 0.7), z: winterhavenZ, r: 0.2,
+      y0: CITY_Y, h: WINTERHAVEN_SOFFIT,
+    });
+  }
+  shapes.push({
+    type: 'aabb', tag: 'winterhaven',
+    x: WINTERHAVEN_X, z: winterhavenZ, sx: WINTERHAVEN_W - 0.6, sz: 3.2,
+    y0: CITY_Y + WINTERHAVEN_SOFFIT, sy: 0.26,
   });
 
   for (let i = 0; i < SW_ARCADE_CITY_XS.length; i++) {

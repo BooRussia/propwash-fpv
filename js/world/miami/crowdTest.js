@@ -14,9 +14,9 @@ import {
   COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
   AVALON_X, AVALON_FRONT_Z, AVALON_W, AVALON_D, AVALON_SOFFIT,
   MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D, MAJESTIC_SOFFIT,
-  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
+  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D, BREAKWATER_SOFFIT,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
-  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
+  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D, WINTERHAVEN_SOFFIT,
   PROMENADE_ARCH_XS, GATE_Z, GATE_X,
   SW_ARCADE_CITY_XS, SW_ARCADE_BEACH_XS, SW_ARCADE_CITY_Z, SW_ARCADE_BEACH_Z,
   SW_ARCADE_POST_H, ALLEY_PIPE_CELLS, ALLEY_PIPE_POST_H, ALLEY_PIPE_HALF_Z,
@@ -400,9 +400,10 @@ function FRONT_Z_OK() {
     && MAJESTIC_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Breakwater sits in the deco / Clevelander gap',
     BREAKWATER_X === 42 && BREAKWATER_FRONT_Z === 57.6
-    && BREAKWATER_W === 12 && BREAKWATER_D === 22
+    && BREAKWATER_W === 12 && BREAKWATER_D === 22 && BREAKWATER_SOFFIT === 3.5
     && BREAKWATER_X - BREAKWATER_W / 2 >= 35
-    && BREAKWATER_X + BREAKWATER_W / 2 <= 49);
+    && BREAKWATER_X + BREAKWATER_W / 2 <= 49
+    && BREAKWATER_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Cavalier sits in the Cardozo / cinema gap',
     CAVALIER_X === 134 && CAVALIER_FRONT_Z === 57.6
     && CAVALIER_W === 16 && CAVALIER_D === 24 && CAVALIER_SOFFIT === 3.5
@@ -411,10 +412,11 @@ function FRONT_Z_OK() {
     && CAVALIER_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('Winterhaven sits east of the garage, west of GAP 243 and x=240',
     WINTERHAVEN_X === 222 && WINTERHAVEN_FRONT_Z === 57.6
-    && WINTERHAVEN_W === 16 && WINTERHAVEN_D === 18
+    && WINTERHAVEN_W === 16 && WINTERHAVEN_D === 18 && WINTERHAVEN_SOFFIT === 3.5
     && WINTERHAVEN_X - WINTERHAVEN_W / 2 >= 210
     && WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 240
-    && WINTERHAVEN_FRONT_Z + WINTERHAVEN_D <= 76);
+    && WINTERHAVEN_FRONT_Z + WINTERHAVEN_D <= 76
+    && WINTERHAVEN_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('named deco hotels are reserved and miss leftoverLot A–H',
     reservedOverlap(COLONY_X, COLONY_FRONT_Z + 8, COLONY_W, COLONY_D, 0.15)
     && reservedOverlap(AVALON_X, AVALON_FRONT_Z + 8, AVALON_W, AVALON_D, 0.15)
@@ -438,8 +440,9 @@ function FRONT_Z_OK() {
     && COLONY_FRONT_Z - 3.4 > TRAVEL_Z1
     && AVALON_FRONT_Z - 3.4 > TRAVEL_Z1
     && MAJESTIC_FRONT_Z - 3.4 > TRAVEL_Z1
+    && BREAKWATER_FRONT_Z - 3.4 > TRAVEL_Z1
     && CAVALIER_FRONT_Z - 3.4 > TRAVEL_Z1
-    && WINTERHAVEN_FRONT_Z > TRAVEL_Z1);
+    && WINTERHAVEN_FRONT_Z - 3.4 > TRAVEL_Z1);
   ok('leftoverLot A–H were not slid',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
@@ -500,10 +503,48 @@ function FRONT_Z_OK() {
       && cavalierArcade.z > TRAVEL_Z1
       && cavalierArcade.x + CAVALIER_W / 2 + 1.2 < 240);
   }
-  ok('decoHotels installs Majestic/Cavalier fly colliders, no filled sash',
+  const breakwaterArcade = FLY_VOIDS.find((v) => v.id === 'breakwater-arcade');
+  ok('breakwater-arcade fly void exists',
+    !!breakwaterArcade && breakwaterArcade.openH === BREAKWATER_SOFFIT
+    && breakwaterArcade.openW >= 8);
+  ok('breakwater-arcade keepout + inFlyVoid',
+    !!breakwaterArcade && !!inKeepout(breakwaterArcade.x, breakwaterArcade.z)
+    && !!inFlyVoid(breakwaterArcade.x, breakwaterArcade.z)
+    && breakwaterArcade.z > TRAVEL_Z1);
+  if (breakwaterArcade) {
+    const hit = probeBlocked(kit, breakwaterArcade.x, breakwaterArcade.y, breakwaterArcade.z, 0.28);
+    ok('breakwater arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+    ok('breakwater arcade misses leftoverLot / street / travel',
+      leftoverLotOverlap(breakwaterArcade.x, breakwaterArcade.z, 2.4, 2.0, 0.15) === false
+      && streetOverlap(breakwaterArcade.x, breakwaterArcade.z, 2.4, 1.8) === false
+      && breakwaterArcade.z > TRAVEL_Z1
+      && breakwaterArcade.x + BREAKWATER_W / 2 + 1.2 < 240);
+  }
+  const winterhavenArcade = FLY_VOIDS.find((v) => v.id === 'winterhaven-arcade');
+  ok('winterhaven-arcade fly void exists',
+    !!winterhavenArcade && winterhavenArcade.openH === WINTERHAVEN_SOFFIT
+    && winterhavenArcade.openW >= 8);
+  ok('winterhaven-arcade keepout + inFlyVoid',
+    !!winterhavenArcade && !!inKeepout(winterhavenArcade.x, winterhavenArcade.z)
+    && !!inFlyVoid(winterhavenArcade.x, winterhavenArcade.z)
+    && winterhavenArcade.z > TRAVEL_Z1);
+  if (winterhavenArcade) {
+    const hit = probeBlocked(kit, winterhavenArcade.x, winterhavenArcade.y, winterhavenArcade.z, 0.28);
+    ok('winterhaven arcade bay centre is open', !hit, hit ? `${hit.tag} ${hit.type}` : '');
+    ok('winterhaven arcade misses leftoverLot / street / travel',
+      leftoverLotOverlap(winterhavenArcade.x, winterhavenArcade.z, 2.4, 2.0, 0.15) === false
+      && streetOverlap(winterhavenArcade.x, winterhavenArcade.z, 2.4, 1.8) === false
+      && winterhavenArcade.z > TRAVEL_Z1
+      && winterhavenArcade.x + WINTERHAVEN_W / 2 + 1.2 < 240
+      && winterhavenArcade.x + WINTERHAVEN_W / 2 + 1.2 < 251);
+  }
+  ok('decoHotels installs Majestic/Cavalier/Breakwater/Winterhaven fly colliders, no filled sash',
     deco.includes("installFlyColliders(addCyl, addCollider, 'majestic')")
     && deco.includes("installFlyColliders(addCyl, addCollider, 'cavalier')")
+    && deco.includes("installFlyColliders(addCyl, addCollider, 'breakwater')")
+    && deco.includes("installFlyColliders(addCyl, addCollider, 'winterhaven')")
     && deco.includes('MAJESTIC_SOFFIT') && deco.includes('CAVALIER_SOFFIT')
+    && deco.includes('BREAKWATER_SOFFIT') && deco.includes('WINTERHAVEN_SOFFIT')
     && deco.includes('arcadeZ'));
   ok('decoHotels does not draw layout rng',
     !/\brng2?\s*\(/.test(deco) && !/\brng3\s*\(/.test(deco)

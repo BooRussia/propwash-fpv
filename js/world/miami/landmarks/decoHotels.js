@@ -5,9 +5,9 @@ import {
   COLONY_X, COLONY_FRONT_Z, COLONY_W, COLONY_D, COLONY_SOFFIT,
   AVALON_X, AVALON_FRONT_Z, AVALON_W, AVALON_D, AVALON_SOFFIT,
   MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_D, MAJESTIC_SOFFIT,
-  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D,
+  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_D, BREAKWATER_SOFFIT,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_D, CAVALIER_SOFFIT,
-  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D,
+  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_D, WINTERHAVEN_SOFFIT,
   installFlyColliders,
 } from '../constants.js';
 import { cBox, cCyl, colorFill } from '../geo.js';
@@ -20,18 +20,16 @@ import { stuccoTexture } from '../textures.js';
 //   (soffit COLONY_SOFFIT). Colliders are jambs + lid (tag 'colony').
 // Avalon (x=-152): salmon porch arcade west of Colony / GAP -129.
 // Majestic (x=-178): cream/green porch arcade west of Avalon, east of GAP -315.
-// Breakwater (x=42): white mass + red neon pylon in the deco/Clevelander gap.
+// Breakwater (x=42): white porch arcade + red neon pylon in the deco/Clevelander gap.
 // Cavalier (x=134): peach porch arcade in the Cardozo/cinema gap.
-// Winterhaven (x=222): teal-trim plate east of the garage, reserved z1=76
+// Winterhaven (x=222): teal-trim porch arcade east of the garage, reserved z1=76
 //   so it cannot kiss abando or leftoverLot A–H.
 //
 // All sit on FRONT_Z=57.6. No leftoverLot. No layout rng.
 // ============================================================
 
-const GH = 4.0;
 const FH = 3.2;
 const REVEAL = 0x1a2026;
-const METAL = 0x9aa3aa;
 const TERRAZZO = 0x8e887c;
 
 /**
@@ -65,6 +63,7 @@ export function buildDecoHotels(ctx) {
 
   setTag('breakwater');
   buildBreakwater(stucco, dark, glass, pushNeon, addCollider);
+  installFlyColliders(addCyl, addCollider, 'breakwater');
 
   setTag('cavalier');
   buildCavalier(stucco, dark, glass, pushNeon, addCollider);
@@ -72,6 +71,7 @@ export function buildDecoHotels(ctx) {
 
   setTag('winterhaven');
   buildWinterhaven(stucco, dark, glass, pushNeon, addCollider);
+  installFlyColliders(addCyl, addCollider, 'winterhaven');
 
   const group = new THREE.Group();
   group.name = 'ocean-drive-named-deco';
@@ -290,43 +290,51 @@ function buildBreakwater(stucco, dark, glass, pushNeon, addCollider) {
   const FZ = BREAKWATER_FRONT_Z;
   const W = BREAKWATER_W;
   const D = BREAKWATER_D;
-  const BODY = 0xf6f2e9, TRIM = 0xc42a3a, NEON = 0xff3d4a, NAME = 0x7a1820;
-  const floors = 4;
-  const bodyH = GH + (floors - 1) * FH;
+  const BODY = 0xf6f2e9, BODY2 = 0xe8e2d4, TRIM = 0xc42a3a, NEON = 0xff3d4a, NAME = 0x7a1820;
+  const floors = 3;
+  const bodyH = BREAKWATER_SOFFIT + floors * FH;
   const zMass = FZ + D / 2;
+  const arcadeZ = FZ - 1.7;
 
-  stucco.push(cBox(W, bodyH, D, BODY, cx, CITY_Y + bodyH / 2, zMass));
-  stucco.push(cBox(W * 0.42, bodyH, 0.5, BODY, cx, CITY_Y + bodyH / 2, FZ - 0.2));
+  stucco.push(cBox(W, bodyH - BREAKWATER_SOFFIT, D, BODY,
+    cx, CITY_Y + BREAKWATER_SOFFIT + (bodyH - BREAKWATER_SOFFIT) / 2, zMass));
+  stucco.push(cBox(W, BREAKWATER_SOFFIT, D - 4.2, BODY2,
+    cx, CITY_Y + BREAKWATER_SOFFIT / 2, FZ + 2.1 + (D - 4.2) / 2));
 
-  for (let f = 0; f < floors; f++) {
-    const fy = CITY_Y + (f === 0 ? 0 : GH + (f - 1) * FH);
-    const fh = f === 0 ? GH : FH;
-    const winY = fy + fh * 0.56;
-    const winH = f === 0 ? 2.3 : 1.55;
-    stucco.push(cBox(W + 0.18, 0.15, 0.6, TRIM, cx, winY + winH / 2 + 0.28, FZ - 0.28));
-    for (const s of [-1, 1]) {
-      glass.push(new THREE.BoxGeometry(1.55, winH, 0.1)
-        .translate(cx + s * 2.9, winY, FZ - 0.05));
-      dark.push(cBox(1.7, winH + 0.18, 0.08, REVEAL, cx + s * 2.9, winY, FZ + 0.04));
-    }
-    if (f > 0) {
-      glass.push(new THREE.BoxGeometry(W * 0.22, winH + 0.3, 0.1)
-        .translate(cx, winY, FZ - 0.48));
-    }
+  for (const s of [-1, 1]) {
+    stucco.push(cCyl(0.2, 0.22, BREAKWATER_SOFFIT, 10, TRIM,
+      cx + s * (W / 2 - 0.7), CITY_Y + BREAKWATER_SOFFIT / 2, arcadeZ));
   }
-
-  const roofY = CITY_Y + bodyH;
-  stucco.push(cBox(W + 0.28, 0.75, D + 0.28, BODY, cx, roofY + 0.38, zMass));
-  dark.push(cBox(W * 0.72, 1.05, 0.14, NAME, cx, roofY + 1.05, FZ - 0.16));
-  pushNeon(NEON, cBox(W * 0.62, 0.48, 0.09, NEON, cx, roofY + 1.05, FZ - 0.26));
+  stucco.push(cBox(W - 0.4, 0.24, 3.4, TRIM,
+    cx, CITY_Y + BREAKWATER_SOFFIT + 0.12, arcadeZ));
+  pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
+    cx, CITY_Y + BREAKWATER_SOFFIT - 0.06, arcadeZ - 1.55));
   // extra neon outline — Breakwater corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
       cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
   }
 
+  for (let f = 0; f < floors; f++) {
+    const fy = CITY_Y + BREAKWATER_SOFFIT + 1.55 + f * FH;
+    stucco.push(cBox(W + 0.18, 0.15, 0.6, TRIM, cx, fy + 1.05, FZ - 0.28));
+    for (const s of [-1, 1]) {
+      glass.push(new THREE.BoxGeometry(1.55, 1.55, 0.1)
+        .translate(cx + s * 2.9, fy, FZ - 0.05));
+      dark.push(cBox(1.7, 1.73, 0.08, REVEAL, cx + s * 2.9, fy, FZ + 0.04));
+    }
+    glass.push(new THREE.BoxGeometry(W * 0.22, 1.85, 0.1)
+      .translate(cx, fy, FZ - 0.48));
+    pushNeon(NEON, cBox(W - 0.8, 0.07, 0.07, NEON, cx, fy + 1.12, FZ - 0.62));
+  }
+
+  const roofY = CITY_Y + bodyH;
+  stucco.push(cBox(W + 0.28, 0.75, D + 0.28, BODY, cx, roofY + 0.38, zMass));
+  dark.push(cBox(W * 0.72, 1.05, 0.14, NAME, cx, roofY + 1.05, FZ - 0.16));
+  pushNeon(NEON, cBox(W * 0.62, 0.48, 0.09, NEON, cx, roofY + 1.05, FZ - 0.26));
+
   // Red neon pylon — the Breakwater signature. Proud of the west corner,
-  // inland of the city walk (z 52.05–53.85).
+  // inland of the city walk (z 52.05–53.85). Misses the porch arcade.
   const px = cx - W / 2 - 0.35;
   const pz = FZ + 0.55;
   const pylonH = bodyH + 6.4;
@@ -334,15 +342,15 @@ function buildBreakwater(stucco, dark, glass, pushNeon, addCollider) {
   pushNeon(NEON, cBox(0.12, pylonH - 0.8, 0.12, NEON, px, CITY_Y + pylonH / 2, pz - 0.42));
   dark.push(cBox(0.7, 1.4, 0.16, NAME, px, CITY_Y + bodyH + 2.2, pz - 0.4));
 
-  stucco.push(cBox(W * 0.6, 0.18, 1.6, BODY, cx, CITY_Y + 3.15, FZ - 0.9));
-  for (const s of [-1, 1]) {
-    dark.push(cCyl(0.08, 0.09, 3.0, 8, METAL,
-      cx + s * 3.2, CITY_Y + 1.5, FZ - 1.45));
-  }
+  dark.push(cBox(W * 0.7, 0.05, 2.8, TERRAZZO, cx, CITY_Y + 0.025, arcadeZ));
 
-  addCollider(cx, CITY_Y, zMass, W + 0.5, bodyH + 2.0, D + 0.5);
+  addCollider(cx, CITY_Y + BREAKWATER_SOFFIT, zMass,
+    W + 0.5, bodyH - BREAKWATER_SOFFIT + 1.2, D + 0.5);
+  addCollider(cx, CITY_Y, FZ + 2.1 + (D - 4.2) / 2,
+    W + 0.4, BREAKWATER_SOFFIT, D - 4.0);
+  addCollider(cx, CITY_Y + BREAKWATER_SOFFIT, arcadeZ,
+    W - 0.4, 0.3, 3.4);
   addCollider(px, CITY_Y, pz, 0.7, pylonH, 0.85);
-  addCollider(cx, CITY_Y + 3.05, FZ - 0.9, W * 0.6, 0.28, 1.7);
 }
 
 function buildCavalier(stucco, dark, glass, pushNeon, addCollider) {
@@ -407,30 +415,39 @@ function buildWinterhaven(stucco, dark, glass, pushNeon, addCollider) {
   const W = WINTERHAVEN_W;
   const D = WINTERHAVEN_D;
   const BODY = 0xeef4f2, BODY2 = 0xdce8e4, TRIM = 0x2a8f7a, NEON = 0x3dffc2, NAME = 0x145a4c;
-  const floors = 3;
-  const bodyH = GH + (floors - 1) * FH;
+  const floors = 2;
+  const bodyH = WINTERHAVEN_SOFFIT + floors * FH;
   const zMass = FZ + D / 2;
+  const arcadeZ = FZ - 1.7;
 
-  stucco.push(cBox(W, bodyH, D, BODY, cx, CITY_Y + bodyH / 2, zMass));
-  stucco.push(cBox(W * 0.4, bodyH, 0.48, BODY2, cx, CITY_Y + bodyH / 2, FZ - 0.18));
+  stucco.push(cBox(W, bodyH - WINTERHAVEN_SOFFIT, D, BODY,
+    cx, CITY_Y + WINTERHAVEN_SOFFIT + (bodyH - WINTERHAVEN_SOFFIT) / 2, zMass));
+  stucco.push(cBox(W, WINTERHAVEN_SOFFIT, D - 4.2, BODY2,
+    cx, CITY_Y + WINTERHAVEN_SOFFIT / 2, FZ + 2.1 + (D - 4.2) / 2));
 
-  for (let f = 0; f < floors; f++) {
-    const fy = CITY_Y + (f === 0 ? 0 : GH + (f - 1) * FH);
-    const fh = f === 0 ? GH : FH;
-    const winY = fy + fh * 0.56;
-    const winH = f === 0 ? 2.2 : 1.5;
-    stucco.push(cBox(W + 0.2, 0.15, 0.58, TRIM, cx, winY + winH / 2 + 0.28, FZ - 0.26));
-    for (const s of [-1, 0, 1]) {
-      glass.push(new THREE.BoxGeometry(1.7, winH, 0.1)
-        .translate(cx + s * 3.6, winY, FZ - 0.05));
-      dark.push(cBox(1.88, winH + 0.18, 0.08, REVEAL, cx + s * 3.6, winY, FZ + 0.04));
-    }
-    pushNeon(NEON, cBox(W - 0.5, 0.07, 0.07, NEON, cx, winY + winH / 2 + 0.36, FZ - 0.54));
+  for (const s of [-1, 1]) {
+    stucco.push(cCyl(0.2, 0.22, WINTERHAVEN_SOFFIT, 10, TRIM,
+      cx + s * (W / 2 - 0.7), CITY_Y + WINTERHAVEN_SOFFIT / 2, arcadeZ));
   }
+  stucco.push(cBox(W - 0.4, 0.24, 3.4, TRIM,
+    cx, CITY_Y + WINTERHAVEN_SOFFIT + 0.12, arcadeZ));
+  pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
+    cx, CITY_Y + WINTERHAVEN_SOFFIT - 0.06, arcadeZ - 1.55));
   // extra neon outline — Winterhaven corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
       cx + s * (W / 2 - 0.08), CITY_Y + bodyH / 2, FZ - 0.22));
+  }
+
+  for (let f = 0; f < floors; f++) {
+    const fy = CITY_Y + WINTERHAVEN_SOFFIT + 1.55 + f * FH;
+    stucco.push(cBox(W + 0.2, 0.15, 0.58, TRIM, cx, fy + 1.05, FZ - 0.26));
+    for (const s of [-1, 0, 1]) {
+      glass.push(new THREE.BoxGeometry(1.7, 1.5, 0.1)
+        .translate(cx + s * 3.6, fy, FZ - 0.05));
+      dark.push(cBox(1.88, 1.68, 0.08, REVEAL, cx + s * 3.6, fy, FZ + 0.04));
+    }
+    pushNeon(NEON, cBox(W - 0.5, 0.07, 0.07, NEON, cx, fy + 1.12, FZ - 0.54));
   }
 
   const roofY = CITY_Y + bodyH;
@@ -440,12 +457,12 @@ function buildWinterhaven(stucco, dark, glass, pushNeon, addCollider) {
   pushNeon(NEON, colorFill(new THREE.BoxGeometry(W + 0.08, 0.08, 0.08)
     .translate(cx, roofY + 0.78, FZ - 0.18), NEON));
 
-  stucco.push(cBox(W * 0.58, 0.18, 1.5, TRIM, cx, CITY_Y + 3.1, FZ - 0.85));
-  for (const s of [-1, 1]) {
-    dark.push(cCyl(0.08, 0.09, 2.95, 8, METAL,
-      cx + s * 3.5, CITY_Y + 1.48, FZ - 1.35));
-  }
+  dark.push(cBox(W * 0.7, 0.05, 2.8, TERRAZZO, cx, CITY_Y + 0.025, arcadeZ));
 
-  addCollider(cx, CITY_Y, zMass, W + 0.5, bodyH + 1.8, D + 0.5);
-  addCollider(cx, CITY_Y + 3.0, FZ - 0.85, W * 0.58, 0.28, 1.6);
+  addCollider(cx, CITY_Y + WINTERHAVEN_SOFFIT, zMass,
+    W + 0.5, bodyH - WINTERHAVEN_SOFFIT + 1.2, D + 0.5);
+  addCollider(cx, CITY_Y, FZ + 2.1 + (D - 4.2) / 2,
+    W + 0.4, WINTERHAVEN_SOFFIT, D - 4.0);
+  addCollider(cx, CITY_Y + WINTERHAVEN_SOFFIT, arcadeZ,
+    W - 0.4, 0.3, 3.4);
 }

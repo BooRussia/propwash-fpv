@@ -85,6 +85,8 @@ import {
   HOTEL_FLAG_CELLS, COURT_WELL_CELLS, INLAND_ARCADE_CELLS, INLAND_MIDRISE_CELLS,
   MAJESTIC_X, MAJESTIC_FRONT_Z, MAJESTIC_W, MAJESTIC_SOFFIT,
   CAVALIER_X, CAVALIER_FRONT_Z, CAVALIER_W, CAVALIER_SOFFIT,
+  BREAKWATER_X, BREAKWATER_FRONT_Z, BREAKWATER_W, BREAKWATER_SOFFIT,
+  WINTERHAVEN_X, WINTERHAVEN_FRONT_Z, WINTERHAVEN_W, WINTERHAVEN_SOFFIT,
   FLY_VOIDS,
 } from './constants.js';
 import { tryPlace } from './planting.js';
@@ -1220,6 +1222,16 @@ export function runMiamiLeftoverLotTests() {
     && CAVALIER_X + CAVALIER_W / 2 + 1.2 < 240
     && FLY_VOIDS.some((v) => v.id === 'majestic-arcade')
     && FLY_VOIDS.some((v) => v.id === 'cavalier-arcade')
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
+  ok('Winterhaven/Breakwater porch arcades miss leftoverLot A–H',
+    WINTERHAVEN_SOFFIT === 3.5 && BREAKWATER_SOFFIT === 3.5
+    && leftoverLotOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z - 1.7, WINTERHAVEN_W, 3.4, 0.15) === false
+    && leftoverLotOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z - 1.7, BREAKWATER_W, 3.4, 0.15) === false
+    && WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 240
+    && WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 251
+    && BREAKWATER_X + BREAKWATER_W / 2 + 1.2 < 240
+    && FLY_VOIDS.some((v) => v.id === 'winterhaven-arcade')
+    && FLY_VOIDS.some((v) => v.id === 'breakwater-arcade')
     && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------
