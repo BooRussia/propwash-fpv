@@ -70,6 +70,7 @@ import {
   BOARDWALK_BIKE_X0, BOARDWALK_BIKE_X1,
   CROSS_X, PED_SIGNAL_CELLS, FLEX_POST_CELLS,
   PALM_BEACH_LAWN_CELLS, PLANT_BEACH_Z,
+  HOTEL_FLAG_CELLS,
   PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS,
   PIER_DECK_Z, PIER_DECK_W, PIER_DECK_D, PIER_DECK_TOP, PAVILION_Z,
 } from './constants.js';
@@ -1717,6 +1718,30 @@ function FRONT_Z_OK() {
       && Math.abs(x - PIER_X) >= 12)
     && index.includes('queueBeachLawnPalms(ctx)'));
   ok('leftoverLot A–H still signed after beach lawn palms',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  const hotelXs = [
+    MAJESTIC_X, AVALON_X, COLONY_X, BREAKWATER_X, CLEVELANDER_X,
+    CASA_X, CARDOZO_X, CAVALIER_X, WINTERHAVEN_X,
+  ];
+  const dressingPath = join(here, 'props/building-dressing.js');
+  const dressing = existsSync(dressingPath) ? readFileSync(dressingPath, 'utf8') : '';
+  ok('signed hotel-crown flags sit on named Ocean Drive roofs, miss leftoverLot / travel',
+    HOTEL_FLAG_CELLS.length === 9
+    && HOTEL_FLAG_CELLS.every(([x, z, y]) => x < 240 && y >= 12
+      && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && z > TRAVEL_Z1
+      && hotelXs.includes(x))
+    && hotelXs.every((hx) => HOTEL_FLAG_CELLS.some(([x]) => x === hx))
+    && kenney.includes('HOTEL_FLAG_CELLS') && kenney.includes("'hotel-crown-flags'")
+    && kenney.includes('buildHotelCrownFlagGeo') && kenney.includes('hash01(i, 3401)')
+    && dressing.includes('export function buildHotelCrownFlagGeo')
+    && dressing.includes('FLAG_CLOTH')
+    && !/\brng2?\s*\(/.test(kenney) && !kenney.includes('ShaderMaterial')
+    && !kenney.includes('ped.js') && !kenney.includes('traffic.js'));
+  ok('leftoverLot A–H still signed after hotel-crown flags',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 

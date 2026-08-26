@@ -82,6 +82,7 @@ import {
   leftoverLotGeom, leftoverLotVoids, leftoverLotColliderShapes,
   leftoverLotPlantSpots, inLeftoverLotGate, leftoverLotOverlap,
   inLeftoverLotReserved,
+  HOTEL_FLAG_CELLS,
 } from './constants.js';
 import { tryPlace } from './planting.js';
 
@@ -1133,6 +1134,12 @@ export function runMiamiLeftoverLotTests() {
     && plantsH.weeds.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)
       && !onPavement(p.x, p.z) && !onSidewalk(p.x, p.z) && !onBoardwalk(p.x, p.z))
     && plantsH.palms.every((p) => !inLeftoverLotGate(p.x, p.z, 0.2)));
+
+  ok('hotel-crown flags miss leftoverLot A–H',
+    HOTEL_FLAG_CELLS.length === 9
+    && HOTEL_FLAG_CELLS.every(([x, z]) => x < 240
+      && leftoverLotOverlap(x, z, 0.2, 1.8, 0.15) === false)
+    && LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398);
 
   // ---- one placer; no second scatterer; look locks -----------------------
   const planting = readFileSync(join(here, 'planting.js'), 'utf8');

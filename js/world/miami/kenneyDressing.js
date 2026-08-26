@@ -5,6 +5,7 @@ import {
   BOARDWALK_BENCH_CELLS, BOARDWALK_LAMP_CELLS,
   PED_SIGNAL_CELLS, FLEX_POST_CELLS,
   PIER_CLEAT_CELLS, PIER_BENCH_CELLS, PIER_RING_CELLS, PIER_DECK_TOP, PAVILION_Z,
+  HOTEL_FLAG_CELLS,
 } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
@@ -31,7 +32,7 @@ import {
   buildChainLinkRunGeo,
   buildSwingGateGeo,
 } from './props/fence-rail.js';
-import { buildWindowAcRowGeo, buildFlagpoleGeo } from './props/building-dressing.js';
+import { buildWindowAcRowGeo, buildFlagpoleGeo, buildHotelCrownFlagGeo } from './props/building-dressing.js';
 import { buildPedSignalGeo, buildBollardFlexGeo } from './props/traffic-control.js';
 
 // CC0 GLBs/glTFs (assets/models/<slug>/<slug>.glb|.gltf).
@@ -829,6 +830,19 @@ export async function buildKenneyDressing(ctx) {
     addCyl(x, y, z, 0.08, 7);
   }
   instanceAuthored(ctx, buildFlagpoleGeo(), vc(), flags, 'catalog-flagpole');
+
+  // Signed flags on Ocean Drive hotel crowns. Authored y, hash01 yaw.
+  // Skip leftoverLot / travel / x>=240. Do not restack sidewalk poles.
+  const hotelFlags = [];
+  for (let i = 0; i < HOTEL_FLAG_CELLS.length; i++) {
+    const [x, z, y] = HOTEL_FLAG_CELLS[i];
+    if (x >= 240) continue;
+    if (z > 40.2 && z < 47.8) continue;
+    if (leftoverLotOverlap(x, z, 0.2, 1.8, 0.15)) continue;
+    hotelFlags.push({ x, y, z, rotY: hash01(i, 3401) * Math.PI * 2 });
+    addCyl(x, y, z, 0.08, 7);
+  }
+  instanceAuthored(ctx, buildHotelCrownFlagGeo(), vc(), hotelFlags, 'hotel-crown-flags');
 
   // Extra signed beach chairs + umbrellas on the sand. hash01 yaw only.
   // Skip keepouts / leftoverLot / travel. Do not restack loops above.

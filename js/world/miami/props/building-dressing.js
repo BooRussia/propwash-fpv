@@ -79,3 +79,23 @@ export function buildFlagpoleGeo() {
     cCyl(0.07, 0.0, 0.07, 10, GOLD, 0, 7.00, 0),
   ]);
 }
+
+const FLAG_CLOTH = 0xe24b5a;
+
+/**
+ * Hotel-crown flag: catalog pole + coral cloth. Origin at the crown deck.
+ * Cloth hangs +X of the shaft so instance rotY is the wind heading.
+ */
+export function buildHotelCrownFlagGeo() {
+  return merge([
+    cCyl(0.22, 0.26, 0.18, 10, STONE, 0, 0.09, 0),
+    cCyl(0.18, 0.18, 0.04, 10, 0x7a756c, 0, 0.19, 0),
+    cCyl(0.07, 0.085, 0.12, 8, STEEL, 0, 0.26, 0),
+    cCyl(0.028, 0.048, 6.52, 8, CREAM, 0, 3.58, 0),
+    cCyl(0.04, 0.04, 0.06, 8, STEEL2, 0, 6.87, 0),
+    cCyl(0.0, 0.07, 0.07, 10, GOLD, 0, 6.93, 0),
+    cCyl(0.07, 0.0, 0.07, 10, GOLD, 0, 7.00, 0),
+    cBox(0.05, 1.05, 0.04, CREAM, 0.05, 5.42, 0),
+    cBox(1.65, 1.05, 0.035, FLAG_CLOTH, 0.90, 5.42, 0),
+  ]);
+}

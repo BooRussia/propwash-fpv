@@ -179,6 +179,21 @@ export const WINTERHAVEN_FRONT_Z = 57.6;
 export const WINTERHAVEN_W = 16;
 export const WINTERHAVEN_D = 18;
 
+// Signed flags on Ocean Drive hotel crowns. [x, z, y] with y on the
+// parapet / crown deck. West of leftoverLot A. Inland of travel 40.2–47.8.
+// hash01 never at const-eval. Art-deco xs already fly a crown pole — skip.
+export const HOTEL_FLAG_CELLS = Object.freeze([
+  [-178, 59.1, 17.3],
+  [-152, 58.8, 15.4],
+  [-108, 58.8, 15.4],
+  [42, 58.8, 15.9],
+  [60, 58.8, 13.7],
+  [90, 62.8, 13.0],
+  [115, 59.4, 17.4],
+  [134, 59.1, 17.3],
+  [222, 58.8, 12.6],
+]);
+
 // ---- marina + yacht club ----
 export const MARINA_X = 300;
 export const MARINA_FINGER_XS = Object.freeze([300, 326, 352]);

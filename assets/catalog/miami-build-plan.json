@@ -548,7 +548,16 @@
     {
       "id": "hotel-flags",
       "title": "Signed flags on Ocean Drive hotel crowns, hash01, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "9 HOTEL_FLAG_CELLS on named Ocean Drive hotel crowns; buildHotelCrownFlagGeo pole+cloth; hash01 yaw; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/kenneyDressing.js",
+        "js/world/miami/props/building-dressing.js",
+        "js/world/miami/kenneyDressingTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "court-more",

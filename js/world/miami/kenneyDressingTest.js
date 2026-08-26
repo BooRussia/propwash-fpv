@@ -111,6 +111,12 @@ export function runMiamiKenneyDressingTests() {
     && kenney.includes('addOBB(x, y, z, 0.35, 0.7, 0.2')
     && kenney.includes('addCyl(x, y, z, 0.08, 0.85)')
     && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
+  ok('signed hotel-crown flags sit on authored roofs, hash01 only',
+    kenney.includes('HOTEL_FLAG_CELLS') && kenney.includes("'hotel-crown-flags'")
+    && kenney.includes('buildHotelCrownFlagGeo') && kenney.includes('hash01(i, 3401)')
+    && kenney.includes('leftoverLotOverlap')
+    && kenney.includes('z > 40.2 && z < 47.8')
+    && !/\brng2?\(/.test(kenney) && !/\brng3\(/.test(kenney) && !/\brng4\(/.test(kenney));
   ok('signed pier-deck dressing is hash01, leftoverLot unmoved',
     kenney.includes('PIER_CLEAT_CELLS') && kenney.includes('PIER_BENCH_CELLS')
     && kenney.includes('PIER_RING_CELLS')
