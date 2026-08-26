@@ -1015,12 +1015,12 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 17
+    INLAND_ARCADE_CELLS.length === 20
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 1
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240
@@ -1037,6 +1037,9 @@ function FRONT_Z_OK() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -540 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 237)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_OPEN_W')
     && !/\brng2?\s*\(/.test(inland) && !inland.includes('ShaderMaterial'));
   ok('leftoverLot A–H still signed after inland arcades',

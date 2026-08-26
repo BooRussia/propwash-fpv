@@ -928,7 +928,15 @@
     {
       "id": "arcade-skyline",
       "title": "Ground-floor fly-throughs on new skyline plates at x=-540/-390/-190 that miss roof rings and court wells",
-      "status": "pending"
+      "status": "done",
+      "notes": "INLAND_ARCADE_CELLS +[-540,237]/[-390,237]/[-190,237]; skip z=259 roof rings; jambs+soffit, fly ±Z; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "court-new",

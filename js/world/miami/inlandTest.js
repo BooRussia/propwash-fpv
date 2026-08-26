@@ -10,7 +10,7 @@ import {
   INLAND_MIDRISE_W, INLAND_MIDRISE_D, INLAND_MIDRISE_H, INLAND_MIDRISE_CELLS,
   inlandMidrises, ALLEY_PIPE_CELLS, FLY_VOIDS, inKeepout, inReserved,
   COURT_WELL_CELLS, COURT_WELL_W, COURT_WELL_D, isCourtWellCell,
-  INLAND_ARCADE_CELLS, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W, isInlandArcadeCell, courtWellGeom,
+  INLAND_ARCADE_CELLS, INLAND_ARCADE_SOFFIT, INLAND_ARCADE_OPEN_W, isInlandArcadeCell, inlandArcadeGeom, courtWellGeom,
   leftoverLotOverlap, streetOverlap, helipadOverlap, inHelipadReserved,
   WASH_X0, WASH_Z0, WASH_Z1,
   FIRE_ESCAPE_CELLS, FIRE_ESCAPE_Z, FIRE_ESCAPE_POST_H, FIRE_ESCAPE_HALF_Z,
@@ -267,12 +267,12 @@ export function runMiamiInlandTests() {
     && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('z=210/152/96 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 17
+    INLAND_ARCADE_CELLS.length === 20
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 4
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 1
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240
@@ -291,10 +291,28 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 96)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === 210 && z === 96)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -540 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 237)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -250 && z === 96)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_SOFFIT')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
+  ok('skyline arcades at x=-540/-390/-190 miss roof rings and court wells',
+    [[-540, 237], [-390, 237], [-190, 237]].every(([x, z]) =>
+      isInlandArcadeCell(x, z)
+      && !isCourtWellCell(x, z)
+      && !ROOF_RING_CELLS.some(([rx, rz]) => rx === x && rz === z)
+      && !ROOF_AC_CELLS.some(([rx, rz]) => rx === x && rz === z)
+      && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
+      && inlandArcadeGeom(x, z, 't').fly === '±Z'
+      && x < 240 && x < 251)
+    && !isInlandArcadeCell(-540, 259)
+    && !isInlandArcadeCell(-390, 259)
+    && !isInlandArcadeCell(-190, 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -540 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -390 && z === 259)
+    && ROOF_RING_CELLS.some(([x, z]) => x === -190 && z === 259));
 
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
