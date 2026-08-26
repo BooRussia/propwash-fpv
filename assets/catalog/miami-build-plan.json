@@ -339,6 +339,26 @@
       "id": "gap-429",
       "title": "West-face storefronts on GAP_X=429 if they stay west of leftoverLot A; otherwise skip east face",
       "status": "pending"
+    },
+    {
+      "id": "npc-beach",
+      "title": "More beach walkers and towel sitters near the new chair rows, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "gap-501",
+      "title": "Inland storefronts on GAP_X=-501 with arcade fly-unders if west of leftoverLot A",
+      "status": "pending"
+    },
+    {
+      "id": "boardwalk-fill",
+      "title": "Extra boardwalk benches, lamps, and skaters west of leftoverLot A, hash01",
+      "status": "pending"
+    },
+    {
+      "id": "skyline-west",
+      "title": "Two more six-sided inland mid-rises west of x=-430 if they miss helipad W, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
