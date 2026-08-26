@@ -1737,6 +1737,18 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fire-escape-mid2",
+      "title": "Alley fire-escape whoops on x=-160/-110 flanks at z=248, jambs only, fly +X",
+      "status": "done",
+      "notes": "four frames at plateX±9 for -160/-110; 12 m alleys to -190/-80; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
