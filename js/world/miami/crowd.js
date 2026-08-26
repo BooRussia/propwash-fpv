@@ -10,7 +10,9 @@ import {
   VBALL_X0, VBALL_X1, VBALL_Z0, VBALL_Z1,
   LINCOLN_WALK_RUNS,
   washingtonRuns, WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
+  WASH_TRAVEL_Z0, WASH_TRAVEL_Z1,
   groundHeight, inKeepout, leftoverLotOverlap,
+  onLincolnWalk, onWashingtonWalk,
 } from './constants.js';
 
 // ============================================================
@@ -67,6 +69,16 @@ function inCarriageway(z) {
   return z > ROAD_Z0 && z < ROAD_Z1;
 }
 
+function inWashTravel(z) {
+  return z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1;
+}
+
+function npcOffLimits(x, z) {
+  if (inTravelLane(z) || inCarriageway(z) || inWashTravel(z)) return true;
+  if (x >= 240) return true;
+  return leftoverLotOverlap(x, z, 0.6, 0.6, 0.15);
+}
+
 function wrapX(x) {
   const span = CROWD_X1 - CROWD_X0;
   let u = x;
@@ -98,9 +110,11 @@ export function buildCrowd(ctx) {
   const nVball = 12;
   const nGuard = LIFEGUARD_SIT_CELLS.length;
   const nInland = 36;
-  const nLincoln = 20;
-  const nWashington = 16;
-  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked + nVball + nGuard + nInland + nLincoln + nWashington;
+  const nLincoln = 40;
+  const nLincolnSit = 14;
+  const nWashington = 36;
+  const total = nWalk + nBike + nSkate + nBeach + nSwim + nSit + nParked
+    + nVball + nGuard + nInland + nLincoln + nLincolnSit + nWashington;
 
   const bodyMesh = makeInstanced(track, new THREE.BoxGeometry(0.32, 0.72, 0.2), total);
   const headMesh = makeInstanced(track, new THREE.SphereGeometry(0.13, 8, 6), total);
@@ -286,11 +300,9 @@ export function buildCrowd(ctx) {
     const runI = i % LINCOLN_WALK_RUNS.length;
     const run = LINCOLN_WALK_RUNS[runI];
     const x = run[0] + hash01(i + 1600, 3) * (run[1] - run[0]);
-    const z = LINCOLN_WALK_Z + (hash01(i + 1600, 5) - 0.5) * 2.2;
+    const z = LINCOLN_WALK_Z + (hash01(i + 1600, 5) - 0.5) * 6.0;
     const dir = hash01(i + 1600, 7) < 0.5 ? 1 : -1;
-    if (inTravelLane(z) || inCarriageway(z) || inKeepout(x, z)) continue;
-    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
-    if (x >= 240) continue;
+    if (npcOffLimits(x, z) || !onLincolnWalk(x, z)) continue;
     actors.push({
       kind: 'lincoln', i: actors.length, extra: -1, run: runI,
       x, z, y: CITY_Y + 0.06, dir,
@@ -301,23 +313,37 @@ export function buildCrowd(ctx) {
     });
   }
 
+  for (let i = 0; i < nLincolnSit; i++) {
+    const runI = i % LINCOLN_WALK_RUNS.length;
+    const run = LINCOLN_WALK_RUNS[runI];
+    const x = run[0] + hash01(i + 1700, 3) * (run[1] - run[0]);
+    const z = LINCOLN_WALK_Z + (hash01(i + 1700, 5) < 0.5 ? -3.6 : 3.6);
+    if (npcOffLimits(x, z) || !onLincolnWalk(x, z)) continue;
+    actors.push({
+      kind: 'lincoln-sit', i: actors.length, extra: -1, run: runI,
+      x, z, y: CITY_Y + 0.06, dir: 0,
+      yaw: z < LINCOLN_WALK_Z ? Math.PI / 2 : -Math.PI / 2,
+      speed: 0, phase: hash01(i + 1700, 7) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1700, 11), skin: pick(SKIN, i + 1700, 13),
+    });
+  }
+
   for (let i = 0; i < nWashington; i++) {
     const runI = i % WASH_WALK_RUNS.length;
     const run = WASH_WALK_RUNS[runI];
     const x = run.x0 + hash01(i + 1800, 3) * (run.x1 - run.x0);
     const ocean = hash01(i + 1800, 5) < 0.5;
-    const z = ocean ? WASH_SW_OCEAN_Z : WASH_SW_INLAND_Z;
+    const zc = ocean ? WASH_SW_OCEAN_Z : WASH_SW_INLAND_Z;
+    const z = zc + (hash01(i + 1800, 13) - 0.5) * 0.8;
     const dir = hash01(i + 1800, 7) < 0.5 ? 1 : -1;
-    if (inTravelLane(z) || inCarriageway(z) || inKeepout(x, z)) continue;
-    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
-    if (x >= 240) continue;
+    if (npcOffLimits(x, z) || !onWashingtonWalk(x, z)) continue;
     actors.push({
       kind: 'washington', i: actors.length, extra: -1, run: runI,
       x, z, y: CITY_Y + 0.06, dir,
       yaw: dir > 0 ? 0 : Math.PI,
       speed: 1.05 + hash01(i + 1800, 11) * 0.45,
-      phase: hash01(i + 1800, 13) * Math.PI * 2,
-      shirt: pick(SHIRT, i + 1800, 17), skin: pick(SKIN, i + 1800, 19),
+      phase: hash01(i + 1800, 17) * Math.PI * 2,
+      shirt: pick(SHIRT, i + 1800, 19), skin: pick(SKIN, i + 1800, 23),
     });
   }
 
@@ -365,7 +391,8 @@ function stepActors(state, dt) {
   const { actors } = state;
   for (let i = 0; i < actors.length; i++) {
     const a = actors[i];
-    if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard') continue;
+    if (a.kind === 'sit' || a.kind === 'parked' || a.kind === 'guard'
+        || a.kind === 'lincoln-sit') continue;
     if (a.kind === 'vball') continue;
     if (a.kind === 'beach' && a.speed === 0) continue;
     if (a.kind === 'inland') {
@@ -383,8 +410,7 @@ function stepActors(state, dt) {
       const run = LINCOLN_WALK_RUNS[a.run] || LINCOLN_WALK_RUNS[0];
       if (a.x > run[1]) { a.x = run[1]; a.dir = -1; a.yaw = Math.PI; }
       if (a.x < run[0]) { a.x = run[0]; a.dir = 1; a.yaw = 0; }
-      if (inTravelLane(a.z) || inCarriageway(a.z)
-          || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15) || a.x >= 240) {
+      if (npcOffLimits(a.x, a.z) || !onLincolnWalk(a.x, a.z)) {
         a.dir *= -1;
         a.yaw = a.dir > 0 ? 0 : Math.PI;
       }
@@ -395,8 +421,7 @@ function stepActors(state, dt) {
       const run = WASH_WALK_RUNS[a.run] || WASH_WALK_RUNS[0];
       if (a.x > run.x1) { a.x = run.x1; a.dir = -1; a.yaw = Math.PI; }
       if (a.x < run.x0) { a.x = run.x0; a.dir = 1; a.yaw = 0; }
-      if (inTravelLane(a.z) || inCarriageway(a.z)
-          || leftoverLotOverlap(a.x, a.z, 0.6, 0.6, 0.15) || a.x >= 240) {
+      if (npcOffLimits(a.x, a.z) || !onWashingtonWalk(a.x, a.z)) {
         a.dir *= -1;
         a.yaw = a.dir > 0 ? 0 : Math.PI;
       }
@@ -428,14 +453,14 @@ function stampAll(state) {
       ? Math.abs(Math.sin(t * (a.kind === 'skate' ? 10 : a.kind === 'vball' ? 5 : 7) + a.phase)) * 0.06
       : a.kind === 'bike' ? Math.sin(t * 12 + a.phase) * 0.02
         : 0;
-    const crouch = (a.kind === 'sit' || a.kind === 'guard') ? 0.28
+    const crouch = (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit') ? 0.28
       : a.kind === 'swim' ? 0.12 : a.kind === 'parked' ? 0.22 : 0.36;
     const bodyY = a.kind === 'swim' ? a.y : a.y + crouch + bob;
     const rx = a.kind === 'swim' ? Math.PI / 2 : 0;
 
     _dummy.position.set(a.x, bodyY, a.z);
     _dummy.rotation.set(rx, a.yaw, 0);
-    _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard') ? 0.72 : 1, 1);
+    _dummy.scale.set(1, (a.kind === 'sit' || a.kind === 'guard' || a.kind === 'lincoln-sit') ? 0.72 : 1, 1);
     _dummy.updateMatrix();
     bodyMesh.setMatrixAt(i, _dummy.matrix);
     _color.setHex(a.shirt);
@@ -493,6 +518,8 @@ function buildBikeRacks(root, track, cityZ) {
 }
 
 /** True when a crowd actor would be illegal (travel lane / carriageway). */
-export function crowdPointIllegal(z) {
-  return inTravelLane(z) || inCarriageway(z);
+export function crowdPointIllegal(z, x) {
+  if (inTravelLane(z) || inCarriageway(z) || inWashTravel(z)) return true;
+  if (x != null && (x >= 240 || leftoverLotOverlap(x, z, 0.6, 0.6, 0.15))) return true;
+  return false;
 }

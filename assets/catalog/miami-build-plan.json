@@ -181,7 +181,14 @@
     {
       "id": "npc-lincoln-wash",
       "title": "Visual crowd on Lincoln mall and Washington Ave sidewalks, hash01, no colliders",
-      "status": "pending"
+      "status": "done",
+      "notes": "nLincoln=40 + nLincolnSit=14 on mall pavers; nWashington=36 on both sidewalks; skip keepout so mall fills; npcOffLimits keeps travel/leftoverLot/x>=240 empty; no colliders",
+      "files": [
+        "js/world/miami/crowd.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/lincolnTest.js",
+        "js/world/miami/washingtonTest.js"
+      ]
     },
     {
       "id": "fire-escape",
@@ -210,7 +217,7 @@
     "inlandMidrise": { "cells": [[-430, 237], [-430, 259], [-250, 237], [-250, 259], [-80, 237], [-80, 259], [100, 237], [100, 259]], "status": "done", "note": "six-sided deco plates + rooftop kits + z=248 alley pipes; west of x=240; hash01" },
     "lincolnWalk": { "z": 120, "cells": [[-250, 120], [96, 120], [136, 120], [190, 120]], "status": "done", "note": "E-W pedestrian mall + fly-under pergolas, west of leftoverLot A; leftoverLot A–H unmoved" },
     "washingtonAve": { "z": 180, "arcadeX": 96, "status": "done", "note": "second N-S street west of Ocean Drive; painted 14 m lanes + parked cars + one fly-under arcade at x=96; west of leftoverLot A; leftoverLot A–H unmoved" },
-    "eighthStreet": { "x": -129, "frontX": -137.9, "status": "in_progress", "note": "GAP_X=-129 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" }
+    "eighthStreet": { "x": -129, "frontX": -137.9, "status": "done", "note": "GAP_X=-129 inland storefronts, fly ±Z arcade + ±X pass; both faces west of leftoverLot A; leftoverLot A–H unmoved" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

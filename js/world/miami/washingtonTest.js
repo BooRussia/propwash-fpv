@@ -168,7 +168,8 @@ export function runMiamiWashingtonTests() {
 
   ok('crowd walks Washington sidewalks, no colliders',
     crowd.includes("kind: 'washington'") && crowd.includes('WASH_WALK_Z_OCEAN')
-    && crowd.includes('const nWashington = 16')
+    && crowd.includes('const nWashington = 36')
+    && crowd.includes('onWashingtonWalk')
     && !crowd.includes('addCollider') && !crowd.includes('addCyl'));
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84

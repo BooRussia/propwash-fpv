@@ -151,7 +151,10 @@ export function runMiamiLincolnTests() {
 
   ok('crowd walks Lincoln, no colliders',
     crowd.includes("kind: 'lincoln'") && crowd.includes('LINCOLN_WALK_Z')
-    && crowd.includes('const nLincoln = 20')
+    && crowd.includes('const nLincoln = 40')
+    && crowd.includes("kind: 'lincoln-sit'")
+    && crowd.includes('const nLincolnSit = 14')
+    && crowd.includes('onLincolnWalk')
     && !crowd.includes('addCollider') && !crowd.includes('addCyl'));
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_Z === 84

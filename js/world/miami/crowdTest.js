@@ -38,10 +38,13 @@ import {
   lincolnShops, lincolnPergolas, onLincolnWalk,
   WASH_Z, WASH_HALF, WASH_X1, WASH_ARCADE_X, WASH_ARCADE_Z, WASH_ARCADE_POST_H,
   WASH_TRAVEL_Z0, WASH_TRAVEL_Z1, WASH_PARK_OCEAN_Z, WASH_PARK_INLAND_Z,
+  WASH_SW_OCEAN_Z, WASH_SW_INLAND_Z,
   washingtonRuns, washingtonCars, washingtonArcadeGeom, onWashingtonRoad,
+  onWashingtonWalk,
   EIGHTH_X, EIGHTH_W_CELLS, EIGHTH_E_CELLS, EIGHTH_W_FRONT_X, EIGHTH_E_FRONT_X,
   EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
 } from './constants.js';
+import { hash01 } from './rng.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '../../..');
@@ -588,7 +591,10 @@ export function runMiamiCrowdTests() {
     && lincoln.includes('installFlyColliders'));
   ok('crowd walks the Lincoln mall',
     crowd.includes("kind: 'lincoln'") && crowd.includes('LINCOLN_WALK_Z')
-    && crowd.includes('const nLincoln = 20')
+    && crowd.includes('const nLincoln = 40')
+    && crowd.includes("kind: 'lincoln-sit'")
+    && crowd.includes('const nLincolnSit = 14')
+    && crowd.includes('onLincolnWalk')
     && !crowd.includes('addCollider'));
 
   const lincolnList = lincolnShops();
@@ -659,7 +665,9 @@ export function runMiamiCrowdTests() {
     && washington.includes('installFlyColliders'));
   ok('crowd walks Washington sidewalks',
     crowd.includes("kind: 'washington'") && crowd.includes('WASH_WALK_Z_OCEAN')
-    && crowd.includes('const nWashington = 16')
+    && crowd.includes('const nWashington = 36')
+    && crowd.includes('onWashingtonWalk')
+    && crowd.includes('WASH_TRAVEL_Z0')
     && !crowd.includes('addCollider'));
 
   const washRuns = washingtonRuns();
@@ -681,6 +689,66 @@ export function runMiamiCrowdTests() {
   ok('leftoverLot A–H still signed after Washington Ave',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
+
+  const lincolnSpots = [];
+  for (let i = 0; i < 40; i++) {
+    const run = LINCOLN_WALK_RUNS[i % LINCOLN_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 1600, 3) * (run[1] - run[0]);
+    const z = LINCOLN_Z + (hash01(i + 1600, 5) - 0.5) * 6.0;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (!onLincolnWalk(x, z)) continue;
+    lincolnSpots.push({ x, z });
+  }
+  const lincolnSitSpots = [];
+  for (let i = 0; i < 14; i++) {
+    const run = LINCOLN_WALK_RUNS[i % LINCOLN_WALK_RUNS.length];
+    const x = run[0] + hash01(i + 1700, 3) * (run[1] - run[0]);
+    const z = LINCOLN_Z + (hash01(i + 1700, 5) < 0.5 ? -3.6 : 3.6);
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (!onLincolnWalk(x, z)) continue;
+    lincolnSitSpots.push({ x, z });
+  }
+  ok('lincoln walkers fill the mall, miss leftoverLot / travel / x>=240',
+    lincolnSpots.length >= 36
+    && lincolnSpots.every((p) => onLincolnWalk(p.x, p.z)
+      && p.x < 240 && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)));
+  ok('lincoln sitters sit on the mall, miss leftoverLot / travel',
+    lincolnSitSpots.length >= 12
+    && lincolnSitSpots.every((p) => onLincolnWalk(p.x, p.z)
+      && p.x < 240 && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)));
+
+  const washRunsForCrowd = washingtonRuns();
+  const washSpots = [];
+  for (let i = 0; i < 36; i++) {
+    const run = washRunsForCrowd[i % washRunsForCrowd.length];
+    const x = run.x0 + hash01(i + 1800, 3) * (run.x1 - run.x0);
+    const ocean = hash01(i + 1800, 5) < 0.5;
+    const zc = ocean ? WASH_SW_OCEAN_Z : WASH_SW_INLAND_Z;
+    const z = zc + (hash01(i + 1800, 13) - 0.5) * 0.8;
+    if (x >= 240) continue;
+    if (leftoverLotOverlap(x, z, 0.6, 0.6, 0.15)) continue;
+    if (z > TRAVEL_Z0 && z < TRAVEL_Z1) continue;
+    if (z > WASH_TRAVEL_Z0 && z < WASH_TRAVEL_Z1) continue;
+    if (!onWashingtonWalk(x, z)) continue;
+    washSpots.push({ x, z });
+  }
+  ok('washington walkers fill both sidewalks, miss travel / leftoverLot',
+    washSpots.length >= 32
+    && washSpots.every((p) => onWashingtonWalk(p.x, p.z)
+      && p.x < 240 && leftoverLotOverlap(p.x, p.z, 0.6, 0.6, 0.15) === false
+      && !(p.z > TRAVEL_Z0 && p.z < TRAVEL_Z1)
+      && !(p.z > WASH_TRAVEL_Z0 && p.z < WASH_TRAVEL_Z1))
+    && washSpots.some((p) => Math.abs(p.z - WASH_SW_OCEAN_Z) < 0.6)
+    && washSpots.some((p) => Math.abs(p.z - WASH_SW_INLAND_Z) < 0.6));
+  ok('lincoln/washington NPCs have no colliders',
+    !crowd.includes('addCollider') && !crowd.includes('addOBB')
+    && crowd.includes('npcOffLimits'));
 
   ok('eighth.js exists', existsSync(eighthPath));
   ok('index builds 8th-street storefronts after Washington Ave',
