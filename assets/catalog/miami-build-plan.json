@@ -1248,8 +1248,14 @@
     {
       "id": "fill-210-455",
       "title": "z=210 mid-rise at x=-455 continuing the skyline-455 column",
-      "status": "pending",
-      "notes": "reservedOverlap was false; miss helipad W; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "[-455,210] arcade; miss helipad W; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
