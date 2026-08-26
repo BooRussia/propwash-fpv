@@ -433,6 +433,11 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-370, 223],
   [-350, 223],
   [-280, 223],
+  // West interstitial alleys. Appended so existing hash01 alley-pipe
+  // draws stay put. Fly +X. leftoverLot A–H unmoved.
+  [-690, 248],
+  [-630, 248],
+  [-570, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -1006,6 +1011,12 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // West of WASH_X0=-480 so the plates miss Washington reserved.
   // leftoverLot A–H unmoved.
   [-720, 196], [-660, 196], [-600, 196], [-540, 196],
+  // West interstitial columns between -720/-660/-600/-540. 12 m alleys
+  // (plate 18 m, column 60 m). Miss GAP_X, helipad W, leftoverLot A–H.
+  // City plate x0=-699 > -750. z=196 stays west of WASH_X0.
+  [-690, 237], [-690, 259],
+  [-630, 237], [-630, 259],
+  [-570, 237], [-570, 259],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
@@ -1151,6 +1162,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-370, 237],
   [-370, 210],
   [-370, 96], [-370, 128], [-370, 152],
+  [-690, 237], [-630, 237], [-570, 237],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1229,6 +1241,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-40, 259], [40, 259], [-480, 259],
   [0, 259], [80, 259], [-110, 259], [-220, 259],
   [-350, 259], [-280, 259], [-455, 259], [-410, 259], [-370, 259],
+  [-690, 259], [-630, 259], [-570, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;

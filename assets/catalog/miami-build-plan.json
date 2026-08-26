@@ -1366,6 +1366,25 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "west-interstitial",
+      "title": "Skyline pairs at x=-690/-630/-570 between west 60 m columns, leftoverLot unmoved",
+      "status": "done",
+      "notes": "[-690,-630,-570]@237 arcade, @259 roof rings, z=248 alley pipes; 12 m alleys; x0=-699 > -750; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "fill-west-col",
+      "title": "Finish x=-690/-630/-570 columns at z=96/128/152/196/210, leftoverLot unmoved",
+      "status": "pending",
+      "notes": "west of WASH_X0; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
