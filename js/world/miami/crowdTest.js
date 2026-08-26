@@ -945,7 +945,7 @@ function FRONT_Z_OK() {
     && index.includes('buildInland(ctx)')
     && index.indexOf('buildInland(ctx)') > index.indexOf('buildEspa(ctx)'));
   ok('inland mid-rises are six-sided deco plates west of x=240',
-    INLAND_MIDRISE_CELLS.length === 117
+    INLAND_MIDRISE_CELLS.length === 118
     && INLAND_MIDRISE_W === 18 && INLAND_MIDRISE_D === 14 && INLAND_MIDRISE_H === 32
     && INLAND_MIDRISE_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
     && INLAND_MIDRISE_CELLS.filter(([x]) => x < -430).length >= 4
@@ -1010,7 +1010,7 @@ function FRONT_Z_OK() {
     && !inland.includes('ShaderMaterial'));
 
   const inlandList = inlandMidrises();
-  ok('signed inland mid-rises', inlandList.length === 117);
+  ok('signed inland mid-rises', inlandList.length === 118);
   ok('x=-720 skyline pair stays on 1500 m city plate',
     inlandList.filter((g) => g.x === -720 && (g.z === 237 || g.z === 259)).length === 2
     && inlandList.some((g) => g.x === -720 && g.z === 237)
@@ -1086,10 +1086,10 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('z=210/152/96/128 mid-rise ground arcades fly ±Z, jambs only, miss leftoverLot',
-    INLAND_ARCADE_CELLS.length === 60
+    INLAND_ARCADE_CELLS.length === 61
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 13
-    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 9
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 10
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 96).length === 9
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 19
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1

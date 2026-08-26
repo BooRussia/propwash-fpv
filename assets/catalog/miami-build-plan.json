@@ -1256,6 +1256,12 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fill-152-455",
+      "title": "z=152 mid-rise at x=-455 continuing the skyline-455 column, miss helipad W",
+      "status": "done",
+      "notes": "[-455,152] arcade; miss helipad W (z1=128); leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
