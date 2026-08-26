@@ -1039,11 +1039,13 @@ export function courtWellColliderShapesAt(shapes, g) {
   });
 }
 
-// Ground-floor fly-through arcades on z=210, z=152, z=96, the x=-660
-// skyline pair (z=237/259), and fill-148 skyline plates at
-// x=-540/-390/-190 z=237. Jambs + soffit only, never a box in the bay.
+// Ground-floor fly-through arcades on z=210, z=152, z=96, z=128
+// plates that miss court wells, the x=-660 skyline pair (z=237/259),
+// fill-148 skyline plates at x=-540/-390/-190 z=237, and z=196 west
+// of WASH_X0. Jambs + soffit only, never a box in the bay.
 // Fly ±Z. Miss court wells. Skip z=259 of those x (roof rings).
 // z=96 arcades skip [-390,96]/[-250,96] court wells.
+// z=128 arcades skip [-720,128]/[-600,128]/[-190,128] court wells.
 // [210,96] is the east-of-cinema plate, west of leftoverLot A / x=240.
 // leftoverLot A–H unmoved. hash01 never at const-eval.
 export const INLAND_ARCADE_SOFFIT = 3.40;
@@ -1055,6 +1057,7 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-660, 237], [-660, 259],
   [-720, 196], [-540, 196],
   [-540, 237], [-390, 237], [-190, 237],
+  [-660, 128], [-540, 128], [-390, 128],
 ]);
 
 export function isInlandArcadeCell(x, z) {

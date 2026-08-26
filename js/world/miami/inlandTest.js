@@ -270,8 +270,8 @@ export function runMiamiInlandTests() {
     inland.includes('isCourtWellCell') && inland.includes('COURT_WELL_W')
     && inland.includes('isInlandArcadeCell')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
-  ok('z=210/152/96 ground-floor arcades, fly ±Z, jambs only',
-    INLAND_ARCADE_CELLS.length === 20
+  ok('z=210/152/96/128 ground-floor arcades, fly ±Z, jambs only',
+    INLAND_ARCADE_CELLS.length === 23
     && INLAND_ARCADE_SOFFIT >= 3.2 && INLAND_ARCADE_OPEN_W >= 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 210).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 152).length === 5
@@ -279,8 +279,9 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 237).length === 4
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 259).length === 1
     && INLAND_ARCADE_CELLS.filter(([, z]) => z === 196).length === 2
+    && INLAND_ARCADE_CELLS.filter(([, z]) => z === 128).length === 3
     && INLAND_ARCADE_CELLS.every(([x, z]) => x < 240
-      && (z === 210 || z === 152 || z === 96 || z === 237 || z === 259 || z === 196)
+      && (z === 210 || z === 152 || z === 96 || z === 237 || z === 259 || z === 196 || z === 128)
       && isInlandArcadeCell(x, z)
       && !isCourtWellCell(x, z)
       && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
@@ -298,8 +299,14 @@ export function runMiamiInlandTests() {
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -540 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 237)
     && INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 237)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -660 && z === 128)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -540 && z === 128)
+    && INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 128)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -390 && z === 96)
     && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -250 && z === 96)
+    && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -720 && z === 128)
+    && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -600 && z === 128)
+    && !INLAND_ARCADE_CELLS.some(([x, z]) => x === -190 && z === 128)
     && inland.includes('isInlandArcadeCell') && inland.includes('INLAND_ARCADE_SOFFIT')
     && inland.includes('addCollider') && !/\brng2?\s*\(/.test(inland));
   ok('skyline arcades at x=-540/-390/-190 miss roof rings and court wells',
@@ -317,6 +324,22 @@ export function runMiamiInlandTests() {
     && ROOF_RING_CELLS.some(([x, z]) => x === -540 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -390 && z === 259)
     && ROOF_RING_CELLS.some(([x, z]) => x === -190 && z === 259));
+  ok('z=128 ground-floor arcades miss court wells, fly ±Z, jambs only',
+    [[-660, 128], [-540, 128], [-390, 128]].every(([x, z]) =>
+      isInlandArcadeCell(x, z)
+      && !isCourtWellCell(x, z)
+      && leftoverLotOverlap(x, z, 18, 14, 0.15) === false
+      && inlandArcadeGeom(x, z, 't').fly === '±Z'
+      && x < 240 && x < 251)
+    && !isInlandArcadeCell(-720, 128)
+    && !isInlandArcadeCell(-600, 128)
+    && !isInlandArcadeCell(-190, 128)
+    && isCourtWellCell(-720, 128)
+    && isCourtWellCell(-600, 128)
+    && isCourtWellCell(-190, 128)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -660 && z === 128)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -540 && z === 128)
+    && INLAND_MIDRISE_CELLS.some(([x, z]) => x === -390 && z === 128));
 
   ok('leftoverLot A–H unmoved',
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398

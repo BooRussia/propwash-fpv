@@ -964,7 +964,15 @@
     {
       "id": "arcade-128",
       "title": "Ground-floor fly-throughs on remaining z=128 plates that miss court wells, jambs only",
-      "status": "pending"
+      "status": "done",
+      "notes": "INLAND_ARCADE_CELLS +[-660,128]/[-540,128]/[-390,128]; skip court wells [-720,-600,-190]@128; jambs+soffit, fly ±Z; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "npc-196",
