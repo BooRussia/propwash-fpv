@@ -235,9 +235,9 @@ export function runMiamiInlandTests() {
   }
 
   ok('nine courtyard drop-wells, fly −Y, west of leftoverLot',
-    COURT_WELL_CELLS.length === 13 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
+    COURT_WELL_CELLS.length === 17 && COURT_WELL_W >= 6 && COURT_WELL_D >= 6
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 96 || z === 152 || z === 210 || z === 196)
+      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)
@@ -249,6 +249,10 @@ export function runMiamiInlandTests() {
     && COURT_WELL_CELLS.some(([x, z]) => x === 130 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 196)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -600 && z === 128)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && COURT_WELL_CELLS.filter(([, z]) => z === 96).length === 2

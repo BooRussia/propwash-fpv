@@ -976,6 +976,8 @@ export const COURT_WELL_CELLS = Object.freeze([
   [-390, 96], [-250, 96],
   [-160, 152], [130, 152], [-660, 210],
   [-660, 196],
+  [-160, 210],
+  [-720, 128], [-600, 128], [-190, 128],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
 ]);
 

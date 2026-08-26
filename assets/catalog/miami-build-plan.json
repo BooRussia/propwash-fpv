@@ -941,11 +941,34 @@
     {
       "id": "court-new",
       "title": "Courtyard drop-wells on remaining new z=152/210 plates that miss arcades, fly −Y",
-      "status": "pending"
+      "status": "done",
+      "notes": "[-160,210] was the last z=210 miss; also z=128 wells at [-720,-600,-190]. leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     },
     {
       "id": "neon-porch",
       "title": "Night neon under Majestic/Cavalier/Breakwater/Winterhaven porch soffits via regDN",
+      "status": "done",
+      "notes": "soffit underside neon strips via existing pushNeon/regDN; visual only, not a bay collider; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/landmarks/decoHotels.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "arcade-128",
+      "title": "Ground-floor fly-throughs on remaining z=128 plates that miss court wells, jambs only",
+      "status": "pending"
+    },
+    {
+      "id": "npc-196",
+      "title": "Walkers on sidewalks ocean/inland of the z=196 row, hash01, no colliders, west of WASH_X0",
       "status": "pending"
     }
   ],

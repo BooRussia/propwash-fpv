@@ -585,6 +585,18 @@ function FRONT_Z_OK() {
   ok('decoHotels has no ShaderMaterial and no ped/traffic',
     !deco.includes('ShaderMaterial') && !deco.includes('ped.js')
     && !deco.includes('traffic.js'));
+  ok('porch soffit neon on Majestic/Cavalier/Breakwater/Winterhaven, visual only',
+    deco.includes('porch soffit neon')
+    && deco.includes('MAJESTIC_SOFFIT - 0.11')
+    && deco.includes('CAVALIER_SOFFIT - 0.11')
+    && deco.includes('BREAKWATER_SOFFIT - 0.11')
+    && deco.includes('WINTERHAVEN_SOFFIT - 0.11')
+    && deco.includes('pushNeon') && deco.includes('regDN')
+    && !deco.includes('ShaderMaterial')
+    && leftoverLotOverlap(MAJESTIC_X, MAJESTIC_FRONT_Z - 1.7, MAJESTIC_W - 1.4, 2.4, 0.15) === false
+    && leftoverLotOverlap(CAVALIER_X, CAVALIER_FRONT_Z - 1.7, CAVALIER_W - 1.4, 2.4, 0.15) === false
+    && leftoverLotOverlap(BREAKWATER_X, BREAKWATER_FRONT_Z - 1.7, BREAKWATER_W - 1.4, 2.4, 0.15) === false
+    && leftoverLotOverlap(WINTERHAVEN_X, WINTERHAVEN_FRONT_Z - 1.7, WINTERHAVEN_W - 1.4, 2.4, 0.15) === false);
   ok('Winterhaven reserved stays west of leftoverLot A',
     WINTERHAVEN_X + WINTERHAVEN_W / 2 + 1.2 < 251
     && inReserved(258, 84));
@@ -985,19 +997,22 @@ function FRONT_Z_OK() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
   ok('two extra courtyard drop-wells on remaining z=152/210 plates plus z=96',
-    COURT_WELL_CELLS.length === 13
+    COURT_WELL_CELLS.length === 17
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === 130 && z === 152)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 210)
     && COURT_WELL_CELLS.some(([x, z]) => x === -660 && z === 196)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -160 && z === 210)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -720 && z === 128)
+    && COURT_WELL_CELLS.some(([x, z]) => x === -190 && z === 128)
     && COURT_WELL_CELLS.some(([x, z]) => x === -390 && z === 96)
     && COURT_WELL_CELLS.some(([x, z]) => x === -250 && z === 96)
     && !COURT_WELL_CELLS.some(([x, z]) => x === 210 && z === 96)
     && !isCourtWellCell(210, 96)
     && COURT_WELL_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1
-      && (z === 96 || z === 152 || z === 210 || z === 196)
+      && (z === 96 || z === 152 || z === 210 || z === 196 || z === 128)
       && isCourtWellCell(x, z)
       && courtWellGeom(x, z, 't').fly === '-Y'
       && leftoverLotOverlap(x, z, 6.2, 6.2, 0.15) === false

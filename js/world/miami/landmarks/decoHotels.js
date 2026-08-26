@@ -253,6 +253,9 @@ function buildMajestic(stucco, dark, glass, pushNeon, addCollider) {
     cx, CITY_Y + MAJESTIC_SOFFIT + 0.12, arcadeZ));
   pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + MAJESTIC_SOFFIT - 0.06, arcadeZ - 1.55));
+  // porch soffit neon — fly-under reads after dusk. Visual only, not a bay box.
+  pushNeon(NEON, cBox(W - 1.4, 0.04, 2.4, NEON,
+    cx, CITY_Y + MAJESTIC_SOFFIT - 0.11, arcadeZ));
   // extra neon outline — Majestic corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.6, 0.08, NEON,
@@ -309,6 +312,9 @@ function buildBreakwater(stucco, dark, glass, pushNeon, addCollider) {
     cx, CITY_Y + BREAKWATER_SOFFIT + 0.12, arcadeZ));
   pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + BREAKWATER_SOFFIT - 0.06, arcadeZ - 1.55));
+  // porch soffit neon — fly-under reads after dusk. Visual only, not a bay box.
+  pushNeon(NEON, cBox(W - 1.4, 0.04, 2.4, NEON,
+    cx, CITY_Y + BREAKWATER_SOFFIT - 0.11, arcadeZ));
   // extra neon outline — Breakwater corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
@@ -377,6 +383,9 @@ function buildCavalier(stucco, dark, glass, pushNeon, addCollider) {
     cx, CITY_Y + CAVALIER_SOFFIT + 0.12, arcadeZ));
   pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + CAVALIER_SOFFIT - 0.06, arcadeZ - 1.55));
+  // porch soffit neon — fly-under reads after dusk. Visual only, not a bay box.
+  pushNeon(NEON, cBox(W - 1.4, 0.04, 2.4, NEON,
+    cx, CITY_Y + CAVALIER_SOFFIT - 0.11, arcadeZ));
   // extra neon outline — Cavalier corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.6, 0.08, NEON,
@@ -433,6 +442,9 @@ function buildWinterhaven(stucco, dark, glass, pushNeon, addCollider) {
     cx, CITY_Y + WINTERHAVEN_SOFFIT + 0.12, arcadeZ));
   pushNeon(NEON, cBox(W - 0.8, 0.08, 0.08, NEON,
     cx, CITY_Y + WINTERHAVEN_SOFFIT - 0.06, arcadeZ - 1.55));
+  // porch soffit neon — fly-under reads after dusk. Visual only, not a bay box.
+  pushNeon(NEON, cBox(W - 1.4, 0.04, 2.4, NEON,
+    cx, CITY_Y + WINTERHAVEN_SOFFIT - 0.11, arcadeZ));
   // extra neon outline — Winterhaven corner tubes. Visual only.
   for (const s of [-1, 1]) {
     pushNeon(NEON, cBox(0.08, bodyH - 0.5, 0.08, NEON,
