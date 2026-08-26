@@ -413,6 +413,9 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   // Gap between -480 and -430, miss helipad W. Appended so existing
   // hash01 alley pallet draws stay put. Fly +X.
   [-455, 248],
+  // Gap between -430 and -390, miss helipad W. Appended so existing
+  // hash01 alley pallet draws stay put. Fly +X.
+  [-410, 248],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -951,6 +954,9 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // Gap between -480 and -430. Miss helipad W (x -452..-408, z1=128).
   // Plate x0=-464 / x1=-446 sits 7 m off [-480] x1=-471 and [-430] x0=-439.
   [-455, 237], [-455, 259],
+  // Gap between -430 and -390. Miss helipad W (x -452..-408, z1=128).
+  // Plate x0=-419 / x1=-401 sits 2 m off [-430] x1=-421 and [-390] x0=-399.
+  [-410, 237], [-410, 259],
   // Dense fill: Lincoln–Washington band (z=152) and Washington–skyline (z=210).
   // Miss convention (-112..16, z 104–166), GAP_X columns, helipad W, leftoverLot A–H.
   // z=152 holes filled on-grid (reservedOverlap false at 152, no z=148 offset).
@@ -958,7 +964,7 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   // [-350,210]/[-280,210] continue city-skyline columns; miss GAP_X=-315 (plate x1=-341 / x0=-289).
   [-720, 152], [-660, 152], [-600, 152], [-540, 152], [-455, 152], [-430, 152], [-390, 152], [-350, 152], [-280, 152], [-250, 152],
   [-220, 152], [-190, 152], [-160, 152], [90, 152], [110, 152], [130, 152], [160, 152], [190, 152], [210, 152],
-  [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-455, 210], [-430, 210], [-390, 210], [-350, 210], [-280, 210], [-250, 210],
+  [-720, 210], [-660, 210], [-600, 210], [-540, 210], [-455, 210], [-430, 210], [-410, 210], [-390, 210], [-350, 210], [-280, 210], [-250, 210],
   [-220, 210], [-190, 210], [-160, 210], [-80, 210], [-40, 210], [0, 210], [40, 210], [90, 210], [110, 210], [130, 210], [160, 210], [190, 210], [210, 210],
   // z=96 row: ocean of Lincoln (z=120) / convention plaza (z0=104).
   // West-of-convention x-grid as z=152; skip [-430,96] (helipad W z1=128).
@@ -1119,6 +1125,8 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-455, 237],
   [-455, 210],
   [-455, 152],
+  [-410, 237],
+  [-410, 210],
 ]);
 
 export function isInlandArcadeCell(x, z) {
@@ -1196,7 +1204,7 @@ export const ROOF_RING_CELLS = Object.freeze([
   [-160, 259], [130, 259], [190, 259],
   [-40, 259], [40, 259], [-480, 259],
   [0, 259], [80, 259], [-110, 259], [-220, 259],
-  [-350, 259], [-280, 259], [-455, 259],
+  [-350, 259], [-280, 259], [-455, 259], [-410, 259],
 ]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;
