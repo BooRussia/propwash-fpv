@@ -651,7 +651,9 @@ export function inlandMidrises() {
 // Sit on inland mid-rise plates west of x=240. Fly +X through the gap / disc.
 // Collider is the unit / tube, never a filled sash. leftoverLot A–H unmoved.
 export const ROOF_WHOOP_Y = CITY_Y + INLAND_MIDRISE_H;
-export const ROOF_AC_CELLS = Object.freeze([[-250, 237], [100, 237]]);
+export const ROOF_AC_CELLS = Object.freeze([
+  [-250, 237], [100, 237], [-430, 237], [-80, 237],
+]);
 export const ROOF_RING_CELLS = Object.freeze([[-80, 259], [100, 259]]);
 export const ROOF_AC_CLEAR = 2.20;
 export const ROOF_AC_H = 2.40;

@@ -152,12 +152,16 @@ export function runMiamiInlandTests() {
     LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
     && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
-  ok('two signed rooftop AC gaps + two billboard rings',
-    ROOF_AC_CELLS.length === 2 && ROOF_RING_CELLS.length === 2
+  ok('four signed rooftop AC gaps + two billboard rings',
+    ROOF_AC_CELLS.length === 4 && ROOF_RING_CELLS.length === 2
     && ROOF_AC_CLEAR >= 2.0 && ROOF_AC_H >= 2.0
     && 2 * (ROOF_RING_R - ROOF_RING_TUBE) >= 2.0
     && ROOF_AC_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
-    && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1));
+    && ROOF_RING_CELLS.every(([x, z]) => x < 240 && z > TRAVEL_Z1)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -430 && z === 237)
+    && ROOF_AC_CELLS.some(([x, z]) => x === -80 && z === 237)
+    && ROOF_AC_CELLS.every(([x, z]) =>
+      INLAND_MIDRISE_CELLS.some(([mx, mz]) => mx === x && mz === z)));
   ok('inland.js builds roof whoops with hash01 skip, no layout rng',
     inland.includes('roof-whoop') && inland.includes('ROOF_AC_CELLS')
     && inland.includes('cTorus') && !/\brng2?\s*\(/.test(inland));

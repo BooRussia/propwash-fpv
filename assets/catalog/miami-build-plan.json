@@ -333,7 +333,13 @@
     {
       "id": "rooftop-more",
       "title": "AC-gap whoops on remaining inland plates at x=-430 and x=-80 z=237, leftoverLot unmoved",
-      "status": "pending"
+      "status": "done",
+      "notes": "ROOF_AC_CELLS now 4: [-250,237], [100,237], [-430,237], [-80,237]; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/landmarks/inland.js",
+        "js/world/miami/inlandTest.js"
+      ]
     },
     {
       "id": "gap-429",
