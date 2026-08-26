@@ -621,6 +621,92 @@ export function gap315PassVoid(g) {
   };
 }
 
+// ---- GAP_X=-501 inland storefronts + fly-unders ----
+// Facades face the cross-street column. Arcade fly ±Z along the walk;
+// mid-block passage fly ±X through the plate. Both faces west of leftoverLot A
+// (x>=251) and west of x=240. Both faces skip Washington z 173–187. Inland
+// z=210 sits ocean of mid-rise z=237 (mid-rises are at x=-430, not here).
+// East face has the short z=95 bay (helipad W is at x -452..-408, not this
+// column). Travel lanes 40.2–47.8 stay empty. hash01 never drawn. Collider
+// is jamb / soffit, never a filled sash. New RESERVED west of x=240.
+export const GAP501_X = -501;
+export const GAP501_SOFFIT = 3.40;
+export const GAP501_ARCADE_D = 3.20;
+export const GAP501_PASS_W = 2.20;
+export const GAP501_PASS_H = 3.20;
+export const GAP501_D = 12.0;
+export const GAP501_H = 8.40;
+export const GAP501_JAMB = 0.28;
+export const GAP501_W_FRONT_X = GAP501_X - XS_HALF - 2.4;
+export const GAP501_E_FRONT_X = GAP501_X + XS_HALF + 2.4;
+export const GAP501_W_CELLS = Object.freeze([
+  [114, 16], [136, 16], [158, 16], [210, 16],
+]);
+export const GAP501_E_CELLS = Object.freeze([
+  [95, 8], [114, 16], [136, 16], [158, 16], [210, 16],
+]);
+
+/** One GAP_X=-501 shop. side 'W' faces +X; 'E' faces −X. Never remaps x/z. */
+export function gap501ShopGeom(side, z, len, id) {
+  const frontX = side === 'W' ? GAP501_W_FRONT_X : GAP501_E_FRONT_X;
+  const inward = side === 'W' ? -1 : 1;
+  const xBack = frontX + inward * GAP501_D;
+  const xArcadeInner = frontX + inward * GAP501_ARCADE_D;
+  const x0 = Math.min(frontX, xBack);
+  const x1 = Math.max(frontX, xBack);
+  const x = (x0 + x1) / 2;
+  const arcadeX = (frontX + xArcadeInner) / 2;
+  const z0 = z - len / 2;
+  const z1 = z + len / 2;
+  const passZ0 = z - GAP501_PASS_W / 2;
+  const passZ1 = z + GAP501_PASS_W / 2;
+  const jamb = GAP501_JAMB;
+  return {
+    id, side, z, len, x, frontX, inward, xBack, xArcadeInner, x0, x1,
+    z0, z1, arcadeX, passZ0, passZ1,
+    openArcadeW: len - 2.4, openArcadeH: GAP501_SOFFIT,
+    openPassW: GAP501_PASS_W, openPassH: GAP501_PASS_H,
+    jamb, tag: 'gap501',
+  };
+}
+
+export function gap501Shops() {
+  const shops = [];
+  for (let i = 0; i < GAP501_W_CELLS.length; i++) {
+    const [z, len] = GAP501_W_CELLS[i];
+    shops.push(gap501ShopGeom('W', z, len, `gap501-w-${i}`));
+  }
+  for (let i = 0; i < GAP501_E_CELLS.length; i++) {
+    const [z, len] = GAP501_E_CELLS[i];
+    shops.push(gap501ShopGeom('E', z, len, `gap501-e-${i}`));
+  }
+  return shops;
+}
+
+export function gap501ArcadeVoid(g) {
+  const xLo = Math.min(g.frontX, g.xArcadeInner);
+  const xHi = Math.max(g.frontX, g.xArcadeInner);
+  return {
+    id: `${g.id}-arcade`, kind: 'kit',
+    x: g.arcadeX, z: g.z, y: CITY_Y + GAP501_SOFFIT * 0.48,
+    x0: xLo + 0.12, x1: xHi - 0.12,
+    z0: g.z0 + 1.2, z1: g.z1 - 1.2,
+    y0: CITY_Y + 0.08, y1: CITY_Y + GAP501_SOFFIT - 0.06,
+    openW: g.openArcadeW, openH: g.openArcadeH,
+  };
+}
+
+export function gap501PassVoid(g) {
+  return {
+    id: `${g.id}-pass`, kind: 'kit',
+    x: g.x, z: g.z, y: CITY_Y + GAP501_PASS_H * 0.48,
+    x0: g.x0 + 0.10, x1: g.x1 - 0.10,
+    z0: g.passZ0 + 0.06, z1: g.passZ1 - 0.06,
+    y0: CITY_Y + 0.08, y1: CITY_Y + GAP501_PASS_H - 0.06,
+    openW: g.openPassW, openH: g.openPassH,
+  };
+}
+
 // ---- GAP_X=429 inland storefronts — skipped ----
 // West front = 429 − XS_HALF − 2.4 = 420.1, east of leftoverLot A (x>=251)
 // and east of the x=240 RESERVED line. East face is further east (437.9).
@@ -4263,6 +4349,11 @@ export const RESERVED = [
     z0: g.z0 - 1.5, z1: g.z1 + 1.4,
     tag: 'gap315',
   })),
+  ...gap501Shops().map((g) => ({
+    x0: g.x0 - 2.2, x1: g.x1 + 1.8,
+    z0: g.z0 - 1.5, z1: g.z1 + 1.4,
+    tag: 'gap501',
+  })),
   ...inlandMidrises().map((g) => ({
     x0: g.x0 - 0.8, x1: g.x1 + 0.8,
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
@@ -5250,6 +5341,11 @@ export const KEEPOUT = [
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
     tag: 'gap315',
   })),
+  ...gap501Shops().map((g) => ({
+    x0: g.x0 - 0.6, x1: g.x1 + 0.6,
+    z0: g.z0 - 0.6, z1: g.z1 + 0.6,
+    tag: 'gap501',
+  })),
   ...inlandMidrises().map((g) => ({
     x0: g.x0 - 0.6, x1: g.x1 + 0.6,
     z0: g.z0 - 0.6, z1: g.z1 + 0.6,
@@ -5567,6 +5663,7 @@ export const FLY_VOIDS = [
   ...espaShops().flatMap((g) => [espaArcadeVoid(g), espaPassVoid(g)]),
   ...eighthShops().flatMap((g) => [eighthArcadeVoid(g), eighthPassVoid(g)]),
   ...gap315Shops().flatMap((g) => [gap315ArcadeVoid(g), gap315PassVoid(g)]),
+  ...gap501Shops().flatMap((g) => [gap501ArcadeVoid(g), gap501PassVoid(g)]),
   ...lincolnShops().flatMap((g) => [lincolnArcadeVoid(g), lincolnPassVoid(g)]),
   ...lincolnPergolas().map((g, i) => lincolnPergolaVoid(g, `lincoln-pergola-${i}`)),
   washingtonArcadeVoid(washingtonArcadeGeom(), 'washington-arcade'),
@@ -5727,6 +5824,10 @@ export function flyColliderShapes() {
   const gap315 = gap315Shops();
   for (let i = 0; i < gap315.length; i++) {
     streetShopColliderShapesAt(shapes, gap315[i]);
+  }
+  const gap501 = gap501Shops();
+  for (let i = 0; i < gap501.length; i++) {
+    streetShopColliderShapesAt(shapes, gap501[i]);
   }
   const lincoln = lincolnShops();
   for (let i = 0; i < lincoln.length; i++) {

@@ -54,6 +54,8 @@ import {
   EIGHTH_SOFFIT, EIGHTH_PASS_W, EIGHTH_PASS_H, EIGHTH_D, eighthShops,
   GAP315_X, GAP315_W_CELLS, GAP315_E_CELLS, GAP315_W_FRONT_X, GAP315_E_FRONT_X,
   GAP315_SOFFIT, GAP315_PASS_W, GAP315_PASS_H, GAP315_D, gap315Shops,
+  GAP501_X, GAP501_W_CELLS, GAP501_E_CELLS, GAP501_W_FRONT_X, GAP501_E_FRONT_X,
+  GAP501_SOFFIT, GAP501_PASS_W, GAP501_PASS_H, GAP501_D, gap501Shops,
   GAP429_X, GAP429_W_FRONT_X, GAP429_E_FRONT_X, GAP429_W_CELLS, GAP429_E_CELLS,
   gap429Shops, GAP_X,
   COLLINS_WALK_Z, COLLINS_WALK_RUNS, onCollinsWalk,
@@ -123,6 +125,7 @@ export function runMiamiCrowdTests() {
   const washingtonPath = join(here, 'landmarks/washington.js');
   const eighthPath = join(here, 'landmarks/eighth.js');
   const gap315Path = join(here, 'landmarks/gap315.js');
+  const gap501Path = join(here, 'landmarks/gap501.js');
   const marinaPath = join(here, 'landmarks/marina.js');
   const lummusPath = join(here, 'landmarks/lummus.js');
   const planPath = join(root, 'assets/catalog/miami-build-plan.json');
@@ -142,6 +145,7 @@ export function runMiamiCrowdTests() {
   const washington = existsSync(washingtonPath) ? readFileSync(washingtonPath, 'utf8') : '';
   const eighth = existsSync(eighthPath) ? readFileSync(eighthPath, 'utf8') : '';
   const gap315 = existsSync(gap315Path) ? readFileSync(gap315Path, 'utf8') : '';
+  const gap501 = existsSync(gap501Path) ? readFileSync(gap501Path, 'utf8') : '';
   const marina = existsSync(marinaPath) ? readFileSync(marinaPath, 'utf8') : '';
   const lummus = existsSync(lummusPath) ? readFileSync(lummusPath, 'utf8') : '';
   const constants = readFileSync(join(here, 'constants.js'), 'utf8');
@@ -1167,6 +1171,57 @@ function FRONT_Z_OK() {
       && !(run[0] < WASH_TRAVEL_Z1 && run[1] > WASH_TRAVEL_Z0))
     && Math.abs(GAP315_WALK_XS[0] - (GAP315_X - XS_HALF - 1.2)) < 1e-6
     && Math.abs(GAP315_WALK_XS[1] - (GAP315_X + XS_HALF + 1.2)) < 1e-6);
+
+  ok('gap501.js exists', existsSync(gap501Path));
+  ok('index builds GAP_X=-501 storefronts after GAP_X=-315',
+    index.includes("from './landmarks/gap501.js'")
+    && index.includes('buildGap501(ctx)')
+    && index.indexOf('buildGap501(ctx)') > index.indexOf('buildGap315(ctx)')
+    && index.indexOf('buildGap501(ctx)') < index.indexOf('buildFlythrough(ctx)'));
+  ok('GAP_X=-501 is west of x=240',
+    GAP501_X === -501 && GAP501_W_FRONT_X < GAP501_X && GAP501_E_FRONT_X > GAP501_X
+    && GAP501_E_FRONT_X + GAP501_D < 240);
+  ok('GAP_X=-501 cells are signed inland of Ocean Drive',
+    GAP501_W_CELLS.length === 4 && GAP501_E_CELLS.length === 5
+    && GAP501_W_CELLS.every(([, len]) => len >= 8)
+    && GAP501_E_CELLS[0][0] === 95 && GAP501_E_CELLS[0][1] === 8);
+  ok('GAP_X=-501 soffit and passage are flyable',
+    GAP501_SOFFIT >= 3.2 && GAP501_PASS_W >= 2.0 && GAP501_PASS_H >= 2.0);
+  ok('gap501 does not draw layout rng, ShaderMaterial, or ped/traffic',
+    !/\brng2?\s*\(/.test(gap501) && !/\brng3\s*\(/.test(gap501)
+    && !/\brng4\s*\(/.test(gap501) && !gap501.includes('ShaderMaterial')
+    && !gap501.includes('ped.js') && !gap501.includes('traffic.js')
+    && gap501.includes('installFlyColliders'));
+
+  const gap501List = gap501Shops();
+  ok('nine signed GAP_X=-501 shops', gap501List.length === 9);
+  for (let i = 0; i < gap501List.length; i++) {
+    const g = gap501List[i];
+    ok(`${g.id} reserved west of 240`, g.x1 + 1.8 < 240 && inReserved(g.x, g.z));
+    ok(`${g.id} misses leftoverLot / street / travel`,
+      leftoverLotOverlap(g.x, g.z, g.x1 - g.x0, g.len, 0.15) === false
+      && streetOverlap(g.x, g.z, g.x1 - g.x0, g.len) === false
+      && g.z0 > TRAVEL_Z1);
+    const arcade = FLY_VOIDS.find((v) => v.id === `${g.id}-arcade`);
+    const pass = FLY_VOIDS.find((v) => v.id === `${g.id}-pass`);
+    ok(`${g.id}-arcade listed`, !!arcade && arcade.openH === GAP501_SOFFIT);
+    ok(`${g.id}-pass listed`, !!pass && pass.openW === GAP501_PASS_W);
+    if (arcade) {
+      const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      const high = probeBlocked(kit, arcade.x, CITY_Y + GAP501_SOFFIT - 0.45, arcade.z, 0.28);
+      ok(`${g.id}-arcade keepout + open`,
+        !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+      ok(`${g.id}-arcade high ±Z is open`, !high, high ? `${high.tag}` : '');
+    }
+    if (pass) {
+      const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);
+      ok(`${g.id}-pass keepout + open`,
+        !!inKeepout(pass.x, pass.z) && !hit, hit ? `${hit.tag}` : '');
+    }
+  }
+  ok('leftoverLot A–H still signed after GAP_X=-501',
+    LEFTOVER_LOT_X === 258 && LEFTOVER_LOT_B_X === 295 && LEFTOVER_LOT_H_X === 398
+    && leftoverLotOverlap(LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D, 0.15));
 
   ok('GAP_X=429 west face sits east of leftoverLot A — skip shops',
     GAP429_X === 429 && GAP429_X === GAP_X[5]
