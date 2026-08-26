@@ -438,6 +438,9 @@ export const ALLEY_PIPE_CELLS = Object.freeze([
   [-690, 248],
   [-630, 248],
   [-570, 248],
+  [-690, 223],
+  [-630, 223],
+  [-570, 223],
 ]);
 // Park rings: standing torus whoops in Lummus (ocean of the pergola walk).
 // Fly +X. Tube is the collider; disc stays empty. West of x=240.
@@ -1017,6 +1020,11 @@ export const INLAND_MIDRISE_CELLS = Object.freeze([
   [-690, 237], [-690, 259],
   [-630, 237], [-630, 259],
   [-570, 237], [-570, 259],
+  [-690, 210], [-630, 210], [-570, 210],
+  [-690, 196], [-630, 196], [-570, 196],
+  [-690, 152], [-630, 152], [-570, 152],
+  [-690, 128], [-630, 128], [-570, 128],
+  [-690, 96], [-630, 96], [-570, 96],
 ]);
 
 /** One inland mid-rise plate. Never remaps x/z. hash01 only at build. */
@@ -1058,6 +1066,7 @@ export const COURT_WELL_CELLS = Object.freeze([
   [190, 210],
   [40, 210],
   // [210, 96] skipped — INLAND_ARCADE_CELLS already occupies the plate
+  [-690, 152], [-630, 152], [-570, 152],
 ]);
 
 export function isCourtWellCell(x, z) {
@@ -1163,6 +1172,10 @@ export const INLAND_ARCADE_CELLS = Object.freeze([
   [-370, 210],
   [-370, 96], [-370, 128], [-370, 152],
   [-690, 237], [-630, 237], [-570, 237],
+  [-690, 210], [-630, 210], [-570, 210],
+  [-690, 196], [-630, 196], [-570, 196],
+  [-690, 128], [-630, 128], [-570, 128],
+  [-690, 96], [-630, 96], [-570, 96],
 ]);
 
 export function isInlandArcadeCell(x, z) {

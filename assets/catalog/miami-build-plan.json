@@ -1383,8 +1383,14 @@
     {
       "id": "fill-west-col",
       "title": "Finish x=-690/-630/-570 columns at z=96/128/152/196/210, leftoverLot unmoved",
-      "status": "pending",
-      "notes": "west of WASH_X0; leftoverLot A–H unmoved"
+      "status": "done",
+      "notes": "arcades at 96/128/196/210; court wells at 152; z=223 pipes; west of WASH_X0; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
     }
   ],
   "landmarks": {
