@@ -4708,12 +4708,13 @@ function fifthColliderShapesAt(shapes, g) {
     shapes.push({
       type: 'aabb', tag: 'fifth',
       x: massX, z: zEdge, sx: massSx, sz: sz - 0.04,
-      y0: CITY_Y, sy: FIFTH_PASS_H,
+      y0: CITY_Y, sy: FIFTH_SOFFIT,
     });
   }
+  // Lintel covers the rear mass only — never a beam across the arcade.
   shapes.push({
     type: 'aabb', tag: 'fifth',
-    x: g.x, z: g.z, sx: g.x1 - g.x0, sz: FIFTH_PASS_W + jamb * 2,
+    x: massX, z: g.z, sx: massSx, sz: FIFTH_PASS_W + jamb * 2,
     y0: CITY_Y + FIFTH_PASS_H, sy: 0.24,
   });
 }

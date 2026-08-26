@@ -25,6 +25,7 @@ import {
   leftoverLotOverlap, reservedOverlap, inReserved, streetOverlap,
   LEFTOVER_LOT_X, LEFTOVER_LOT_Z, LEFTOVER_LOT_W, LEFTOVER_LOT_D,
   LEFTOVER_LOT_B_X, LEFTOVER_LOT_H_X,
+  CITY_Y,
   FIFTH_X, FIFTH_W_CELLS, FIFTH_E_CELLS, FIFTH_W_FRONT_X, FIFTH_E_FRONT_X,
   FIFTH_SOFFIT, FIFTH_PASS_W, FIFTH_PASS_H, fifthShops,
 } from './constants.js';
@@ -424,8 +425,10 @@ export function runMiamiCrowdTests() {
     ok(`${g.id}-pass listed`, !!pass && pass.openW === FIFTH_PASS_W);
     if (arcade) {
       const hit = probeBlocked(kit, arcade.x, arcade.y, arcade.z, 0.28);
+      const high = probeBlocked(kit, arcade.x, CITY_Y + FIFTH_SOFFIT - 0.45, arcade.z, 0.28);
       ok(`${g.id}-arcade keepout + open`,
         !!inKeepout(arcade.x, arcade.z) && !hit, hit ? `${hit.tag}` : '');
+      ok(`${g.id}-arcade high ±Z is open`, !high, high ? `${high.tag}` : '');
     }
     if (pass) {
       const hit = probeBlocked(kit, pass.x, pass.y, pass.z, 0.28);

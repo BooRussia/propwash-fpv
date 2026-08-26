@@ -115,7 +115,8 @@
     "breakwater": { "x": 42, "frontZ": 57.6, "status": "done" },
     "cavalier": { "x": 134, "frontZ": 57.6, "status": "done" },
     "winterhaven": { "x": 222, "frontZ": 57.6, "status": "done" },
-    "cinema": { "x": 166, "frontZ": 57.6, "status": "done" }
+    "cinema": { "x": 166, "frontZ": 57.6, "status": "done" },
+    "fifthStreet": { "x": 57, "frontZ": 48.1, "status": "done", "note": "GAP_X=57 inland storefronts, fly ±Z arcade + ±X pass" }
   },
   "loop": {
     "workflow": "miami-ocean-drive-loop",

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
-  CITY_Y, FIFTH_SOFFIT, FIFTH_H, FIFTH_PASS_H, FIFTH_D,
+  CITY_Y, FIFTH_SOFFIT, FIFTH_H, FIFTH_PASS_H, FIFTH_PASS_W, FIFTH_D,
   fifthShops, installFlyColliders,
 } from '../constants.js';
 import { cBox, cCyl } from '../geo.js';
@@ -126,6 +126,8 @@ function buildFifthShop(stucco, dark, glass, pushNeon, addCollider, g, pal) {
   const ax1 = Math.max(g.frontX, g.xArcadeInner);
   stucco.push(cBox(ax1 - ax0 + 0.2, 0.24, len - 0.4, trim,
     arcadeX, CITY_Y + soffit + 0.12, cz));
+  stucco.push(cBox(massSx, 0.22, FIFTH_PASS_W + 0.55, trim,
+    massX, CITY_Y + FIFTH_PASS_H + 0.11, cz));
   pushNeon(neon, cBox(0.08, 0.08, len - 1.2, neon,
     face + g.inward * 0.15, CITY_Y + soffit - 0.08, cz));
 
