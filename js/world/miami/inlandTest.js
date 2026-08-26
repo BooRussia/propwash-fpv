@@ -252,8 +252,24 @@ export function runMiamiInlandTests() {
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -570 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 248)
     && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 248)
-    && ALLEY_PIPE_CELLS.length === 71);
+    && ALLEY_PIPE_CELLS.length === 75);
+  ok('four alley pipes at z=140 between z=128 fill and z=152 fill',
+    ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).length === 4
+    && ALLEY_PIPE_CELLS.filter(([, z]) => z === 140).every(([x]) => x < WASH_X0 && x < 240)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -720 && z === 140)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -660 && z === 140)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -600 && z === 140)
+    && ALLEY_PIPE_CELLS.some(([x, z]) => x === -540 && z === 140));
   for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 181)) {
+    const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
+    ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
+      !!v && inKeepout(x, z) && x < 240 && x < WASH_X0
+      && leftoverLotOverlap(x, z, 2.4, 2.6, 0.15) === false
+      && streetOverlap(x, z, 0.4, 2.6) === false
+      && !(z > TRAVEL_Z0 && z < TRAVEL_Z1)
+      && !(x >= WASH_X0 && z > WASH_Z0 && z < WASH_Z1));
+  }
+  for (const [x, z] of ALLEY_PIPE_CELLS.filter(([, zz]) => zz === 140)) {
     const v = FLY_VOIDS.find((f) => f.x === x && f.z === z && String(f.id).startsWith('alley-pipe-'));
     ok(`pipe ${x}/${z} void + keepout, misses WASH / leftoverLot / street / travel`,
       !!v && inKeepout(x, z) && x < 240 && x < WASH_X0

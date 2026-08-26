@@ -1463,6 +1463,24 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "alley-140-west",
+      "title": "Alley-pipe whoops at z=140 on x=-720/-660/-600/-540, leftoverLot unmoved",
+      "status": "done",
+      "notes": "[-720,-660,-600,-540]@140 between z=128 and z=152; fly +X; leftoverLot A–H unmoved",
+      "files": [
+        "js/world/miami/constants.js",
+        "js/world/miami/inlandTest.js",
+        "js/world/miami/crowdTest.js",
+        "js/world/miami/leftoverLotTest.js"
+      ]
+    },
+    {
+      "id": "alley-140-interstitial",
+      "title": "Alley-pipe whoops at z=140 on x=-690/-630/-570 west of WASH_X0, leftoverLot unmoved",
+      "status": "pending",
+      "notes": "[-690,-630,-570]@140 west of WASH_X0=-480; fly +X; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
