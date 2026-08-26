@@ -164,6 +164,26 @@
         "js/world/miami/landmarks/inland.js",
         "js/world/miami/inlandTest.js"
       ]
+    },
+    {
+      "id": "eighth-street",
+      "title": "Inland storefronts on GAP_X=-129 (8th-street analogue) with arcade fly-unders, west of leftoverLot A",
+      "status": "pending"
+    },
+    {
+      "id": "npc-lincoln-wash",
+      "title": "Visual crowd on Lincoln mall and Washington Ave sidewalks, hash01, no colliders",
+      "status": "pending"
+    },
+    {
+      "id": "fire-escape",
+      "title": "Alley fire-escape whoops on inland mid-rise flanks at z=248, jambs only, fly +X",
+      "status": "pending"
+    },
+    {
+      "id": "marina-fill",
+      "title": "More marina dock dressing and swimmers near the fingers, hash01, leftoverLot unmoved",
+      "status": "pending"
     }
   ],
   "landmarks": {
