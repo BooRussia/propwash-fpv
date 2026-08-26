@@ -1235,7 +1235,7 @@
     {
       "id": "city-skyline",
       "title": "Skyline pair at x=-455 z=237/259 in the gap between -480 and -430, miss helipad W, leftoverLot unmoved",
-      "status": "in_progress",
+      "status": "done",
       "notes": "[-455,237] arcade + [-455,259] roof ring + alley pipe [-455,248]; miss helipad W (x -452..-408, z1=128); leftoverLot A–H unmoved",
       "files": [
         "js/world/miami/constants.js",
@@ -1244,6 +1244,12 @@
         "js/world/miami/crowdTest.js",
         "js/world/miami/leftoverLotTest.js"
       ]
+    },
+    {
+      "id": "fill-210-455",
+      "title": "z=210 mid-rise at x=-455 continuing the skyline-455 column",
+      "status": "pending",
+      "notes": "reservedOverlap was false; miss helipad W; leftoverLot A–H unmoved"
     }
   ],
   "landmarks": {
