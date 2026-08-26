@@ -54,6 +54,10 @@ import { buildLandscaping, buildDressing } from './dressing.js';
 import { buildKenneyDressing } from './kenneyDressing.js';
 import { buildBlades } from './blades.js';
 import { buildPoints } from './points.js';
+import {
+  PLAN_URL, parseSitePlan, assertPlan, isTravelLane,
+  bakePlanPaint, bakePlanStamps, bakePlanFlush, sitePlanBuilders,
+} from './sitePlan.js';
 
 export async function buildMiami(scene, env) {
   const rng = mulberry32(20250809);
@@ -124,6 +128,7 @@ export async function buildMiami(scene, env) {
   const [
     sandSet, sidewalkSet, asphaltSet, roadLinesSet,
     glassSet, glassDaySet, officeSet, daySet,
+    planRaw,
   ] = await Promise.all([
     assetLib.textureSet('sand_beach'),
     assetLib.textureSet('sidewalk'),
@@ -133,6 +138,13 @@ export async function buildMiami(scene, env) {
     assetLib.textureSet('facade_glass_day'),  // daytime curtain wall
     assetLib.textureSet('facade_office'),     // daytime mid-rise brick/window
     assetLib.textureSet('facade_day'),        // warm punched-window hotel
+    fetch(PLAN_URL).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    }).catch((e) => {
+      console.warn('[miami] ocean-drive site plan skipped:', e);
+      return null;
+    }),
   ]);
 
   const ctx = {
@@ -149,6 +161,17 @@ export async function buildMiami(scene, env) {
     extraPalms: [],
   };
 
+  if (planRaw) {
+    try {
+      const plan = parseSitePlan(planRaw);
+      const planFails = assertPlan(plan);
+      if (planFails.length) console.warn('[miami] ocean-drive site plan', planFails);
+      ctx.sitePlan = plan;
+    } catch (e) {
+      console.warn('[miami] ocean-drive site plan skipped:', e);
+    }
+  }
+
   // ---------------- ground: beach mesh + city mesh ----------------
   await buildGround(ctx);
 
@@ -163,6 +186,7 @@ export async function buildMiami(scene, env) {
 
   // ---------------- Ocean Drive: road, curbs, crosswalks, cross streets ----------------
   await buildRoad(ctx);
+  if (ctx.sitePlan) bakePlanPaint(ctx, ctx.sitePlan);
 
   // ---------------- palms: PLAN only (holds the legacy rng draw order) ------
   const palmPlan = planPalms(ctx);
@@ -230,6 +254,17 @@ export async function buildMiami(scene, env) {
 
   // ---------------- Kenney CC0 furniture + far authored skyline (hash, not rng) --
   await buildKenneyDressing(ctx);
+
+  // Plan stamps sit on finished ground; skip travel-lane solids even if assertPlan failed.
+  if (ctx.sitePlan) {
+    const builders = sitePlanBuilders();
+    const plan = {
+      ...ctx.sitePlan,
+      stamps: (ctx.sitePlan.stamps || []).filter((s) => s.flush || !isTravelLane(s.z)),
+    };
+    bakePlanStamps(ctx, plan, builders);
+    bakePlanFlush(ctx, plan, builders);
+  }
 
   // ---------------- leftover-dirt blades (tryPlace, after every reserve) ----------
   const blades = await buildBlades(ctx);

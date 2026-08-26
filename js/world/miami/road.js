@@ -97,7 +97,8 @@ export async function buildRoad(ctx) {
   }
 
   // ---- lane paint: white edges, parking/travel splits, stall ticks ----
-  {
+  // The 2D site plan owns edge/centre/dash/stall paint when present.
+  if (!ctx.sitePlan) {
     const Y = CITY_Y + 0.082;
     const whiteMat = track(new THREE.MeshStandardMaterial({
       color: 0xe9e9e2, roughness: 0.62, metalness: 0, depthWrite: false,
@@ -226,7 +227,7 @@ export async function buildRoad(ctx) {
 
   // ---- zebra crosswalks — thin opaque bars flush on the asphalt ----
   const m4 = new THREE.Matrix4();
-  {
+  if (!ctx.sitePlan) {
     const cwGeo = track(new THREE.BoxGeometry(3.6, 0.022, 0.62));
     const cwMat = track(new THREE.MeshStandardMaterial({ color: 0xe9e9e2, roughness: 0.85 }));
     const cwSpots = [];

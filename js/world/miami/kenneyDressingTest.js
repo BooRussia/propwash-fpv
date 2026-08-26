@@ -51,10 +51,14 @@ export function runMiamiKenneyDressingTests() {
   ok('approved stairs-entry extras hash-scattered',
     kenney.includes("'awning_wide'")
     && kenney.includes("'overhang'")
-    && kenney.includes('buildCurbRampGeo')
     && kenney.includes('buildStairHandrailGeo')
     && kenney.includes('hash01(i, 1103)')
     && !/\brng2?\(/.test(kenney));
+  ok('2D plan owns corridor ramps/bollards/mailboxes',
+    !kenney.includes('catalog-curb-ramps')
+    && !kenney.includes('catalog-mailbox')
+    && !kenney.includes('catalog-bollard-steel')
+    && !kenney.includes('catalog-ped-signal'));
   ok('approved beach-boardwalk extras hash-scattered',
     kenney.includes("'parasol_b'")
     && kenney.includes("'wooden_picnic_table'")
@@ -63,15 +67,16 @@ export function runMiamiKenneyDressingTests() {
     && kenney.includes('hash01(i, 1601)')
     && !/\brng2?\(/.test(kenney));
   ok('approved sidewalk-furniture extras hash-scattered',
-    kenney.includes('buildMailboxGeo')
-    && kenney.includes('buildStreetFountainGeo')
-    && kenney.includes('buildPayphoneKioskGeo')
-    && kenney.includes('hash01(i, 1703)')
+    kenney.includes('buildPayphoneKioskGeo')
+    && kenney.includes('buildPaperStackGeo')
     && !/\brng2?\(/.test(kenney));
   ok('approved utilities-power extras hash-scattered',
     kenney.includes('buildUtilityPoleWoodGeo')
-    && kenney.includes('buildPowerSpanGeo')
-    && kenney.includes('buildManholeCoverGeo'));
+    && kenney.includes('buildPowerSpanGeo'));
+  ok('plan owns gutter manholes; no hashed travel-lane covers',
+    !kenney.includes('catalog-manholes')
+    && !kenney.includes('buildManholeCoverGeo')
+    && !kenney.includes('z = 44 +'));
   ok('approved alley-lot-marina extras hash-scattered',
     kenney.includes("'wooden_crate_02'")
     && kenney.includes("'Barrel_01'")

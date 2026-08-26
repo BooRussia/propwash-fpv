@@ -1,13 +1,8 @@
 import * as THREE from 'three';
-import { CITY_Y, PIER_X, GAP_X, CROSS_X, XS_HALF, SW_CUT, MARINA_X, groundHeight, inKeepout, deckTop, BOARDWALK_TOP } from './constants.js';
+import { CITY_Y, PIER_X, GAP_X, CROSS_X, MARINA_X, groundHeight, inKeepout, deckTop, BOARDWALK_TOP } from './constants.js';
 import { hash01 } from './rng.js';
 import { scatterModels } from '../vegetation.js';
-import { buildCurbRampGeo, buildStairHandrailGeo } from './props/stairs-entry.js';
-import {
-  buildBollardSteelGeo,
-  buildBollardFlexGeo,
-  buildPedSignalGeo,
-} from './props/traffic-control.js';
+import { buildStairHandrailGeo } from './props/stairs-entry.js';
 import {
   buildDockCleatGeo,
   buildDockPileGeo,
@@ -16,18 +11,13 @@ import {
 } from './props/alley-lot-marina.js';
 import { buildLifeRingGeo } from './props/beach-boardwalk.js';
 import {
-  buildMailboxGeo,
   buildPaperStackGeo,
-  buildDogBagDispenserGeo,
-  buildStreetFountainGeo,
   buildPayphoneKioskGeo,
 } from './props/sidewalk-furniture.js';
 import {
   buildUtilityPoleWoodGeo,
   buildPowerSpanGeo,
   buildPoleTransformerGeo,
-  buildTrafficCabinetGeo,
-  buildManholeCoverGeo,
   buildStandpipeSiameseGeo,
 } from './props/utilities-power.js';
 import {
@@ -35,7 +25,6 @@ import {
   buildChainLinkRunGeo,
   buildSwingGateGeo,
 } from './props/fence-rail.js';
-import { buildTreeGrateGeo } from './props/planting-landscape.js';
 import { buildWindowAcRowGeo, buildFlagpoleGeo } from './props/building-dressing.js';
 
 // CC0 GLBs/glTFs (assets/models/<slug>/<slug>.glb|.gltf).
@@ -487,22 +476,6 @@ export async function buildKenneyDressing(ctx) {
 
   // Approved stairs-entry slugs (hash01 only). Do not restack loops above.
   setTag('stairs-entry');
-  const ramps = [];
-  for (let i = 0; i < GAP_X.length; i++) {
-    for (const s of [-1, 1]) {
-      const x = GAP_X[i] + s * (XS_HALF + SW_CUT + 0.35);
-      const z = 52.45;
-      if (Math.abs(x - PIER_X) < 12) continue;
-      const y = groundHeight(x, z);
-      if (!clear(x, z, 0.85, y, 0.28)) continue;
-      ramps.push({ x, y, z, rotY: s > 0 ? Math.PI / 2 : -Math.PI / 2 });
-      addCollider(x, y, z, 2.24, 0.22, 1.68);
-    }
-  }
-  instanceAuthored(ctx, buildCurbRampGeo(), new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.72, metalness: 0.08,
-  }), ramps, 'catalog-curb-ramps');
-
   const rails = [];
   for (let i = 0; i < 12; i++) {
     if (hash01(i, 1103) < 0.42) continue;
@@ -549,59 +522,8 @@ export async function buildKenneyDressing(ctx) {
   }
   await scatterSafe(ctx, 'overhang', overhangs, 'kenney-overhangs');
 
-  // Approved traffic-control slugs (hash01 only). Do not restack loops above.
-  setTag('traffic-control');
-  const steelBollards = [];
-  for (let i = 0; i < CROSS_X.length; i++) {
-    for (const s of [-1, 1]) {
-      const x = CROSS_X[i] + s * (3.4 + hash01(i, 1301) * 0.5);
-      const z = 52.55 + (hash01(i, 1307) - 0.5) * 0.35;
-      if (Math.abs(x - PIER_X) < 12) continue;
-      const y = groundHeight(x, z);
-      if (!clear(x, z, 0.18, y, 1.05)) continue;
-      steelBollards.push({ x, y, z, rotY: hash01(i + s, 1319) * Math.PI * 2 });
-      addCyl(x, y, z, 0.12, 1.05);
-    }
-  }
-  instanceAuthored(ctx, buildBollardSteelGeo(), new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.72, metalness: 0.08,
-  }), steelBollards, 'catalog-bollard-steel');
-
-  const flexBollards = [];
-  for (let i = 0; i < 18; i++) {
-    if (hash01(i, 1321) < 0.42) continue;
-    const x = sidewalkX(i, 18) + (hash01(i, 1333) - 0.5) * 8;
-    const z = 38.45 + (hash01(i, 1349) - 0.5) * 0.55;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.14, y, 0.85)) continue;
-    flexBollards.push({ x, y, z, rotY: hash01(i, 1361) * Math.PI * 2 });
-    addCyl(x, y, z, 0.08, 0.85);
-  }
-  instanceAuthored(ctx, buildBollardFlexGeo(), new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.72, metalness: 0.08,
-  }), flexBollards, 'catalog-bollard-flex');
-
-  const pedHeads = [];
-  for (let i = 0; i < CROSS_X.length; i++) {
-    for (const s of [-1, 1]) {
-      const x = CROSS_X[i] + s * (XS_HALF + 0.9);
-      const z = 53.15;
-      if (Math.abs(x - PIER_X) < 12) continue;
-      const y = groundHeight(x, z);
-      if (!clear(x, z, 0.25, y, 0.7)) continue;
-      const rotY = s < 0 ? Math.PI / 2 : -Math.PI / 2;
-      pedHeads.push({ x, y, z, rotY });
-      addOBB(x, y, z, 0.35, 0.7, 0.2, rotY);
-    }
-  }
-  const pedMat = new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.62, metalness: 0.12,
-    emissive: 0xffd27a, emissiveIntensity: 0,
-  });
-  if (ctx.regDN) ctx.regDN(pedMat, 0, 1.15);
-  instanceAuthored(ctx, buildPedSignalGeo(), pedMat, pedHeads, 'catalog-ped-signal');
+  // Corridor ramps / bollards / ped heads / mailboxes / fountains / cabinets /
+  // tree grates / gutter manholes live on the 2D site plan, not hash ribbons.
 
   // Approved alley-lot-marina slugs (hash01 only). Do not restack loops above.
   setTag('alley-lot-marina');
@@ -757,19 +679,6 @@ export async function buildKenneyDressing(ctx) {
   const vc = (opts = {}) => new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: opts.roughness ?? 0.72, metalness: opts.metalness ?? 0.08,
   });
-  const mailboxes = [];
-  for (let i = 0; i < 8; i++) {
-    const x = sidewalkX(i, 8) + (hash01(i, 1703) - 0.5) * 6;
-    const z = 52.45 + (hash01(i, 1709) - 0.5) * 0.4;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.4, y, 1.3)) continue;
-    mailboxes.push({ x, y, z, rotY: Math.PI });
-    addCollider(x, y, z, 0.55, 1.3, 0.5);
-  }
-  instanceAuthored(ctx, buildMailboxGeo(), vc(), mailboxes, 'catalog-mailbox');
-
   const papers = [];
   for (let i = 0; i < 10; i++) {
     if (hash01(i, 1713) < 0.45) continue;
@@ -783,33 +692,6 @@ export async function buildKenneyDressing(ctx) {
     addCollider(x, y, z, 0.4, 0.25, 0.3);
   }
   instanceAuthored(ctx, buildPaperStackGeo(), vc({ roughness: 0.88 }), papers, 'catalog-paper-stack');
-
-  const bags = [];
-  for (let i = 0; i < 10; i++) {
-    if (hash01(i, 1729) < 0.4) continue;
-    const x = sidewalkX(i, 10) + (hash01(i, 1733) - 0.5) * 5;
-    const z = 36.5 + (hash01(i, 1739) - 0.5) * 0.3;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.14, y, 1.1)) continue;
-    bags.push({ x, y, z, rotY: 0 });
-    addCyl(x, y, z, 0.08, 1.1);
-  }
-  instanceAuthored(ctx, buildDogBagDispenserGeo(), vc(), bags, 'catalog-dog-bag');
-
-  const fountains = [];
-  for (let i = 0; i < 6; i++) {
-    const x = sidewalkX(i, 6) + (hash01(i, 1741) - 0.5) * 8;
-    const z = 34.9 + (hash01(i, 1747) - 0.5) * 0.4;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    if (GAP_X.some((c) => Math.abs(x - c) < 10)) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.32, y, 0.95)) continue;
-    fountains.push({ x, y, z, rotY: 0 });
-    addCyl(x, y, z, 0.28, 0.95);
-  }
-  instanceAuthored(ctx, buildStreetFountainGeo(), vc(), fountains, 'catalog-fountain');
 
   const phones = [];
   for (let i = 0; i < 8 && phones.length < 3; i++) {
@@ -856,26 +738,6 @@ export async function buildKenneyDressing(ctx) {
   }
   instanceAuthored(ctx, buildPowerSpanGeo(), vc({ roughness: 0.5, metalness: 0.35 }),
     spans, 'catalog-power-spans');
-
-  const cabinets = [];
-  for (let i = 0; i < GAP_X.length; i++) {
-    const x = GAP_X[i] + 4.2;
-    const z = 53.2;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.4, y, 1.35)) continue;
-    cabinets.push({ x, y, z, rotY: 0 });
-    addCollider(x, y, z, 0.7, 1.35, 0.5);
-  }
-  instanceAuthored(ctx, buildTrafficCabinetGeo(), vc({ roughness: 0.88 }), cabinets, 'catalog-cabinets');
-
-  const holes = [];
-  for (let x = -540; x <= 540; x += 55) {
-    if (GAP_X.some((c) => Math.abs(x - c) < 8)) continue;
-    const z = 44 + (hash01(x | 0, 1777) - 0.5) * 2;
-    holes.push({ x, y: CITY_Y + 0.07, z, rotY: hash01(x | 0, 1783) * Math.PI });
-  }
-  instanceAuthored(ctx, buildManholeCoverGeo(), vc(), holes, 'catalog-manholes');
 
   const pipes = [];
   for (let i = 0; i < 10; i++) {
@@ -934,19 +796,6 @@ export async function buildKenneyDressing(ctx) {
   }
   instanceAuthored(ctx, buildPipeRailingGeo(), vc({ roughness: 0.28, metalness: 0.18 }),
     pipeRails, 'catalog-pipe-rail');
-
-  const grates = [];
-  for (let i = 0; i < 14; i++) {
-    if (hash01(i, 1853) < 0.35) continue;
-    const x = sidewalkX(i, 14) + (hash01(i, 1859) - 0.5) * 4;
-    const z = 51.5 + (hash01(i, 1861) - 0.5) * 0.3;
-    if (Math.abs(x - PIER_X) < 12) continue;
-    if (GAP_X.some((c) => Math.abs(x - c) < 7)) continue;
-    const y = groundHeight(x, z);
-    if (!clear(x, z, 0.6, y, 0.06)) continue;
-    grates.push({ x, y: y + 0.02, z, rotY: 0 });
-  }
-  instanceAuthored(ctx, buildTreeGrateGeo(), vc(), grates, 'catalog-tree-grate');
 
   const acs = [];
   for (let i = 0; i < 12; i++) {

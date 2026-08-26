@@ -4,6 +4,8 @@ All files under `assets/models/` are CC0 or public-domain equivalents, free for 
 
 The Miami scatter plan lives in `assets/catalog/miami-props.json` (placement bands, skins, wrap kind, status). Iterate items there; `js/world/miami/propCatalog.js` is the loader. Do not consume rng/rng2/rng3/rng4.
 
+The Ocean Drive 2D site plan (corridor paint + stamps, world XZ metres, `crs: miami-xz-meters`) lives in `assets/catalog/miami-ocean-drive-plan.json`; the overlay is `assets/catalog/miami-ocean-drive-plan.svg`. `js/world/miami/sitePlan.js` bakes it (`bakePlanPaint`). Do not consume rng/rng2/rng3/rng4.
+
 ## Kenney CC0 (City Kit Suburban / Commercial / Roads + Nature Kit + Car Kit)
 
 Downloaded from kenney.nl (direct zip URLs). Creative Commons CC0.
