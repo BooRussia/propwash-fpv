@@ -168,7 +168,8 @@
     {
       "id": "eighth-street",
       "title": "Inland storefronts on GAP_X=-129 (8th-street analogue) with arcade fly-unders, west of leftoverLot A",
-      "status": "in_progress",
+      "status": "done",
+      "notes": "dbeced4 — GAP_X=-129 inland shops, arcade fly-unders",
       "files": [
         "js/world/miami/constants.js",
         "js/world/miami/landmarks/eighth.js",
